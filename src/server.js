@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import dns from 'node:dns';
 import express from 'express';
 import multer from 'multer';
 import fs from 'fs';
@@ -17,6 +18,7 @@ import db, {
   createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer,
   listActiveTasks, hasClaimedTask, claimTask, getTask,
   getOrCreateOpenTicket, addTicketMessage, listTicketMessages, listMyTickets,
+  getPaymentSettings,
 } from './db.js';
 import {
   listGameCards, getUserCards, buyGameCard, upgradeUserCard, sacrificeUpgradeCard,
@@ -26,6 +28,11 @@ import {
   listActiveCardTasks, hasClaimedCardTask, claimCardTask, getCardTask,
 } from './game-db.js';
 import adminApi from './admin-api.js';
+
+// بعضی سرورها (مثل این VPS) IPv6 خراب/فیلتر شده دارن ولی IPv4‌شون سالمه. بدون این خط،
+// Node گاهی اول IPv6 رو امتحان می‌کنه، گیر می‌کنه، و قبل از رسیدن به IPv4 سالم، درخواست
+// (مثلا به api.telegram.org) تایم‌اوت می‌خوره. این خط همیشه IPv4 رو اول امتحان می‌کنه.
+dns.setDefaultResultOrder('ipv4first');
 
 const app = express();
 app.use(express.json());
@@ -60,11 +67,12 @@ app.get('/api/config', ah(async (req, res) => {
   if (!cachedBotUsername) {
     try { const me = await getMe(); cachedBotUsername = me.result?.username || null; } catch (e) {}
   }
+  const payment = getPaymentSettings(); // شماره کارت الان دستی از پنل ادمین قابل تغییره، نه فقط از .env
   res.json({
     botUsername: cachedBotUsername,
     channel: process.env.REQUIRED_CHANNEL || null,
-    cardNumber: process.env.ADMIN_CARD_NUMBER || null,
-    cardOwner: process.env.ADMIN_CARD_OWNER || null,
+    cardNumber: payment.cardNumber || null,
+    cardOwner: payment.cardOwner || null,
     referralPercent: Number(process.env.REFERRAL_PERCENT || 5),
     giftMarketFeePercent: Number(process.env.GIFT_MARKET_FEE_PERCENT || 5),
     swapFeePercent: Number(process.env.SWAP_FEE_PERCENT || 1),
@@ -518,11 +526,18 @@ async function handleTelegramUpdate(update) {
       const orders = db.prepare('SELECT COUNT(*) c FROM orders').get().c;
       await sendMessage(chatId, `📊 آمار کلی\nکاربران: ${users}\nسفارش‌ها: ${orders}`);
     }
-    if (cmd === '/addbalance' && args.length === 2) {
+    if (cmd === '/addbalance') {
       const [targetId, amount] = args;
-      adjustToman(Number(targetId), Number(amount), 'شارژ دستی توسط ادمین');
-      await sendMessage(chatId, `✅ ${amount} تومان به کیف‌پول ${targetId} اضافه شد.`);
-      await sendMessage(Number(targetId), `💰 مبلغ ${Number(amount).toLocaleString()} تومان توسط پشتیبانی به کیف‌پولت اضافه شد.`);
+      const targetIdNum = Number(targetId);
+      const amountNum = Number(amount);
+      // ورودی نامعتبر رو رد می‌کنیم به‌جای اینکه NaN وارد موجودی کاربر بشه و کیف‌پولش خراب بشه
+      if (args.length !== 2 || !Number.isFinite(targetIdNum) || !Number.isFinite(amountNum) || amountNum === 0) {
+        await sendMessage(chatId, '⚠️ فرمت درست: /addbalance آیدی_عددی مبلغ\nمثال: /addbalance 123456789 50000');
+      } else {
+        adjustToman(targetIdNum, amountNum, 'شارژ دستی توسط ادمین');
+        await sendMessage(chatId, `✅ ${amountNum.toLocaleString()} تومان به کیف‌پول ${targetIdNum} اضافه شد.`);
+        await sendMessage(targetIdNum, `💰 مبلغ ${amountNum.toLocaleString()} تومان توسط پشتیبانی به کیف‌پولت اضافه شد.`);
+      }
     }
   }
 }
@@ -534,9 +549,19 @@ app.use('/miniapp', express.static('public'));
 app.use('/admin/api', adminApi);
 app.use('/admin', express.static('admin'));
 
+// هر مسیر /api/* که به هیچ روتی نخورد، یه ۴۰۴ تمیز JSON برمی‌گردونه (نه صفحه HTML پیش‌فرض اکسپرس)
+app.use('/api', (req, res) => res.status(404).json({ error: 'این مسیر پیدا نشد' }));
+
 app.use((err, req, res, next) => {
-  console.error('[unhandled route error]', err);
   if (res.headersSent) return next(err);
+
+  if (err.type === 'entity.parse.failed' || err instanceof SyntaxError) {
+    return res.status(400).json({ error: 'داده ارسالی نامعتبره' });
+  }
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ error: 'حجم عکس بیشتر از حد مجاز (۵ مگابایت) است' });
+  }
+  console.error('[unhandled route error]', err);
   res.status(500).json({ error: 'خطای داخلی سرور' });
 });
 process.on('unhandledRejection', (reason) => console.error('[unhandledRejection]', reason));
