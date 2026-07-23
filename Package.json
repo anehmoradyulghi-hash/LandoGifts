@@ -1,0 +1,24 @@
+{
+  "name": "lando-gifts",
+  "version": "1.0.0",
+  "description": "Telegram Mini App - فروشگاه و بازار گیفت با کیف‌پول تومانی و ارزی کاملا دستی",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:restart": "pm2 restart lando-gifts",
+    "pm2:logs": "pm2 logs lando-gifts",
+    "pm2:save": "pm2 save"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
