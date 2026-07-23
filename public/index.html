@@ -2,216 +2,991 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Lando Gifts</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; }
+  :root {
+    --bg-deep: #0a0b10;
+    --bg-card: rgba(20, 22, 32, 0.75);
+    --bg-card-solid: #141620;
+    --border: rgba(255,255,255,0.06);
+    --border-hover: rgba(255,255,255,0.12);
+    --text-primary: #f0f2f8;
+    --text-secondary: #8b92a8;
+    --text-muted: #5a6078;
+    --accent: #6366f1;
+    --accent-light: #818cf8;
+    --accent-glow: rgba(99,102,241,0.25);
+    --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --gold: #fbbf24;
+    --gradient-1: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+    --gradient-2: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%);
+    --gradient-gold: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    --shadow-soft: 0 8px 32px rgba(0,0,0,0.3);
+    --shadow-glow: 0 0 40px rgba(99,102,241,0.15);
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-xl: 28px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
   body {
-    margin: 0; font-family: Tahoma, sans-serif; background: #0f1115; color: #eee;
-    padding-bottom: 70px;
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
   }
-  header { padding: 16px; text-align: center; border-bottom: 1px solid #232733; }
-  header h1 { margin: 0; font-size: 20px; }
-  .balance { margin-top: 6px; font-size: 15px; color: #9fe6a0; }
-  main { padding: 12px; }
-  .card {
-    background: #171a21; border: 1px solid #232733; border-radius: 10px;
-    padding: 12px; margin-bottom: 10px;
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 40%, rgba(99,102,241,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 40% at 80% 60%, rgba(168,85,247,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 30% at 50% 100%, rgba(6,182,212,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+    animation: meshFloat 20s ease-in-out infinite alternate;
   }
-  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  @keyframes meshFloat {
+    0% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(-20px,-10px) scale(1.02); }
+    100% { transform: translate(10px,5px) scale(1); }
+  }
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    padding: 16px 20px;
+    background: rgba(10,11,16,0.85);
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    border-bottom: 1px solid var(--border);
+  }
+  .app-header-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .logo-text {
+    font-size: 22px;
+    font-weight: 800;
+    background: var(--gradient-1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+  .balance-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--success);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+  .balance-pill:hover { border-color: var(--border-hover); box-shadow: var(--shadow-glow); }
+  .balance-pill .coin-icon {
+    width: 18px; height: 18px;
+    background: var(--gradient-gold);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 10px; color: #000; font-weight: 800;
+  }
+  main {
+    position: relative;
+    z-index: 1;
+    padding: 16px 16px 100px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .glass-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-bottom: 14px;
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  }
+  .glass-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-soft), var(--shadow-glow);
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title .icon {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--gradient-1);
+    display: grid; place-items: center;
+    font-size: 16px;
+  }
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .product-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+  }
+  .product-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 12px 40px rgba(99,102,241,0.2);
+  }
+  .product-card .img-wrap {
+    width: 100%;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    position: relative;
+  }
+  .product-card .img-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+  .product-card:hover .img-wrap img { transform: scale(1.08); }
+  .product-card .img-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(10,11,16,0.9) 0%, transparent 50%);
+  }
+  .product-card .info {
+    padding: 12px;
+    position: relative;
+  }
+  .product-card .title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  .product-card .price-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--gradient-1);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 50px;
+  }
   .btn {
-    display: inline-block; background: #2f6feb; color: #fff; border: none;
-    border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 10px 20px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
   }
-  .btn.secondary { background: #333; }
-  .btn.danger { background: #a33; }
-  .btn:disabled { opacity: .5; }
-  input, select, textarea {
-    width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #333;
-    background: #0f1115; color: #eee; margin-top: 4px; margin-bottom: 8px; font-family: inherit;
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s ease;
   }
-  label { font-size: 13px; color: #aaa; }
-  .muted { color: #888; font-size: 12px; }
-  .tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #263042; color: #9fc4ff; }
-  nav {
-    position: fixed; bottom: 0; left: 0; right: 0; display: flex;
-    background: #171a21; border-top: 1px solid #232733;
+  .btn:hover::after { transform: translateX(100%); }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--gradient-1);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(99,102,241,0.35);
   }
-  nav button {
-    flex: 1; background: none; border: none; color: #888; padding: 10px 2px;
-    font-size: 11px; cursor: pointer;
+  .btn-primary:hover {
+    box-shadow: 0 6px 30px rgba(99,102,241,0.5);
+    transform: translateY(-1px);
   }
-  nav button.active { color: #2f6feb; }
-  .tab { display: none; }
+  .btn-secondary {
+    background: rgba(255,255,255,0.06);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: var(--border-hover);
+  }
+  .btn-danger {
+    background: rgba(239,68,68,0.15);
+    color: var(--danger);
+    border: 1px solid rgba(239,68,68,0.3);
+  }
+  .btn-danger:hover {
+    background: rgba(239,68,68,0.25);
+    box-shadow: 0 4px 20px rgba(239,68,68,0.2);
+  }
+  .btn-gold {
+    background: var(--gradient-gold);
+    color: #1a1a2e;
+    font-weight: 700;
+    box-shadow: 0 4px 20px rgba(251,191,36,0.3);
+  }
+  .btn-gold:hover {
+    box-shadow: 0 6px 30px rgba(251,191,36,0.45);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+  .input-group { margin-bottom: 14px; }
+  .input-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .input-field {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    outline: none;
+  }
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+    background: rgba(255,255,255,0.05);
+  }
+  .input-field::placeholder { color: var(--text-muted); }
+  select.input-field {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238b92a8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 12px center;
+    padding-left: 36px;
+  }
+  textarea.input-field { resize: vertical; min-height: 80px; }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 50px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .tag-blue { background: rgba(99,102,241,0.12); color: var(--accent-light); }
+  .tag-green { background: rgba(34,197,94,0.12); color: var(--success); }
+  .tag-red { background: rgba(239,68,68,0.12); color: var(--danger); }
+  .tag-gold { background: rgba(251,191,36,0.12); color: var(--gold); }
+  .tag-purple { background: rgba(168,85,247,0.12); color: #c084fc; }
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 10px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+  .stat-box:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+  .stat-box .value {
+    font-size: 22px;
+    font-weight: 800;
+    background: var(--gradient-1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-box .label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .game-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.35s ease;
+  }
+  .game-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 60px; height: 60px;
+    background: var(--gradient-1);
+    opacity: 0.08;
+    border-radius: 0 0 0 60px;
+  }
+  .game-card:hover {
+    border-color: var(--accent);
+    transform: translateX(-4px);
+    box-shadow: var(--shadow-glow);
+  }
+  .game-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .game-card .card-name {
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .rarity-badge {
+    padding: 2px 10px;
+    border-radius: 50px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .rarity-common { background: rgba(148,163,184,0.15); color: #94a3b8; }
+  .rarity-rare { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .rarity-epic { background: rgba(168,85,247,0.15); color: #c084fc; }
+  .rarity-legendary { background: var(--gradient-gold); color: #1a1a2e; }
+  .progress-bar {
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--gradient-1);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 200;
+    background: rgba(10,11,16,0.92);
+    backdrop-filter: blur(24px) saturate(1.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    border-top: 1px solid var(--border);
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+  }
+  .bottom-nav-inner {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 8px;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    background: none;
+    font-family: inherit;
+    position: relative;
+  }
+  .nav-item svg {
+    width: 22px; height: 22px;
+    transition: all 0.3s ease;
+  }
+  .nav-item.active {
+    color: var(--accent-light);
+  }
+  .nav-item.active svg {
+    filter: drop-shadow(0 0 8px var(--accent-glow));
+    transform: translateY(-2px);
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    width: 20px; height: 3px;
+    background: var(--gradient-1);
+    border-radius: 2px;
+  }
+  .nav-item:not(.active):hover { color: var(--text-secondary); }
+  .tab { display: none; animation: fadeIn 0.4s ease; }
   .tab.active { display: block; }
-  .msg { padding: 8px; border-radius: 8px; margin-bottom: 6px; font-size: 14px; max-width: 80%; }
-  .msg.user { background: #2f6feb; margin-right: auto; }
-  .msg.admin { background: #333; margin-left: auto; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
   .toast {
-    position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-    background: #222; padding: 8px 16px; border-radius: 8px; font-size: 13px; z-index: 999; display: none;
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 1000;
+    backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-soft);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: rgba(34,197,94,0.3); color: var(--success); }
+  .toast.error { border-color: rgba(239,68,68,0.3); color: var(--danger); }
+  .chat-box {
+    min-height: 220px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .msg {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    line-height: 1.5;
+    animation: msgPop 0.3s ease;
+  }
+  @keyframes msgPop {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--gradient-1);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.admin {
+    align-self: flex-start;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .msg img {
+    max-width: 100%;
+    border-radius: var(--radius-sm);
+    margin-top: 6px;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: var(--radius-sm);
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state .empty-icon {
+    width: 64px; height: 64px;
+    margin: 0 auto 16px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 28px;
+  }
+  .empty-state p { font-size: 14px; }
+  .row-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .row-flex.wrap { flex-wrap: wrap; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+  .custom-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .custom-checkbox input { display: none; }
+  .check-box {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    display: grid; place-items: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  .custom-checkbox input:checked + .check-box {
+    background: var(--gradient-1);
+    border-color: var(--accent);
+  }
+  .custom-checkbox input:checked + .check-box::after {
+    content: '✓';
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .animate-in {
+    animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    opacity: 0;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (max-width: 380px) {
+    .product-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 </head>
 <body>
 <div class="toast" id="toast"></div>
-<header>
-  <h1>🎁 Lando Gifts</h1>
-  <div class="balance" id="balanceLine">در حال بارگذاری...</div>
+<header class="app-header">
+  <div class="app-header-inner">
+    <div class="logo-text">Lando Gifts</div>
+    <div class="balance-pill" id="balanceLine">
+      <span class="coin-icon">ت</span>
+      <span>در حال بارگذاری...</span>
+    </div>
+  </div>
 </header>
-
 <main>
+
   <!-- فروشگاه -->
   <section class="tab active" id="tab-shop">
-    <div id="productList">در حال بارگذاری محصولات...</div>
+    <div class="section-title">
+      <div class="icon">🛍</div>
+      فروشگاه
+    </div>
+    <div id="productList">
+      <div class="product-grid">
+        <div class="product-card skeleton" style="height:200px;"></div>
+        <div class="product-card skeleton" style="height:200px;"></div>
+        <div class="product-card skeleton" style="height:200px;"></div>
+        <div class="product-card skeleton" style="height:200px;"></div>
+      </div>
+    </div>
   </section>
 
   <!-- کیف پول -->
   <section class="tab" id="tab-wallet">
-    <div class="card">
-      <h3>شارژ کیف‌پول (کارت‌به‌کارت)</h3>
-      <label>مبلغ (تومان)</label>
-      <input type="number" id="topupAmount" placeholder="مثلا 100000" />
-      <label>کد رهگیری یا ۴ رقم آخر کارت</label>
-      <input type="text" id="topupTracking" />
-      <div class="muted" id="cardInfo"></div>
-      <button class="btn" onclick="doTopup()">ثبت درخواست شارژ</button>
+    <div class="section-title">
+      <div class="icon" style="background:var(--gradient-2);">💳</div>
+      کیف‌پول
     </div>
-    <div class="card">
-      <h3>برداشت وجه</h3>
-      <label>مبلغ (تومان)</label>
-      <input type="number" id="withdrawAmount" />
-      <label>شماره کارت مقصد</label>
-      <input type="text" id="withdrawCard" />
-      <button class="btn secondary" onclick="doWithdraw()">ثبت درخواست برداشت</button>
+    <div class="glass-card">
+      <div class="row-flex" style="margin-bottom:14px;">
+        <span style="font-size:15px;font-weight:700;">شارژ کارت‌به‌کارت</span>
+        <span class="tag tag-green">تایید دستی</span>
+      </div>
+      <div class="input-group">
+        <label>مبلغ (تومان)</label>
+        <input type="number" class="input-field" id="topupAmount" placeholder="مثلاً ۱۰۰,۰۰۰">
+      </div>
+      <div class="input-group">
+        <label>کد رهگیری یا ۴ رقم آخر کارت</label>
+        <input type="text" class="input-field" id="topupTracking" placeholder="مثلاً ۷۸۵۲">
+      </div>
+      <div id="cardInfo" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="doTopup()">
+        <span>📥</span> ثبت درخواست شارژ
+      </button>
     </div>
-    <div class="card">
-      <h3>تاریخچه تراکنش‌ها</h3>
-      <div id="ledgerList" class="muted">در حال بارگذاری...</div>
+    <div class="glass-card">
+      <div class="row-flex" style="margin-bottom:14px;">
+        <span style="font-size:15px;font-weight:700;">برداشت وجه</span>
+        <span class="tag tag-red">تایید دستی</span>
+      </div>
+      <div class="input-group">
+        <label>مبلغ (تومان)</label>
+        <input type="number" class="input-field" id="withdrawAmount" placeholder="حداقل ۱۰,۰۰۰ تومان">
+      </div>
+      <div class="input-group">
+        <label>شماره کارت مقصد</label>
+        <input type="text" class="input-field" id="withdrawCard" placeholder="۶۲۱۹...">
+      </div>
+      <button class="btn btn-secondary" style="width:100%;" onclick="doWithdraw()">
+        <span>📤</span> ثبت درخواست برداشت
+      </button>
+    </div>
+    <div class="glass-card">
+      <div class="row-flex" style="margin-bottom:12px;">
+        <span style="font-size:15px;font-weight:700;">📜 تاریخچه تراکنش‌ها</span>
+      </div>
+      <div id="ledgerList">
+        <div class="skeleton" style="height:40px;margin-bottom:8px;"></div>
+        <div class="skeleton" style="height:40px;margin-bottom:8px;"></div>
+        <div class="skeleton" style="height:40px;"></div>
+      </div>
     </div>
   </section>
 
   <!-- ارزها -->
   <section class="tab" id="tab-currency">
-    <div class="card">
-      <h3>موجودی ارزی</h3>
-      <div id="currencyBalances" class="muted">در حال بارگذاری...</div>
+    <div class="section-title">
+      <div class="icon" style="background:var(--gradient-gold);">💱</div>
+      ارزهای دیجیتال
     </div>
-    <div class="card">
-      <h3>تبدیل تومان ⇄ ارز</h3>
-      <p class="muted">نرخ‌ها رو ادمین دستی تنظیم می‌کنه؛ اینجا هیچ قیمت لحظه‌ای بیرونی گرفته نمی‌شه.</p>
-      <label>از</label>
-      <select id="swapFrom"></select>
-      <label>به</label>
-      <select id="swapTo"></select>
-      <label>مقدار</label>
-      <input type="number" id="swapAmount" />
-      <button class="btn" onclick="doSwap()">تبدیل کن</button>
+    <div class="glass-card">
+      <div class="row-flex" style="margin-bottom:12px;">
+        <span style="font-size:15px;font-weight:700;">💰 موجودی ارزی</span>
+      </div>
+      <div id="currencyBalances">
+        <div class="skeleton" style="height:50px;margin-bottom:8px;"></div>
+        <div class="skeleton" style="height:50px;"></div>
+      </div>
     </div>
-    <div class="card">
-      <h3>واریز ارز دیجیتال</h3>
-      <label>ارز</label>
-      <select id="depCode"></select>
-      <label>مقدار</label>
-      <input type="number" id="depAmount" />
-      <label>هش تراکنش / کد رهگیری</label>
-      <input type="text" id="depTx" />
-      <button class="btn" onclick="doCurrencyDeposit()">ثبت درخواست واریز</button>
+    <div class="glass-card">
+      <div class="row-flex" style="margin-bottom:14px;">
+        <span style="font-size:15px;font-weight:700;">🔄 تبدیل تومان ⇄ ارز</span>
+        <span class="tag tag-purple">نرخ دستی</span>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+        نرخ‌ها توسط ادمین تنظیم می‌شن. هیچ API قیمت لحظه‌ای بیرونی وصل نیست.
+      </p>
+      <div class="row-flex wrap" style="gap:10px;margin-bottom:14px;">
+        <div style="flex:1;min-width:120px;">
+          <label style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;display:block;">از</label>
+          <select class="input-field" id="swapFrom"></select>
+        </div>
+        <div style="flex:1;min-width:120px;">
+          <label style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;display:block;">به</label>
+          <select class="input-field" id="swapTo"></select>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>مقدار</label>
+        <input type="number" class="input-field" id="swapAmount" placeholder="مقدار را وارد کنید">
+      </div>
+      <button class="btn btn-gold" style="width:100%;" onclick="doSwap()">
+        <span>⚡</span> تبدیل کن
+      </button>
     </div>
-    <div class="card">
-      <h3>برداشت ارز دیجیتال</h3>
-      <label>ارز</label>
-      <select id="wdCode"></select>
-      <label>مقدار</label>
-      <input type="number" id="wdAmount" />
-      <label>آدرس مقصد</label>
-      <input type="text" id="wdAddress" />
-      <button class="btn secondary" onclick="doCurrencyWithdraw()">ثبت درخواست برداشت</button>
+    <div class="glass-card">
+      <div class="row-flex" style="margin-bottom:14px;">
+        <span style="font-size:15px;font-weight:700;">📥 واریز ارز دیجیتال</span>
+        <span class="tag tag-green">تایید دستی</span>
+      </div>
+      <div class="input-group">
+        <label>ارز</label>
+        <select class="input-field" id="depCode"></select>
+      </div>
+      <div class="input-group">
+        <label>مقدار</label>
+        <input type="number" class="input-field" id="depAmount" placeholder="مقدار">
+      </div>
+      <div class="input-group">
+        <label>هش تراکنش / کد رهگیری</label>
+        <input type="text" class="input-field" id="depTx" placeholder="0x...">
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="doCurrencyDeposit()">
+        <span>📥</span> ثبت درخواست واریز
+      </button>
+    </div>
+    <div class="glass-card">
+      <div class="row-flex" style="margin-bottom:14px;">
+        <span style="font-size:15px;font-weight:700;">📤 برداشت ارز دیجیتال</span>
+        <span class="tag tag-red">تایید دستی</span>
+      </div>
+      <div class="input-group">
+        <label>ارز</label>
+        <select class="input-field" id="wdCode"></select>
+      </div>
+      <div class="input-group">
+        <label>مقدار</label>
+        <input type="number" class="input-field" id="wdAmount" placeholder="مقدار">
+      </div>
+      <div class="input-group">
+        <label>آدرس مقصد</label>
+        <input type="text" class="input-field" id="wdAddress" placeholder="آدرس کیف‌پول مقصد">
+      </div>
+      <button class="btn btn-secondary" style="width:100%;" onclick="doCurrencyWithdraw()">
+        <span>📤</span> ثبت درخواست برداشت
+      </button>
     </div>
   </section>
 
   <!-- بازار گیفت -->
   <section class="tab" id="tab-market">
-    <div class="card">
-      <h3>ثبت آگهی فروش گیفت</h3>
-      <label>عنوان گیفت</label>
-      <input type="text" id="giftTitle" />
-      <label>لینک عکس (اختیاری)</label>
-      <input type="text" id="giftImage" placeholder="https://..." />
-      <label>قیمت (تومان)</label>
-      <input type="number" id="giftPrice" />
-      <button class="btn" onclick="listGift()">ثبت آگهی</button>
+    <div class="section-title">
+      <div class="icon" style="background:var(--gradient-gold);">🎁</div>
+      بازار گیفت
     </div>
-    <h3>بازار (آگهی‌های دیگران)</h3>
-    <div id="marketList" class="muted">در حال بارگذاری...</div>
-    <h3>آگهی‌های من</h3>
-    <div id="myGiftsList" class="muted">در حال بارگذاری...</div>
-  </section>
-
-  <!-- تسک‌ها -->
-  <section class="tab" id="tab-tasks">
-    <div id="tasksList" class="muted">در حال بارگذاری...</div>
-  </section>
-
-  <!-- رفرال -->
-  <section class="tab" id="tab-referral">
-    <div class="card" id="referralCard">در حال بارگذاری...</div>
+    <div class="glass-card">
+      <div class="row-flex" style="margin-bottom:14px;">
+        <span style="font-size:15px;font-weight:700;">➕ ثبت آگهی فروش</span>
+      </div>
+      <div class="input-group">
+        <label>عنوان گیفت</label>
+        <input type="text" class="input-field" id="giftTitle" placeholder="مثلاً گیفت کارت ۱۰ دلاری">
+      </div>
+      <div class="input-group">
+        <label>لینک عکس (اختیاری)</label>
+        <input type="text" class="input-field" id="giftImage" placeholder="https://...">
+      </div>
+      <div class="input-group">
+        <label>قیمت (تومان)</label>
+        <input type="number" class="input-field" id="giftPrice" placeholder="حداقل ۵,۰۰۰ تومان">
+      </div>
+      <button class="btn btn-gold" style="width:100%;" onclick="listGift()">
+        <span>✨</span> ثبت آگهی
+      </button>
+    </div>
+    <div class="section-title" style="margin-top:20px;">
+      <div class="icon" style="background:var(--gradient-2);">🏪</div>
+      بازار (آگهی‌های دیگران)
+    </div>
+    <div id="marketList">
+      <div class="skeleton" style="height:120px;margin-bottom:10px;"></div>
+      <div class="skeleton" style="height:120px;"></div>
+    </div>
+    <div class="section-title" style="margin-top:20px;">
+      <div class="icon" style="background:var(--gradient-1);">📋</div>
+      آگهی‌های من
+    </div>
+    <div id="myGiftsList">
+      <div class="skeleton" style="height:80px;"></div>
+    </div>
   </section>
 
   <!-- بازی کارتی -->
   <section class="tab" id="tab-game">
-    <div class="card">
-      <div class="row"><span>بازی‌های امروز</span><b id="gamePlaysLeft">-</b></div>
-      <div class="row"><span>رتبه من</span><b id="gameMyRank">-</b></div>
-      <div class="row"><span>وضعیت صف</span><b id="gameQueueState">-</b></div>
-      <button class="btn secondary" onclick="buyExtraPlays()">خرید بازی اضافه</button>
+    <div class="section-title">
+      <div class="icon" style="background:linear-gradient(135deg,#ef4444,#f59e0b);">🎮</div>
+      بازی کارتی
     </div>
-
-    <h3>فروشگاه کارت</h3>
-    <div id="gameShop" class="muted">در حال بارگذاری...</div>
-
-    <h3>مجموعه کارت‌های من</h3>
-    <p class="muted">برای ادغام رایگان، یه کارت رو به‌عنوان هدف و یه کارت مشابه‌شو به‌عنوان قربانی انتخاب کن.</p>
-    <div id="gameMyCards" class="muted">در حال بارگذاری...</div>
-
-    <h3>ساخت دسته و ورود به صف</h3>
-    <div class="card">
-      <p class="muted" id="deckHint"></p>
-      <div id="deckPicker"></div>
-      <button class="btn" onclick="joinGameQueue()">ورود به صف مسابقه</button>
-      <button class="btn secondary" onclick="cancelGameQueue()">لغو صف</button>
+    <div class="glass-card" style="background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(168,85,247,0.05));">
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="value" id="gamePlaysLeft">-</div>
+          <div class="label">بازی امروز</div>
+        </div>
+        <div class="stat-box">
+          <div class="value" id="gameMyRank" style="background:var(--gradient-gold);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">-</div>
+          <div class="label">رتبه من</div>
+        </div>
+        <div class="stat-box">
+          <div class="value" id="gameQueueState" style="font-size:16px;padding-top:4px;">-</div>
+          <div class="label">وضعیت صف</div>
+        </div>
+      </div>
+      <button class="btn btn-gold" style="width:100%;margin-top:8px;" onclick="buyExtraPlays()">
+        <span>⚡</span> خرید بازی اضافه
+      </button>
     </div>
+    <div class="section-title" style="margin-top:20px;">
+      <div class="icon" style="background:var(--gradient-1);">🃏</div>
+      فروشگاه کارت
+    </div>
+    <div id="gameShop">
+      <div class="skeleton" style="height:100px;margin-bottom:10px;"></div>
+      <div class="skeleton" style="height:100px;"></div>
+    </div>
+    <div class="section-title" style="margin-top:20px;">
+      <div class="icon" style="background:var(--gradient-2);">🎴</div>
+      مجموعه کارت‌های من
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+      برای ادغام رایگان، یه کارت رو به‌عنوان هدف و یه کارت مشابه‌ش رو به‌عنوان قربانی انتخاب کن.
+    </p>
+    <div id="gameMyCards">
+      <div class="skeleton" style="height:120px;margin-bottom:10px;"></div>
+    </div>
+    <div class="glass-card" style="margin-top:16px;">
+      <div class="row-flex" style="margin-bottom:12px;">
+        <span style="font-size:15px;font-weight:700;">⚔️ ساخت دسته و ورود به صف</span>
+      </div>
+      <p id="deckHint" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></p>
+      <div id="deckPicker" style="margin-bottom:14px;"></div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="joinGameQueue()">
+          <span>⚔️</span> ورود به صف مسابقه
+        </button>
+        <button class="btn btn-danger" style="flex:1;" onclick="cancelGameQueue()">
+          <span>❌</span> لغو صف
+        </button>
+      </div>
+    </div>
+    <div class="section-title" style="margin-top:20px;">
+      <div class="icon" style="background:var(--gradient-gold);">🏆</div>
+      جدول امتیازات
+    </div>
+    <div id="gameLeaderboard">
+      <div class="skeleton" style="height:200px;"></div>
+    </div>
+    <div class="section-title" style="margin-top:20px;">
+      <div class="icon" style="background:var(--gradient-2);">🎯</div>
+      تسک‌های کارتی
+    </div>
+    <div id="cardTasksList">
+      <div class="skeleton" style="height:80px;"></div>
+    </div>
+    <div class="section-title" style="margin-top:20px;">
+      <div class="icon" style="background:linear-gradient(135deg,#64748b,#94a3b8);">📊</div>
+      تاریخچه مسابقات
+    </div>
+    <div id="gameHistory">
+      <div class="skeleton" style="height:60px;margin-bottom:8px;"></div>
+      <div class="skeleton" style="height:60px;"></div>
+    </div>
+  </section>
 
-    <h3>جدول امتیازات</h3>
-    <div id="gameLeaderboard" class="muted">در حال بارگذاری...</div>
+  <!-- تسک‌ها -->
+  <section class="tab" id="tab-tasks">
+    <div class="section-title">
+      <div class="icon" style="background:var(--gradient-2);">✅</div>
+      تسک‌ها
+    </div>
+    <div id="tasksList">
+      <div class="skeleton" style="height:80px;margin-bottom:10px;"></div>
+      <div class="skeleton" style="height:80px;"></div>
+    </div>
+  </section>
 
-    <h3>تسک‌های کارتی</h3>
-    <div id="cardTasksList" class="muted">در حال بارگذاری...</div>
-
-    <h3>تاریخچه مسابقات</h3>
-    <div id="gameHistory" class="muted">در حال بارگذاری...</div>
+  <!-- رفرال -->
+  <section class="tab" id="tab-referral">
+    <div class="section-title">
+      <div class="icon" style="background:var(--gradient-gold);">👥</div>
+      سیستم رفرال
+    </div>
+    <div class="glass-card" id="referralCard">
+      <div class="skeleton" style="height:180px;"></div>
+    </div>
   </section>
 
   <!-- پشتیبانی -->
   <section class="tab" id="tab-support">
-    <div class="card" id="chatBox" style="min-height:200px;"></div>
-    <div class="card">
-      <textarea id="supportText" rows="3" placeholder="پیام خودتو بنویس..."></textarea>
-      <button class="btn" onclick="sendSupport()">ارسال</button>
+    <div class="section-title">
+      <div class="icon" style="background:var(--gradient-1);">🆘</div>
+      پشتیبانی
+    </div>
+    <div class="glass-card" style="padding:0;overflow:hidden;">
+      <div class="chat-box" id="chatBox">
+        <div class="empty-state">
+          <div class="empty-icon">💬</div>
+          <p>هنوز پیامی نیست، سوالتو بپرس!</p>
+        </div>
+      </div>
+    </div>
+    <div class="glass-card" style="margin-top:10px;">
+      <div class="input-group" style="margin-bottom:10px;">
+        <textarea class="input-field" id="supportText" rows="2" placeholder="پیام خودتو بنویس..."></textarea>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="sendSupport()">
+        <span>📨</span> ارسال پیام
+      </button>
     </div>
   </section>
 </main>
 
-<nav>
-  <button data-tab="shop" class="active" onclick="showTab('shop')">🛍 فروشگاه</button>
-  <button data-tab="wallet" onclick="showTab('wallet')">💳 کیف‌پول</button>
-  <button data-tab="currency" onclick="showTab('currency')">💱 ارزها</button>
-  <button data-tab="market" onclick="showTab('market')">🎁 بازار</button>
-  <button data-tab="game" onclick="showTab('game')">🎮 بازی</button>
-  <button data-tab="tasks" onclick="showTab('tasks')">✅ تسک‌ها</button>
-  <button data-tab="referral" onclick="showTab('referral')">👥 رفرال</button>
-  <button data-tab="support" onclick="showTab('support')">🆘 پشتیبانی</button>
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="nav-item active" data-tab="shop" onclick="showTab('shop')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63L15 8.5"/><path d="M2 7v3a2 2 0 0 0 2 2v0a2.7 2.7 0 0 0 1.59-.63L9 8.5"/></svg>
+      فروشگاه
+    </button>
+    <button class="nav-item" data-tab="wallet" onclick="showTab('wallet')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+      کیف‌پول
+    </button>
+    <button class="nav-item" data-tab="currency" onclick="showTab('currency')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+      ارزها
+    </button>
+    <button class="nav-item" data-tab="market" onclick="showTab('market')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/></svg>
+      بازار
+    </button>
+    <button class="nav-item" data-tab="game" onclick="showTab('game')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h4M8 9v4"/><path d="M15 12h.01"/><path d="M18 10h.01"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258A4 4 0 0 0 17.32 5z"/></svg>
+      بازی
+    </button>
+    <button class="nav-item" data-tab="tasks" onclick="showTab('tasks')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+      تسک‌ها
+    </button>
+    <button class="nav-item" data-tab="referral" onclick="showTab('referral')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      رفرال
+    </button>
+    <button class="nav-item" data-tab="support" onclick="showTab('support')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      پشتیبانی
+    </button>
+  </div>
 </nav>
 
 <script>
@@ -220,350 +995,537 @@ tg?.ready(); tg?.expand();
 const initData = tg?.initData || '';
 
 let CONFIG = {};
+let CURRENCIES = [];
+let SELECTED_DECK = [];
+let SELECTED_TARGET = null;
+let SELECTED_SACRIFICE = null;
+let GAME_QUEUE_TIMER = null;
 
-function toast(msg) {
+function toast(msg, type) {
+  type = type || 'success';
   const t = document.getElementById('toast');
-  t.textContent = msg; t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 2500);
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-async function api(path, opts = {}) {
-  const headers = { 'Content-Type': 'application/json', 'X-Init-Data': initData, ...(opts.headers || {}) };
-  let res;
-  try {
-    // اگه سرور خودمون (یا تانلش) کند/بی‌جواب باشه، بعد از ۱۵ ثانیه به‌جای هنگ ابدی، خطا می‌دیم
-    res = await fetch(path, { ...opts, headers, signal: AbortSignal.timeout(15000) });
-  } catch (e) {
-    const msg = (e.name === 'TimeoutError' || e.name === 'AbortError') ? 'سرور جواب نداد، دوباره امتحان کن' : 'اتصال برقرار نشد';
-    toast(msg);
-    throw new Error(msg);
-  }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) { toast(data.error || 'خطا رخ داد'); throw new Error(data.error || 'error'); }
+async function api(path, opts) {
+  opts = opts || {};
+  const headers = { 'Content-Type': 'application/json', 'X-Init-Data': initData };
+  if (opts.headers) Object.assign(headers, opts.headers);
+  const res = await fetch(path, { method: opts.method || 'GET', headers: headers, body: opts.body });
+  const data = await res.json().catch(function() { return {}; });
+  if (!res.ok) { toast(data.error || 'خطا رخ داد', 'error'); throw new Error(data.error || 'error'); }
   return data;
 }
 
 function showTab(name) {
-  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(function(el) { el.classList.remove('active'); });
   document.getElementById('tab-' + name).classList.add('active');
-  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  if (name === 'wallet') loadWallet();
-  if (name === 'currency') loadCurrency();
-  if (name === 'market') loadMarket();
-  if (name === 'game') loadGame();
-  if (name === 'tasks') loadTasks();
-  if (name === 'referral') loadReferral();
-  if (name === 'support') loadSupport();
+  document.querySelectorAll('.nav-item').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === name); });
+  var loaders = {
+    shop: loadShop, wallet: loadWallet, currency: loadCurrency,
+    market: loadMarket, game: loadGame, tasks: loadTasks,
+    referral: loadReferral, support: loadSupport
+  };
+  if (loaders[name]) loaders[name]();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function loadMe() {
-  try {
-    const me = await api('/api/me');
-    document.getElementById('balanceLine').textContent = `موجودی: ${me.balance_toman.toLocaleString()} تومان`;
-    return me;
-  } catch (e) {
-    document.getElementById('balanceLine').innerHTML = `⚠️ اتصال برقرار نشد — <a href="#" onclick="loadMe();return false;" style="color:#6fb3ff;">تلاش دوباره</a>`;
-    throw e;
-  }
+  const me = await api('/api/me');
+  document.getElementById('balanceLine').innerHTML = '<span class="coin-icon">ت</span><span>' + me.balance_toman.toLocaleString() + '</span>';
+  return me;
 }
 
 /* ---------- فروشگاه ---------- */
 async function loadShop() {
+  const products = await api('/api/products');
   const el = document.getElementById('productList');
-  try {
-    const products = await api('/api/products');
-    if (!products.length) { el.innerHTML = '<p class="muted">فعلا محصولی ثبت نشده.</p>'; return; }
-    el.innerHTML = products.map(p => `
-      <div class="card">
-        ${p.image_url ? `<img src="${p.image_url}" style="width:100%;border-radius:8px;margin-bottom:8px;">` : ''}
-        <div class="row"><b>${p.title}</b><span class="tag">${p.price_toman.toLocaleString()} ت</span></div>
-        <p class="muted">${p.description || ''}</p>
-        <input type="text" id="note-${p.id}" placeholder="مقصد / یوزرنیم گیرنده (اختیاری)">
-        <button class="btn" onclick="buyProduct(${p.id})">خرید</button>
-      </div>
-    `).join('');
-  } catch (e) {
-    el.innerHTML = `<p class="muted">⚠️ فروشگاه لود نشد — <a href="#" onclick="loadShop();return false;" style="color:#6fb3ff;">تلاش دوباره</a></p>`;
-    throw e;
+  if (!products.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🛍</div><p>فعلاً محصولی ثبت نشده</p></div>';
+    return;
   }
+  var html = '<div class="product-grid">';
+  products.forEach(function(p, i) {
+    html += '<div class="product-card animate-in" style="animation-delay:' + (i*0.05) + 's">' +
+      '<div class="img-wrap">' + (p.image_url ? '<img src="' + p.image_url + '" alt="' + p.title + '" loading="lazy">' : '') + '</div>' +
+      '<div class="info">' +
+        '<div class="title">' + p.title + '</div>' +
+        '<p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4;">' + (p.description || '') + '</p>' +
+        '<div class="row-flex" style="gap:6px;flex-wrap:wrap;">' +
+          '<span class="price-tag">' + p.price_toman.toLocaleString() + ' ت</span>' +
+        '</div>' +
+        '<input type="text" class="input-field" style="margin-top:10px;font-size:12px;padding:8px 12px;" id="note-' + p.id + '" placeholder="مقصد / یوزرنیم گیرنده (اختیاری)">' +
+        '<button class="btn btn-primary" style="width:100%;margin-top:8px;font-size:13px;padding:8px;" onclick="buyProduct(' + p.id + ')">' +
+          '<span>🛒</span> خرید' +
+        '</button>' +
+      '</div></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
 }
 async function buyProduct(id) {
-  const note = document.getElementById('note-' + id).value;
-  await api('/api/checkout', { method: 'POST', body: JSON.stringify({ productId: id, qty: 1, note }) });
+  var noteEl = document.getElementById('note-' + id);
+  var note = noteEl ? noteEl.value : '';
+  await api('/api/checkout', { method: 'POST', body: JSON.stringify({ productId: id, qty: 1, note: note }) });
   toast('سفارش ثبت شد ✅');
   loadMe();
 }
 
 /* ---------- کیف‌پول ---------- */
 async function loadWallet() {
-  document.getElementById('cardInfo').textContent = CONFIG.cardNumber
-    ? `شماره کارت: ${CONFIG.cardNumber} (${CONFIG.cardOwner || ''})` : '';
+  document.getElementById('cardInfo').textContent = CONFIG.cardNumber ? 'شماره کارت: ' + CONFIG.cardNumber + ' (' + (CONFIG.cardOwner || '') + ')' : '';
   const ledger = await api('/api/wallet/ledger');
-  document.getElementById('ledgerList').innerHTML = ledger.length
-    ? ledger.map(l => `<div class="row"><span>${l.reason || '-'}</span><span>${l.direction === 'in' ? '+' : '-'}${l.amount.toLocaleString()} ${l.currency_code}</span></div>`).join('')
-    : 'تراکنشی ثبت نشده.';
+  const el = document.getElementById('ledgerList');
+  if (!ledger.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px;"><p>تراکنشی ثبت نشده</p></div>';
+    return;
+  }
+  var html = '';
+  ledger.forEach(function(l) {
+    html += '<div class="row-flex" style="padding:10px 0;border-bottom:1px solid var(--border);">' +
+      '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<span style="width:28px;height:28px;border-radius:50%;background:' + (l.direction==='in'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.15)') + ';display:grid;place-items:center;font-size:12px;">' + (l.direction==='in'?'📥':'📤') + '</span>' +
+        '<div><div style="font-size:13px;font-weight:600;">' + (l.reason || '-') + '</div><div style="font-size:11px;color:var(--text-muted);">' + l.currency_code + '</div></div>' +
+      '</div>' +
+      '<span style="font-size:14px;font-weight:700;color:' + (l.direction==='in'?'var(--success)':'var(--danger)') + ';">' + (l.direction==='in'?'+':'-') + l.amount.toLocaleString() + '</span>' +
+    '</div>';
+  });
+  el.innerHTML = html;
 }
 async function doTopup() {
   const amount = Number(document.getElementById('topupAmount').value);
   const trackingCode = document.getElementById('topupTracking').value;
-  await api('/api/wallet/toman-topup', { method: 'POST', body: JSON.stringify({ amount, trackingCode }) });
+  await api('/api/wallet/toman-topup', { method: 'POST', body: JSON.stringify({ amount: amount, trackingCode: trackingCode }) });
   toast('درخواست ثبت شد، منتظر تایید ادمین باش ✅');
 }
 async function doWithdraw() {
   const amount = Number(document.getElementById('withdrawAmount').value);
   const cardNumber = document.getElementById('withdrawCard').value;
-  await api('/api/wallet/toman-withdraw', { method: 'POST', body: JSON.stringify({ amount, cardNumber }) });
+  await api('/api/wallet/toman-withdraw', { method: 'POST', body: JSON.stringify({ amount: amount, cardNumber: cardNumber }) });
   toast('درخواست برداشت ثبت شد ✅');
   loadMe(); loadWallet();
 }
 
 /* ---------- ارزها ---------- */
-let CURRENCIES = [];
 async function loadCurrency() {
   CURRENCIES = await api('/api/currencies');
   const balances = await api('/api/wallet/balances');
-  document.getElementById('currencyBalances').innerHTML = CURRENCIES.length
-    ? CURRENCIES.map(c => `<div class="row"><span>${c.name} (${c.code})</span><span>${(balances[c.code] || 0)} — نرخ: ${c.rate_toman.toLocaleString()} ت</span></div>`).join('')
-    : 'هیچ ارزی توسط ادمین فعال نشده.';
-
-  const codeOptions = CURRENCIES.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
+  const balEl = document.getElementById('currencyBalances');
+  if (!CURRENCIES.length) {
+    balEl.innerHTML = '<div class="empty-state" style="padding:20px;"><p>هیچ ارزی فعال نشده</p></div>';
+  } else {
+    var html = '';
+    CURRENCIES.forEach(function(c) {
+      html += '<div class="row-flex" style="padding:10px 0;border-bottom:1px solid var(--border);">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<span style="width:36px;height:36px;border-radius:50%;background:var(--gradient-1);display:grid;place-items:center;font-size:14px;font-weight:700;">' + c.code[0] + '</span>' +
+          '<div><div style="font-size:14px;font-weight:600;">' + c.name + '</div><div style="font-size:11px;color:var(--text-muted);">' + c.code + '</div></div>' +
+        '</div>' +
+        '<div style="text-align:left;">' +
+          '<div style="font-size:16px;font-weight:700;">' + (balances[c.code] || 0).toLocaleString() + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);">' + c.rate_toman.toLocaleString() + ' ت</div>' +
+        '</div>' +
+      '</div>';
+    });
+    balEl.innerHTML = html;
+  }
+  var codeOptions = '';
+  CURRENCIES.forEach(function(c) {
+    codeOptions += '<option value="' + c.code + '">' + c.name + ' (' + c.code + ')</option>';
+  });
   document.getElementById('depCode').innerHTML = codeOptions;
   document.getElementById('wdCode').innerHTML = codeOptions;
-  document.getElementById('swapFrom').innerHTML = `<option value="TOMAN">تومان</option>` + codeOptions;
-  document.getElementById('swapTo').innerHTML = codeOptions + `<option value="TOMAN">تومان</option>`;
+  document.getElementById('swapFrom').innerHTML = '<option value="TOMAN">💰 تومان</option>' + codeOptions;
+  document.getElementById('swapTo').innerHTML = codeOptions + '<option value="TOMAN">💰 تومان</option>';
 }
 async function doSwap() {
   const from = document.getElementById('swapFrom').value;
   const to = document.getElementById('swapTo').value;
   const amount = Number(document.getElementById('swapAmount').value);
-  const r = await api('/api/wallet/swap', { method: 'POST', body: JSON.stringify({ from, to, amount }) });
-  toast(`تبدیل شد: دریافتی ${r.outputAmount} ${to}`);
+  const r = await api('/api/wallet/swap', { method: 'POST', body: JSON.stringify({ from: from, to: to, amount: amount }) });
+  toast('تبدیل شد: دریافتی ' + r.outputAmount + ' ' + to);
   loadMe(); loadCurrency();
 }
 async function doCurrencyDeposit() {
   const code = document.getElementById('depCode').value;
   const amount = Number(document.getElementById('depAmount').value);
   const txHash = document.getElementById('depTx').value;
-  await api('/api/wallet/currency-deposit', { method: 'POST', body: JSON.stringify({ code, amount, txHash }) });
+  await api('/api/wallet/currency-deposit', { method: 'POST', body: JSON.stringify({ code: code, amount: amount, txHash: txHash }) });
   toast('درخواست واریز ثبت شد ✅');
 }
 async function doCurrencyWithdraw() {
   const code = document.getElementById('wdCode').value;
   const amount = Number(document.getElementById('wdAmount').value);
   const address = document.getElementById('wdAddress').value;
-  await api('/api/wallet/currency-withdraw', { method: 'POST', body: JSON.stringify({ code, amount, address }) });
+  await api('/api/wallet/currency-withdraw', { method: 'POST', body: JSON.stringify({ code: code, amount: amount, address: address }) });
   toast('درخواست برداشت ثبت شد ✅');
   loadCurrency();
 }
 
 /* ---------- بازار گیفت ---------- */
 async function loadMarket() {
-  const { offers, feePercent } = await api('/api/gifts/market');
-  document.getElementById('marketList').innerHTML = offers.length
-    ? offers.map(o => `
-      <div class="card">
-        ${o.image_url ? `<img src="${o.image_url}" style="width:100%;border-radius:8px;margin-bottom:8px;">` : ''}
-        <div class="row"><b>${o.title}</b><span class="tag">${o.price_toman.toLocaleString()} ت</span></div>
-        <p class="muted">کارمزد پلتفرم: ${feePercent}٪</p>
-        <button class="btn" onclick="buyGift(${o.id})">خرید (امانی)</button>
-      </div>`).join('')
-    : 'آگهی فعالی نیست.';
-
+  const data = await api('/api/gifts/market');
+  const offers = data.offers;
+  const feePercent = data.feePercent;
+  const el = document.getElementById('marketList');
+  if (!offers.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px;"><div class="empty-icon">🎁</div><p>آگهی فعالی نیست</p></div>';
+  } else {
+    var html = '';
+    offers.forEach(function(o, i) {
+      html += '<div class="glass-card animate-in" style="animation-delay:' + (i*0.05) + 's">' +
+        (o.image_url ? '<img src="' + o.image_url + '" style="width:100%;height:140px;object-fit:cover;border-radius:var(--radius-md);margin-bottom:12px;">' : '') +
+        '<div class="row-flex" style="margin-bottom:8px;">' +
+          '<span style="font-size:15px;font-weight:700;">' + o.title + '</span>' +
+          '<span class="price-tag">' + o.price_toman.toLocaleString() + ' ت</span>' +
+        '</div>' +
+        '<div class="row-flex" style="margin-bottom:12px;">' +
+          '<span style="font-size:12px;color:var(--text-muted);">کارمزد پلتفرم: ' + feePercent + '%</span>' +
+        '</div>' +
+        '<button class="btn btn-primary" style="width:100%;" onclick="buyGift(' + o.id + ')">' +
+          '<span>🛒</span> خرید (امانی)' +
+        '</button>' +
+      '</div>';
+    });
+    el.innerHTML = html;
+  }
   const mine = await api('/api/gifts/my');
-  document.getElementById('myGiftsList').innerHTML = mine.length
-    ? mine.map(o => `
-      <div class="card">
-        <div class="row"><b>${o.title}</b><span class="tag">${o.status}</span></div>
-        <p class="muted">${o.price_toman.toLocaleString()} تومان</p>
-        ${o.status === 'active' ? `<button class="btn danger" onclick="cancelGift(${o.id})">لغو آگهی</button>` : ''}
-        ${o.status === 'reserved' ? `<button class="btn" onclick="confirmGift(${o.id})">تایید دریافت گیفت</button>` : ''}
-      </div>`).join('')
-    : 'آگهی‌ای ثبت نکردی.';
+  const myEl = document.getElementById('myGiftsList');
+  if (!mine.length) {
+    myEl.innerHTML = '<div class="empty-state" style="padding:20px;"><p>آگهی‌ای ثبت نکردی</p></div>';
+  } else {
+    var html2 = '';
+    mine.forEach(function(o, i) {
+      html2 += '<div class="glass-card animate-in" style="animation-delay:' + (i*0.05) + 's">' +
+        '<div class="row-flex" style="margin-bottom:8px;">' +
+          '<span style="font-size:15px;font-weight:700;">' + o.title + '</span>' +
+          '<span class="tag ' + (o.status==='active'?'tag-green':o.status==='reserved'?'tag-gold':'tag-blue') + '">' + o.status + '</span>' +
+        '</div>' +
+        '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">' + o.price_toman.toLocaleString() + ' تومان</p>' +
+        (o.status === 'active' ? '<button class="btn btn-danger" style="width:100%;font-size:13px;padding:8px;" onclick="cancelGift(' + o.id + ')">لغو آگهی</button>' : '') +
+        (o.status === 'reserved' ? '<button class="btn btn-gold" style="width:100%;font-size:13px;padding:8px;" onclick="confirmGift(' + o.id + ')">تایید دریافت گیفت</button>' : '') +
+      '</div>';
+    });
+    myEl.innerHTML = html2;
+  }
 }
 async function listGift() {
   const title = document.getElementById('giftTitle').value;
   const image_url = document.getElementById('giftImage').value;
   const price = Number(document.getElementById('giftPrice').value);
-  await api('/api/gifts/list', { method: 'POST', body: JSON.stringify({ title, image_url, price }) });
-  toast('آگهی ثبت شد ✅'); loadMarket();
+  await api('/api/gifts/list', { method: 'POST', body: JSON.stringify({ title: title, image_url: image_url, price: price }) });
+  toast('آگهی ثبت شد ✅');
+  loadMarket();
 }
-async function buyGift(id) { await api(`/api/gifts/${id}/buy`, { method: 'POST' }); toast('رزرو شد ✅'); loadMe(); loadMarket(); }
-async function cancelGift(id) { await api(`/api/gifts/${id}/cancel`, { method: 'POST' }); loadMarket(); }
-async function confirmGift(id) { await api(`/api/gifts/${id}/confirm-received`, { method: 'POST' }); toast('تایید شد ✅'); loadMarket(); }
+async function buyGift(id) {
+  await api('/api/gifts/' + id + '/buy', { method: 'POST' });
+  toast('رزرو شد ✅');
+  loadMe(); loadMarket();
+}
+async function cancelGift(id) {
+  await api('/api/gifts/' + id + '/cancel', { method: 'POST' });
+  loadMarket();
+}
+async function confirmGift(id) {
+  await api('/api/gifts/' + id + '/confirm-received', { method: 'POST' });
+  toast('تایید شد ✅');
+  loadMarket();
+}
 
 /* ---------- تسک‌ها ---------- */
 async function loadTasks() {
   const tasks = await api('/api/tasks');
-  document.getElementById('tasksList').innerHTML = tasks.length
-    ? tasks.map(t => `
-      <div class="card">
-        <div class="row"><b>${t.title}</b><span class="tag">${t.reward_toman.toLocaleString()} ت</span></div>
-        <button class="btn" ${t.done ? 'disabled' : ''} onclick="claimTask(${t.id})">${t.done ? 'انجام شده ✅' : 'انجام دادم'}</button>
-      </div>`).join('')
-    : 'فعلا تسکی نیست.';
+  const el = document.getElementById('tasksList');
+  if (!tasks.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>فعلاً تسکی نیست</p></div>';
+    return;
+  }
+  var html = '';
+  tasks.forEach(function(t, i) {
+    html += '<div class="glass-card animate-in" style="animation-delay:' + (i*0.05) + 's">' +
+      '<div class="row-flex" style="margin-bottom:10px;">' +
+        '<span style="font-size:15px;font-weight:700;">' + t.title + '</span>' +
+        '<span class="price-tag">' + t.reward_toman.toLocaleString() + ' ت</span>' +
+      '</div>' +
+      '<button class="btn ' + (t.done?'btn-secondary':'btn-primary') + '" style="width:100%;" ' + (t.done?'disabled':'') + ' onclick="claimTask(' + t.id + ')">' +
+        (t.done ? '✅ انجام شده' : 'دریافت پاداش') +
+      '</button>' +
+    '</div>';
+  });
+  el.innerHTML = html;
 }
-async function claimTask(id) { await api(`/api/tasks/${id}/claim`, { method: 'POST' }); toast('پاداش دریافت شد ✅'); loadMe(); loadTasks(); }
+async function claimTask(id) {
+  await api('/api/tasks/' + id + '/claim', { method: 'POST' });
+  toast('پاداش دریافت شد ✅');
+  loadMe(); loadTasks();
+}
 
 /* ---------- بازی کارتی ---------- */
-let SELECTED_DECK = [];
-let SELECTED_TARGET = null;
-let SELECTED_SACRIFICE = null;
-let GAME_QUEUE_TIMER = null;
-
 async function loadGame() {
   const status = await api('/api/game/status');
   document.getElementById('gamePlaysLeft').textContent = status.playsRemaining;
   document.getElementById('gameMyRank').textContent = status.myRank;
-  document.getElementById('deckHint').textContent = `دسته باید بین ${status.config.min_deck_size} تا ${status.config.max_deck_size} کارت داشته باشه.`;
+  document.getElementById('deckHint').textContent = 'دسته باید بین ' + status.config.min_deck_size + ' تا ' + status.config.max_deck_size + ' کارت داشته باشه.';
   updateQueueState(status.queue);
 
   const cards = await api('/api/game/cards');
-  document.getElementById('gameShop').innerHTML = cards.length ? cards.map(c => `
-    <div class="card">
-      ${c.image_url ? `<img src="${c.image_url}" style="width:100%;border-radius:8px;margin-bottom:8px;">` : ''}
-      <div class="row"><b>${c.name}</b><span class="tag">${c.rarity}</span></div>
-      <p class="muted">قدرت پایه: ${c.base_power} — قیمت: ${c.price_toman.toLocaleString()} ت</p>
-      <button class="btn" onclick="buyGameCard(${c.id})">خرید</button>
-    </div>`).join('') : 'فعلا کارتی در فروشگاه نیست.';
-
+  const shopEl = document.getElementById('gameShop');
+  if (!cards.length) {
+    shopEl.innerHTML = '<div class="empty-state" style="padding:20px;"><p>فعلاً کارتی در فروشگاه نیست</p></div>';
+  } else {
+    var html = '';
+    cards.forEach(function(c, i) {
+      html += '<div class="game-card animate-in" style="animation-delay:' + (i*0.05) + 's">' +
+        '<div class="card-header">' +
+          '<span class="card-name">' + c.name + '</span>' +
+          '<span class="rarity-badge rarity-' + c.rarity + '">' + c.rarity + '</span>' +
+        '</div>' +
+        (c.image_url ? '<img src="' + c.image_url + '" style="width:100%;height:120px;object-fit:cover;border-radius:var(--radius-sm);margin-bottom:10px;">' : '') +
+        '<div class="row-flex" style="margin-bottom:8px;">' +
+          '<span style="font-size:12px;color:var(--text-muted);">قدرت پایه: ' + c.base_power + '</span>' +
+          '<span style="font-size:14px;font-weight:700;color:var(--gold);">' + c.price_toman.toLocaleString() + ' ت</span>' +
+        '</div>' +
+        '<button class="btn btn-primary" style="width:100%;font-size:13px;padding:8px;" onclick="buyGameCard(' + c.id + ')">' +
+          '<span>🛒</span> خرید کارت' +
+        '</button>' +
+      '</div>';
+    });
+    shopEl.innerHTML = html;
+  }
   await loadMyCards();
   await loadGameLeaderboard();
   await loadCardTasks();
   await loadGameHistory();
 }
-
-async function buyGameCard(id) { await api('/api/game/buy-card', { method: 'POST', body: JSON.stringify({ cardId: id }) }); toast('کارت خریداری شد ✅'); loadMe(); loadMyCards(); }
+async function buyGameCard(id) {
+  await api('/api/game/buy-card', { method: 'POST', body: JSON.stringify({ cardId: id }) });
+  toast('کارت خریداری شد ✅');
+  loadMe(); loadMyCards();
+}
 
 async function loadMyCards() {
   const mine = await api('/api/game/my-cards');
-  SELECTED_DECK = SELECTED_DECK.filter(id => mine.some(c => c.id === id));
-  document.getElementById('gameMyCards').innerHTML = mine.length ? mine.map(c => `
-    <div class="card">
-      <div class="row"><b>${c.name}</b><span class="tag">سطح ${c.level} — قدرت ${c.power}</span></div>
-      <div class="row2" style="display:flex;gap:6px;">
-        <button class="btn secondary" onclick="upgradeGameCard(${c.id})">ارتقا (پولی)</button>
-        <button class="btn ${SELECTED_TARGET === c.id ? '' : 'secondary'}" onclick="pickTarget(${c.id})">${SELECTED_TARGET === c.id ? 'هدف ✓' : 'انتخاب هدف'}</button>
-        <button class="btn ${SELECTED_SACRIFICE === c.id ? '' : 'secondary'}" onclick="pickSacrifice(${c.id})">${SELECTED_SACRIFICE === c.id ? 'قربانی ✓' : 'انتخاب قربانی'}</button>
-      </div>
-      <label style="margin-top:6px;"><input type="checkbox" ${SELECTED_DECK.includes(c.id) ? 'checked' : ''} onchange="toggleDeck(${c.id}, this.checked)"> اضافه به دسته مسابقه</label>
-    </div>`).join('') : 'هنوز کارتی نداری، از فروشگاه بالا بخر.';
-  if (SELECTED_TARGET && SELECTED_SACRIFICE) {
-    document.getElementById('gameMyCards').insertAdjacentHTML('beforeend', `<button class="btn" onclick="doSacrificeUpgrade()">ادغام و ارتقای رایگان</button>`);
+  SELECTED_DECK = SELECTED_DECK.filter(function(id) { return mine.some(function(c) { return c.id === id; }); });
+  const el = document.getElementById('gameMyCards');
+  if (!mine.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px;"><div class="empty-icon">🎴</div><p>هنوز کارتی نداری، از فروشگاه بالا بخر</p></div>';
+    return;
   }
+  var html = '';
+  mine.forEach(function(c, i) {
+    var isTarget = SELECTED_TARGET === c.id;
+    var isSac = SELECTED_SACRIFICE === c.id;
+    html += '<div class="game-card animate-in" style="animation-delay:' + (i*0.05) + 's">' +
+      '<div class="card-header">' +
+        '<span class="card-name">' + c.name + '</span>' +
+        '<span class="rarity-badge rarity-' + c.rarity + '">' + c.rarity + '</span>' +
+      '</div>' +
+      '<div style="margin-bottom:10px;">' +
+        '<div class="row-flex" style="margin-bottom:6px;">' +
+          '<span style="font-size:12px;color:var(--text-muted);">سطح ' + c.level + '</span>' +
+          '<span style="font-size:14px;font-weight:700;">قدرت ' + c.power + '</span>' +
+        '</div>' +
+        '<div class="progress-bar"><div class="progress-fill" style="width:' + (c.level/c.max_level*100) + '%"></div></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
+        '<button class="btn btn-secondary" style="flex:1;font-size:12px;padding:6px;" onclick="upgradeGameCard(' + c.id + ')">⬆️ ارتقا</button>' +
+        '<button class="btn ' + (isTarget?'btn-primary':'btn-secondary') + '" style="flex:1;font-size:12px;padding:6px;" onclick="pickTarget(' + c.id + ')">' + (isTarget?'✓ هدف':'🎯 هدف') + '</button>' +
+        '<button class="btn ' + (isSac?'btn-danger':'btn-secondary') + '" style="flex:1;font-size:12px;padding:6px;" onclick="pickSacrifice(' + c.id + ')">' + (isSac?'✓ قربانی':'🔥 قربانی') + '</button>' +
+      '</div>' +
+      '<label class="custom-checkbox">' +
+        '<input type="checkbox" ' + (SELECTED_DECK.includes(c.id)?'checked':'') + ' onchange="toggleDeck(' + c.id + ', this.checked)">' +
+        '<span class="check-box"></span>' +
+        '<span>اضافه به دسته مسابقه</span>' +
+      '</label>' +
+    '</div>';
+  });
+  if (SELECTED_TARGET && SELECTED_SACRIFICE) {
+    html += '<button class="btn btn-gold" style="width:100%;margin-top:4px;" onclick="doSacrificeUpgrade()">' +
+      '<span>🔥</span> ادغام و ارتقای رایگان' +
+    '</button>';
+  }
+  el.innerHTML = html;
 }
 function pickTarget(id) { SELECTED_TARGET = SELECTED_TARGET === id ? null : id; loadMyCards(); }
 function pickSacrifice(id) { SELECTED_SACRIFICE = SELECTED_SACRIFICE === id ? null : id; loadMyCards(); }
 function toggleDeck(id, checked) {
-  if (checked) SELECTED_DECK.push(id); else SELECTED_DECK = SELECTED_DECK.filter(x => x !== id);
+  if (checked) SELECTED_DECK.push(id);
+  else SELECTED_DECK = SELECTED_DECK.filter(function(x) { return x !== id; });
 }
 async function upgradeGameCard(id) {
   await api('/api/game/upgrade-card', { method: 'POST', body: JSON.stringify({ userCardId: id }) });
-  toast('کارت ارتقا پیدا کرد ✅'); loadMe(); loadMyCards();
+  toast('کارت ارتقا پیدا کرد ✅');
+  loadMe(); loadMyCards();
 }
 async function doSacrificeUpgrade() {
   await api('/api/game/sacrifice-upgrade', { method: 'POST', body: JSON.stringify({ targetUserCardId: SELECTED_TARGET, sacrificeUserCardId: SELECTED_SACRIFICE }) });
   SELECTED_TARGET = null; SELECTED_SACRIFICE = null;
-  toast('ادغام شد ✅'); loadMyCards();
+  toast('ادغام شد ✅');
+  loadMyCards();
 }
 async function buyExtraPlays() {
   const r = await api('/api/game/buy-extra-plays', { method: 'POST' });
-  toast('بازی اضافه خریداری شد ✅'); loadMe();
+  toast('بازی اضافه خریداری شد ✅');
+  loadMe();
   document.getElementById('gamePlaysLeft').textContent = r.playsRemaining;
 }
-
 function updateQueueState(queue) {
   const el = document.getElementById('gameQueueState');
   clearTimeout(GAME_QUEUE_TIMER);
   if (queue.waiting) {
-    el.textContent = 'در صف انتظار حریف...';
-    GAME_QUEUE_TIMER = setTimeout(async () => {
+    el.textContent = 'در صف...';
+    el.style.color = 'var(--warning)';
+    GAME_QUEUE_TIMER = setTimeout(async function() {
       const s = await api('/api/game/queue-status');
       updateQueueState(s);
     }, 4000);
   } else {
-    el.textContent = 'در صف نیستی';
+    el.textContent = 'آماده';
+    el.style.color = 'var(--success)';
   }
 }
 async function joinGameQueue() {
   const r = await api('/api/game/queue', { method: 'POST', body: JSON.stringify({ userCardIds: SELECTED_DECK }) });
   if (r.matched) {
-    toast(r.won ? `بردی! ${r.myPower} در برابر ${r.opponentPower} 🏆` : `باختی! ${r.myPower} در برابر ${r.opponentPower} 😢`);
-    document.getElementById('gameQueueState').textContent = 'در صف نیستی';
+    toast(r.won ? '🏆 بردی! ' + r.myPower + ' در برابر ' + r.opponentPower : '❌ باختی! ' + r.myPower + ' در برابر ' + r.opponentPower, r.won ? 'success' : 'error');
+    document.getElementById('gameQueueState').textContent = 'آماده';
+    document.getElementById('gameQueueState').style.color = 'var(--success)';
   } else {
     toast('وارد صف شدی، منتظر حریف باش...');
     updateQueueState({ waiting: true });
   }
   loadMe(); loadGameHistory(); loadGame();
 }
-async function cancelGameQueue() { await api('/api/game/queue/cancel', { method: 'POST' }); clearTimeout(GAME_QUEUE_TIMER); document.getElementById('gameQueueState').textContent = 'در صف نیستی'; }
-
-async function loadGameLeaderboard() {
-  const { leaderboard, myRank } = await api('/api/game/leaderboard');
-  document.getElementById('gameMyRank').textContent = myRank;
-  document.getElementById('gameLeaderboard').innerHTML = leaderboard.length ? `
-    <table style="width:100%;border-collapse:collapse;">
-    ${leaderboard.map((p, i) => `<tr><td style="padding:4px;">${i + 1}</td><td style="padding:4px;">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</td><td style="padding:4px;">${p.score} امتیاز</td></tr>`).join('')}
-    </table>` : 'هنوز کسی امتیازی نگرفته.';
+async function cancelGameQueue() {
+  await api('/api/game/queue/cancel', { method: 'POST' });
+  clearTimeout(GAME_QUEUE_TIMER);
+  document.getElementById('gameQueueState').textContent = 'آماده';
+  document.getElementById('gameQueueState').style.color = 'var(--success)';
 }
-
+async function loadGameLeaderboard() {
+  const data = await api('/api/game/leaderboard');
+  const leaderboard = data.leaderboard;
+  const myRank = data.myRank;
+  document.getElementById('gameMyRank').textContent = myRank;
+  const el = document.getElementById('gameLeaderboard');
+  if (!leaderboard.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px;"><p>هنوز کسی امتیازی نگرفته</p></div>';
+    return;
+  }
+  var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+  leaderboard.forEach(function(p, i) {
+    var rankColor = i === 0 ? 'var(--gold)' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : 'var(--text-muted)';
+    html += '<div class="row-flex" style="padding:10px;background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);border:1px solid var(--border);">' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<span style="width:28px;height:28px;border-radius:50%;background:' + (i<3?'rgba(251,191,36,0.15)':'rgba(255,255,255,0.05)') + ';display:grid;place-items:center;font-size:13px;font-weight:700;color:' + rankColor + ';">' + (i+1) + '</span>' +
+        '<span style="font-size:14px;font-weight:600;">' + (p.first_name || '') + ' ' + (p.username ? '@' + p.username : '') + '</span>' +
+      '</div>' +
+      '<span style="font-size:15px;font-weight:700;">' + p.score + ' امتیاز</span>' +
+    '</div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
 async function loadCardTasks() {
   const tasks = await api('/api/card-tasks');
-  document.getElementById('cardTasksList').innerHTML = tasks.length ? tasks.map(t => `
-    <div class="card">
-      <div class="row"><b>${t.title}</b><span class="tag">جایزه: ${t.card_name}</span></div>
-      <button class="btn" ${t.done ? 'disabled' : ''} onclick="claimCardTask(${t.id})">${t.done ? 'انجام شده ✅' : 'انجام دادم'}</button>
-    </div>`).join('') : 'فعلا تسک کارتی نیست.';
+  const el = document.getElementById('cardTasksList');
+  if (!tasks.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px;"><p>فعلاً تسک کارتی نیست</p></div>';
+    return;
+  }
+  var html = '';
+  tasks.forEach(function(t, i) {
+    html += '<div class="glass-card animate-in" style="animation-delay:' + (i*0.05) + 's">' +
+      '<div class="row-flex" style="margin-bottom:10px;">' +
+        '<span style="font-size:15px;font-weight:700;">' + t.title + '</span>' +
+        '<span class="tag tag-purple">🎴 ' + t.card_name + '</span>' +
+      '</div>' +
+      '<button class="btn ' + (t.done?'btn-secondary':'btn-primary') + '" style="width:100%;" ' + (t.done?'disabled':'') + ' onclick="claimCardTask(' + t.id + ')">' +
+        (t.done ? '✅ انجام شده' : 'دریافت کارت') +
+      '</button>' +
+    '</div>';
+  });
+  el.innerHTML = html;
 }
-async function claimCardTask(id) { await api(`/api/card-tasks/${id}/claim`, { method: 'POST' }); toast('کارت جایزه اضافه شد ✅'); loadMyCards(); loadCardTasks(); }
-
+async function claimCardTask(id) {
+  await api('/api/card-tasks/' + id + '/claim', { method: 'POST' });
+  toast('کارت جایزه اضافه شد ✅');
+  loadMyCards(); loadCardTasks();
+}
 async function loadGameHistory() {
   const history = await api('/api/game/history');
-  const meId = (await api('/api/me')).tg_id;
-  document.getElementById('gameHistory').innerHTML = history.length ? history.map(m => {
-    const won = m.winner_tg_id === meId;
-    return `<div class="row"><span>${won ? '🏆 برد' : '❌ باخت'} — قدرت من: ${m.player_a === meId ? m.power_a : m.power_b} / حریف: ${m.player_a === meId ? m.power_b : m.power_a}</span></div>`;
-  }).join('') : 'هنوز مسابقه‌ای نداشتی.';
+  const me = await api('/api/me');
+  const meId = me.tg_id;
+  const el = document.getElementById('gameHistory');
+  if (!history.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px;"><p>هنوز مسابقه‌ای نداشتی</p></div>';
+    return;
+  }
+  var html = '';
+  history.forEach(function(m) {
+    var won = m.winner_tg_id === meId;
+    var myPower = m.player_a === meId ? m.power_a : m.power_b;
+    var oppPower = m.player_a === meId ? m.power_b : m.power_a;
+    html += '<div class="row-flex" style="padding:10px;background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:8px;">' +
+      '<span style="font-size:13px;">' + (won ? '🏆 برد' : '❌ باخت') + ' — قدرت من: ' + myPower + ' / حریف: ' + oppPower + '</span>' +
+    '</div>';
+  });
+  el.innerHTML = html;
 }
 
 /* ---------- رفرال ---------- */
 async function loadReferral() {
   const r = await api('/api/referral');
-  const link = CONFIG.botUsername ? `https://t.me/${CONFIG.botUsername}?start=ref_${r.ref_code}` : r.ref_code;
-  document.getElementById('referralCard').innerHTML = `
-    <p>کد رفرال شما: <b>${r.ref_code}</b></p>
-    <p class="muted">لینک دعوت:</p>
-    <input readonly value="${link}" onclick="this.select()">
-    <p>تعداد دعوت‌شده‌ها: ${r.invitedCount}</p>
-    <p>مجموع پورسانت دریافتی: ${r.totalEarned.toLocaleString()} تومان</p>
-  `;
+  const link = CONFIG.botUsername ? 'https://t.me/' + CONFIG.botUsername + '?start=ref_' + r.ref_code : r.ref_code;
+  document.getElementById('referralCard').innerHTML =
+    '<div style="text-align:center;padding:10px 0;">' +
+      '<div style="width:64px;height:64px;border-radius:50%;background:var(--gradient-1);margin:0 auto 16px;display:grid;place-items:center;font-size:28px;">👥</div>' +
+      '<p style="font-size:14px;color:var(--text-secondary);margin-bottom:4px;">کد رفرال شما</p>' +
+      '<p style="font-size:24px;font-weight:800;background:var(--gradient-gold);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:14px;">' + r.ref_code + '</p>' +
+      '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">لینک دعوت:</p>' +
+      '<input type="text" class="input-field" style="text-align:center;font-size:13px;margin-bottom:14px;" readonly value="' + link + '" onclick="this.select()">' +
+      '<div class="stats-row" style="margin-bottom:0;">' +
+        '<div class="stat-box"><div class="value" style="font-size:20px;">' + r.invitedCount + '</div><div class="label">دعوت‌شده</div></div>' +
+        '<div class="stat-box"><div class="value" style="font-size:20px;background:var(--gradient-gold);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">' + r.totalEarned.toLocaleString() + '</div><div class="label">پورسانت (ت)</div></div>' +
+      '</div>' +
+    '</div>';
 }
 
 /* ---------- پشتیبانی ---------- */
 async function loadSupport() {
-  const { messages } = await api('/api/support/messages');
-  document.getElementById('chatBox').innerHTML = messages.map(m => `
-    <div class="msg ${m.sender}">${m.body || ''}${m.image_url ? `<br><img src="${m.image_url}" style="max-width:100%;border-radius:6px;">` : ''}</div>
-  `).join('') || '<p class="muted">هنوز پیامی نیست، سوالتو بپرس.</p>';
+  const data = await api('/api/support/messages');
+  const messages = data.messages;
+  const el = document.getElementById('chatBox');
+  if (!messages.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><p>هنوز پیامی نیست، سوالتو بپرس!</p></div>';
+    return;
+  }
+  var html = '';
+  messages.forEach(function(m) {
+    html += '<div class="msg ' + m.sender + '">' + (m.body || '') + (m.image_url ? '<br><img src="' + m.image_url + '">' : '') + '</div>';
+  });
+  el.innerHTML = html;
+  el.scrollTop = el.scrollHeight;
 }
 async function sendSupport() {
   const text = document.getElementById('supportText').value;
   if (!text.trim()) return;
-  await api('/api/support/send', { method: 'POST', body: JSON.stringify({ text }) });
+  await api('/api/support/send', { method: 'POST', body: JSON.stringify({ text: text }) });
   document.getElementById('supportText').value = '';
   loadSupport();
 }
 
 /* ---------- شروع ---------- */
-async function bootApp() {
+(async function() {
   try {
-    CONFIG = await fetch('/api/config', { signal: AbortSignal.timeout(15000) }).then(r => r.json());
-  } catch (e) { console.error('config load failed', e); }
-  // این دو تا مستقل از هم اجرا می‌شن و هرکدوم اگه خطا بخوره خودش دکمه «تلاش دوباره» نشون می‌ده،
-  // نه اینکه یکیش گیر کنه و بقیه صفحه هم منتظرش بمونه و کل مینی‌اپ قفل به نظر برسه
-  loadMe().catch(() => {});
-  loadShop().catch(() => {});
-}
-bootApp();
+    CONFIG = await fetch('/api/config').then(function(r) { return r.json(); });
+    await loadMe();
+    await loadShop();
+  } catch (e) { console.error(e); }
+})();
 </script>
 </body>
 </html>
