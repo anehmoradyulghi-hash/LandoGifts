@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import dns from 'node:dns';
 import express from 'express';
 import multer from 'multer';
 import fs from 'fs';
@@ -26,6 +27,11 @@ import {
   listActiveCardTasks, hasClaimedCardTask, claimCardTask, getCardTask,
 } from './game-db.js';
 import adminApi from './admin-api.js';
+
+// بعضی سرورها (مثل این VPS) IPv6 خراب/فیلتر شده دارن ولی IPv4‌شون سالمه. بدون این خط،
+// Node گاهی اول IPv6 رو امتحان می‌کنه، گیر می‌کنه، و قبل از رسیدن به IPv4 سالم، درخواست
+// (مثلا به api.telegram.org) تایم‌اوت می‌خوره. این خط همیشه IPv4 رو اول امتحان می‌کنه.
+dns.setDefaultResultOrder('ipv4first');
 
 const app = express();
 app.use(express.json());
