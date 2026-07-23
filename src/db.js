@@ -161,6 +161,12 @@ CREATE TABLE IF NOT EXISTS ledger (
   reason TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- تنظیمات ساده کلید/مقدار که ادمین از پنل عوضشون می‌کنه (مثلا شماره کارت واریزی)
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
 `);
 
 // چند ارز پیش‌فرض (غیرفعال تا ادمین نرخشون رو دستی ثبت کنه)
@@ -171,8 +177,14 @@ seedCurrency.run('TON', 'تون‌کوین', 0, 0.1, 0.1);
 /* =========================================================================
  * USERS
  * ========================================================================= */
-function makeRefCode(tgId) {
-  return 'L' + crypto.createHash('md5').update(String(tgId) + Date.now()).digest('hex').slice(0, 6).toUpperCase();
+function makeRefCode() {
+  // چند بار امتحان می‌کنیم تا مطمئن بشیم کد رفرال تکراری نیست (احتمالش خیلی کمه ولی صفر نیست)
+  for (let i = 0; i < 5; i++) {
+    const code = 'L' + crypto.randomBytes(4).toString('hex').toUpperCase();
+    const exists = db.prepare('SELECT 1 FROM users WHERE ref_code = ?').get(code);
+    if (!exists) return code;
+  }
+  return 'L' + crypto.randomBytes(8).toString('hex').toUpperCase(); // fallback، عملا برخورد ناممکنه
 }
 
 export function getUser(tgId) {
@@ -180,6 +192,7 @@ export function getUser(tgId) {
 }
 
 export function getOrCreateUser(tgUser, startParam) {
+  if (!tgUser?.id) throw new Error('اطلاعات کاربر تلگرام نامعتبره');
   let user = getUser(tgUser.id);
   if (user) {
     db.prepare(`UPDATE users SET username = ?, first_name = ?, last_seen_at = datetime('now') WHERE tg_id = ?`)
@@ -194,8 +207,15 @@ export function getOrCreateUser(tgUser, startParam) {
     if (referrer && referrer.tg_id !== tgUser.id) referredBy = referrer.tg_id;
   }
 
-  db.prepare(`INSERT INTO users (tg_id, username, first_name, ref_code, referred_by) VALUES (?,?,?,?,?)`)
-    .run(tgUser.id, tgUser.username || null, tgUser.first_name || null, makeRefCode(tgUser.id), referredBy);
+  try {
+    db.prepare(`INSERT INTO users (tg_id, username, first_name, ref_code, referred_by) VALUES (?,?,?,?,?)`)
+      .run(tgUser.id, tgUser.username || null, tgUser.first_name || null, makeRefCode(), referredBy);
+  } catch (e) {
+    // اگه دو درخواست هم‌زمان از همون کاربر جدید اومده باشن (خیلی بعیده ولی ممکنه)، به‌جای کرش، رکورد موجود رو برگردون
+    const existing = getUser(tgUser.id);
+    if (existing) return existing;
+    throw e;
+  }
   return getUser(tgUser.id);
 }
 
@@ -488,6 +508,30 @@ export function listAllTicketsAdmin() {
 }
 export function getTicket(id) { return db.prepare('SELECT * FROM tickets WHERE id = ?').get(id); }
 export function closeTicket(id) { db.prepare(`UPDATE tickets SET status = 'closed' WHERE id = ?`).run(id); }
+
+/* =========================================================================
+ * SETTINGS — مقادیر ساده که ادمین از پنل عوض می‌کنه (مثلا شماره کارت واریزی)
+ * ========================================================================= */
+export function getSetting(key, fallback = null) {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+  return row ? row.value : fallback;
+}
+export function setSetting(key, value) {
+  db.prepare(`
+    INSERT INTO settings (key, value) VALUES (?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run(key, value);
+}
+export function getPaymentSettings() {
+  return {
+    cardNumber: getSetting('card_number', process.env.ADMIN_CARD_NUMBER || ''),
+    cardOwner: getSetting('card_owner', process.env.ADMIN_CARD_OWNER || ''),
+  };
+}
+export function setPaymentSettings({ cardNumber, cardOwner }) {
+  setSetting('card_number', cardNumber || '');
+  setSetting('card_owner', cardOwner || '');
+}
 
 /* =========================================================================
  * DASHBOARD STATS
