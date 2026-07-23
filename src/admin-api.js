@@ -16,6 +16,7 @@ import {
   listAllTasksAdmin, upsertTask, deleteTask,
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
+  getPaymentSettings, setPaymentSettings,
 } from './db.js';
 import {
   listGameCards, upsertGameCard, deleteGameCard,
@@ -94,6 +95,13 @@ router.post('/currencies', (req, res) => {
     min_withdraw: Number(min_withdraw) || 0,
     active: !!active,
   });
+  res.json({ ok: true });
+});
+
+/* ---------- تنظیمات پرداخت (شماره کارت واریزی، دستی از پنل) ---------- */
+router.get('/payment-settings', (req, res) => res.json(getPaymentSettings()));
+router.post('/payment-settings', (req, res) => {
+  setPaymentSettings({ cardNumber: req.body.cardNumber, cardOwner: req.body.cardOwner });
   res.json({ ok: true });
 });
 
