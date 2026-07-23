@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Lando Gifts</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: Tahoma, sans-serif; background: #0f1115; color: #eee;
+    padding-bottom: 70px;
+  }
+  header { padding: 16px; text-align: center; border-bottom: 1px solid #232733; }
+  header h1 { margin: 0; font-size: 20px; }
+  .balance { margin-top: 6px; font-size: 15px; color: #9fe6a0; }
+  main { padding: 12px; }
+  .card {
+    background: #171a21; border: 1px solid #232733; border-radius: 10px;
+    padding: 12px; margin-bottom: 10px;
+  }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .btn {
+    display: inline-block; background: #2f6feb; color: #fff; border: none;
+    border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer;
+  }
+  .btn.secondary { background: #333; }
+  .btn.danger { background: #a33; }
+  .btn:disabled { opacity: .5; }
+  input, select, textarea {
+    width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #333;
+    background: #0f1115; color: #eee; margin-top: 4px; margin-bottom: 8px; font-family: inherit;
+  }
+  label { font-size: 13px; color: #aaa; }
+  .muted { color: #888; font-size: 12px; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #263042; color: #9fc4ff; }
+  nav {
+    position: fixed; bottom: 0; left: 0; right: 0; display: flex;
+    background: #171a21; border-top: 1px solid #232733;
+  }
+  nav button {
+    flex: 1; background: none; border: none; color: #888; padding: 10px 2px;
+    font-size: 11px; cursor: pointer;
+  }
+  nav button.active { color: #2f6feb; }
+  .tab { display: none; }
+  .tab.active { display: block; }
+  .msg { padding: 8px; border-radius: 8px; margin-bottom: 6px; font-size: 14px; max-width: 80%; }
+  .msg.user { background: #2f6feb; margin-right: auto; }
+  .msg.admin { background: #333; margin-left: auto; }
+  .toast {
+    position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+    background: #222; padding: 8px 16px; border-radius: 8px; font-size: 13px; z-index: 999; display: none;
+  }
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<header>
+  <h1>🎁 Lando Gifts</h1>
+  <div class="balance" id="balanceLine">در حال بارگذاری...</div>
+</header>
+
+<main>
+  <!-- فروشگاه -->
+  <section class="tab active" id="tab-shop">
+    <div id="productList">در حال بارگذاری محصولات...</div>
+  </section>
+
+  <!-- کیف پول -->
+  <section class="tab" id="tab-wallet">
+    <div class="card">
+      <h3>شارژ کیف‌پول (کارت‌به‌کارت)</h3>
+      <label>مبلغ (تومان)</label>
+      <input type="number" id="topupAmount" placeholder="مثلا 100000" />
+      <label>کد رهگیری یا ۴ رقم آخر کارت</label>
+      <input type="text" id="topupTracking" />
+      <div class="muted" id="cardInfo"></div>
+      <button class="btn" onclick="doTopup()">ثبت درخواست شارژ</button>
+    </div>
+    <div class="card">
+      <h3>برداشت وجه</h3>
+      <label>مبلغ (تومان)</label>
+      <input type="number" id="withdrawAmount" />
+      <label>شماره کارت مقصد</label>
+      <input type="text" id="withdrawCard" />
+      <button class="btn secondary" onclick="doWithdraw()">ثبت درخواست برداشت</button>
+    </div>
+    <div class="card">
+      <h3>تاریخچه تراکنش‌ها</h3>
+      <div id="ledgerList" class="muted">در حال بارگذاری...</div>
+    </div>
+  </section>
+
+  <!-- ارزها -->
+  <section class="tab" id="tab-currency">
+    <div class="card">
+      <h3>موجودی ارزی</h3>
+      <div id="currencyBalances" class="muted">در حال بارگذاری...</div>
+    </div>
+    <div class="card">
+      <h3>تبدیل تومان ⇄ ارز</h3>
+      <p class="muted">نرخ‌ها رو ادمین دستی تنظیم می‌کنه؛ اینجا هیچ قیمت لحظه‌ای بیرونی گرفته نمی‌شه.</p>
+      <label>از</label>
+      <select id="swapFrom"></select>
+      <label>به</label>
+      <select id="swapTo"></select>
+      <label>مقدار</label>
+      <input type="number" id="swapAmount" />
+      <button class="btn" onclick="doSwap()">تبدیل کن</button>
+    </div>
+    <div class="card">
+      <h3>واریز ارز دیجیتال</h3>
+      <label>ارز</label>
+      <select id="depCode"></select>
+      <label>مقدار</label>
+      <input type="number" id="depAmount" />
+      <label>هش تراکنش / کد رهگیری</label>
+      <input type="text" id="depTx" />
+      <button class="btn" onclick="doCurrencyDeposit()">ثبت درخواست واریز</button>
+    </div>
+    <div class="card">
+      <h3>برداشت ارز دیجیتال</h3>
+      <label>ارز</label>
+      <select id="wdCode"></select>
+      <label>مقدار</label>
+      <input type="number" id="wdAmount" />
+      <label>آدرس مقصد</label>
+      <input type="text" id="wdAddress" />
+      <button class="btn secondary" onclick="doCurrencyWithdraw()">ثبت درخواست برداشت</button>
+    </div>
+  </section>
+
+  <!-- بازار گیفت -->
+  <section class="tab" id="tab-market">
+    <div class="card">
+      <h3>ثبت آگهی فروش گیفت</h3>
+      <label>عنوان گیفت</label>
+      <input type="text" id="giftTitle" />
+      <label>لینک عکس (اختیاری)</label>
+      <input type="text" id="giftImage" placeholder="https://..." />
+      <label>قیمت (تومان)</label>
+      <input type="number" id="giftPrice" />
+      <button class="btn" onclick="listGift()">ثبت آگهی</button>
+    </div>
+    <h3>بازار (آگهی‌های دیگران)</h3>
+    <div id="marketList" class="muted">در حال بارگذاری...</div>
+    <h3>آگهی‌های من</h3>
+    <div id="myGiftsList" class="muted">در حال بارگذاری...</div>
+  </section>
+
+  <!-- تسک‌ها -->
+  <section class="tab" id="tab-tasks">
+    <div id="tasksList" class="muted">در حال بارگذاری...</div>
+  </section>
+
+  <!-- رفرال -->
+  <section class="tab" id="tab-referral">
+    <div class="card" id="referralCard">در حال بارگذاری...</div>
+  </section>
+
+  <!-- بازی کارتی -->
+  <section class="tab" id="tab-game">
+    <div class="card">
+      <div class="row"><span>بازی‌های امروز</span><b id="gamePlaysLeft">-</b></div>
+      <div class="row"><span>رتبه من</span><b id="gameMyRank">-</b></div>
+      <div class="row"><span>وضعیت صف</span><b id="gameQueueState">-</b></div>
+      <button class="btn secondary" onclick="buyExtraPlays()">خرید بازی اضافه</button>
+    </div>
+
+    <h3>فروشگاه کارت</h3>
+    <div id="gameShop" class="muted">در حال بارگذاری...</div>
+
+    <h3>مجموعه کارت‌های من</h3>
+    <p class="muted">برای ادغام رایگان، یه کارت رو به‌عنوان هدف و یه کارت مشابه‌شو به‌عنوان قربانی انتخاب کن.</p>
+    <div id="gameMyCards" class="muted">در حال بارگذاری...</div>
+
+    <h3>ساخت دسته و ورود به صف</h3>
+    <div class="card">
+      <p class="muted" id="deckHint"></p>
+      <div id="deckPicker"></div>
+      <button class="btn" onclick="joinGameQueue()">ورود به صف مسابقه</button>
+      <button class="btn secondary" onclick="cancelGameQueue()">لغو صف</button>
+    </div>
+
+    <h3>جدول امتیازات</h3>
+    <div id="gameLeaderboard" class="muted">در حال بارگذاری...</div>
+
+    <h3>تسک‌های کارتی</h3>
+    <div id="cardTasksList" class="muted">در حال بارگذاری...</div>
+
+    <h3>تاریخچه مسابقات</h3>
+    <div id="gameHistory" class="muted">در حال بارگذاری...</div>
+  </section>
+
+  <!-- پشتیبانی -->
+  <section class="tab" id="tab-support">
+    <div class="card" id="chatBox" style="min-height:200px;"></div>
+    <div class="card">
+      <textarea id="supportText" rows="3" placeholder="پیام خودتو بنویس..."></textarea>
+      <button class="btn" onclick="sendSupport()">ارسال</button>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button data-tab="shop" class="active" onclick="showTab('shop')">🛍 فروشگاه</button>
+  <button data-tab="wallet" onclick="showTab('wallet')">💳 کیف‌پول</button>
+  <button data-tab="currency" onclick="showTab('currency')">💱 ارزها</button>
+  <button data-tab="market" onclick="showTab('market')">🎁 بازار</button>
+  <button data-tab="game" onclick="showTab('game')">🎮 بازی</button>
+  <button data-tab="tasks" onclick="showTab('tasks')">✅ تسک‌ها</button>
+  <button data-tab="referral" onclick="showTab('referral')">👥 رفرال</button>
+  <button data-tab="support" onclick="showTab('support')">🆘 پشتیبانی</button>
+</nav>
+
+<script>
+const tg = window.Telegram?.WebApp;
+tg?.ready(); tg?.expand();
+const initData = tg?.initData || '';
+
+let CONFIG = {};
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', 'X-Init-Data': initData, ...(opts.headers || {}) };
+  let res;
+  try {
+    // اگه سرور خودمون (یا تانلش) کند/بی‌جواب باشه، بعد از ۱۵ ثانیه به‌جای هنگ ابدی، خطا می‌دیم
+    res = await fetch(path, { ...opts, headers, signal: AbortSignal.timeout(15000) });
+  } catch (e) {
+    const msg = (e.name === 'TimeoutError' || e.name === 'AbortError') ? 'سرور جواب نداد، دوباره امتحان کن' : 'اتصال برقرار نشد';
+    toast(msg);
+    throw new Error(msg);
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { toast(data.error || 'خطا رخ داد'); throw new Error(data.error || 'error'); }
+  return data;
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  if (name === 'wallet') loadWallet();
+  if (name === 'currency') loadCurrency();
+  if (name === 'market') loadMarket();
+  if (name === 'game') loadGame();
+  if (name === 'tasks') loadTasks();
+  if (name === 'referral') loadReferral();
+  if (name === 'support') loadSupport();
+}
+
+async function loadMe() {
+  try {
+    const me = await api('/api/me');
+    document.getElementById('balanceLine').textContent = `موجودی: ${me.balance_toman.toLocaleString()} تومان`;
+    return me;
+  } catch (e) {
+    document.getElementById('balanceLine').innerHTML = `⚠️ اتصال برقرار نشد — <a href="#" onclick="loadMe();return false;" style="color:#6fb3ff;">تلاش دوباره</a>`;
+    throw e;
+  }
+}
+
+/* ---------- فروشگاه ---------- */
+async function loadShop() {
+  const el = document.getElementById('productList');
+  try {
+    const products = await api('/api/products');
+    if (!products.length) { el.innerHTML = '<p class="muted">فعلا محصولی ثبت نشده.</p>'; return; }
+    el.innerHTML = products.map(p => `
+      <div class="card">
+        ${p.image_url ? `<img src="${p.image_url}" style="width:100%;border-radius:8px;margin-bottom:8px;">` : ''}
+        <div class="row"><b>${p.title}</b><span class="tag">${p.price_toman.toLocaleString()} ت</span></div>
+        <p class="muted">${p.description || ''}</p>
+        <input type="text" id="note-${p.id}" placeholder="مقصد / یوزرنیم گیرنده (اختیاری)">
+        <button class="btn" onclick="buyProduct(${p.id})">خرید</button>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = `<p class="muted">⚠️ فروشگاه لود نشد — <a href="#" onclick="loadShop();return false;" style="color:#6fb3ff;">تلاش دوباره</a></p>`;
+    throw e;
+  }
+}
+async function buyProduct(id) {
+  const note = document.getElementById('note-' + id).value;
+  await api('/api/checkout', { method: 'POST', body: JSON.stringify({ productId: id, qty: 1, note }) });
+  toast('سفارش ثبت شد ✅');
+  loadMe();
+}
+
+/* ---------- کیف‌پول ---------- */
+async function loadWallet() {
+  document.getElementById('cardInfo').textContent = CONFIG.cardNumber
+    ? `شماره کارت: ${CONFIG.cardNumber} (${CONFIG.cardOwner || ''})` : '';
+  const ledger = await api('/api/wallet/ledger');
+  document.getElementById('ledgerList').innerHTML = ledger.length
+    ? ledger.map(l => `<div class="row"><span>${l.reason || '-'}</span><span>${l.direction === 'in' ? '+' : '-'}${l.amount.toLocaleString()} ${l.currency_code}</span></div>`).join('')
+    : 'تراکنشی ثبت نشده.';
+}
+async function doTopup() {
+  const amount = Number(document.getElementById('topupAmount').value);
+  const trackingCode = document.getElementById('topupTracking').value;
+  await api('/api/wallet/toman-topup', { method: 'POST', body: JSON.stringify({ amount, trackingCode }) });
+  toast('درخواست ثبت شد، منتظر تایید ادمین باش ✅');
+}
+async function doWithdraw() {
+  const amount = Number(document.getElementById('withdrawAmount').value);
+  const cardNumber = document.getElementById('withdrawCard').value;
+  await api('/api/wallet/toman-withdraw', { method: 'POST', body: JSON.stringify({ amount, cardNumber }) });
+  toast('درخواست برداشت ثبت شد ✅');
+  loadMe(); loadWallet();
+}
+
+/* ---------- ارزها ---------- */
+let CURRENCIES = [];
+async function loadCurrency() {
+  CURRENCIES = await api('/api/currencies');
+  const balances = await api('/api/wallet/balances');
+  document.getElementById('currencyBalances').innerHTML = CURRENCIES.length
+    ? CURRENCIES.map(c => `<div class="row"><span>${c.name} (${c.code})</span><span>${(balances[c.code] || 0)} — نرخ: ${c.rate_toman.toLocaleString()} ت</span></div>`).join('')
+    : 'هیچ ارزی توسط ادمین فعال نشده.';
+
+  const codeOptions = CURRENCIES.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
+  document.getElementById('depCode').innerHTML = codeOptions;
+  document.getElementById('wdCode').innerHTML = codeOptions;
+  document.getElementById('swapFrom').innerHTML = `<option value="TOMAN">تومان</option>` + codeOptions;
+  document.getElementById('swapTo').innerHTML = codeOptions + `<option value="TOMAN">تومان</option>`;
+}
+async function doSwap() {
+  const from = document.getElementById('swapFrom').value;
+  const to = document.getElementById('swapTo').value;
+  const amount = Number(document.getElementById('swapAmount').value);
+  const r = await api('/api/wallet/swap', { method: 'POST', body: JSON.stringify({ from, to, amount }) });
+  toast(`تبدیل شد: دریافتی ${r.outputAmount} ${to}`);
+  loadMe(); loadCurrency();
+}
+async function doCurrencyDeposit() {
+  const code = document.getElementById('depCode').value;
+  const amount = Number(document.getElementById('depAmount').value);
+  const txHash = document.getElementById('depTx').value;
+  await api('/api/wallet/currency-deposit', { method: 'POST', body: JSON.stringify({ code, amount, txHash }) });
+  toast('درخواست واریز ثبت شد ✅');
+}
+async function doCurrencyWithdraw() {
+  const code = document.getElementById('wdCode').value;
+  const amount = Number(document.getElementById('wdAmount').value);
+  const address = document.getElementById('wdAddress').value;
+  await api('/api/wallet/currency-withdraw', { method: 'POST', body: JSON.stringify({ code, amount, address }) });
+  toast('درخواست برداشت ثبت شد ✅');
+  loadCurrency();
+}
+
+/* ---------- بازار گیفت ---------- */
+async function loadMarket() {
+  const { offers, feePercent } = await api('/api/gifts/market');
+  document.getElementById('marketList').innerHTML = offers.length
+    ? offers.map(o => `
+      <div class="card">
+        ${o.image_url ? `<img src="${o.image_url}" style="width:100%;border-radius:8px;margin-bottom:8px;">` : ''}
+        <div class="row"><b>${o.title}</b><span class="tag">${o.price_toman.toLocaleString()} ت</span></div>
+        <p class="muted">کارمزد پلتفرم: ${feePercent}٪</p>
+        <button class="btn" onclick="buyGift(${o.id})">خرید (امانی)</button>
+      </div>`).join('')
+    : 'آگهی فعالی نیست.';
+
+  const mine = await api('/api/gifts/my');
+  document.getElementById('myGiftsList').innerHTML = mine.length
+    ? mine.map(o => `
+      <div class="card">
+        <div class="row"><b>${o.title}</b><span class="tag">${o.status}</span></div>
+        <p class="muted">${o.price_toman.toLocaleString()} تومان</p>
+        ${o.status === 'active' ? `<button class="btn danger" onclick="cancelGift(${o.id})">لغو آگهی</button>` : ''}
+        ${o.status === 'reserved' ? `<button class="btn" onclick="confirmGift(${o.id})">تایید دریافت گیفت</button>` : ''}
+      </div>`).join('')
+    : 'آگهی‌ای ثبت نکردی.';
+}
+async function listGift() {
+  const title = document.getElementById('giftTitle').value;
+  const image_url = document.getElementById('giftImage').value;
+  const price = Number(document.getElementById('giftPrice').value);
+  await api('/api/gifts/list', { method: 'POST', body: JSON.stringify({ title, image_url, price }) });
+  toast('آگهی ثبت شد ✅'); loadMarket();
+}
+async function buyGift(id) { await api(`/api/gifts/${id}/buy`, { method: 'POST' }); toast('رزرو شد ✅'); loadMe(); loadMarket(); }
+async function cancelGift(id) { await api(`/api/gifts/${id}/cancel`, { method: 'POST' }); loadMarket(); }
+async function confirmGift(id) { await api(`/api/gifts/${id}/confirm-received`, { method: 'POST' }); toast('تایید شد ✅'); loadMarket(); }
+
+/* ---------- تسک‌ها ---------- */
+async function loadTasks() {
+  const tasks = await api('/api/tasks');
+  document.getElementById('tasksList').innerHTML = tasks.length
+    ? tasks.map(t => `
+      <div class="card">
+        <div class="row"><b>${t.title}</b><span class="tag">${t.reward_toman.toLocaleString()} ت</span></div>
+        <button class="btn" ${t.done ? 'disabled' : ''} onclick="claimTask(${t.id})">${t.done ? 'انجام شده ✅' : 'انجام دادم'}</button>
+      </div>`).join('')
+    : 'فعلا تسکی نیست.';
+}
+async function claimTask(id) { await api(`/api/tasks/${id}/claim`, { method: 'POST' }); toast('پاداش دریافت شد ✅'); loadMe(); loadTasks(); }
+
+/* ---------- بازی کارتی ---------- */
+let SELECTED_DECK = [];
+let SELECTED_TARGET = null;
+let SELECTED_SACRIFICE = null;
+let GAME_QUEUE_TIMER = null;
+
+async function loadGame() {
+  const status = await api('/api/game/status');
+  document.getElementById('gamePlaysLeft').textContent = status.playsRemaining;
+  document.getElementById('gameMyRank').textContent = status.myRank;
+  document.getElementById('deckHint').textContent = `دسته باید بین ${status.config.min_deck_size} تا ${status.config.max_deck_size} کارت داشته باشه.`;
+  updateQueueState(status.queue);
+
+  const cards = await api('/api/game/cards');
+  document.getElementById('gameShop').innerHTML = cards.length ? cards.map(c => `
+    <div class="card">
+      ${c.image_url ? `<img src="${c.image_url}" style="width:100%;border-radius:8px;margin-bottom:8px;">` : ''}
+      <div class="row"><b>${c.name}</b><span class="tag">${c.rarity}</span></div>
+      <p class="muted">قدرت پایه: ${c.base_power} — قیمت: ${c.price_toman.toLocaleString()} ت</p>
+      <button class="btn" onclick="buyGameCard(${c.id})">خرید</button>
+    </div>`).join('') : 'فعلا کارتی در فروشگاه نیست.';
+
+  await loadMyCards();
+  await loadGameLeaderboard();
+  await loadCardTasks();
+  await loadGameHistory();
+}
+
+async function buyGameCard(id) { await api('/api/game/buy-card', { method: 'POST', body: JSON.stringify({ cardId: id }) }); toast('کارت خریداری شد ✅'); loadMe(); loadMyCards(); }
+
+async function loadMyCards() {
+  const mine = await api('/api/game/my-cards');
+  SELECTED_DECK = SELECTED_DECK.filter(id => mine.some(c => c.id === id));
+  document.getElementById('gameMyCards').innerHTML = mine.length ? mine.map(c => `
+    <div class="card">
+      <div class="row"><b>${c.name}</b><span class="tag">سطح ${c.level} — قدرت ${c.power}</span></div>
+      <div class="row2" style="display:flex;gap:6px;">
+        <button class="btn secondary" onclick="upgradeGameCard(${c.id})">ارتقا (پولی)</button>
+        <button class="btn ${SELECTED_TARGET === c.id ? '' : 'secondary'}" onclick="pickTarget(${c.id})">${SELECTED_TARGET === c.id ? 'هدف ✓' : 'انتخاب هدف'}</button>
+        <button class="btn ${SELECTED_SACRIFICE === c.id ? '' : 'secondary'}" onclick="pickSacrifice(${c.id})">${SELECTED_SACRIFICE === c.id ? 'قربانی ✓' : 'انتخاب قربانی'}</button>
+      </div>
+      <label style="margin-top:6px;"><input type="checkbox" ${SELECTED_DECK.includes(c.id) ? 'checked' : ''} onchange="toggleDeck(${c.id}, this.checked)"> اضافه به دسته مسابقه</label>
+    </div>`).join('') : 'هنوز کارتی نداری، از فروشگاه بالا بخر.';
+  if (SELECTED_TARGET && SELECTED_SACRIFICE) {
+    document.getElementById('gameMyCards').insertAdjacentHTML('beforeend', `<button class="btn" onclick="doSacrificeUpgrade()">ادغام و ارتقای رایگان</button>`);
+  }
+}
+function pickTarget(id) { SELECTED_TARGET = SELECTED_TARGET === id ? null : id; loadMyCards(); }
+function pickSacrifice(id) { SELECTED_SACRIFICE = SELECTED_SACRIFICE === id ? null : id; loadMyCards(); }
+function toggleDeck(id, checked) {
+  if (checked) SELECTED_DECK.push(id); else SELECTED_DECK = SELECTED_DECK.filter(x => x !== id);
+}
+async function upgradeGameCard(id) {
+  await api('/api/game/upgrade-card', { method: 'POST', body: JSON.stringify({ userCardId: id }) });
+  toast('کارت ارتقا پیدا کرد ✅'); loadMe(); loadMyCards();
+}
+async function doSacrificeUpgrade() {
+  await api('/api/game/sacrifice-upgrade', { method: 'POST', body: JSON.stringify({ targetUserCardId: SELECTED_TARGET, sacrificeUserCardId: SELECTED_SACRIFICE }) });
+  SELECTED_TARGET = null; SELECTED_SACRIFICE = null;
+  toast('ادغام شد ✅'); loadMyCards();
+}
+async function buyExtraPlays() {
+  const r = await api('/api/game/buy-extra-plays', { method: 'POST' });
+  toast('بازی اضافه خریداری شد ✅'); loadMe();
+  document.getElementById('gamePlaysLeft').textContent = r.playsRemaining;
+}
+
+function updateQueueState(queue) {
+  const el = document.getElementById('gameQueueState');
+  clearTimeout(GAME_QUEUE_TIMER);
+  if (queue.waiting) {
+    el.textContent = 'در صف انتظار حریف...';
+    GAME_QUEUE_TIMER = setTimeout(async () => {
+      const s = await api('/api/game/queue-status');
+      updateQueueState(s);
+    }, 4000);
+  } else {
+    el.textContent = 'در صف نیستی';
+  }
+}
+async function joinGameQueue() {
+  const r = await api('/api/game/queue', { method: 'POST', body: JSON.stringify({ userCardIds: SELECTED_DECK }) });
+  if (r.matched) {
+    toast(r.won ? `بردی! ${r.myPower} در برابر ${r.opponentPower} 🏆` : `باختی! ${r.myPower} در برابر ${r.opponentPower} 😢`);
+    document.getElementById('gameQueueState').textContent = 'در صف نیستی';
+  } else {
+    toast('وارد صف شدی، منتظر حریف باش...');
+    updateQueueState({ waiting: true });
+  }
+  loadMe(); loadGameHistory(); loadGame();
+}
+async function cancelGameQueue() { await api('/api/game/queue/cancel', { method: 'POST' }); clearTimeout(GAME_QUEUE_TIMER); document.getElementById('gameQueueState').textContent = 'در صف نیستی'; }
+
+async function loadGameLeaderboard() {
+  const { leaderboard, myRank } = await api('/api/game/leaderboard');
+  document.getElementById('gameMyRank').textContent = myRank;
+  document.getElementById('gameLeaderboard').innerHTML = leaderboard.length ? `
+    <table style="width:100%;border-collapse:collapse;">
+    ${leaderboard.map((p, i) => `<tr><td style="padding:4px;">${i + 1}</td><td style="padding:4px;">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</td><td style="padding:4px;">${p.score} امتیاز</td></tr>`).join('')}
+    </table>` : 'هنوز کسی امتیازی نگرفته.';
+}
+
+async function loadCardTasks() {
+  const tasks = await api('/api/card-tasks');
+  document.getElementById('cardTasksList').innerHTML = tasks.length ? tasks.map(t => `
+    <div class="card">
+      <div class="row"><b>${t.title}</b><span class="tag">جایزه: ${t.card_name}</span></div>
+      <button class="btn" ${t.done ? 'disabled' : ''} onclick="claimCardTask(${t.id})">${t.done ? 'انجام شده ✅' : 'انجام دادم'}</button>
+    </div>`).join('') : 'فعلا تسک کارتی نیست.';
+}
+async function claimCardTask(id) { await api(`/api/card-tasks/${id}/claim`, { method: 'POST' }); toast('کارت جایزه اضافه شد ✅'); loadMyCards(); loadCardTasks(); }
+
+async function loadGameHistory() {
+  const history = await api('/api/game/history');
+  const meId = (await api('/api/me')).tg_id;
+  document.getElementById('gameHistory').innerHTML = history.length ? history.map(m => {
+    const won = m.winner_tg_id === meId;
+    return `<div class="row"><span>${won ? '🏆 برد' : '❌ باخت'} — قدرت من: ${m.player_a === meId ? m.power_a : m.power_b} / حریف: ${m.player_a === meId ? m.power_b : m.power_a}</span></div>`;
+  }).join('') : 'هنوز مسابقه‌ای نداشتی.';
+}
+
+/* ---------- رفرال ---------- */
+async function loadReferral() {
+  const r = await api('/api/referral');
+  const link = CONFIG.botUsername ? `https://t.me/${CONFIG.botUsername}?start=ref_${r.ref_code}` : r.ref_code;
+  document.getElementById('referralCard').innerHTML = `
+    <p>کد رفرال شما: <b>${r.ref_code}</b></p>
+    <p class="muted">لینک دعوت:</p>
+    <input readonly value="${link}" onclick="this.select()">
+    <p>تعداد دعوت‌شده‌ها: ${r.invitedCount}</p>
+    <p>مجموع پورسانت دریافتی: ${r.totalEarned.toLocaleString()} تومان</p>
+  `;
+}
+
+/* ---------- پشتیبانی ---------- */
+async function loadSupport() {
+  const { messages } = await api('/api/support/messages');
+  document.getElementById('chatBox').innerHTML = messages.map(m => `
+    <div class="msg ${m.sender}">${m.body || ''}${m.image_url ? `<br><img src="${m.image_url}" style="max-width:100%;border-radius:6px;">` : ''}</div>
+  `).join('') || '<p class="muted">هنوز پیامی نیست، سوالتو بپرس.</p>';
+}
+async function sendSupport() {
+  const text = document.getElementById('supportText').value;
+  if (!text.trim()) return;
+  await api('/api/support/send', { method: 'POST', body: JSON.stringify({ text }) });
+  document.getElementById('supportText').value = '';
+  loadSupport();
+}
+
+/* ---------- شروع ---------- */
+async function bootApp() {
+  try {
+    CONFIG = await fetch('/api/config', { signal: AbortSignal.timeout(15000) }).then(r => r.json());
+  } catch (e) { console.error('config load failed', e); }
+  // این دو تا مستقل از هم اجرا می‌شن و هرکدوم اگه خطا بخوره خودش دکمه «تلاش دوباره» نشون می‌ده،
+  // نه اینکه یکیش گیر کنه و بقیه صفحه هم منتظرش بمونه و کل مینی‌اپ قفل به نظر برسه
+  loadMe().catch(() => {});
+  loadShop().catch(() => {});
+}
+bootApp();
+</script>
+</body>
+</html>
