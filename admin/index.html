@@ -1,84 +1,113 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>پنل ادمین - Lando Gifts</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پنل ادمین | Lando Gifts</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: Tahoma, sans-serif; background:#0f1115; color:#eee; }
-  header { padding:14px; border-bottom:1px solid #232733; display:flex; justify-content:space-between; align-items:center; }
-  nav { display:flex; flex-wrap:wrap; gap:6px; padding:10px 14px; border-bottom:1px solid #232733; }
-  nav button { background:#171a21; color:#ccc; border:1px solid #232733; border-radius:6px; padding:6px 12px; cursor:pointer; font-size:13px; }
-  nav button.active { background:#2f6feb; color:#fff; }
-  main { padding:16px; max-width:900px; margin:0 auto; }
-  .tab { display:none; }
-  .tab.active { display:block; }
-  table { width:100%; border-collapse:collapse; margin-bottom:16px; font-size:13px; }
-  th, td { border-bottom:1px solid #232733; padding:6px 8px; text-align:right; }
-  .card { background:#171a21; border:1px solid #232733; border-radius:8px; padding:14px; margin-bottom:14px; }
-  input, select, textarea { width:100%; padding:7px; border-radius:6px; border:1px solid #333; background:#0f1115; color:#eee; margin:4px 0 10px; }
-  label { font-size:12px; color:#999; }
-  .btn { background:#2f6feb; color:#fff; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; font-size:13px; }
-  .btn.danger { background:#a33; }
-  .btn.secondary { background:#333; }
-  .row2 { display:flex; gap:8px; }
-  .row2 > * { flex:1; }
-  #loginBox { max-width:320px; margin:80px auto; }
-  .muted { color:#888; font-size:12px; }
+:root{--bg:#0a0b10;--bg2:#141620;--bg3:#1a1d2b;--border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);--text:#f0f2f8;--text2:#8b92a8;--text3:#5a6078;--accent:#6366f1;--accent2:#818cf8;--glow:rgba(99,102,241,0.2);--success:#22c55e;--danger:#ef4444;--gold:#fbbf24;--grad1:linear-gradient(135deg,#6366f1,#a855f7,#ec4899);--grad2:linear-gradient(135deg,#06b6d4,#6366f1);--grad3:linear-gradient(135deg,#fbbf24,#f59e0b);--r:14px;--r2:10px;--r3:8px}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Vazirmatn',Tahoma,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% 40%,rgba(99,102,241,0.06) 0%,transparent 50%),radial-gradient(ellipse 60% 40% at 80% 60%,rgba(168,85,247,0.04) 0%,transparent 50%);pointer-events:none;z-index:0}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px;backdrop-filter:blur(16px);position:relative;overflow:hidden;transition:all .3s ease}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)}
+.card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:var(--r2);padding:8px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .25s ease;position:relative;overflow:hidden}
+.btn:active{transform:scale(.97)}.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);transform:translateX(-100%);transition:transform .4s ease}.btn:hover::after{transform:translateX(100%)}
+.btn-p{background:var(--grad1);color:#fff;box-shadow:0 4px 16px rgba(99,102,241,.3)}.btn-p:hover{box-shadow:0 6px 24px rgba(99,102,241,.45)}
+.btn-s{background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--border)}.btn-s:hover{background:rgba(255,255,255,.08)}
+.btn-d{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.25)}.btn-d:hover{background:rgba(239,68,68,.2)}
+.btn-g{background:var(--grad3);color:#1a1a2e;font-weight:700}
+input,select,textarea{width:100%;padding:10px 14px;border-radius:var(--r2);border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);font-family:inherit;font-size:14px;transition:all .25s ease;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow);background:rgba(255,255,255,.05)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--border)}th{font-weight:600;color:var(--text2);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+tr{transition:background .2s}tr:hover{background:rgba(255,255,255,.02)}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:50px;font-size:11px;font-weight:600}
+.tg-g{background:rgba(34,197,94,.12);color:var(--success)}.tg-r{background:rgba(239,68,68,.12);color:var(--danger)}.tg-b{background:rgba(99,102,241,.12);color:var(--accent2)}.tg-y{background:rgba(251,191,36,.12);color:var(--gold)}
+.login-box{max-width:360px;margin:80px auto;text-align:center;padding:40px 30px}
+.login-box .logo{font-size:28px;font-weight:800;background:var(--grad1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.login-box .sub{color:var(--text3);font-size:13px;margin-bottom:28px}
+.nav{display:flex;gap:6px;padding:12px 16px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}.nav button{white-space:nowrap;padding:8px 14px;border-radius:var(--r3);border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .25s ease}
+.nav button:hover{border-color:var(--border2);color:var(--text)}.nav button.a{background:var(--grad1);color:#fff;border-color:transparent;box-shadow:0 4px 16px rgba(99,102,241,.3)}
+.header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);background:rgba(10,11,16,.9);backdrop-filter:blur(20px);position:sticky;top:0;z-index:100}
+.header h1{font-size:18px;font-weight:700}.header .btn-s{padding:6px 14px;font-size:12px}
+.tab{display:none;animation:fade .35s ease}.tab.a{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.stat-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px 12px;text-align:center;transition:all .3s ease}
+.stat-box:hover{border-color:var(--border2);transform:translateY(-2px)}
+.stat-box .v{font-size:26px;font-weight:800;background:var(--grad1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-box .l{font-size:11px;color:var(--text2);margin-top:4px}
+.row2{display:flex;gap:10px}.row2>*{flex:1;min-width:0}
+label{font-size:12px;color:var(--text2);display:block;margin-bottom:6px;font-weight:500}
+.muted{color:var(--text3);font-size:12px;line-height:1.6}
+.empty{text-align:center;padding:40px 20px;color:var(--text3)}.empty .ic{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.03);display:grid;place-items:center;margin:0 auto 12px;font-size:24px}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--bg2);border:1px solid var(--border);border-radius:50px;padding:10px 24px;font-size:13px;font-weight:500;z-index:1000;backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(0,0,0,.3);transition:transform .4s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
+.toast.s{transform:translateX(-50%) translateY(0)}.toast.ok{border-color:rgba(34,197,94,.3);color:var(--success)}.toast.er{border-color:rgba(239,68,68,.3);color:var(--danger)}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}.row2{flex-direction:column}}
 </style>
 </head>
 <body>
+<div class="toast" id="toast"></div>
 
-<div id="loginBox" class="card">
-  <h2>ورود ادمین</h2>
-  <label>رمز عبور</label>
-  <input type="password" id="pw">
-  <button class="btn" onclick="login()">ورود</button>
-  <p class="muted" id="loginErr"></p>
+<div id="loginBox" class="login-box card">
+  <div class="logo">🎁 Lando Gifts</div>
+  <div class="sub">پنل مدیریت</div>
+  <div style="margin-bottom:18px"><label>رمز عبور</label><input type="password" id="pw" placeholder="رمز را وارد کنید" style="text-align:center"></div>
+  <button class="btn btn-p" style="width:100%" onclick="login()">ورود</button>
+  <p class="muted" id="loginErr" style="margin-top:12px;color:var(--danger)"></p>
 </div>
 
-<div id="app" style="display:none;">
-  <header>
-    <h2>🎁 پنل ادمین Lando Gifts</h2>
-    <button class="btn secondary" onclick="logout()">خروج</button>
-  </header>
-  <nav>
-    <button class="active" data-tab="dash" onclick="showTab('dash')">داشبورد</button>
-    <button data-tab="currencies" onclick="showTab('currencies')">ارزها</button>
-    <button data-tab="topups" onclick="showTab('topups')">شارژ کارت‌به‌کارت</button>
-    <button data-tab="withdrawals" onclick="showTab('withdrawals')">برداشت تومانی</button>
-    <button data-tab="creqs" onclick="showTab('creqs')">واریز/برداشت ارزی</button>
-    <button data-tab="products" onclick="showTab('products')">محصولات</button>
-    <button data-tab="orders" onclick="showTab('orders')">سفارش‌ها</button>
-    <button data-tab="gifts" onclick="showTab('gifts')">بازار گیفت</button>
-    <button data-tab="tasks" onclick="showTab('tasks')">تسک‌ها</button>
-    <button data-tab="gamecards" onclick="showTab('gamecards')">کارت‌های بازی</button>
-    <button data-tab="gameconfig" onclick="showTab('gameconfig')">تنظیمات بازی</button>
-    <button data-tab="leaderboard" onclick="showTab('leaderboard')">جدول امتیازات</button>
-    <button data-tab="cardtasks" onclick="showTab('cardtasks')">تسک‌های کارتی</button>
-    <button data-tab="tickets" onclick="showTab('tickets')">پشتیبانی</button>
-    <button data-tab="users" onclick="showTab('users')">کاربران</button>
+<div id="app" style="display:none">
+  <div class="header">
+    <h1>🎁 پنل ادمین</h1>
+    <button class="btn btn-s" onclick="logout()">خروج</button>
+  </div>
+  <nav class="nav">
+    <button class="a" data-tab="dash" onclick="showTab('dash')">📊 داشبورد</button>
+    <button data-tab="currencies" onclick="showTab('currencies')">💱 ارزها</button>
+    <button data-tab="topups" onclick="showTab('topups')">📥 شارژ</button>
+    <button data-tab="withdrawals" onclick="showTab('withdrawals')">📤 برداشت</button>
+    <button data-tab="creqs" onclick="showTab('creqs')">🔄 ارزی</button>
+    <button data-tab="products" onclick="showTab('products')">🛍 محصولات</button>
+    <button data-tab="orders" onclick="showTab('orders')">📦 سفارش‌ها</button>
+    <button data-tab="gifts" onclick="showTab('gifts')">🎁 گیفت</button>
+    <button data-tab="tasks" onclick="showTab('tasks')">✅ تسک‌ها</button>
+    <button data-tab="gamecards" onclick="showTab('gamecards')">🃏 کارت‌ها</button>
+    <button data-tab="gameconfig" onclick="showTab('gameconfig')">⚙️ تنظیمات</button>
+    <button data-tab="leaderboard" onclick="showTab('leaderboard')">🏆 امتیازات</button>
+    <button data-tab="cardtasks" onclick="showTab('cardtasks')">🎯 تسک کارتی</button>
+    <button data-tab="tickets" onclick="showTab('tickets')">💬 پشتیبانی</button>
+    <button data-tab="users" onclick="showTab('users')">👤 کاربران</button>
   </nav>
-  <main>
-    <section class="tab active" id="tab-dash"><div class="card" id="statsCard">در حال بارگذاری...</div></section>
+
+  <main style="padding:16px;max-width:1100px;margin:0 auto;position:relative;z-index:1">
+    <section class="tab a" id="tab-dash">
+      <div class="stats" id="statsCard">
+        <div class="stat-box"><div class="v skeleton" style="height:32px;background:rgba(255,255,255,.05);border-radius:6px"></div><div class="l">در حال بارگذاری</div></div>
+        <div class="stat-box"><div class="v skeleton" style="height:32px;background:rgba(255,255,255,.05);border-radius:6px"></div><div class="l">در حال بارگذاری</div></div>
+        <div class="stat-box"><div class="v skeleton" style="height:32px;background:rgba(255,255,255,.05);border-radius:6px"></div><div class="l">در حال بارگذاری</div></div>
+        <div class="stat-box"><div class="v skeleton" style="height:32px;background:rgba(255,255,255,.05);border-radius:6px"></div><div class="l">در حال بارگذاری</div></div>
+      </div>
+    </section>
 
     <section class="tab" id="tab-currencies">
       <div class="card">
-        <h3>افزودن / ویرایش ارز</h3>
+        <h3 style="margin-bottom:16px;font-size:16px">💱 افزودن / ویرایش ارز</h3>
         <div class="row2">
-          <div><label>کد (مثلا USDT)</label><input id="curCode"></div>
-          <div><label>نام</label><input id="curName"></div>
+          <div><label>کد</label><input id="curCode" placeholder="USDT"></div>
+          <div><label>نام</label><input id="curName" placeholder="تتر"></div>
         </div>
-        <div class="row2">
+        <div class="row2" style="margin-top:10px">
           <div><label>نرخ به تومان</label><input type="number" id="curRate"></div>
           <div><label>فعال؟</label><select id="curActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
         </div>
-        <div class="row2">
+        <div class="row2" style="margin-top:10px">
           <div><label>حداقل واریز</label><input type="number" id="curMinDep"></div>
           <div><label>حداقل برداشت</label><input type="number" id="curMinWd"></div>
         </div>
-        <button class="btn" onclick="saveCurrency()">ذخیره</button>
+        <button class="btn btn-p" style="margin-top:14px" onclick="saveCurrency()">💾 ذخیره</button>
       </div>
       <div id="currenciesTable"></div>
     </section>
@@ -89,16 +118,16 @@
 
     <section class="tab" id="tab-products">
       <div class="card">
-        <h3>افزودن / ویرایش محصول</h3>
+        <h3 style="margin-bottom:16px;font-size:16px">🛍 افزودن / ویرایش محصول</h3>
         <input type="hidden" id="prodId">
-        <label>عنوان</label><input id="prodTitle">
-        <label>توضیحات</label><textarea id="prodDesc" rows="2"></textarea>
-        <label>لینک عکس</label><input id="prodImage">
         <div class="row2">
+          <div><label>عنوان</label><input id="prodTitle"></div>
           <div><label>قیمت (تومان)</label><input type="number" id="prodPrice"></div>
-          <div><label>فعال؟</label><select id="prodActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
         </div>
-        <button class="btn" onclick="saveProduct()">ذخیره</button>
+        <div style="margin-top:10px"><label>توضیحات</label><textarea id="prodDesc" rows="2"></textarea></div>
+        <div style="margin-top:10px"><label>لینک عکس</label><input id="prodImage" placeholder="https://..."></div>
+        <div style="margin-top:10px"><label>فعال؟</label><select id="prodActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
+        <button class="btn btn-p" style="margin-top:14px" onclick="saveProduct()">💾 ذخیره</button>
       </div>
       <div id="productsTable"></div>
     </section>
@@ -108,125 +137,117 @@
 
     <section class="tab" id="tab-tasks">
       <div class="card">
-        <h3>افزودن / ویرایش تسک</h3>
+        <h3 style="margin-bottom:16px;font-size:16px">✅ افزودن / ویرایش تسک</h3>
         <input type="hidden" id="taskId">
-        <label>عنوان</label><input id="taskTitle">
         <div class="row2">
-          <div><label>نوع</label>
-            <select id="taskKind"><option value="join_channel">عضویت در کانال</option><option value="custom">سفارشی</option></select>
-          </div>
+          <div><label>عنوان</label><input id="taskTitle"></div>
+          <div><label>پاداش (تومان)</label><input type="number" id="taskReward"></div>
+        </div>
+        <div class="row2" style="margin-top:10px">
+          <div><label>نوع</label><select id="taskKind"><option value="join_channel">عضویت کانال</option><option value="custom">سفارشی</option></select></div>
           <div><label>یوزرنیم کانال (بدون @)</label><input id="taskChannel"></div>
         </div>
-        <div class="row2">
-          <div><label>پاداش (تومان)</label><input type="number" id="taskReward"></div>
-          <div><label>فعال؟</label><select id="taskActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
-        </div>
-        <button class="btn" onclick="saveTask()">ذخیره</button>
+        <div style="margin-top:10px"><label>فعال؟</label><select id="taskActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
+        <button class="btn btn-p" style="margin-top:14px" onclick="saveTask()">💾 ذخیره</button>
       </div>
       <div id="tasksTable"></div>
     </section>
 
     <section class="tab" id="tab-gamecards">
       <div class="card">
-        <h3>افزودن / ویرایش کارت بازی</h3>
+        <h3 style="margin-bottom:16px;font-size:16px">🃏 افزودن / ویرایش کارت بازی</h3>
         <input type="hidden" id="gcId">
-        <label>اسم کارت</label><input id="gcName">
-        <label>لینک عکس</label><input id="gcImage">
         <div class="row2">
-          <div><label>ریرتی</label>
-            <select id="gcRarity">
-              <option value="common">معمولی</option>
-              <option value="rare">کمیاب</option>
-              <option value="epic">حماسی</option>
-              <option value="legendary">افسانه‌ای</option>
-            </select>
-          </div>
-          <div><label>قدرت پایه</label><input type="number" id="gcPower"></div>
+          <div><label>اسم کارت</label><input id="gcName"></div>
+          <div><label>لینک عکس</label><input id="gcImage" placeholder="https://..."></div>
         </div>
-        <div class="row2">
+        <div class="row2" style="margin-top:10px">
+          <div><label>ریرتی</label><select id="gcRarity"><option value="common">معمولی</option><option value="rare">کمیاب</option><option value="epic">حماسی</option><option value="legendary">افسانه‌ای</option></select></div>
+          <div><label>قدرت پایه</label><input type="number" id="gcPower" value="10"></div>
+        </div>
+        <div class="row2" style="margin-top:10px">
           <div><label>قیمت (تومان)</label><input type="number" id="gcPrice"></div>
           <div><label>حداکثر سطح</label><input type="number" id="gcMaxLevel" value="10"></div>
         </div>
-        <label>فعال؟</label>
-        <select id="gcActive"><option value="1">بله</option><option value="0">خیر</option></select>
-        <button class="btn" onclick="saveGameCard()">ذخیره</button>
+        <div style="margin-top:10px"><label>فعال؟</label><select id="gcActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
+        <button class="btn btn-p" style="margin-top:14px" onclick="saveGameCard()">💾 ذخیره</button>
       </div>
       <div id="gameCardsTable"></div>
     </section>
 
     <section class="tab" id="tab-gameconfig">
       <div class="card">
-        <h3>تنظیمات کلی بازی</h3>
+        <h3 style="margin-bottom:16px;font-size:16px">⚙️ تنظیمات کلی بازی</h3>
         <div class="row2">
           <div><label>حداقل سایز دسته</label><input type="number" id="cfgMinDeck"></div>
           <div><label>حداکثر سایز دسته</label><input type="number" id="cfgMaxDeck"></div>
         </div>
-        <div class="row2">
-          <div><label>تعداد بازی رایگان روزانه</label><input type="number" id="cfgDailyLimit"></div>
-          <div><label>هزینه بازی اضافه (تومان)</label><input type="number" id="cfgExtraPrice"></div>
+        <div class="row2" style="margin-top:10px">
+          <div><label>بازی رایگان روزانه</label><input type="number" id="cfgDailyLimit"></div>
+          <div><label>هزینه بازی اضافه (ت)</label><input type="number" id="cfgExtraPrice"></div>
         </div>
-        <div class="row2">
-          <div><label>تعداد بازی اضافه به‌ازای هر خرید</label><input type="number" id="cfgExtraCount"></div>
-          <div><label>هزینه پایه ارتقای کارت (تومان)</label><input type="number" id="cfgUpgradeCost"></div>
+        <div class="row2" style="margin-top:10px">
+          <div><label>تعداد بازی اضافه</label><input type="number" id="cfgExtraCount"></div>
+          <div><label>هزینه پایه ارتقا (ت)</label><input type="number" id="cfgUpgradeCost"></div>
         </div>
-        <label>دوره ریست جدول امتیازات (روز)</label><input type="number" id="cfgResetDays">
-        <button class="btn" onclick="saveGameConfig()">ذخیره تنظیمات</button>
+        <div style="margin-top:10px"><label>دوره ریست جدول (روز)</label><input type="number" id="cfgResetDays"></div>
+        <button class="btn btn-p" style="margin-top:14px" onclick="saveGameConfig()">💾 ذخیره</button>
       </div>
     </section>
 
     <section class="tab" id="tab-leaderboard">
       <div class="card">
-        <h3>افزودن / ویرایش جایزه رتبه</h3>
+        <h3 style="margin-bottom:16px;font-size:16px">🏆 افزودن / ویرایش جایزه رتبه</h3>
         <input type="hidden" id="prizeId">
         <div class="row2">
           <div><label>از رتبه</label><input type="number" id="prizeFrom"></div>
           <div><label>تا رتبه</label><input type="number" id="prizeTo"></div>
         </div>
-        <label>جایزه (تومان)</label><input type="number" id="prizeReward">
-        <button class="btn" onclick="saveLeaderboardPrize()">ذخیره</button>
+        <div style="margin-top:10px"><label>جایزه (تومان)</label><input type="number" id="prizeReward"></div>
+        <button class="btn btn-p" style="margin-top:14px" onclick="saveLeaderboardPrize()">💾 ذخیره</button>
       </div>
       <div id="leaderboardPrizesTable"></div>
-      <div class="card">
-        <button class="btn danger" onclick="resetLeaderboardNow()">پخش جوایز و ریست دستی جدول امتیازات</button>
-        <p class="muted">این کار جوایز رو بین برترین‌های فعلی پخش می‌کنه و امتیازها رو صفر می‌کنه — دوره خودکار هم طبق تنظیمات بازی هست.</p>
+      <div class="card" style="margin-top:14px">
+        <button class="btn btn-d" style="width:100%" onclick="resetLeaderboardNow()">🔄 پخش جوایز و ریست دستی</button>
+        <p class="muted" style="margin-top:10px">جوایز بین برترین‌ها پخش و امتیازها صفر می‌شن</p>
       </div>
-      <h3>جدول فعلی</h3>
+      <h3 style="margin:20px 0 14px;font-size:16px">📊 جدول فعلی</h3>
       <div id="leaderboardTable"></div>
     </section>
 
     <section class="tab" id="tab-cardtasks">
       <div class="card">
-        <h3>افزودن / ویرایش تسک کارتی</h3>
+        <h3 style="margin-bottom:16px;font-size:16px">🎯 افزودن / ویرایش تسک کارتی</h3>
         <input type="hidden" id="ctId">
-        <label>عنوان</label><input id="ctTitle">
         <div class="row2">
-          <div><label>نوع</label>
-            <select id="ctKind"><option value="join_channel">عضویت در کانال</option><option value="custom">سفارشی</option></select>
-          </div>
-          <div><label>یوزرنیم کانال (بدون @)</label><input id="ctChannel"></div>
+          <div><label>عنوان</label><input id="ctTitle"></div>
+          <div><label>نوع</label><select id="ctKind"><option value="join_channel">عضویت کانال</option><option value="custom">سفارشی</option></select></div>
         </div>
-        <label>کارت جایزه</label>
-        <select id="ctRewardCard"></select>
-        <label>فعال؟</label>
-        <select id="ctActive"><option value="1">بله</option><option value="0">خیر</option></select>
-        <button class="btn" onclick="saveCardTask()">ذخیره</button>
+        <div class="row2" style="margin-top:10px">
+          <div><label>یوزرنیم کانال</label><input id="ctChannel"></div>
+          <div><label>کارت جایزه</label><select id="ctRewardCard"></select></div>
+        </div>
+        <div style="margin-top:10px"><label>فعال؟</label><select id="ctActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
+        <button class="btn btn-p" style="margin-top:14px" onclick="saveCardTask()">💾 ذخیره</button>
       </div>
       <div id="cardTasksTable"></div>
     </section>
 
     <section class="tab" id="tab-tickets">
       <div id="ticketsList"></div>
-      <div class="card" id="ticketDetail" style="display:none;">
-        <div id="ticketMessages"></div>
-        <textarea id="replyText" rows="2" placeholder="پاسخ..."></textarea>
-        <button class="btn" onclick="sendReply()">ارسال پاسخ</button>
-        <button class="btn secondary" onclick="closeCurrentTicket()">بستن تیکت</button>
+      <div class="card" id="ticketDetail" style="display:none;margin-top:14px">
+        <div id="ticketMessages" style="margin-bottom:14px"></div>
+        <textarea class="input-field" id="replyText" rows="2" placeholder="پاسخ..."></textarea>
+        <div style="display:flex;gap:10px;margin-top:10px">
+          <button class="btn btn-p" style="flex:1" onclick="sendReply()">📨 ارسال</button>
+          <button class="btn btn-s" style="flex:1" onclick="closeCurrentTicket()">🔒 بستن</button>
+        </div>
       </div>
     </section>
 
     <section class="tab" id="tab-users">
       <div class="card">
-        <input placeholder="جستجو با آیدی عددی، یوزرنیم یا نام" id="userSearch" oninput="loadUsers()">
+        <input class="input-field" placeholder="🔍 جستجو با آیدی، یوزرنیم یا نام" id="userSearch" oninput="loadUsers()">
       </div>
       <div id="usersTable"></div>
     </section>
@@ -234,389 +255,57 @@
 </div>
 
 <script>
-let TOKEN = localStorage.getItem('lando_admin_token') || '';
-let currentTicketId = null;
-
-async function api(path, opts = {}) {
-  const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN, ...(opts.headers || {}) };
-  let res;
-  try {
-    res = await fetch('/admin/api' + path, { ...opts, headers, signal: AbortSignal.timeout(15000) });
-  } catch (e) {
-    alert('اتصال به سرور برقرار نشد، دوباره امتحان کن');
-    throw e;
-  }
-  if (res.status === 401) { logout(); throw new Error('unauthorized'); }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) { alert(data.error || 'خطا'); throw new Error(data.error); }
-  return data;
-}
-
-async function login() {
-  const password = document.getElementById('pw').value;
-  try {
-    const r = await fetch('/admin/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }), signal: AbortSignal.timeout(15000) });
-    const data = await r.json();
-    if (!r.ok) { document.getElementById('loginErr').textContent = data.error; return; }
-    TOKEN = data.token;
-    localStorage.setItem('lando_admin_token', TOKEN);
-    boot();
-  } catch (e) { document.getElementById('loginErr').textContent = 'خطای اتصال، دوباره امتحان کن'; }
-}
-function logout() { TOKEN = ''; localStorage.removeItem('lando_admin_token'); document.getElementById('app').style.display = 'none'; document.getElementById('loginBox').style.display = 'block'; }
-
-function showTab(name) {
-  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  const loaders = { dash: loadDash, currencies: loadCurrencies, topups: loadTopups, withdrawals: loadWithdrawals,
-    creqs: loadCreqs, products: loadProducts, orders: loadOrders, gifts: loadGifts, tasks: loadTasks,
-    gamecards: loadGameCards, gameconfig: loadGameConfig, leaderboard: loadLeaderboardTab, cardtasks: loadCardTasksTab,
-    tickets: loadTickets, users: loadUsers };
-  loaders[name]?.();
-}
-
-async function loadDash() {
-  const s = await api('/stats');
-  document.getElementById('statsCard').innerHTML = `
-    <p>کاربران: <b>${s.users}</b></p>
-    <p>سفارش‌ها: <b>${s.orders}</b></p>
-    <p>مجموع واریزی تومانی: <b>${s.totalToman.toLocaleString()}</b></p>
-    <p>شارژهای در انتظار: <b>${s.pendingTopups}</b></p>
-    <p>درخواست‌های ارزی در انتظار: <b>${s.pendingCurrency}</b></p>
-    <p>تیکت‌های باز: <b>${s.openTickets}</b></p>
-  `;
-}
-
-/* ---------- ارزها ---------- */
-async function loadCurrencies() {
-  const rows = await api('/currencies');
-  document.getElementById('currenciesTable').innerHTML = `
-    <table><tr><th>کد</th><th>نام</th><th>نرخ (تومان)</th><th>فعال</th></tr>
-    ${rows.map(c => `<tr><td>${c.code}</td><td>${c.name}</td><td>${c.rate_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td></tr>`).join('')}
-    </table>`;
-}
-async function saveCurrency() {
-  await api('/currencies', { method: 'POST', body: JSON.stringify({
-    code: document.getElementById('curCode').value,
-    name: document.getElementById('curName').value,
-    rate_toman: document.getElementById('curRate').value,
-    min_deposit: document.getElementById('curMinDep').value,
-    min_withdraw: document.getElementById('curMinWd').value,
-    active: document.getElementById('curActive').value === '1',
-  }) });
-  loadCurrencies();
-}
-
-/* ---------- شارژ کارت‌به‌کارت ---------- */
-async function loadTopups() {
-  const rows = await api('/toman-topups');
-  document.getElementById('topupsTable').innerHTML = rows.length ? `
-    <table><tr><th>کاربر</th><th>مبلغ</th><th>کد رهگیری</th><th>عملیات</th></tr>
-    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString()}</td><td>${r.tracking_code}</td>
-      <td><button class="btn" onclick="decideTopup(${r.id},true)">تایید</button>
-      <button class="btn danger" onclick="decideTopup(${r.id},false)">رد</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">درخواستی نیست.</p>';
-}
-async function decideTopup(id, approve) { await api(`/toman-topups/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }); loadTopups(); }
-
-/* ---------- برداشت تومانی ---------- */
-async function loadWithdrawals() {
-  const rows = await api('/toman-withdrawals');
-  document.getElementById('withdrawalsTable').innerHTML = rows.length ? `
-    <table><tr><th>کاربر</th><th>مبلغ</th><th>شماره کارت</th><th>عملیات</th></tr>
-    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString()}</td><td>${r.card_number}</td>
-      <td><button class="btn" onclick="decideWithdrawal(${r.id},true)">ارسال شد</button>
-      <button class="btn danger" onclick="decideWithdrawal(${r.id},false)">رد</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">درخواستی نیست.</p>';
-}
-async function decideWithdrawal(id, approve) { await api(`/toman-withdrawals/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }); loadWithdrawals(); }
-
-/* ---------- واریز/برداشت ارزی ---------- */
-async function loadCreqs() {
-  const rows = await api('/currency-requests');
-  document.getElementById('creqsTable').innerHTML = rows.length ? `
-    <table><tr><th>کاربر</th><th>نوع</th><th>ارز</th><th>مقدار</th><th>هش/آدرس</th><th>عملیات</th></tr>
-    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.kind === 'deposit' ? 'واریز' : 'برداشت'}</td><td>${r.currency_code}</td><td>${r.amount}</td><td>${r.tx_hash || r.address || '-'}</td>
-      <td><button class="btn" onclick="decideCreq(${r.id},true)">تایید</button>
-      <button class="btn danger" onclick="decideCreq(${r.id},false)">رد</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">درخواستی نیست.</p>';
-}
-async function decideCreq(id, approve) { await api(`/currency-requests/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }); loadCreqs(); }
-
-/* ---------- محصولات ---------- */
-async function loadProducts() {
-  const rows = await api('/products');
-  document.getElementById('productsTable').innerHTML = `
-    <table><tr><th>عنوان</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
-    ${rows.map(p => `<tr><td>${p.title}</td><td>${p.price_toman.toLocaleString()}</td><td>${p.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editProduct(${JSON.stringify(p)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteProduct(${p.id})">حذف</button></td></tr>`).join('')}
-    </table>`;
-}
-function editProduct(p) {
-  document.getElementById('prodId').value = p.id;
-  document.getElementById('prodTitle').value = p.title;
-  document.getElementById('prodDesc').value = p.description || '';
-  document.getElementById('prodImage').value = p.image_url || '';
-  document.getElementById('prodPrice').value = p.price_toman;
-  document.getElementById('prodActive').value = p.active ? '1' : '0';
-}
-async function saveProduct() {
-  await api('/products', { method: 'POST', body: JSON.stringify({
-    id: document.getElementById('prodId').value || null,
-    title: document.getElementById('prodTitle').value,
-    description: document.getElementById('prodDesc').value,
-    image_url: document.getElementById('prodImage').value,
-    price_toman: document.getElementById('prodPrice').value,
-    active: document.getElementById('prodActive').value === '1',
-  }) });
-  document.getElementById('prodId').value = '';
-  ['prodTitle','prodDesc','prodImage','prodPrice'].forEach(id => document.getElementById(id).value = '');
-  loadProducts();
-}
-async function deleteProduct(id) { if (confirm('حذف بشه؟')) { await api(`/products/${id}`, { method: 'DELETE' }); loadProducts(); } }
-
-/* ---------- سفارش‌ها ---------- */
-async function loadOrders() {
-  const rows = await api('/orders');
-  document.getElementById('ordersTable').innerHTML = `
-    <table><tr><th>کاربر</th><th>محصول</th><th>تعداد</th><th>مبلغ</th><th>وضعیت</th><th>عملیات</th></tr>
-    ${rows.map(o => `<tr><td>${o.tg_id}</td><td>${o.product_title}</td><td>${o.qty}</td><td>${o.total_toman.toLocaleString()}</td><td>${o.status}</td>
-      <td>${o.status !== 'delivered' ? `<button class="btn" onclick="setOrderStatus(${o.id},'delivered')">تحویل شد</button>` : ''}</td></tr>`).join('')}
-    </table>`;
-}
-async function setOrderStatus(id, status) { await api(`/orders/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }); loadOrders(); }
-
-/* ---------- بازار گیفت ---------- */
-async function loadGifts() {
-  const rows = await api('/gift-offers');
-  document.getElementById('giftsTable').innerHTML = `
-    <table><tr><th>فروشنده</th><th>خریدار</th><th>عنوان</th><th>قیمت</th><th>وضعیت</th><th>عملیات</th></tr>
-    ${rows.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.buyer_tg_id || '-'}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString()}</td><td>${g.status}</td>
-      <td>${g.status === 'reserved' ? `<button class="btn danger" onclick="refundGift(${g.id})">بازگشت وجه به خریدار</button>` : ''}</td></tr>`).join('')}
-    </table>`;
-}
-async function refundGift(id) { if (confirm('مبلغ به خریدار برگرده؟')) { await api(`/gift-offers/${id}/refund`, { method: 'POST' }); loadGifts(); } }
-
-/* ---------- تسک‌ها ---------- */
-async function loadTasks() {
-  const rows = await api('/tasks');
-  document.getElementById('tasksTable').innerHTML = `
-    <table><tr><th>عنوان</th><th>نوع</th><th>پاداش</th><th>فعال</th><th>عملیات</th></tr>
-    ${rows.map(t => `<tr><td>${t.title}</td><td>${t.kind}</td><td>${t.reward_toman.toLocaleString()}</td><td>${t.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editTask(${JSON.stringify(t)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteTask(${t.id})">حذف</button></td></tr>`).join('')}
-    </table>`;
-}
-function editTask(t) {
-  document.getElementById('taskId').value = t.id;
-  document.getElementById('taskTitle').value = t.title;
-  document.getElementById('taskKind').value = t.kind;
-  document.getElementById('taskChannel').value = t.channel_username || '';
-  document.getElementById('taskReward').value = t.reward_toman;
-  document.getElementById('taskActive').value = t.active ? '1' : '0';
-}
-async function saveTask() {
-  await api('/tasks', { method: 'POST', body: JSON.stringify({
-    id: document.getElementById('taskId').value || null,
-    title: document.getElementById('taskTitle').value,
-    kind: document.getElementById('taskKind').value,
-    channel_username: document.getElementById('taskChannel').value,
-    reward_toman: document.getElementById('taskReward').value,
-    active: document.getElementById('taskActive').value === '1',
-  }) });
-  document.getElementById('taskId').value = '';
-  loadTasks();
-}
-async function deleteTask(id) { if (confirm('حذف بشه؟')) { await api(`/tasks/${id}`, { method: 'DELETE' }); loadTasks(); } }
-
-/* ---------- کارت‌های بازی ---------- */
-async function loadGameCards() {
-  const rows = await api('/game/cards');
-  document.getElementById('gameCardsTable').innerHTML = rows.length ? `
-    <table><tr><th>اسم</th><th>ریرتی</th><th>قدرت</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
-    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.rarity}</td><td>${c.base_power}</td><td>${c.price_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editGameCard(${JSON.stringify(c)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteGameCard(${c.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز کارتی ثبت نشده.</p>';
-}
-function editGameCard(c) {
-  document.getElementById('gcId').value = c.id;
-  document.getElementById('gcName').value = c.name;
-  document.getElementById('gcImage').value = c.image_url || '';
-  document.getElementById('gcRarity').value = c.rarity;
-  document.getElementById('gcPower').value = c.base_power;
-  document.getElementById('gcPrice').value = c.price_toman;
-  document.getElementById('gcMaxLevel').value = c.max_level;
-  document.getElementById('gcActive').value = c.active ? '1' : '0';
-}
-async function saveGameCard() {
-  await api('/game/cards', { method: 'POST', body: JSON.stringify({
-    id: document.getElementById('gcId').value || null,
-    name: document.getElementById('gcName').value,
-    image_url: document.getElementById('gcImage').value,
-    rarity: document.getElementById('gcRarity').value,
-    base_power: document.getElementById('gcPower').value,
-    price_toman: document.getElementById('gcPrice').value,
-    max_level: document.getElementById('gcMaxLevel').value,
-    active: document.getElementById('gcActive').value === '1',
-  }) });
-  document.getElementById('gcId').value = '';
-  loadGameCards();
-}
-async function deleteGameCard(id) { if (confirm('حذف بشه؟')) { await api(`/game/cards/${id}`, { method: 'DELETE' }); loadGameCards(); } }
-
-/* ---------- تنظیمات بازی ---------- */
-async function loadGameConfig() {
-  const cfg = await api('/game/config');
-  document.getElementById('cfgMinDeck').value = cfg.min_deck_size;
-  document.getElementById('cfgMaxDeck').value = cfg.max_deck_size;
-  document.getElementById('cfgDailyLimit').value = cfg.daily_play_limit;
-  document.getElementById('cfgExtraPrice').value = cfg.extra_play_price_toman;
-  document.getElementById('cfgExtraCount').value = cfg.extra_play_count;
-  document.getElementById('cfgUpgradeCost').value = cfg.upgrade_base_cost_toman;
-  document.getElementById('cfgResetDays').value = cfg.leaderboard_reset_days;
-}
-async function saveGameConfig() {
-  await api('/game/config', { method: 'POST', body: JSON.stringify({
-    min_deck_size: document.getElementById('cfgMinDeck').value,
-    max_deck_size: document.getElementById('cfgMaxDeck').value,
-    daily_play_limit: document.getElementById('cfgDailyLimit').value,
-    extra_play_price_toman: document.getElementById('cfgExtraPrice').value,
-    extra_play_count: document.getElementById('cfgExtraCount').value,
-    upgrade_base_cost_toman: document.getElementById('cfgUpgradeCost').value,
-    leaderboard_reset_days: document.getElementById('cfgResetDays').value,
-  }) });
-  alert('ذخیره شد');
-}
-
-/* ---------- جدول امتیازات و جوایز ---------- */
-async function loadLeaderboardTab() {
-  const prizes = await api('/game/leaderboard-prizes');
-  document.getElementById('leaderboardPrizesTable').innerHTML = prizes.length ? `
-    <table><tr><th>از رتبه</th><th>تا رتبه</th><th>جایزه</th><th>عملیات</th></tr>
-    ${prizes.map(p => `<tr><td>${p.rank_from}</td><td>${p.rank_to}</td><td>${p.reward_toman.toLocaleString()}</td>
-      <td><button class="btn danger" onclick="deleteLeaderboardPrize(${p.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">جایزه‌ای ثبت نشده.</p>';
-
-  const { leaderboard, state } = await api('/game/leaderboard');
-  document.getElementById('leaderboardTable').innerHTML = `
-    <p class="muted">شروع دوره فعلی: ${state.period_started_at}</p>
-    <table><tr><th>رتبه</th><th>کاربر</th><th>امتیاز</th><th>برد/باخت</th></tr>
-    ${leaderboard.map((p, i) => `<tr><td>${i + 1}</td><td>${p.first_name || ''} (${p.tg_id})</td><td>${p.score}</td><td>${p.wins}/${p.losses}</td></tr>`).join('')}
-    </table>`;
-}
-async function saveLeaderboardPrize() {
-  await api('/game/leaderboard-prizes', { method: 'POST', body: JSON.stringify({
-    id: document.getElementById('prizeId').value || null,
-    rank_from: document.getElementById('prizeFrom').value,
-    rank_to: document.getElementById('prizeTo').value,
-    reward_toman: document.getElementById('prizeReward').value,
-  }) });
-  document.getElementById('prizeId').value = '';
-  loadLeaderboardTab();
-}
-async function deleteLeaderboardPrize(id) { if (confirm('حذف بشه؟')) { await api(`/game/leaderboard-prizes/${id}`, { method: 'DELETE' }); loadLeaderboardTab(); } }
-async function resetLeaderboardNow() {
-  if (!confirm('جوایز پخش و جدول صفر بشه؟')) return;
-  await api('/game/leaderboard-reset', { method: 'POST' });
-  loadLeaderboardTab();
-}
-
-/* ---------- تسک‌های کارتی ---------- */
-async function loadCardTasksTab() {
-  const cards = await api('/game/cards');
-  document.getElementById('ctRewardCard').innerHTML = cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  const rows = await api('/card-tasks');
-  document.getElementById('cardTasksTable').innerHTML = rows.length ? `
-    <table><tr><th>عنوان</th><th>نوع</th><th>کارت جایزه</th><th>فعال</th><th>عملیات</th></tr>
-    ${rows.map(t => `<tr><td>${t.title}</td><td>${t.kind}</td><td>${t.reward_card_id}</td><td>${t.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editCardTask(${JSON.stringify(t)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteCardTask(${t.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">تسک کارتی ثبت نشده.</p>';
-}
-function editCardTask(t) {
-  document.getElementById('ctId').value = t.id;
-  document.getElementById('ctTitle').value = t.title;
-  document.getElementById('ctKind').value = t.kind;
-  document.getElementById('ctChannel').value = t.channel_username || '';
-  document.getElementById('ctRewardCard').value = t.reward_card_id;
-  document.getElementById('ctActive').value = t.active ? '1' : '0';
-}
-async function saveCardTask() {
-  await api('/card-tasks', { method: 'POST', body: JSON.stringify({
-    id: document.getElementById('ctId').value || null,
-    title: document.getElementById('ctTitle').value,
-    kind: document.getElementById('ctKind').value,
-    channel_username: document.getElementById('ctChannel').value,
-    reward_card_id: document.getElementById('ctRewardCard').value,
-    active: document.getElementById('ctActive').value === '1',
-  }) });
-  document.getElementById('ctId').value = '';
-  loadCardTasksTab();
-}
-async function deleteCardTask(id) { if (confirm('حذف بشه؟')) { await api(`/card-tasks/${id}`, { method: 'DELETE' }); loadCardTasksTab(); } }
-
-/* ---------- تیکت‌ها ---------- */
-async function loadTickets() {
-  const rows = await api('/tickets');
-  document.getElementById('ticketsList').innerHTML = `
-    <table><tr><th>کاربر</th><th>آخرین پیام</th><th>وضعیت</th><th></th></tr>
-    ${rows.map(t => `<tr><td>${t.first_name || ''} (${t.tg_id})</td><td>${(t.last_message || '').slice(0,40)}</td><td>${t.status}</td>
-      <td><button class="btn secondary" onclick="openTicket(${t.id})">باز کردن</button></td></tr>`).join('')}
-    </table>`;
-}
-async function openTicket(id) {
-  currentTicketId = id;
-  const { messages } = await api(`/tickets/${id}/messages`);
-  document.getElementById('ticketDetail').style.display = 'block';
-  document.getElementById('ticketMessages').innerHTML = messages.map(m =>
-    `<p><b>${m.sender === 'user' ? '👤 کاربر' : '🛠 ادمین'}:</b> ${m.body || ''}${m.image_url ? `<br><img src="${m.image_url}" style="max-width:200px;">` : ''}</p>`
-  ).join('');
-}
-async function sendReply() {
-  const text = document.getElementById('replyText').value;
-  if (!text.trim()) return;
-  await api(`/tickets/${currentTicketId}/reply`, { method: 'POST', body: JSON.stringify({ text }) });
-  document.getElementById('replyText').value = '';
-  openTicket(currentTicketId);
-}
-async function closeCurrentTicket() { await api(`/tickets/${currentTicketId}/close`, { method: 'POST' }); loadTickets(); document.getElementById('ticketDetail').style.display = 'none'; }
-
-/* ---------- کاربران ---------- */
-async function loadUsers() {
-  const q = document.getElementById('userSearch').value;
-  const rows = await api('/users?q=' + encodeURIComponent(q));
-  document.getElementById('usersTable').innerHTML = `
-    <table><tr><th>آیدی</th><th>نام</th><th>موجودی</th><th>مسدود؟</th><th>عملیات</th></tr>
-    ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString()}</td><td>${u.is_banned ? '🚫' : '-'}</td>
-      <td>
-        <button class="btn secondary" onclick="adjustBalance(${u.tg_id})">اصلاح موجودی</button>
-        ${u.is_banned ? `<button class="btn" onclick="unbanUser(${u.tg_id})">رفع مسدودی</button>` : `<button class="btn danger" onclick="banUser(${u.tg_id})">مسدود کن</button>`}
-      </td></tr>`).join('')}
-    </table>`;
-}
-async function adjustBalance(tgId) {
-  const amount = prompt('مبلغ (منفی برای کسر):');
-  if (!amount) return;
-  await api(`/users/${tgId}/adjust-balance`, { method: 'POST', body: JSON.stringify({ amount: Number(amount) }) });
-  loadUsers();
-}
-async function banUser(tgId) {
-  const reason = prompt('دلیل مسدودی (اختیاری):') || '';
-  await api(`/users/${tgId}/ban`, { method: 'POST', body: JSON.stringify({ reason }) });
-  loadUsers();
-}
-async function unbanUser(tgId) { await api(`/users/${tgId}/unban`, { method: 'POST' }); loadUsers(); }
-
-/* ---------- شروع ---------- */
-function boot() {
-  document.getElementById('loginBox').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  loadDash();
-}
-if (TOKEN) boot();
+let TOKEN=localStorage.getItem('lando_admin_token')||'';let currentTicketId=null;
+function toast(msg,type){type=type||'ok';const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type;requestAnimationFrame(()=>t.classList.add('s'));setTimeout(()=>t.classList.remove('s'),2500)}
+async function api(path,opts){opts=opts||{};const h={'Content-Type':'application/json',Authorization:'Bearer '+TOKEN};if(opts.headers)Object.assign(h,opts.headers);const res=await fetch('/admin/api'+path,{method:opts.method||'GET',headers:h,body:opts.body});if(res.status===401){logout();throw new Error('unauthorized')}const data=await res.json().catch(()=>({}));if(!res.ok){toast(data.error||'خطا','er');throw new Error(data.error)}return data}
+async function login(){const pw=document.getElementById('pw').value;try{const r=await fetch('/admin/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});const d=await r.json();if(!r.ok){document.getElementById('loginErr').textContent=d.error;return}TOKEN=d.token;localStorage.setItem('lando_admin_token',TOKEN);boot()}catch(e){document.getElementById('loginErr').textContent='خطای اتصال'}}
+function logout(){TOKEN='';localStorage.removeItem('lando_admin_token');document.getElementById('app').style.display='none';document.getElementById('loginBox').style.display='block'}
+function showTab(name){document.querySelectorAll('.tab').forEach(el=>el.classList.remove('a'));document.getElementById('tab-'+name).classList.add('a');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('a',b.dataset.tab===name));const loaders={dash:loadDash,currencies:loadCurrencies,topups:loadTopups,withdrawals:loadWithdrawals,creqs:loadCreqs,products:loadProducts,orders:loadOrders,gifts:loadGifts,tasks:loadTasks,gamecards:loadGameCards,gameconfig:loadGameConfig,leaderboard:loadLeaderboardTab,cardtasks:loadCardTasksTab,tickets:loadTickets,users:loadUsers};loaders[name]&&loaders[name]()}
+async function loadDash(){const s=await api('/stats');document.getElementById('statsCard').innerHTML='<div class="stat-box"><div class="v">'+s.users+'</div><div class="l">👤 کاربران</div></div><div class="stat-box"><div class="v">'+s.orders+'</div><div class="l">📦 سفارش‌ها</div></div><div class="stat-box"><div class="v">'+(s.totalToman?s.totalToman.toLocaleString():0)+'</div><div class="l">💰 واریز کل (ت)</div></div><div class="stat-box"><div class="v">'+s.pendingTopups+'</div><div class="l">⏳ شارژ در انتظار</div></div><div class="stat-box"><div class="v">'+s.pendingCurrency+'</div><div class="l">⏳ ارزی در انتظار</div></div><div class="stat-box"><div class="v">'+s.openTickets+'</div><div class="l">🎫 تیکت باز</div></div>'}
+async function loadCurrencies(){const rows=await api('/currencies');document.getElementById('currenciesTable').innerHTML=rows.length?'<div class="card"><table><tr><th>کد</th><th>نام</th><th>نرخ</th><th>فعال</th></tr>'+rows.map(c=>'<tr><td><b>'+c.code+'</b></td><td>'+c.name+'</td><td>'+(c.rate_toman?c.rate_toman.toLocaleString():0)+'</td><td>'+(c.active?'<span class="tag tg-g">✅</span>':'<span class="tag tg-r">❌</span>')+'</td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">💱</div><p>ارزی ثبت نشده</p></div>'}
+async function saveCurrency(){await api('/currencies',{method:'POST',body:JSON.stringify({code:document.getElementById('curCode').value,name:document.getElementById('curName').value,rate_toman:document.getElementById('curRate').value,min_deposit:document.getElementById('curMinDep').value,min_withdraw:document.getElementById('curMinWd').value,active:document.getElementById('curActive').value==='1'})});toast('ذخیره شد');loadCurrencies()}
+async function loadTopups(){const rows=await api('/toman-topups');document.getElementById('topupsTable').innerHTML=rows.length?'<div class="card"><table><tr><th>کاربر</th><th>مبلغ</th><th>کد رهگیری</th><th></th></tr>'+rows.map(r=>'<tr><td>'+r.tg_id+'</td><td><b>'+r.amount.toLocaleString()+'</b> ت</td><td>'+r.tracking_code+'</td><td><button class="btn btn-p" onclick="decideTopup('+r.id+',true)">✅ تایید</button> <button class="btn btn-d" onclick="decideTopup('+r.id+',false)">❌ رد</button></td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">📥</div><p>درخواستی نیست</p></div>'}
+async function decideTopup(id,approve){await api('/toman-topups/'+id+'/decide',{method:'POST',body:JSON.stringify({approve})});loadTopups()}
+async function loadWithdrawals(){const rows=await api('/toman-withdrawals');document.getElementById('withdrawalsTable').innerHTML=rows.length?'<div class="card"><table><tr><th>کاربر</th><th>مبلغ</th><th>شماره کارت</th><th></th></tr>'+rows.map(r=>'<tr><td>'+r.tg_id+'</td><td><b>'+r.amount.toLocaleString()+'</b> ت</td><td>'+r.card_number+'</td><td><button class="btn btn-p" onclick="decideWithdrawal('+r.id+',true)">✅ ارسال شد</button> <button class="btn btn-d" onclick="decideWithdrawal('+r.id+',false)">❌ رد</button></td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">📤</div><p>درخواستی نیست</p></div>'}
+async function decideWithdrawal(id,approve){await api('/toman-withdrawals/'+id+'/decide',{method:'POST',body:JSON.stringify({approve})});loadWithdrawals()}
+async function loadCreqs(){const rows=await api('/currency-requests');document.getElementById('creqsTable').innerHTML=rows.length?'<div class="card"><table><tr><th>کاربر</th><th>نوع</th><th>ارز</th><th>مقدار</th><th>هش/آدرس</th><th></th></tr>'+rows.map(r=>'<tr><td>'+r.tg_id+'</td><td>'+(r.kind==='deposit'?'<span class="tag tg-g">واریز</span>':'<span class="tag tg-r">برداشت</span>')+'</td><td>'+r.currency_code+'</td><td>'+r.amount+'</td><td>'+(r.tx_hash||r.address||'-')+'</td><td><button class="btn btn-p" onclick="decideCreq('+r.id+',true)">✅</button> <button class="btn btn-d" onclick="decideCreq('+r.id+',false)">❌</button></td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">🔄</div><p>درخواستی نیست</p></div>'}
+async function decideCreq(id,approve){await api('/currency-requests/'+id+'/decide',{method:'POST',body:JSON.stringify({approve})});loadCreqs()}
+async function loadProducts(){const rows=await api('/products');document.getElementById('productsTable').innerHTML=rows.length?'<div class="card"><table><tr><th>عنوان</th><th>قیمت</th><th>فعال</th><th></th></tr>'+rows.map(p=>'<tr><td>'+p.title+'</td><td>'+p.price_toman.toLocaleString()+'</td><td>'+(p.active?'<span class="tag tg-g">✅</span>':'<span class="tag tg-r">❌</span>')+'</td><td><button class="btn btn-s" onclick="editProduct('+JSON.stringify(p).replace(/"/g,"'")+')">✏️</button> <button class="btn btn-d" onclick="deleteProduct('+p.id+')">🗑️</button></td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">🛍</div><p>محصولی نیست</p></div>'}
+function editProduct(p){p=JSON.parse(p.replace(/'/g,'"'));document.getElementById('prodId').value=p.id;document.getElementById('prodTitle').value=p.title;document.getElementById('prodDesc').value=p.description||'';document.getElementById('prodImage').value=p.image_url||'';document.getElementById('prodPrice').value=p.price_toman;document.getElementById('prodActive').value=p.active?'1':'0'}
+async function saveProduct(){await api('/products',{method:'POST',body:JSON.stringify({id:document.getElementById('prodId').value||null,title:document.getElementById('prodTitle').value,description:document.getElementById('prodDesc').value,image_url:document.getElementById('prodImage').value,price_toman:document.getElementById('prodPrice').value,active:document.getElementById('prodActive').value==='1'})});document.getElementById('prodId').value='';['prodTitle','prodDesc','prodImage','prodPrice'].forEach(id=>document.getElementById(id).value='');toast('ذخیره شد');loadProducts()}
+async function deleteProduct(id){if(confirm('حذف بشه؟')){await api('/products/'+id,{method:'DELETE'});loadProducts()}}
+async function loadOrders(){const rows=await api('/orders');document.getElementById('ordersTable').innerHTML=rows.length?'<div class="card"><table><tr><th>کاربر</th><th>محصول</th><th>تعداد</th><th>مبلغ</th><th>وضعیت</th><th></th></tr>'+rows.map(o=>'<tr><td>'+o.tg_id+'</td><td>'+o.product_title+'</td><td>'+o.qty+'</td><td>'+o.total_toman.toLocaleString()+'</td><td><span class="tag '+(o.status==='delivered'?'tg-g':o.status==='paid'?'tg-b':'tg-r')+'">'+o.status+'</span></td><td>'+(o.status!=='delivered'?'<button class="btn btn-p" onclick="setOrderStatus('+o.id+','+"'"+'delivered'+"'"+')">✅ تحویل</button>':'')+'</td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">📦</div><p>سفارشی نیست</p></div>'}
+async function setOrderStatus(id,status){await api('/orders/'+id+'/status',{method:'POST',body:JSON.stringify({status})});loadOrders()}
+async function loadGifts(){const rows=await api('/gift-offers');document.getElementById('giftsTable').innerHTML=rows.length?'<div class="card"><table><tr><th>فروشنده</th><th>خریدار</th><th>عنوان</th><th>قیمت</th><th>وضعیت</th><th></th></tr>'+rows.map(g=>'<tr><td>'+g.seller_tg_id+'</td><td>'+(g.buyer_tg_id||'-')+'</td><td>'+g.title+'</td><td>'+g.price_toman.toLocaleString()+'</td><td><span class="tag '+(g.status==='active'?'tg-g':g.status==='reserved'?'tg-y':'tg-b')+'">'+g.status+'</span></td><td>'+(g.status==='reserved'?'<button class="btn btn-d" onclick="refundGift('+g.id+')">↩️ بازگشت وجه</button>':'')+'</td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">🎁</div><p>آگهی نیست</p></div>'}
+async function refundGift(id){if(confirm('مبلغ به خریدار برگرده؟')){await api('/gift-offers/'+id+'/refund',{method:'POST'});loadGifts()}}
+async function loadTasks(){const rows=await api('/tasks');document.getElementById('tasksTable').innerHTML=rows.length?'<div class="card"><table><tr><th>عنوان</th><th>نوع</th><th>پاداش</th><th>فعال</th><th></th></tr>'+rows.map(t=>'<tr><td>'+t.title+'</td><td>'+t.kind+'</td><td>'+t.reward_toman.toLocaleString()+'</td><td>'+(t.active?'<span class="tag tg-g">✅</span>':'<span class="tag tg-r">❌</span>')+'</td><td><button class="btn btn-s" onclick="editTask('+JSON.stringify(t).replace(/"/g,"'")+')">✏️</button> <button class="btn btn-d" onclick="deleteTask('+t.id+')">🗑️</button></td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">✅</div><p>تسکی نیست</p></div>'}
+function editTask(t){t=JSON.parse(t.replace(/'/g,'"'));document.getElementById('taskId').value=t.id;document.getElementById('taskTitle').value=t.title;document.getElementById('taskKind').value=t.kind;document.getElementById('taskChannel').value=t.channel_username||'';document.getElementById('taskReward').value=t.reward_toman;document.getElementById('taskActive').value=t.active?'1':'0'}
+async function saveTask(){await api('/tasks',{method:'POST',body:JSON.stringify({id:document.getElementById('taskId').value||null,title:document.getElementById('taskTitle').value,kind:document.getElementById('taskKind').value,channel_username:document.getElementById('taskChannel').value,reward_toman:document.getElementById('taskReward').value,active:document.getElementById('taskActive').value==='1'})});document.getElementById('taskId').value='';toast('ذخیره شد');loadTasks()}
+async function deleteTask(id){if(confirm('حذف بشه؟')){await api('/tasks/'+id,{method:'DELETE'});loadTasks()}}
+async function loadGameCards(){const rows=await api('/game/cards');document.getElementById('gameCardsTable').innerHTML=rows.length?'<div class="card"><table><tr><th>اسم</th><th>ریرتی</th><th>قدرت</th><th>قیمت</th><th>فعال</th><th></th></tr>'+rows.map(c=>'<tr><td>'+c.name+'</td><td><span class="tag rarity-'+c.rarity+'">'+c.rarity+'</span></td><td>'+c.base_power+'</td><td>'+c.price_toman.toLocaleString()+'</td><td>'+(c.active?'<span class="tag tg-g">✅</span>':'<span class="tag tg-r">❌</span>')+'</td><td><button class="btn btn-s" onclick="editGameCard('+JSON.stringify(c).replace(/"/g,"'")+')">✏️</button> <button class="btn btn-d" onclick="deleteGameCard('+c.id+')">🗑️</button></td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">🃏</div><p>کارتی نیست</p></div>'}
+function editGameCard(c){c=JSON.parse(c.replace(/'/g,'"'));document.getElementById('gcId').value=c.id;document.getElementById('gcName').value=c.name;document.getElementById('gcImage').value=c.image_url||'';document.getElementById('gcRarity').value=c.rarity;document.getElementById('gcPower').value=c.base_power;document.getElementById('gcPrice').value=c.price_toman;document.getElementById('gcMaxLevel').value=c.max_level;document.getElementById('gcActive').value=c.active?'1':'0'}
+async function saveGameCard(){await api('/game/cards',{method:'POST',body:JSON.stringify({id:document.getElementById('gcId').value||null,name:document.getElementById('gcName').value,image_url:document.getElementById('gcImage').value,rarity:document.getElementById('gcRarity').value,base_power:document.getElementById('gcPower').value,price_toman:document.getElementById('gcPrice').value,max_level:document.getElementById('gcMaxLevel').value,active:document.getElementById('gcActive').value==='1'})});document.getElementById('gcId').value='';toast('ذخیره شد');loadGameCards()}
+async function deleteGameCard(id){if(confirm('حذف بشه؟')){await api('/game/cards/'+id,{method:'DELETE'});loadGameCards()}}
+async function loadGameConfig(){const cfg=await api('/game/config');document.getElementById('cfgMinDeck').value=cfg.min_deck_size;document.getElementById('cfgMaxDeck').value=cfg.max_deck_size;document.getElementById('cfgDailyLimit').value=cfg.daily_play_limit;document.getElementById('cfgExtraPrice').value=cfg.extra_play_price_toman;document.getElementById('cfgExtraCount').value=cfg.extra_play_count;document.getElementById('cfgUpgradeCost').value=cfg.upgrade_base_cost_toman;document.getElementById('cfgResetDays').value=cfg.leaderboard_reset_days}
+async function saveGameConfig(){await api('/game/config',{method:'POST',body:JSON.stringify({min_deck_size:document.getElementById('cfgMinDeck').value,max_deck_size:document.getElementById('cfgMaxDeck').value,daily_play_limit:document.getElementById('cfgDailyLimit').value,extra_play_price_toman:document.getElementById('cfgExtraPrice').value,extra_play_count:document.getElementById('cfgExtraCount').value,upgrade_base_cost_toman:document.getElementById('cfgUpgradeCost').value,leaderboard_reset_days:document.getElementById('cfgResetDays').value})});toast('ذخیره شد')}
+async function loadLeaderboardTab(){const prizes=await api('/game/leaderboard-prizes');document.getElementById('leaderboardPrizesTable').innerHTML=prizes.length?'<div class="card"><table><tr><th>از</th><th>تا</th><th>جایزه</th><th></th></tr>'+prizes.map(p=>'<tr><td>'+p.rank_from+'</td><td>'+p.rank_to+'</td><td>'+p.reward_toman.toLocaleString()+'</td><td><button class="btn btn-d" onclick="deleteLeaderboardPrize('+p.id+')">🗑️</button></td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">🏆</div><p>جایزه‌ای ثبت نشده</p></div>';const data=await api('/game/leaderboard');document.getElementById('leaderboardTable').innerHTML='<p class="muted" style="margin-bottom:10px">شروع دوره: '+data.state.period_started_at+'</p>'+(data.leaderboard.length?'<div class="card"><table><tr><th>رتبه</th><th>کاربر</th><th>امتیاز</th><th>برد/باخت</th></tr>'+data.leaderboard.map((p,i)=>'<tr><td><b>'+(i+1)+'</b></td><td>'+(p.first_name||'')+' ('+p.tg_id+')</td><td>'+p.score+'</td><td>'+p.wins+'/'+p.losses+'</td></tr>').join('')+'</table></div>':'<div class="empty"><p>هنوز کسی امتیازی نگرفته</p></div>')}
+async function saveLeaderboardPrize(){await api('/game/leaderboard-prizes',{method:'POST',body:JSON.stringify({id:document.getElementById('prizeId').value||null,rank_from:document.getElementById('prizeFrom').value,rank_to:document.getElementById('prizeTo').value,reward_toman:document.getElementById('prizeReward').value})});document.getElementById('prizeId').value='';toast('ذخیره شد');loadLeaderboardTab()}
+async function deleteLeaderboardPrize(id){if(confirm('حذف بشه؟')){await api('/game/leaderboard-prizes/'+id,{method:'DELETE'});loadLeaderboardTab()}}
+async function resetLeaderboardNow(){if(!confirm('جوایز پخش و جدول صفر بشه؟'))return;await api('/game/leaderboard-reset',{method:'POST'});toast('ریست شد');loadLeaderboardTab()}
+async function loadCardTasksTab(){const cards=await api('/game/cards');var opts=cards.map(c=>'<option value="'+c.id+'">'+c.name+'</option>').join('');document.getElementById('ctRewardCard').innerHTML=opts;const rows=await api('/card-tasks');document.getElementById('cardTasksTable').innerHTML=rows.length?'<div class="card"><table><tr><th>عنوان</th><th>نوع</th><th>کارت</th><th>فعال</th><th></th></tr>'+rows.map(t=>'<tr><td>'+t.title+'</td><td>'+t.kind+'</td><td>'+t.reward_card_id+'</td><td>'+(t.active?'<span class="tag tg-g">✅</span>':'<span class="tag tg-r">❌</span>')+'</td><td><button class="btn btn-s" onclick="editCardTask('+JSON.stringify(t).replace(/"/g,"'")+')">✏️</button> <button class="btn btn-d" onclick="deleteCardTask('+t.id+')">🗑️</button></td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">🎯</div><p>تسک کارتی نیست</p></div>'}
+function editCardTask(t){t=JSON.parse(t.replace(/'/g,'"'));document.getElementById('ctId').value=t.id;document.getElementById('ctTitle').value=t.title;document.getElementById('ctKind').value=t.kind;document.getElementById('ctChannel').value=t.channel_username||'';document.getElementById('ctRewardCard').value=t.reward_card_id;document.getElementById('ctActive').value=t.active?'1':'0'}
+async function saveCardTask(){await api('/card-tasks',{method:'POST',body:JSON.stringify({id:document.getElementById('ctId').value||null,title:document.getElementById('ctTitle').value,kind:document.getElementById('ctKind').value,channel_username:document.getElementById('ctChannel').value,reward_card_id:document.getElementById('ctRewardCard').value,active:document.getElementById('ctActive').value==='1'})});document.getElementById('ctId').value='';toast('ذخیره شد');loadCardTasksTab()}
+async function deleteCardTask(id){if(confirm('حذف بشه؟')){await api('/card-tasks/'+id,{method:'DELETE'});loadCardTasksTab()}}
+async function loadTickets(){const rows=await api('/tickets');document.getElementById('ticketsList').innerHTML=rows.length?'<div class="card"><table><tr><th>کاربر</th><th>آخرین پیام</th><th>وضعیت</th><th></th></tr>'+rows.map(t=>'<tr><td>'+(t.first_name||'')+' ('+t.tg_id+')</td><td>'+(t.last_message||'').slice(0,40)+'...</td><td><span class="tag '+(t.status==='open'?'tg-g':'tg-r')+'">'+t.status+'</span></td><td><button class="btn btn-s" onclick="openTicket('+t.id+')">💬 باز کردن</button></td></tr>').join('')+'</table></div>':'<div class="empty"><div class="ic">💬</div><p>تیکتی نیست</p></div>'}
+async function openTicket(id){currentTicketId=id;const data=await api('/tickets/'+id+'/messages');document.getElementById('ticketDetail').style.display='block';document.getElementById('ticketMessages').innerHTML=data.messages.map(m=>'<div style="padding:8px 0;border-bottom:1px solid var(--border)"><b style="color:'+(m.sender==='user'?'var(--accent2)':'var(--success)')+'">'+(m.sender==='user'?'👤 کاربر':'🛠 ادمین')+':</b> '+(m.body||'')+(m.image_url?'<br><img src="'+m.image_url+'" style="max-width:200px;border-radius:8px;margin-top:6px">':'')+'</div>').join('')}
+async function sendReply(){const text=document.getElementById('replyText').value;if(!text.trim())return;await api('/tickets/'+currentTicketId+'/reply',{method:'POST',body:JSON.stringify({text})});document.getElementById('replyText').value='';openTicket(currentTicketId)}
+async function closeCurrentTicket(){await api('/tickets/'+currentTicketId+'/close',{method:'POST'});loadTickets();document.getElementById('ticketDetail').style.display='none'}
+async function loadUsers(){const q=document.getElementById('userSearch').value;const rows=await api('/users?q='+encodeURIComponent(q));document.getElementById('usersTable').innerHTML=rows.length?'<div class="card"><table><tr><th>آیدی</th><th>نام</th><th>موجودی</th><th>وضعیت</th><th></th></tr>'+rows.map(u=>'<tr><td>'+u.tg_id+'</td><td>'+(u.first_name||'')+' '+(u.username?'@'+u.username:'')+'</td><td><b>'+u.balance_toman.toLocaleString()+'</b></td><td>'+(u.is_banned?'<span class="tag tg-r">🚫 مسدود</span>':'<span class="tag tg-g">✅ فعال</span>')+'</td><td><button class="btn btn-s" onclick="adjustBalance('+u.tg_id+')">💰 اصلاح</button> '+(u.is_banned?'<button class="btn btn-p" onclick="unbanUser('+u.tg_id+')">🔓 رفع</button>':'<button class="btn btn-d" onclick="banUser('+u.tg_id+')">🚫 مسدود</button>')+'</td></tr>').join('')+'</table></div>':'<div class="empty"><p>کاربری پیدا نشد</p></div>'}
+async function adjustBalance(tgId){const amount=prompt('مبلغ (منفی برای کسر):');if(!amount)return;await api('/users/'+tgId+'/adjust-balance',{method:'POST',body:JSON.stringify({amount:Number(amount)})});loadUsers()}
+async function banUser(tgId){const reason=prompt('دلیل (اختیاری):')||'';await api('/users/'+tgId+'/ban',{method:'POST',body:JSON.stringify({reason})});loadUsers()}
+async function unbanUser(tgId){await api('/users/'+tgId+'/unban',{method:'POST'});loadUsers()}
+function boot(){document.getElementById('loginBox').style.display='none';document.getElementById('app').style.display='block';loadDash()}
+if(TOKEN)boot();
 </script>
 </body>
 </html>
