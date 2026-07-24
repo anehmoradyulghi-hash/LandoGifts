@@ -17,6 +17,7 @@ import {
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
   getPaymentSettings, setPaymentSettings,
+  getMessageSettings, setMessageSettings, getAllUserIds,
 } from './db.js';
 import {
   listGameCards, upsertGameCard, deleteGameCard,
@@ -101,8 +102,42 @@ router.post('/currencies', (req, res) => {
 /* ---------- تنظیمات پرداخت (شماره کارت واریزی، دستی از پنل) ---------- */
 router.get('/payment-settings', (req, res) => res.json(getPaymentSettings()));
 router.post('/payment-settings', (req, res) => {
-  setPaymentSettings({ cardNumber: req.body.cardNumber, cardOwner: req.body.cardOwner });
+  setPaymentSettings({
+    cardNumber: req.body.cardNumber,
+    cardOwner: req.body.cardOwner,
+    zarinpalMerchantId: req.body.zarinpalMerchantId,
+  });
   res.json({ ok: true });
+});
+
+/* ---------- پیام‌های ربات (خوش‌آمد / درخواست عضویت) ---------- */
+router.get('/message-settings', (req, res) => res.json(getMessageSettings()));
+router.post('/message-settings', (req, res) => {
+  setMessageSettings({ welcomeMessage: req.body.welcomeMessage, joinPromptMessage: req.body.joinPromptMessage });
+  res.json({ ok: true });
+});
+
+/* ---------- پیام‌رسانی همگانی/تکی به کاربران ---------- */
+router.post('/broadcast', async (req, res) => {
+  const text = String(req.body.message || '').trim();
+  if (!text) return res.status(400).json({ error: 'متن پیام خالیه' });
+
+  if (req.body.targetTgId) {
+    const result = await sendMessage(Number(req.body.targetTgId), text);
+    if (!result.ok) return res.status(400).json({ error: 'ارسال ناموفق بود — کاربر رباتو بلاک کرده یا آیدی اشتباهه' });
+    return res.json({ ok: true, sent: 1 });
+  }
+
+  const ids = getAllUserIds();
+  res.json({ ok: true, queued: ids.length }); // فورا جواب می‌دیم؛ ارسال به همه تو پس‌زمینه ادامه پیدا می‌کنه و ریکوئست ادمین معطل نمی‌مونه
+  (async () => {
+    let sent = 0;
+    for (const id of ids) {
+      const r = await sendMessage(id, text).catch(() => ({ ok: false }));
+      if (r.ok) sent++;
+    }
+    console.log(`[broadcast] ${sent}/${ids.length} پیام با موفقیت ارسال شد`);
+  })();
 });
 
 /* ---------- شارژ کارت‌به‌کارت ---------- */
