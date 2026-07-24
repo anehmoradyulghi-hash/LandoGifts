@@ -526,11 +526,46 @@ export function getPaymentSettings() {
   return {
     cardNumber: getSetting('card_number', process.env.ADMIN_CARD_NUMBER || ''),
     cardOwner: getSetting('card_owner', process.env.ADMIN_CARD_OWNER || ''),
+    zarinpalMerchantId: getSetting('zarinpal_merchant_id', process.env.ZARINPAL_MERCHANT_ID || ''),
   };
 }
-export function setPaymentSettings({ cardNumber, cardOwner }) {
+export function setPaymentSettings({ cardNumber, cardOwner, zarinpalMerchantId }) {
   setSetting('card_number', cardNumber || '');
   setSetting('card_owner', cardOwner || '');
+  setSetting('zarinpal_merchant_id', zarinpalMerchantId || '');
+}
+
+const DEFAULT_WELCOME = 'به <b>Lando Gifts</b> خوش اومدی 🎁\nاز دکمه پایین فروشگاه رو باز کن:';
+const DEFAULT_JOIN_PROMPT = 'برای استفاده از ربات، اول عضو کانال ما شو:';
+export function getMessageSettings() {
+  return {
+    welcomeMessage: getSetting('welcome_message', DEFAULT_WELCOME),
+    joinPromptMessage: getSetting('join_prompt_message', DEFAULT_JOIN_PROMPT),
+  };
+}
+export function setMessageSettings({ welcomeMessage, joinPromptMessage }) {
+  setSetting('welcome_message', welcomeMessage || DEFAULT_WELCOME);
+  setSetting('join_prompt_message', joinPromptMessage || DEFAULT_JOIN_PROMPT);
+}
+
+/* ---- زرین‌پال: ثبت درخواست پرداخت تا موقع تایید در کال‌بک ردیابی بشه ---- */
+db.exec(`
+CREATE TABLE IF NOT EXISTS zarinpal_payments (
+  authority TEXT PRIMARY KEY,
+  tg_id INTEGER NOT NULL,
+  amount INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
+export function createZarinpalPayment(authority, tgId, amount) {
+  db.prepare('INSERT INTO zarinpal_payments (authority, tg_id, amount) VALUES (?,?,?)').run(authority, tgId, amount);
+}
+export function getZarinpalPayment(authority) {
+  return db.prepare('SELECT * FROM zarinpal_payments WHERE authority = ?').get(authority);
+}
+export function markZarinpalPaymentStatus(authority, status) {
+  db.prepare('UPDATE zarinpal_payments SET status = ? WHERE authority = ?').run(status, authority);
 }
 
 /* =========================================================================
