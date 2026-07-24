@@ -47,6 +47,7 @@
     <button class="active" data-tab="dash" onclick="showTab('dash')">داشبورد</button>
     <button data-tab="currencies" onclick="showTab('currencies')">ارزها</button>
     <button data-tab="payment" onclick="showTab('payment')">پرداخت</button>
+    <button data-tab="messages" onclick="showTab('messages')">پیام‌ها</button>
     <button data-tab="topups" onclick="showTab('topups')">شارژ کارت‌به‌کارت</button>
     <button data-tab="withdrawals" onclick="showTab('withdrawals')">برداشت تومانی</button>
     <button data-tab="creqs" onclick="showTab('creqs')">واریز/برداشت ارزی</button>
@@ -86,14 +87,38 @@
 
     <section class="tab" id="tab-payment">
       <div class="card">
-        <h3>شماره کارت واریزی</h3>
+        <h3>شماره کارت واریزی (کارت‌به‌کارت)</h3>
         <p class="muted">این شماره همونیه که تو مینی‌اپ به کاربر نشون داده می‌شه تا کارت‌به‌کارت واریز کنه. هروقت عوضش کنی، فوری تو اپ همه کاربرا آپدیت می‌شه.</p>
         <label>شماره کارت</label>
         <input id="payCardNumber" placeholder="6037-xxxx-xxxx-xxxx">
         <label>نام صاحب کارت</label>
         <input id="payCardOwner" placeholder="مثلا: علی محمدی">
+        <h3>درگاه زرین‌پال (پرداخت آنلاین)</h3>
+        <label>مرچنت کد زرین‌پال</label>
+        <input id="payZarinpal" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+        <p class="muted">اگه این رو خالی بذاری، دکمه پرداخت آنلاین تو مینی‌اپ نشون داده نمی‌شه و فقط کارت‌به‌کارت فعاله.</p>
         <button class="btn" onclick="savePaymentSettings()">ذخیره</button>
         <p class="muted" id="paymentSavedMsg" style="display:none;color:#7ee787;">ذخیره شد ✅</p>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-messages">
+      <div class="card">
+        <h3>پیام خوش‌آمدگویی (استارت ربات)</h3>
+        <textarea id="msgWelcome" rows="4"></textarea>
+        <h3>پیام درخواست عضویت در کانال</h3>
+        <textarea id="msgJoinPrompt" rows="3"></textarea>
+        <button class="btn" onclick="saveMessageSettings()">ذخیره پیام‌ها</button>
+        <p class="muted" id="msgSavedMsg" style="display:none;color:#7ee787;">ذخیره شد ✅</p>
+      </div>
+      <div class="card">
+        <h3>ارسال پیام به کاربران</h3>
+        <label>آیدی عددی یک کاربر خاص (خالی = ارسال به همه)</label>
+        <input id="broadcastTarget" placeholder="مثلا 123456789">
+        <label>متن پیام</label>
+        <textarea id="broadcastText" rows="4"></textarea>
+        <button class="btn" onclick="sendBroadcast()">ارسال</button>
+        <p class="muted" id="broadcastResult"></p>
       </div>
     </section>
 
@@ -107,7 +132,10 @@
         <input type="hidden" id="prodId">
         <label>عنوان</label><input id="prodTitle">
         <label>توضیحات</label><textarea id="prodDesc" rows="2"></textarea>
-        <label>لینک عکس</label><input id="prodImage">
+        <label>عکس محصول</label>
+        <input type="file" id="prodImageFile" accept="image/*" onchange="uploadImageTo('prodImageFile','prodImage','prodImagePreview')">
+        <input type="hidden" id="prodImage">
+        <img id="prodImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
           <div><label>قیمت (تومان)</label><input type="number" id="prodPrice"></div>
           <div><label>فعال؟</label><select id="prodActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
@@ -145,14 +173,20 @@
         <h3>افزودن / ویرایش کارت بازی</h3>
         <input type="hidden" id="gcId">
         <label>اسم کارت</label><input id="gcName">
-        <label>لینک عکس</label><input id="gcImage">
+        <label>عکس کارت</label>
+        <input type="file" id="gcImageFile" accept="image/*" onchange="uploadImageTo('gcImageFile','gcImage','gcImagePreview')">
+        <input type="hidden" id="gcImage">
+        <img id="gcImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
           <div><label>ریرتی</label>
             <select id="gcRarity">
-              <option value="common">معمولی</option>
-              <option value="rare">کمیاب</option>
-              <option value="epic">حماسی</option>
-              <option value="legendary">افسانه‌ای</option>
+              <option value="common">۱ - معمولی</option>
+              <option value="uncommon">۲ - غیرمعمول</option>
+              <option value="rare">۳ - کمیاب</option>
+              <option value="epic">۴ - حماسی</option>
+              <option value="legendary">۵ - افسانه‌ای</option>
+              <option value="mythic">۶ - اسطوره‌ای</option>
+              <option value="god">۷ - الهی</option>
             </select>
           </div>
           <div><label>قدرت پایه</label><input type="number" id="gcPower"></div>
@@ -266,6 +300,26 @@ async function api(path, opts = {}) {
   return data;
 }
 
+// آپلود عکس: فایل انتخاب‌شده رو می‌فرسته، لینک برگشتی رو تو فیلد مخفی می‌ذاره و پیش‌نمایش نشون می‌ده
+async function uploadImageTo(fileInputId, hiddenInputId, previewId) {
+  const file = document.getElementById(fileInputId).files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('image', file);
+  try {
+    const res = await fetch('/admin/api/upload-image', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + TOKEN }, body: fd, signal: AbortSignal.timeout(20000),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'آپلود ناموفق بود'); return; }
+    document.getElementById(hiddenInputId).value = data.url;
+    const preview = document.getElementById(previewId);
+    preview.src = data.url; preview.style.display = 'block';
+  } catch (e) {
+    alert('آپلود عکس ناموفق بود، دوباره امتحان کن');
+  }
+}
+
 async function login() {
   const password = document.getElementById('pw').value;
   try {
@@ -283,7 +337,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  const loaders = { dash: loadDash, currencies: loadCurrencies, payment: loadPaymentSettings, topups: loadTopups, withdrawals: loadWithdrawals,
+  const loaders = { dash: loadDash, currencies: loadCurrencies, payment: loadPaymentSettings, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
     creqs: loadCreqs, products: loadProducts, orders: loadOrders, gifts: loadGifts, tasks: loadTasks,
     gamecards: loadGameCards, gameconfig: loadGameConfig, leaderboard: loadLeaderboardTab, cardtasks: loadCardTasksTab,
     tickets: loadTickets, users: loadUsers };
@@ -327,326 +381,36 @@ async function loadPaymentSettings() {
   const s = await api('/payment-settings');
   document.getElementById('payCardNumber').value = s.cardNumber || '';
   document.getElementById('payCardOwner').value = s.cardOwner || '';
+  document.getElementById('payZarinpal').value = s.zarinpalMerchantId || '';
 }
 async function savePaymentSettings() {
   await api('/payment-settings', { method: 'POST', body: JSON.stringify({
     cardNumber: document.getElementById('payCardNumber').value,
     cardOwner: document.getElementById('payCardOwner').value,
+    zarinpalMerchantId: document.getElementById('payZarinpal').value,
   }) });
   const msg = document.getElementById('paymentSavedMsg');
   msg.style.display = 'block';
   setTimeout(() => msg.style.display = 'none', 2500);
 }
 
-/* ---------- شارژ کارت‌به‌کارت ---------- */
-async function loadTopups() {
-  const rows = await api('/toman-topups');
-  document.getElementById('topupsTable').innerHTML = rows.length ? `
-    <table><tr><th>کاربر</th><th>مبلغ</th><th>کد رهگیری</th><th>عملیات</th></tr>
-    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString()}</td><td>${r.tracking_code}</td>
-      <td><button class="btn" onclick="decideTopup(${r.id},true)">تایید</button>
-      <button class="btn danger" onclick="decideTopup(${r.id},false)">رد</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">درخواستی نیست.</p>';
+/* ---------- پیام‌های ربات + پیام‌رسانی ---------- */
+async function loadMessageSettings() {
+  const s = await api('/message-settings');
+  document.getElementById('msgWelcome').value = s.welcomeMessage || '';
+  document.getElementById('msgJoinPrompt').value = s.joinPromptMessage || '';
 }
-async function decideTopup(id, approve) { await api(`/toman-topups/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }); loadTopups(); }
-
-/* ---------- برداشت تومانی ---------- */
-async function loadWithdrawals() {
-  const rows = await api('/toman-withdrawals');
-  document.getElementById('withdrawalsTable').innerHTML = rows.length ? `
-    <table><tr><th>کاربر</th><th>مبلغ</th><th>شماره کارت</th><th>عملیات</th></tr>
-    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString()}</td><td>${r.card_number}</td>
-      <td><button class="btn" onclick="decideWithdrawal(${r.id},true)">ارسال شد</button>
-      <button class="btn danger" onclick="decideWithdrawal(${r.id},false)">رد</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">درخواستی نیست.</p>';
-}
-async function decideWithdrawal(id, approve) { await api(`/toman-withdrawals/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }); loadWithdrawals(); }
-
-/* ---------- واریز/برداشت ارزی ---------- */
-async function loadCreqs() {
-  const rows = await api('/currency-requests');
-  document.getElementById('creqsTable').innerHTML = rows.length ? `
-    <table><tr><th>کاربر</th><th>نوع</th><th>ارز</th><th>مقدار</th><th>هش/آدرس</th><th>عملیات</th></tr>
-    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.kind === 'deposit' ? 'واریز' : 'برداشت'}</td><td>${r.currency_code}</td><td>${r.amount}</td><td>${r.tx_hash || r.address || '-'}</td>
-      <td><button class="btn" onclick="decideCreq(${r.id},true)">تایید</button>
-      <button class="btn danger" onclick="decideCreq(${r.id},false)">رد</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">درخواستی نیست.</p>';
-}
-async function decideCreq(id, approve) { await api(`/currency-requests/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }); loadCreqs(); }
-
-/* ---------- محصولات ---------- */
-async function loadProducts() {
-  const rows = await api('/products');
-  document.getElementById('productsTable').innerHTML = `
-    <table><tr><th>عنوان</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
-    ${rows.map(p => `<tr><td>${p.title}</td><td>${p.price_toman.toLocaleString()}</td><td>${p.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editProduct(${JSON.stringify(p)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteProduct(${p.id})">حذف</button></td></tr>`).join('')}
-    </table>`;
-}
-function editProduct(p) {
-  document.getElementById('prodId').value = p.id;
-  document.getElementById('prodTitle').value = p.title;
-  document.getElementById('prodDesc').value = p.description || '';
-  document.getElementById('prodImage').value = p.image_url || '';
-  document.getElementById('prodPrice').value = p.price_toman;
-  document.getElementById('prodActive').value = p.active ? '1' : '0';
-}
-async function saveProduct() {
-  await api('/products', { method: 'POST', body: JSON.stringify({
-    id: document.getElementById('prodId').value || null,
-    title: document.getElementById('prodTitle').value,
-    description: document.getElementById('prodDesc').value,
-    image_url: document.getElementById('prodImage').value,
-    price_toman: document.getElementById('prodPrice').value,
-    active: document.getElementById('prodActive').value === '1',
+async function saveMessageSettings() {
+  await api('/message-settings', { method: 'POST', body: JSON.stringify({
+    welcomeMessage: document.getElementById('msgWelcome').value,
+    joinPromptMessage: document.getElementById('msgJoinPrompt').value,
   }) });
-  document.getElementById('prodId').value = '';
-  ['prodTitle','prodDesc','prodImage','prodPrice'].forEach(id => document.getElementById(id).value = '');
-  loadProducts();
+  const msg = document.getElementById('msgSavedMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
 }
-async function deleteProduct(id) { if (confirm('حذف بشه؟')) { await api(`/products/${id}`, { method: 'DELETE' }); loadProducts(); } }
-
-/* ---------- سفارش‌ها ---------- */
-async function loadOrders() {
-  const rows = await api('/orders');
-  document.getElementById('ordersTable').innerHTML = `
-    <table><tr><th>کاربر</th><th>محصول</th><th>تعداد</th><th>مبلغ</th><th>وضعیت</th><th>عملیات</th></tr>
-    ${rows.map(o => `<tr><td>${o.tg_id}</td><td>${o.product_title}</td><td>${o.qty}</td><td>${o.total_toman.toLocaleString()}</td><td>${o.status}</td>
-      <td>${o.status !== 'delivered' ? `<button class="btn" onclick="setOrderStatus(${o.id},'delivered')">تحویل شد</button>` : ''}</td></tr>`).join('')}
-    </table>`;
-}
-async function setOrderStatus(id, status) { await api(`/orders/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }); loadOrders(); }
-
-/* ---------- بازار گیفت ---------- */
-async function loadGifts() {
-  const rows = await api('/gift-offers');
-  document.getElementById('giftsTable').innerHTML = `
-    <table><tr><th>فروشنده</th><th>خریدار</th><th>عنوان</th><th>قیمت</th><th>وضعیت</th><th>عملیات</th></tr>
-    ${rows.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.buyer_tg_id || '-'}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString()}</td><td>${g.status}</td>
-      <td>${g.status === 'reserved' ? `<button class="btn danger" onclick="refundGift(${g.id})">بازگشت وجه به خریدار</button>` : ''}</td></tr>`).join('')}
-    </table>`;
-}
-async function refundGift(id) { if (confirm('مبلغ به خریدار برگرده؟')) { await api(`/gift-offers/${id}/refund`, { method: 'POST' }); loadGifts(); } }
-
-/* ---------- تسک‌ها ---------- */
-async function loadTasks() {
-  const rows = await api('/tasks');
-  document.getElementById('tasksTable').innerHTML = `
-    <table><tr><th>عنوان</th><th>نوع</th><th>پاداش</th><th>فعال</th><th>عملیات</th></tr>
-    ${rows.map(t => `<tr><td>${t.title}</td><td>${t.kind}</td><td>${t.reward_toman.toLocaleString()}</td><td>${t.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editTask(${JSON.stringify(t)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteTask(${t.id})">حذف</button></td></tr>`).join('')}
-    </table>`;
-}
-function editTask(t) {
-  document.getElementById('taskId').value = t.id;
-  document.getElementById('taskTitle').value = t.title;
-  document.getElementById('taskKind').value = t.kind;
-  document.getElementById('taskChannel').value = t.channel_username || '';
-  document.getElementById('taskReward').value = t.reward_toman;
-  document.getElementById('taskActive').value = t.active ? '1' : '0';
-}
-async function saveTask() {
-  await api('/tasks', { method: 'POST', body: JSON.stringify({
-    id: document.getElementById('taskId').value || null,
-    title: document.getElementById('taskTitle').value,
-    kind: document.getElementById('taskKind').value,
-    channel_username: document.getElementById('taskChannel').value,
-    reward_toman: document.getElementById('taskReward').value,
-    active: document.getElementById('taskActive').value === '1',
-  }) });
-  document.getElementById('taskId').value = '';
-  loadTasks();
-}
-async function deleteTask(id) { if (confirm('حذف بشه؟')) { await api(`/tasks/${id}`, { method: 'DELETE' }); loadTasks(); } }
-
-/* ---------- کارت‌های بازی ---------- */
-async function loadGameCards() {
-  const rows = await api('/game/cards');
-  document.getElementById('gameCardsTable').innerHTML = rows.length ? `
-    <table><tr><th>اسم</th><th>ریرتی</th><th>قدرت</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
-    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.rarity}</td><td>${c.base_power}</td><td>${c.price_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editGameCard(${JSON.stringify(c)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteGameCard(${c.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز کارتی ثبت نشده.</p>';
-}
-function editGameCard(c) {
-  document.getElementById('gcId').value = c.id;
-  document.getElementById('gcName').value = c.name;
-  document.getElementById('gcImage').value = c.image_url || '';
-  document.getElementById('gcRarity').value = c.rarity;
-  document.getElementById('gcPower').value = c.base_power;
-  document.getElementById('gcPrice').value = c.price_toman;
-  document.getElementById('gcMaxLevel').value = c.max_level;
-  document.getElementById('gcActive').value = c.active ? '1' : '0';
-}
-async function saveGameCard() {
-  await api('/game/cards', { method: 'POST', body: JSON.stringify({
-    id: document.getElementById('gcId').value || null,
-    name: document.getElementById('gcName').value,
-    image_url: document.getElementById('gcImage').value,
-    rarity: document.getElementById('gcRarity').value,
-    base_power: document.getElementById('gcPower').value,
-    price_toman: document.getElementById('gcPrice').value,
-    max_level: document.getElementById('gcMaxLevel').value,
-    active: document.getElementById('gcActive').value === '1',
-  }) });
-  document.getElementById('gcId').value = '';
-  loadGameCards();
-}
-async function deleteGameCard(id) { if (confirm('حذف بشه؟')) { await api(`/game/cards/${id}`, { method: 'DELETE' }); loadGameCards(); } }
-
-/* ---------- تنظیمات بازی ---------- */
-async function loadGameConfig() {
-  const cfg = await api('/game/config');
-  document.getElementById('cfgMinDeck').value = cfg.min_deck_size;
-  document.getElementById('cfgMaxDeck').value = cfg.max_deck_size;
-  document.getElementById('cfgDailyLimit').value = cfg.daily_play_limit;
-  document.getElementById('cfgExtraPrice').value = cfg.extra_play_price_toman;
-  document.getElementById('cfgExtraCount').value = cfg.extra_play_count;
-  document.getElementById('cfgUpgradeCost').value = cfg.upgrade_base_cost_toman;
-  document.getElementById('cfgResetDays').value = cfg.leaderboard_reset_days;
-}
-async function saveGameConfig() {
-  await api('/game/config', { method: 'POST', body: JSON.stringify({
-    min_deck_size: document.getElementById('cfgMinDeck').value,
-    max_deck_size: document.getElementById('cfgMaxDeck').value,
-    daily_play_limit: document.getElementById('cfgDailyLimit').value,
-    extra_play_price_toman: document.getElementById('cfgExtraPrice').value,
-    extra_play_count: document.getElementById('cfgExtraCount').value,
-    upgrade_base_cost_toman: document.getElementById('cfgUpgradeCost').value,
-    leaderboard_reset_days: document.getElementById('cfgResetDays').value,
-  }) });
-  alert('ذخیره شد');
-}
-
-/* ---------- جدول امتیازات و جوایز ---------- */
-async function loadLeaderboardTab() {
-  const prizes = await api('/game/leaderboard-prizes');
-  document.getElementById('leaderboardPrizesTable').innerHTML = prizes.length ? `
-    <table><tr><th>از رتبه</th><th>تا رتبه</th><th>جایزه</th><th>عملیات</th></tr>
-    ${prizes.map(p => `<tr><td>${p.rank_from}</td><td>${p.rank_to}</td><td>${p.reward_toman.toLocaleString()}</td>
-      <td><button class="btn danger" onclick="deleteLeaderboardPrize(${p.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">جایزه‌ای ثبت نشده.</p>';
-
-  const { leaderboard, state } = await api('/game/leaderboard');
-  document.getElementById('leaderboardTable').innerHTML = `
-    <p class="muted">شروع دوره فعلی: ${state.period_started_at}</p>
-    <table><tr><th>رتبه</th><th>کاربر</th><th>امتیاز</th><th>برد/باخت</th></tr>
-    ${leaderboard.map((p, i) => `<tr><td>${i + 1}</td><td>${p.first_name || ''} (${p.tg_id})</td><td>${p.score}</td><td>${p.wins}/${p.losses}</td></tr>`).join('')}
-    </table>`;
-}
-async function saveLeaderboardPrize() {
-  await api('/game/leaderboard-prizes', { method: 'POST', body: JSON.stringify({
-    id: document.getElementById('prizeId').value || null,
-    rank_from: document.getElementById('prizeFrom').value,
-    rank_to: document.getElementById('prizeTo').value,
-    reward_toman: document.getElementById('prizeReward').value,
-  }) });
-  document.getElementById('prizeId').value = '';
-  loadLeaderboardTab();
-}
-async function deleteLeaderboardPrize(id) { if (confirm('حذف بشه؟')) { await api(`/game/leaderboard-prizes/${id}`, { method: 'DELETE' }); loadLeaderboardTab(); } }
-async function resetLeaderboardNow() {
-  if (!confirm('جوایز پخش و جدول صفر بشه؟')) return;
-  await api('/game/leaderboard-reset', { method: 'POST' });
-  loadLeaderboardTab();
-}
-
-/* ---------- تسک‌های کارتی ---------- */
-async function loadCardTasksTab() {
-  const cards = await api('/game/cards');
-  document.getElementById('ctRewardCard').innerHTML = cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  const rows = await api('/card-tasks');
-  document.getElementById('cardTasksTable').innerHTML = rows.length ? `
-    <table><tr><th>عنوان</th><th>نوع</th><th>کارت جایزه</th><th>فعال</th><th>عملیات</th></tr>
-    ${rows.map(t => `<tr><td>${t.title}</td><td>${t.kind}</td><td>${t.reward_card_id}</td><td>${t.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editCardTask(${JSON.stringify(t)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteCardTask(${t.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">تسک کارتی ثبت نشده.</p>';
-}
-function editCardTask(t) {
-  document.getElementById('ctId').value = t.id;
-  document.getElementById('ctTitle').value = t.title;
-  document.getElementById('ctKind').value = t.kind;
-  document.getElementById('ctChannel').value = t.channel_username || '';
-  document.getElementById('ctRewardCard').value = t.reward_card_id;
-  document.getElementById('ctActive').value = t.active ? '1' : '0';
-}
-async function saveCardTask() {
-  await api('/card-tasks', { method: 'POST', body: JSON.stringify({
-    id: document.getElementById('ctId').value || null,
-    title: document.getElementById('ctTitle').value,
-    kind: document.getElementById('ctKind').value,
-    channel_username: document.getElementById('ctChannel').value,
-    reward_card_id: document.getElementById('ctRewardCard').value,
-    active: document.getElementById('ctActive').value === '1',
-  }) });
-  document.getElementById('ctId').value = '';
-  loadCardTasksTab();
-}
-async function deleteCardTask(id) { if (confirm('حذف بشه؟')) { await api(`/card-tasks/${id}`, { method: 'DELETE' }); loadCardTasksTab(); } }
-
-/* ---------- تیکت‌ها ---------- */
-async function loadTickets() {
-  const rows = await api('/tickets');
-  document.getElementById('ticketsList').innerHTML = `
-    <table><tr><th>کاربر</th><th>آخرین پیام</th><th>وضعیت</th><th></th></tr>
-    ${rows.map(t => `<tr><td>${t.first_name || ''} (${t.tg_id})</td><td>${(t.last_message || '').slice(0,40)}</td><td>${t.status}</td>
-      <td><button class="btn secondary" onclick="openTicket(${t.id})">باز کردن</button></td></tr>`).join('')}
-    </table>`;
-}
-async function openTicket(id) {
-  currentTicketId = id;
-  const { messages } = await api(`/tickets/${id}/messages`);
-  document.getElementById('ticketDetail').style.display = 'block';
-  document.getElementById('ticketMessages').innerHTML = messages.map(m =>
-    `<p><b>${m.sender === 'user' ? '👤 کاربر' : '🛠 ادمین'}:</b> ${m.body || ''}${m.image_url ? `<br><img src="${m.image_url}" style="max-width:200px;">` : ''}</p>`
-  ).join('');
-}
-async function sendReply() {
-  const text = document.getElementById('replyText').value;
-  if (!text.trim()) return;
-  await api(`/tickets/${currentTicketId}/reply`, { method: 'POST', body: JSON.stringify({ text }) });
-  document.getElementById('replyText').value = '';
-  openTicket(currentTicketId);
-}
-async function closeCurrentTicket() { await api(`/tickets/${currentTicketId}/close`, { method: 'POST' }); loadTickets(); document.getElementById('ticketDetail').style.display = 'none'; }
-
-/* ---------- کاربران ---------- */
-async function loadUsers() {
-  const q = document.getElementById('userSearch').value;
-  const rows = await api('/users?q=' + encodeURIComponent(q));
-  document.getElementById('usersTable').innerHTML = `
-    <table><tr><th>آیدی</th><th>نام</th><th>موجودی</th><th>مسدود؟</th><th>عملیات</th></tr>
-    ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString()}</td><td>${u.is_banned ? '🚫' : '-'}</td>
-      <td>
-        <button class="btn secondary" onclick="adjustBalance(${u.tg_id})">اصلاح موجودی</button>
-        ${u.is_banned ? `<button class="btn" onclick="unbanUser(${u.tg_id})">رفع مسدودی</button>` : `<button class="btn danger" onclick="banUser(${u.tg_id})">مسدود کن</button>`}
-      </td></tr>`).join('')}
-    </table>`;
-}
-async function adjustBalance(tgId) {
-  const amount = prompt('مبلغ (منفی برای کسر):');
-  if (!amount) return;
-  await api(`/users/${tgId}/adjust-balance`, { method: 'POST', body: JSON.stringify({ amount: Number(amount) }) });
-  loadUsers();
-}
-async function banUser(tgId) {
-  const reason = prompt('دلیل مسدودی (اختیاری):') || '';
-  await api(`/users/${tgId}/ban`, { method: 'POST', body: JSON.stringify({ reason }) });
-  loadUsers();
-}
-async function unbanUser(tgId) { await api(`/users/${tgId}/unban`, { method: 'POST' }); loadUsers(); }
-
-/* ---------- شروع ---------- */
-function boot() {
-  document.getElementById('loginBox').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  loadDash();
-}
-if (TOKEN) boot();
-</script>
-</body>
-</html>
+async function sendBroadcast() {
+  const targetTgId = document.getElementById('broadcastTarget').value.trim();
+  const message = document.getElementById('broadcastText').value.trim();
+  if (!message) return;
+  const r = await api('/broadcast', { metho
