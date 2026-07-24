@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS game_cards (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   image_url TEXT,
-  rarity TEXT NOT NULL DEFAULT 'common', -- common | rare | epic | legendary
+  rarity TEXT NOT NULL DEFAULT 'common', -- common | uncommon | rare | epic | legendary | mythic | god
   base_power INTEGER NOT NULL DEFAULT 10,
   price_toman INTEGER NOT NULL DEFAULT 0,
   max_level INTEGER NOT NULL DEFAULT 10,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS user_cards (
 
 CREATE TABLE IF NOT EXISTS game_config (
   id INTEGER PRIMARY KEY CHECK (id = 1),
-  min_deck_size INTEGER NOT NULL DEFAULT 3,
+  min_deck_size INTEGER NOT NULL DEFAULT 1,
   max_deck_size INTEGER NOT NULL DEFAULT 5,
   daily_play_limit INTEGER NOT NULL DEFAULT 10,
   extra_play_price_toman INTEGER NOT NULL DEFAULT 5000,
@@ -38,6 +38,9 @@ CREATE TABLE IF NOT EXISTS game_config (
   upgrade_base_cost_toman INTEGER NOT NULL DEFAULT 3000
 );
 INSERT OR IGNORE INTO game_config (id) VALUES (1);
+-- اگه از قبل با مقدار پیش‌فرض قدیمی (۳) ساخته شده، به حداقل جدید (۱) اصلاحش کن؛
+-- اگه ادمین خودش دستی چیز دیگه‌ای گذاشته، دست نمی‌زنیم
+UPDATE game_config SET min_deck_size = 1 WHERE id = 1 AND min_deck_size = 3;
 
 CREATE TABLE IF NOT EXISTS game_queue (
   tg_id INTEGER PRIMARY KEY,
@@ -193,21 +196,38 @@ export function upgradeUserCard(tgId, userCardId) {
   return { cost, newLevel: uc.level + 1 };
 }
 
-// ادغام رایگان: یه کارت مشابه (همون card_id) رو قربانی می‌کنی تا کارت هدف یه سطح بره بالا
-export function sacrificeUpgradeCard(tgId, targetUserCardId, sacrificeUserCardId) {
-  if (targetUserCardId === sacrificeUserCardId) throw new Error('نمی‌تونی یه کارت رو با خودش ادغام کنی');
-  const target = getUserCard(tgId, targetUserCardId);
-  const sac = getUserCard(tgId, sacrificeUserCardId);
-  if (!target || !sac) throw new Error('کارت پیدا نشد');
-  if (target.card_id !== sac.card_id) throw new Error('فقط کارت‌های یکسان قابل ادغامن');
-  if (target.level >= target.max_level) throw new Error('این کارت به حداکثر سطح رسیده');
+// گروه‌بندی کارت‌های کاملا یکسان (همون کارت، همون سطح) که حداقل دوتاشون هست —
+// برای دکمه «جهش»، کاربر چیزی رو دستی انتخاب نمی‌کنه، خودمون جفت‌شون رو پیدا می‌کنیم
+export function getMutationGroups(tgId) {
+  const rows = db.prepare(`
+    SELECT uc.card_id, uc.level, COUNT(*) AS cnt, c.name, c.image_url, c.rarity, c.base_power, c.max_level
+    FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id
+    WHERE uc.tg_id = ?
+    GROUP BY uc.card_id, uc.level
+    HAVING cnt >= 2
+    ORDER BY c.name ASC
+  `).all(tgId);
+  return rows.map(r => ({ ...r, power: computeCardPower(r.base_power, r.level), canMutate: r.level < r.max_level }));
+}
 
+// جهش: دو کارت کاملا یکسان (اسم و سطح) رو خودکار پیدا و ادغام می‌کنه؛ یکی حذف می‌شه و اون یکی یه سطح میره بالا
+export function mutateCards(tgId, cardId, level) {
+  const rows = db.prepare(`
+    SELECT uc.id, uc.level, c.max_level FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id
+    WHERE uc.tg_id = ? AND uc.card_id = ? AND uc.level = ?
+    ORDER BY uc.id ASC LIMIT 2
+  `).all(tgId, cardId, level);
+  if (rows.length < 2) throw new Error('برای جهش به دو کارت کاملا یکسان (اسم و سطح) نیاز داری');
+  if (rows[0].level >= rows[0].max_level) throw new Error('این کارت به حداکثر سطح رسیده');
+
+  const keepId = rows[0].id;
+  const removeId = rows[1].id;
   const tx = db.transaction(() => {
-    db.prepare('UPDATE user_cards SET level = level + 1 WHERE id = ?').run(targetUserCardId);
-    db.prepare('DELETE FROM user_cards WHERE id = ?').run(sacrificeUserCardId);
+    db.prepare('UPDATE user_cards SET level = level + 1 WHERE id = ?').run(keepId);
+    db.prepare('DELETE FROM user_cards WHERE id = ?').run(removeId);
   });
   tx();
-  return { newLevel: target.level + 1 };
+  return { newLevel: level + 1 };
 }
 
 /* =========================================================================
@@ -370,6 +390,14 @@ export function getMyRank(tgId) {
     WHERE score > (SELECT COALESCE(score,0) FROM game_scores WHERE tg_id = ?)
   `).get(tgId);
   return row.rank;
+}
+// ردیف خود کاربر تو جدول امتیازات (حتی اگه تو ۱۰ نفر برتر نباشه)
+export function getUserLeaderboardRow(tgId) {
+  const row = db.prepare(`
+    SELECT gs.tg_id, gs.wins, gs.losses, gs.score, u.first_name, u.username
+    FROM game_scores gs JOIN users u ON u.tg_id = gs.tg_id WHERE gs.tg_id = ?
+  `).get(tgId);
+  return row || { tg_id: tgId, wins: 0, losses: 0, score: 0 };
 }
 export function listLeaderboardPrizes() { return db.prepare('SELECT * FROM leaderboard_prizes ORDER BY rank_from ASC').all(); }
 export function upsertLeaderboardPrize(p) {
