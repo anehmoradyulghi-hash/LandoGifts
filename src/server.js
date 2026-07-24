@@ -18,13 +18,14 @@ import db, {
   createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer,
   listActiveTasks, hasClaimedTask, claimTask, getTask,
   getOrCreateOpenTicket, addTicketMessage, listTicketMessages, listMyTickets,
-  getPaymentSettings,
+  getPaymentSettings, getMessageSettings,
+  createZarinpalPayment, getZarinpalPayment, markZarinpalPaymentStatus,
 } from './db.js';
 import {
-  listGameCards, getUserCards, buyGameCard, upgradeUserCard, sacrificeUpgradeCard,
+  listGameCards, getUserCards, buyGameCard, upgradeUserCard, getMutationGroups, mutateCards,
   getGameConfig, getPlaysRemaining, getExtraPlays, buyExtraPlays,
   joinQueue, getQueueStatus, cancelQueue, getMatchHistory,
-  getLeaderboard, getMyRank, checkAndAutoResetLeaderboard,
+  getLeaderboard, getMyRank, getUserLeaderboardRow, listLeaderboardPrizes, checkAndAutoResetLeaderboard,
   listActiveCardTasks, hasClaimedCardTask, claimCardTask, getCardTask,
 } from './game-db.js';
 import adminApi from './admin-api.js';
@@ -73,6 +74,7 @@ app.get('/api/config', ah(async (req, res) => {
     channel: process.env.REQUIRED_CHANNEL || null,
     cardNumber: payment.cardNumber || null,
     cardOwner: payment.cardOwner || null,
+    zarinpalEnabled: !!payment.zarinpalMerchantId,
     referralPercent: Number(process.env.REFERRAL_PERCENT || 5),
     giftMarketFeePercent: Number(process.env.GIFT_MARKET_FEE_PERCENT || 5),
     swapFeePercent: Number(process.env.SWAP_FEE_PERCENT || 1),
@@ -142,6 +144,77 @@ app.post('/api/wallet/toman-topup', requireTelegramAuth, (req, res) => {
   );
   res.json({ ok: true });
 });
+
+/* ---------- شارژ آنلاین با زرین‌پال ---------- */
+async function zarinpalCall(path, body) {
+  const res = await fetch(`https://api.zarinpal.com/pg/v4/payment/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
+  });
+  return res.json();
+}
+
+app.post('/api/wallet/zarinpal-topup', requireTelegramAuth, ah(async (req, res) => {
+  const amount = Number(req.body.amount);
+  if (!amount || amount < 1000) return res.status(400).json({ error: 'حداقل مبلغ شارژ ۱,۰۰۰ تومانه' });
+  const { zarinpalMerchantId } = getPaymentSettings();
+  if (!zarinpalMerchantId) return res.status(400).json({ error: 'درگاه زرین‌پال هنوز توسط ادمین فعال نشده' });
+  if (!process.env.PUBLIC_URL) return res.status(400).json({ error: 'آدرس سرور تنظیم نشده' });
+
+  let data;
+  try {
+    data = await zarinpalCall('request.json', {
+      merchant_id: zarinpalMerchantId,
+      amount,
+      description: 'شارژ کیف‌پول Lando Gifts',
+      callback_url: `${process.env.PUBLIC_URL}/zarinpal-callback`,
+    });
+  } catch (e) {
+    return res.status(503).json({ error: 'اتصال به درگاه پرداخت برقرار نشد، دوباره امتحان کن' });
+  }
+  if (data?.data?.code !== 100 || !data.data.authority) {
+    return res.status(400).json({ error: 'درخواست پرداخت ساخته نشد، شماره درگاه رو با ادمین چک کن' });
+  }
+  createZarinpalPayment(data.data.authority, req.dbUser.tg_id, amount);
+  res.json({ ok: true, url: `https://www.zarinpal.com/pg/StartPay/${data.data.authority}` });
+}));
+
+// زرین‌پال بعد از پرداخت، مرورگر رو به همین آدرس هدایت می‌کنه (نه از تو خود مینی‌اپ)
+app.get('/zarinpal-callback', ah(async (req, res) => {
+  const authority = req.query.Authority || req.query.authority;
+  const status = req.query.Status || req.query.status;
+  const page = (title, body) => res.send(`<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>body{background:#0a0c12;color:#edf0f7;font-family:Tahoma,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:20px}
+    .box{background:#141824;border:1px solid #262c3d;border-radius:18px;padding:32px 24px;max-width:340px}
+    h2{margin:0 0 10px}</style></head><body><div class="box"><h2>${title}</h2><p>${body}</p></div></body></html>`);
+
+  const payment = authority && getZarinpalPayment(authority);
+  if (!payment) return page('❌ تراکنش پیدا نشد', 'به ربات برگرد و دوباره امتحان کن.');
+  if (payment.status !== 'pending') return page('✅ قبلاً پردازش شده', 'می‌تونی به ربات برگردی.');
+
+  if (status !== 'OK') {
+    markZarinpalPaymentStatus(authority, 'cancelled');
+    return page('❌ پرداخت لغو شد', 'مبلغی از حسابت کم نشده. به ربات برگرد.');
+  }
+
+  const { zarinpalMerchantId } = getPaymentSettings();
+  let verify;
+  try {
+    verify = await zarinpalCall('verify.json', { merchant_id: zarinpalMerchantId, amount: payment.amount, authority });
+  } catch (e) {
+    return page('⚠️ خطا در تایید پرداخت', 'اگه مبلغی کم شده، به پشتیبانی پیام بده.');
+  }
+  if (verify?.data?.code === 100 || verify?.data?.code === 101) {
+    markZarinpalPaymentStatus(authority, 'verified');
+    adjustToman(payment.tg_id, payment.amount, 'شارژ آنلاین زرین‌پال');
+    sendMessage(payment.tg_id, `✅ شارژ ${payment.amount.toLocaleString()} تومانی با زرین‌پال تایید شد و به کیف‌پولت اضافه شد.`).catch(() => {});
+    return page('✅ پرداخت موفق', `${payment.amount.toLocaleString()} تومان به کیف‌پولت اضافه شد. به ربات برگرد.`);
+  }
+  markZarinpalPaymentStatus(authority, 'failed');
+  return page('❌ پرداخت تایید نشد', 'مبلغی کسر نشده. به ربات برگرد و دوباره امتحان کن.');
+}));
 
 app.post('/api/wallet/toman-withdraw', requireTelegramAuth, (req, res) => {
   const amount = Number(req.body.amount);
@@ -378,9 +451,10 @@ app.post('/api/game/upgrade-card', requireTelegramAuth, (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-app.post('/api/game/sacrifice-upgrade', requireTelegramAuth, (req, res) => {
+app.get('/api/game/mutation-groups', requireTelegramAuth, (req, res) => res.json(getMutationGroups(req.dbUser.tg_id)));
+app.post('/api/game/mutate', requireTelegramAuth, (req, res) => {
   try {
-    const result = sacrificeUpgradeCard(req.dbUser.tg_id, Number(req.body.targetUserCardId), Number(req.body.sacrificeUserCardId));
+    const result = mutateCards(req.dbUser.tg_id, Number(req.body.cardId), Number(req.body.level));
     res.json({ ok: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -409,7 +483,12 @@ app.post('/api/game/queue', requireTelegramAuth, (req, res) => {
 app.get('/api/game/queue-status', requireTelegramAuth, (req, res) => res.json(getQueueStatus(req.dbUser.tg_id)));
 app.post('/api/game/queue/cancel', requireTelegramAuth, (req, res) => { cancelQueue(req.dbUser.tg_id); res.json({ ok: true }); });
 app.get('/api/game/history', requireTelegramAuth, (req, res) => res.json(getMatchHistory(req.dbUser.tg_id)));
-app.get('/api/game/leaderboard', requireTelegramAuth, (req, res) => res.json({ leaderboard: getLeaderboard(20), myRank: getMyRank(req.dbUser.tg_id) }));
+app.get('/api/game/leaderboard', requireTelegramAuth, (req, res) => {
+  const leaderboard = getLeaderboard(10);
+  const myRank = getMyRank(req.dbUser.tg_id);
+  const myRow = getUserLeaderboardRow(req.dbUser.tg_id);
+  res.json({ leaderboard, myRank, myRow, prizes: listLeaderboardPrizes() });
+});
 
 /* =========================================================================
  * پشتیبانی
@@ -447,11 +526,12 @@ async function handleTelegramUpdate(update) {
     const chatId = update.message.chat.id;
     const refParam = update.message.text.split(' ')[1];
     getOrCreateUser(update.message.from, refParam);
+    const { welcomeMessage, joinPromptMessage } = getMessageSettings();
 
     if (process.env.REQUIRED_CHANNEL) {
       const joined = await isChannelMember(process.env.REQUIRED_CHANNEL, update.message.from.id);
       if (!joined) {
-        await sendMessage(chatId, 'برای استفاده از ربات، اول عضو کانال ما شو:', {
+        await sendMessage(chatId, joinPromptMessage, {
           reply_markup: { inline_keyboard: [
             [{ text: '📢 عضویت در کانال', url: `https://t.me/${process.env.REQUIRED_CHANNEL.replace('@', '')}` }],
             [{ text: '✅ عضو شدم، بررسی کن', callback_data: 'check_join' }],
@@ -460,7 +540,7 @@ async function handleTelegramUpdate(update) {
         return;
       }
     }
-    await sendMessage(chatId, 'به <b>Lando Gifts</b> خوش اومدی 🎁\nاز دکمه پایین فروشگاه رو باز کن:', {
+    await sendMessage(chatId, welcomeMessage, {
       reply_markup: { inline_keyboard: [[{ text: '🛍 باز کردن فروشگاه', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }]] },
     });
     return;
