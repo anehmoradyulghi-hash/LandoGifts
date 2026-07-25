@@ -1,0 +1,148 @@
+import db from './db.js';
+import { adjustToman, getUser } from './db.js';
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS season_config (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  enabled INTEGER NOT NULL DEFAULT 0,
+  price_toman INTEGER NOT NULL DEFAULT 50000,
+  duration_days INTEGER NOT NULL DEFAULT 30,
+  tier_count INTEGER NOT NULL DEFAULT 30,
+  xp_per_tier INTEGER NOT NULL DEFAULT 100,
+  xp_per_win INTEGER NOT NULL DEFAULT 20,
+  xp_per_purchase INTEGER NOT NULL DEFAULT 10,
+  xp_per_donation INTEGER NOT NULL DEFAULT 15
+);
+INSERT OR IGNORE INTO season_config (id) VALUES (1);
+
+CREATE TABLE IF NOT EXISTS current_season (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  ends_at TEXT
+);
+INSERT OR IGNORE INTO current_season (id) VALUES (1);
+
+CREATE TABLE IF NOT EXISTS season_tiers (
+  tier_number INTEGER PRIMARY KEY,
+  free_reward_type TEXT,      -- toman | card | extra_games | avatar | none
+  free_reward_value TEXT,
+  premium_reward_type TEXT,
+  premium_reward_value TEXT
+);
+
+CREATE TABLE IF NOT EXISTS user_season (
+  tg_id INTEGER PRIMARY KEY,
+  xp INTEGER NOT NULL DEFAULT 0,
+  purchased_premium INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS season_tier_claims (
+  tg_id INTEGER NOT NULL,
+  tier_number INTEGER NOT NULL,
+  track TEXT NOT NULL, -- free | premium
+  claimed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (tg_id, tier_number, track)
+);
+`);
+
+export function getSeasonConfig() { return db.prepare('SELECT * FROM season_config WHERE id = 1').get(); }
+export function setSeasonConfig(c) {
+  db.prepare(`
+    UPDATE season_config SET enabled=?, price_toman=?, duration_days=?, tier_count=?, xp_per_tier=?, xp_per_win=?, xp_per_purchase=?, xp_per_donation=?
+    WHERE id = 1
+  `).run(c.enabled ? 1 : 0, c.price_toman, c.duration_days, c.tier_count, c.xp_per_tier, c.xp_per_win, c.xp_per_purchase, c.xp_per_donation);
+}
+
+export function getCurrentSeason() { return db.prepare('SELECT * FROM current_season WHERE id = 1').get(); }
+
+// شروع فصل جدید: امتیاز و claim های همه پاک می‌شه، تاریخ شروع/پایان جدید ثبت می‌شه
+export function startNewSeason() {
+  const cfg = getSeasonConfig();
+  const endsAt = new Date(Date.now() + cfg.duration_days * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+  const tx = db.transaction(() => {
+    db.prepare(`UPDATE current_season SET started_at = datetime('now'), ends_at = ? WHERE id = 1`).run(endsAt);
+    db.prepare('DELETE FROM user_season').run();
+    db.prepare('DELETE FROM season_tier_claims').run();
+  });
+  tx();
+}
+export function checkAutoResetSeason() {
+  const cfg = getSeasonConfig();
+  if (!cfg.enabled) return;
+  const season = getCurrentSeason();
+  if (!season.ends_at) { startNewSeason(); return; }
+  if (new Date(season.ends_at.replace(' ', 'T') + 'Z').getTime() <= Date.now()) startNewSeason();
+}
+
+export function listSeasonTiers() { return db.prepare('SELECT * FROM season_tiers ORDER BY tier_number ASC').all(); }
+export function getSeasonTier(n) { return db.prepare('SELECT * FROM season_tiers WHERE tier_number = ?').get(n); }
+export function upsertSeasonTier(t) {
+  db.prepare(`
+    INSERT INTO season_tiers (tier_number, free_reward_type, free_reward_value, premium_reward_type, premium_reward_value)
+    VALUES (?,?,?,?,?)
+    ON CONFLICT(tier_number) DO UPDATE SET
+      free_reward_type=excluded.free_reward_type, free_reward_value=excluded.free_reward_value,
+      premium_reward_type=excluded.premium_reward_type, premium_reward_value=excluded.premium_reward_value
+  `).run(t.tier_number, t.free_reward_type || 'none', t.free_reward_value || '', t.premium_reward_type || 'none', t.premium_reward_value || '');
+}
+export function deleteSeasonTier(n) { db.prepare('DELETE FROM season_tiers WHERE tier_number = ?').run(n); }
+
+function getOrCreateUserSeason(tgId) {
+  db.prepare('INSERT OR IGNORE INTO user_season (tg_id) VALUES (?)').run(tgId);
+  return db.prepare('SELECT * FROM user_season WHERE tg_id = ?').get(tgId);
+}
+export function addSeasonXp(tgId, amount) {
+  const cfg = getSeasonConfig();
+  if (!cfg.enabled || !amount) return;
+  getOrCreateUserSeason(tgId);
+  db.prepare('UPDATE user_season SET xp = xp + ? WHERE tg_id = ?').run(amount, tgId);
+}
+
+export function getUserSeasonProgress(tgId) {
+  const cfg = getSeasonConfig();
+  const us = getOrCreateUserSeason(tgId);
+  const currentTier = Math.min(cfg.tier_count, Math.floor(us.xp / cfg.xp_per_tier) + 1);
+  const claims = db.prepare('SELECT tier_number, track FROM season_tier_claims WHERE tg_id = ?').all(tgId);
+  return { xp: us.xp, purchasedPremium: !!us.purchased_premium, currentTier, xpPerTier: cfg.xp_per_tier, tierCount: cfg.tier_count, claims };
+}
+
+export function purchasePremiumPass(tgId) {
+  const cfg = getSeasonConfig();
+  if (!cfg.enabled) throw new Error('فصل فعلا فعال نیست');
+  const us = getOrCreateUserSeason(tgId);
+  if (us.purchased_premium) throw new Error('قبلا پس پرمیوم رو خریدی');
+  const user = getUser(tgId);
+  if (!user || user.balance_toman < cfg.price_toman) throw new Error('موجودی کافی نیست');
+  adjustToman(tgId, -cfg.price_toman, 'خرید بتل‌پس پرمیوم فصلی');
+  db.prepare('UPDATE user_season SET purchased_premium = 1 WHERE tg_id = ?').run(tgId);
+}
+
+// دریافت جایزه یه تایر (رایگان یا پرمیوم)
+export function claimSeasonTierReward(tgId, tierNumber, track) {
+  const progress = getUserSeasonProgress(tgId);
+  if (tierNumber > progress.currentTier) throw new Error('هنوز به این تایر نرسیدی');
+  if (track === 'premium' && !progress.purchasedPremium) throw new Error('این جایزه فقط برای پس پرمیومه');
+  const already = db.prepare('SELECT 1 FROM season_tier_claims WHERE tg_id=? AND tier_number=? AND track=?').get(tgId, tierNumber, track);
+  if (already) throw new Error('این جایزه رو قبلا گرفتی');
+
+  const tier = getSeasonTier(tierNumber);
+  if (!tier) throw new Error('این تایر تعریف نشده');
+  const type = track === 'free' ? tier.free_reward_type : tier.premium_reward_type;
+  const value = track === 'free' ? tier.free_reward_value : tier.premium_reward_value;
+
+  const tx = db.transaction(() => {
+    if (type === 'toman' && Number(value) > 0) {
+      adjustToman(tgId, Number(value), `جایزه تایر ${tierNumber} بتل‌پس (${track === 'free' ? 'رایگان' : 'پرمیوم'})`);
+    } else if (type === 'card' && value) {
+      db.prepare('INSERT INTO user_cards (tg_id, card_id) VALUES (?,?)').run(tgId, Number(value));
+    } else if (type === 'extra_games' && Number(value) > 0) {
+      db.prepare(`
+        INSERT INTO game_extra_plays (tg_id, extra_plays) VALUES (?, ?)
+        ON CONFLICT(tg_id) DO UPDATE SET extra_plays = extra_plays + excluded.extra_plays
+      `).run(tgId, Number(value));
+    }
+    db.prepare('INSERT INTO season_tier_claims (tg_id, tier_number, track) VALUES (?,?,?)').run(tgId, tierNumber, track);
+  });
+  tx();
+  return { type, value };
+}
