@@ -4,38 +4,354 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>پنل ادمین - Lando Gifts</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet" />
 <style>
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: Tahoma, sans-serif; background:#0f1115; color:#eee; }
-  header { padding:14px; border-bottom:1px solid #232733; display:flex; justify-content:space-between; align-items:center; }
-  nav { display:flex; flex-wrap:wrap; gap:6px; padding:10px 14px; border-bottom:1px solid #232733; }
-  nav button { background:#171a21; color:#ccc; border:1px solid #232733; border-radius:6px; padding:6px 12px; cursor:pointer; font-size:13px; }
-  nav button.active { background:#2f6feb; color:#fff; }
-  main { padding:16px; max-width:900px; margin:0 auto; }
-  .tab { display:none; }
-  .tab.active { display:block; }
-  table { width:100%; border-collapse:collapse; margin-bottom:16px; font-size:13px; }
-  th, td { border-bottom:1px solid #232733; padding:6px 8px; text-align:right; }
-  .card { background:#171a21; border:1px solid #232733; border-radius:8px; padding:14px; margin-bottom:14px; }
-  input, select, textarea { width:100%; padding:7px; border-radius:6px; border:1px solid #333; background:#0f1115; color:#eee; margin:4px 0 10px; }
-  label { font-size:12px; color:#999; }
-  .btn { background:#2f6feb; color:#fff; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; font-size:13px; }
-  .btn.danger { background:#a33; }
-  .btn.secondary { background:#333; }
-  .row2 { display:flex; gap:8px; }
-  .row2 > * { flex:1; }
-  #loginBox { max-width:320px; margin:80px auto; }
-  .muted { color:#888; font-size:12px; }
+:root {
+  --bg-deep: #02040a;
+  --bg-surface: rgba(15, 23, 42, 0.6);
+  --bg-elevated: rgba(30, 41, 59, 0.5);
+  --glass-border: rgba(148, 163, 184, 0.1);
+  --glass-border-hover: rgba(148, 163, 184, 0.2);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-violet: #8b5cf6;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+  --accent-pink: #ec4899;
+  --accent-gold: #f59e0b;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --glow-violet: 0 0 20px rgba(139, 92, 246, 0.3);
+  --glow-blue: 0 0 20px rgba(59, 130, 246, 0.3);
+  --glow-gold: 0 0 20px rgba(245, 158, 11, 0.3);
+  --radius-xl: 24px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: 'Vazirmatn', -apple-system, Tahoma, sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(236, 72, 153, 0.04) 0%, transparent 70%);
+  z-index: -2;
+  animation: aurora 20s ease-in-out infinite alternate;
+}
+@keyframes aurora {
+  0% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.8; transform: scale(1); }
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.2) 0%, transparent 2px),
+    radial-gradient(circle at 60% 20%, rgba(59, 130, 246, 0.2) 0%, transparent 2px),
+    radial-gradient(circle at 40% 70%, rgba(236, 72, 153, 0.2) 0%, transparent 2px),
+    radial-gradient(circle at 80% 60%, rgba(6, 182, 212, 0.2) 0%, transparent 2px);
+  background-size: 200% 200%;
+  animation: particles 30s linear infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+@keyframes particles {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.3); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.5); }
+
+/* Login Box */
+#loginBox {
+  max-width: 380px;
+  margin: 100px auto;
+  background: var(--bg-surface);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), var(--glow-violet);
+  animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+#loginBox h2 {
+  margin: 0 0 20px;
+  font-size: 22px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #c084fc, #60a5fa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-align: center;
+}
+
+/* App Header */
+header {
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(2, 4, 10, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #c084fc, #60a5fa, #2dd4bf);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Admin Nav */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 20px;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--glass-border);
+}
+nav button {
+  background: var(--bg-surface);
+  backdrop-filter: blur(10px);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+nav button:hover {
+  border-color: var(--glass-border-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+nav button.active {
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-blue));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
+nav button:active { transform: scale(0.96); }
+
+/* Main Layout */
+main { padding: 20px; max-width: 1000px; margin: 0 auto; }
+.tab { display: none; animation: tabEnter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.tab.active { display: block; }
+@keyframes tabEnter {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Glass Cards */
+.card {
+  background: var(--bg-surface);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+}
+.card:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3), var(--glow-violet);
+}
+.card h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card h3::before {
+  content: '';
+  width: 4px;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--accent-violet), var(--accent-blue));
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 20px;
+  font-size: 13px;
+  background: var(--bg-surface);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+th, td {
+  padding: 12px 14px;
+  text-align: right;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.05);
+}
+th {
+  background: rgba(30, 41, 59, 0.6);
+  font-weight: 800;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+tr:hover td { background: rgba(139, 92, 246, 0.03); }
+tr:last-child td { border-bottom: none; }
+
+/* Inputs */
+input, select, textarea {
+  width: 100%;
+  padding: 12px 16px;
+  margin: 6px 0 14px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent-violet);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), 0 0 20px rgba(139, 92, 246, 0.1);
+  background: rgba(15, 23, 42, 0.8);
+}
+input::placeholder, textarea::placeholder { color: var(--text-muted); }
+label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-blue));
+  color: #fff;
+  border: none;
+  font-weight: 800;
+  font-family: inherit;
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+.btn:hover::before { transform: translateX(100%); }
+.btn:active { transform: scale(0.96); }
+.btn.danger {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+.btn.secondary {
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+.btn.secondary:hover {
+  border-color: var(--glass-border-hover);
+  background: rgba(30, 41, 59, 0.7);
+  color: var(--text-primary);
+}
+
+/* Row2 Grid */
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 600px) {
+  .row2 { grid-template-columns: 1fr; }
+  nav { padding: 10px; gap: 6px; }
+  nav button { padding: 6px 10px; font-size: 12px; }
+  header { padding: 14px 16px; }
+  header h2 { font-size: 16px; }
+  main { padding: 12px; }
+  .card { padding: 16px; }
+}
+
+.muted { color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+
+/* Animations */
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 </style>
 </head>
 <body>
 
 <div id="loginBox" class="card">
-  <h2>ورود ادمین</h2>
+  <h2>🔐 ورود ادمین</h2>
   <label>رمز عبور</label>
   <input type="password" id="pw">
-  <button class="btn" onclick="login()">ورود</button>
-  <p class="muted" id="loginErr"></p>
+  <button class="btn" onclick="login()" style="width:100%;margin-top:8px;">ورود</button>
+  <p class="muted" id="loginErr" style="margin-top:12px;text-align:center;"></p>
 </div>
 
 <div id="app" style="display:none;">
@@ -44,30 +360,30 @@
     <button class="btn secondary" onclick="logout()">خروج</button>
   </header>
   <nav>
-    <button class="active" data-tab="dash" onclick="showTab('dash')">داشبورد</button>
-    <button data-tab="currencies" onclick="showTab('currencies')">ارزها</button>
-    <button data-tab="payment" onclick="showTab('payment')">پرداخت</button>
-    <button data-tab="messages" onclick="showTab('messages')">پیام‌ها</button>
-    <button data-tab="topups" onclick="showTab('topups')">شارژ کارت‌به‌کارت</button>
-    <button data-tab="withdrawals" onclick="showTab('withdrawals')">برداشت تومانی</button>
-    <button data-tab="creqs" onclick="showTab('creqs')">واریز/برداشت ارزی</button>
-    <button data-tab="products" onclick="showTab('products')">محصولات</button>
-    <button data-tab="orders" onclick="showTab('orders')">سفارش‌ها</button>
-    <button data-tab="gifts" onclick="showTab('gifts')">بازار گیفت</button>
-    <button data-tab="tasks" onclick="showTab('tasks')">تسک‌ها</button>
-    <button data-tab="gamecards" onclick="showTab('gamecards')">کارت‌های بازی</button>
-    <button data-tab="cardcategories" onclick="showTab('cardcategories')">دسته‌بندی‌ها</button>
-    <button data-tab="mergecosts" onclick="showTab('mergecosts')">هزینه جهش</button>
-    <button data-tab="gameconfig" onclick="showTab('gameconfig')">تنظیمات بازی</button>
-    <button data-tab="leaderboard" onclick="showTab('leaderboard')">جدول امتیازات</button>
-    <button data-tab="wheel" onclick="showTab('wheel')">چرخ شانس</button>
-    <button data-tab="auction" onclick="showTab('auction')">مزایده</button>
-    <button data-tab="season" onclick="showTab('season')">بتل‌پس</button>
-    <button data-tab="staking" onclick="showTab('staking')">استیکینگ</button>
-    <button data-tab="clan" onclick="showTab('clan')">کلن</button>
-    <button data-tab="cardtasks" onclick="showTab('cardtasks')">تسک‌های کارتی</button>
-    <button data-tab="tickets" onclick="showTab('tickets')">پشتیبانی</button>
-    <button data-tab="users" onclick="showTab('users')">کاربران</button>
+    <button class="active" data-tab="dash" onclick="showTab('dash')">📊 داشبورد</button>
+    <button data-tab="currencies" onclick="showTab('currencies')">💱 ارزها</button>
+    <button data-tab="payment" onclick="showTab('payment')">💳 پرداخت</button>
+    <button data-tab="messages" onclick="showTab('messages')">📨 پیام‌ها</button>
+    <button data-tab="topups" onclick="showTab('topups')">💰 شارژ</button>
+    <button data-tab="withdrawals" onclick="showTab('withdrawals')">🏧 برداشت</button>
+    <button data-tab="creqs" onclick="showTab('creqs')">🔄 ارزی</button>
+    <button data-tab="products" onclick="showTab('products')">🛍 محصولات</button>
+    <button data-tab="orders" onclick="showTab('orders')">📦 سفارش‌ها</button>
+    <button data-tab="gifts" onclick="showTab('gifts')">🎁 گیفت</button>
+    <button data-tab="tasks" onclick="showTab('tasks')">✅ تسک‌ها</button>
+    <button data-tab="gamecards" onclick="showTab('gamecards')">🎴 کارت‌ها</button>
+    <button data-tab="cardcategories" onclick="showTab('cardcategories')">🏷 دسته‌بندی‌ها</button>
+    <button data-tab="mergecosts" onclick="showTab('mergecosts')">⚡ جهش</button>
+    <button data-tab="gameconfig" onclick="showTab('gameconfig')">⚙️ بازی</button>
+    <button data-tab="leaderboard" onclick="showTab('leaderboard')">🏆 امتیازات</button>
+    <button data-tab="wheel" onclick="showTab('wheel')">🎡 گردونه</button>
+    <button data-tab="auction" onclick="showTab('auction')">🔨 مزایده</button>
+    <button data-tab="season" onclick="showTab('season')">🏅 بتل‌پس</button>
+    <button data-tab="staking" onclick="showTab('staking')">🏦 استیکینگ</button>
+    <button data-tab="clan" onclick="showTab('clan')">⚔️ کلن</button>
+    <button data-tab="cardtasks" onclick="showTab('cardtasks')">🎯 تسک کارتی</button>
+    <button data-tab="tickets" onclick="showTab('tickets')">🆘 پشتیبانی</button>
+    <button data-tab="users" onclick="showTab('users')">👥 کاربران</button>
   </nav>
   <main>
     <section class="tab active" id="tab-dash"><div class="card" id="statsCard">در حال بارگذاری...</div></section>
@@ -100,12 +416,12 @@
         <input id="payCardNumber" placeholder="6037-xxxx-xxxx-xxxx">
         <label>نام صاحب کارت</label>
         <input id="payCardOwner" placeholder="مثلا: علی محمدی">
-        <h3>درگاه زرین‌پال (پرداخت آنلاین)</h3>
+        <h3 style="margin-top:20px;">درگاه زرین‌پال (پرداخت آنلاین)</h3>
         <label>مرچنت کد زرین‌پال</label>
         <input id="payZarinpal" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
         <p class="muted">اگه این رو خالی بذاری، دکمه پرداخت آنلاین تو مینی‌اپ نشون داده نمی‌شه و فقط کارت‌به‌کارت فعاله.</p>
         <button class="btn" onclick="savePaymentSettings()">ذخیره</button>
-        <p class="muted" id="paymentSavedMsg" style="display:none;color:#7ee787;">ذخیره شد ✅</p>
+        <p class="muted" id="paymentSavedMsg" style="display:none;color:var(--success);margin-top:10px;">ذخیره شد ✅</p>
       </div>
     </section>
 
@@ -113,10 +429,10 @@
       <div class="card">
         <h3>پیام خوش‌آمدگویی (استارت ربات)</h3>
         <textarea id="msgWelcome" rows="4"></textarea>
-        <h3>پیام درخواست عضویت در کانال</h3>
+        <h3 style="margin-top:16px;">پیام درخواست عضویت در کانال</h3>
         <textarea id="msgJoinPrompt" rows="3"></textarea>
         <button class="btn" onclick="saveMessageSettings()">ذخیره پیام‌ها</button>
-        <p class="muted" id="msgSavedMsg" style="display:none;color:#7ee787;">ذخیره شد ✅</p>
+        <p class="muted" id="msgSavedMsg" style="display:none;color:var(--success);margin-top:10px;">ذخیره شد ✅</p>
       </div>
       <div class="card">
         <h3>ارسال پیام به کاربران</h3>
@@ -142,7 +458,7 @@
         <label>عکس محصول</label>
         <input type="file" id="prodImageFile" accept="image/*" onchange="uploadImageTo('prodImageFile','prodImage','prodImagePreview')">
         <input type="hidden" id="prodImage">
-        <img id="prodImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
+        <img id="prodImagePreview" style="max-width:120px;border-radius:var(--radius-sm);display:none;margin-bottom:8px;">
         <div class="row2">
           <div><label>قیمت (تومان)</label><input type="number" id="prodPrice"></div>
           <div><label>فعال؟</label><select id="prodActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
@@ -185,7 +501,7 @@
         <label>عکس پیش‌فرض (اگه عکس مخصوص هر سطح نذاری، از همین استفاده می‌شه)</label>
         <input type="file" id="gcImageFile" accept="image/*" onchange="uploadImageTo('gcImageFile','gcImage','gcImagePreview')">
         <input type="hidden" id="gcImage">
-        <img id="gcImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
+        <img id="gcImagePreview" style="max-width:120px;border-radius:var(--radius-sm);display:none;margin-bottom:8px;">
         <div class="row2">
           <div class="muted" style="align-self:end;padding-bottom:8px;">🎚 ریرتی دیگه دستی نیست — خودکار از سطح کارت میاد (سطح ۱=معمولی ... سطح ۷=الهی)</div>
           <div><label>ادیشن</label>
@@ -204,7 +520,7 @@
           <div><label>محدودیت تعداد (خالی = نامحدود)</label><input type="number" id="gcMaxSupply"></div>
           <div><label>فعال؟</label><select id="gcActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
         </div>
-        <h3 style="margin-top:16px;">عکس مخصوص هر سطح (اختیاری)</h3>
+        <h3 style="margin-top:20px;">عکس مخصوص هر سطح (اختیاری)</h3>
         <p class="muted">اگه هرکدوم رو خالی بذاری، همون عکس پیش‌فرض بالا نشون داده می‌شه.</p>
         <div id="levelImagesGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
         <button class="btn" onclick="saveGameCard()">ذخیره</button>
@@ -251,7 +567,7 @@
           <div><label>تعداد بازی اضافه به‌ازای هر خرید</label><input type="number" id="cfgExtraCount"></div>
           <div><label>دوره ریست جدول امتیازات (روز)</label><input type="number" id="cfgResetDays"></div>
         </div>
-        <h3 style="margin-top:16px;">روش دوم ارتقا: تقویت (قربانی کردن)</h3>
+        <h3 style="margin-top:20px;">روش دوم ارتقا: تقویت (قربانی کردن)</h3>
         <div class="row2">
           <div><label>هزینه هر تقویت (تومان)</label><input type="number" id="cfgSacFee"></div>
           <div><label>درصد انتقال قدرت از قربانی</label><input type="number" id="cfgSacPercent"></div>
@@ -276,7 +592,7 @@
         <button class="btn danger" onclick="resetLeaderboardNow()">پخش جوایز و ریست دستی جدول امتیازات</button>
         <p class="muted">این کار جوایز رو بین برترین‌های فعلی پخش می‌کنه و امتیازها رو صفر می‌کنه — دوره خودکار هم طبق تنظیمات بازی هست.</p>
       </div>
-      <h3>جدول فعلی</h3>
+      <h3 style="margin:24px 8px 12px;">جدول فعلی</h3>
       <div id="leaderboardTable"></div>
     </section>
 
@@ -470,7 +786,6 @@
     </section>
   </main>
 </div>
-
 <script>
 let TOKEN = localStorage.getItem('lando_admin_token') || '';
 let currentTicketId = null;
