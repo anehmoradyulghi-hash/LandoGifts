@@ -5,193 +5,594 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <title>Lando Gifts</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet" />
 <style>
-  :root {
-    --bg: #0a0c12;
-    --bg-elev: #141824;
-    --bg-elev-2: #1b2130;
-    --border: #262c3d;
-    --text: #edf0f7;
-    --muted: #8b93a9;
-    --accent-1: #8b5cf6;
-    --accent-2: #4f8cff;
-    --grad: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-    --success: #34d399;
-    --danger: #fb7185;
-    --gold: #fbbf24;
-    --radius: 18px;
-    --radius-sm: 12px;
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body {
-    margin: 0; font-family: -apple-system, "Vazirmatn", Tahoma, sans-serif;
-    background: var(--bg); color: var(--text);
-    padding-bottom: 84px;
-    background-image: radial-gradient(circle at 15% 0%, rgba(139,92,246,.15), transparent 40%),
-                       radial-gradient(circle at 85% 10%, rgba(79,140,255,.12), transparent 40%);
-    background-attachment: fixed;
-  }
-
-  header { padding: 22px 16px 18px; text-align: center; position: relative; }
-  header h1 {
-    margin: 0; font-size: 21px; font-weight: 800;
-    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  .balance {
-    display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
-    padding: 7px 16px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
-    background: var(--bg-elev); border: 1px solid var(--border); color: var(--success);
-  }
-
-  main { padding: 4px 14px 14px; }
-
-  .card {
-    background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 14px; margin-bottom: 12px;
-    transition: transform .15s ease, border-color .15s ease;
-    animation: popIn .3s ease backwards;
-  }
-  .card:active { transform: scale(0.985); }
-  .card img { display: block; border-radius: var(--radius-sm); margin-bottom: 10px; width: 100%; }
-  @keyframes popIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
-
-  h3 {
-    font-size: 14.5px; font-weight: 700; color: var(--text); margin: 20px 2px 10px;
-    display: flex; align-items: center; gap: 6px;
-  }
-  h3::before { content: ''; width: 4px; height: 15px; border-radius: 3px; background: var(--grad); display: inline-block; }
-
-  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .row + .row { margin-top: 6px; }
-
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    background: var(--grad); color: #fff; border: none; font-weight: 700;
-    border-radius: var(--radius-sm); padding: 10px 16px; font-size: 13.5px; cursor: pointer;
-    transition: transform .12s ease, opacity .12s ease, box-shadow .2s ease; width: 100%; margin-top: 6px;
-  }
-  .btn:active { transform: scale(0.97); }
-  .btn.secondary { background: var(--bg-elev-2); border: 1px solid var(--border); color: var(--text); }
-  .btn.gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1200; }
-  .btn.danger { background: rgba(251,113,133,.15); border: 1px solid rgba(251,113,133,.4); color: var(--danger); }
-  .btn:disabled { opacity: .45; }
-
-  input, select, textarea {
-    width: 100%; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-    background: var(--bg-elev-2); color: var(--text); margin-top: 5px; margin-bottom: 10px;
-    font-family: inherit; font-size: 13.5px; transition: border-color .15s ease;
-  }
-  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-2); }
-  input[type=file] { padding: 8px; font-size: 12px; }
-
-  label { font-size: 12.5px; color: var(--muted); }
-  .muted { color: var(--muted); font-size: 13px; }
-  .tag {
-    font-size: 11px; padding: 3px 10px; border-radius: 20px;
-    background: rgba(139,92,246,.15); color: #c4b5fd; font-weight: 600; white-space: nowrap;
-  }
-  .rarity-badge {
-    font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 700; white-space: nowrap;
-    border: 1px solid; display: inline-block;
-  }
-
-  nav {
-    position: fixed; bottom: 0; left: 0; right: 0; display: flex;
-    background: rgba(20,24,36,.9); backdrop-filter: blur(14px);
-    border-top: 1px solid var(--border); padding: 6px 4px 8px; z-index: 10;
-  }
-  nav button {
-    flex: 1; background: none; border: none; color: var(--muted); padding: 8px 2px;
-    font-size: 10.5px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px;
-    transition: color .2s ease, transform .15s ease; position: relative; z-index: 2;
-  }
-  nav button .ic { font-size: 18px; transition: transform .2s ease; }
-  nav button.active { color: var(--text); }
-  nav button.active .ic { transform: translateY(-2px) scale(1.05); }
-  .nav-indicator {
-    position: absolute; top: 6px; height: 40px; border-radius: 14px;
-    background: linear-gradient(135deg, rgba(139,92,246,.22), rgba(79,140,255,.18));
-    border: 1px solid rgba(139,92,246,.35);
-    transition: transform .3s cubic-bezier(.34,1.56,.64,1), width .3s ease; z-index: 1;
-  }
-
-  .tab { display: none; }
-  .tab.active { display: block; animation: fadeInUp .28s ease; }
-  @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-  .pills { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 4px; scrollbar-width: none; }
-  .pills::-webkit-scrollbar { display: none; }
-  .pill {
-    flex: none; background: var(--bg-elev); border: 1px solid var(--border); color: var(--muted);
-    padding: 8px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600; cursor: pointer;
-    white-space: nowrap; transition: all .2s ease;
-  }
-  .pill.active { background: var(--grad); color: #fff; border-color: transparent; }
-  .game-subtab { display: none; }
-  .game-subtab.active { display: block; animation: fadeInUp .25s ease; }
-  .more-subtab { display: none; }
-  .more-subtab.active { display: block; animation: fadeInUp .25s ease; }
-
-  .msg { padding: 9px 12px; border-radius: var(--radius-sm); margin-bottom: 7px; font-size: 13.5px; max-width: 82%; line-height: 1.5; }
-  .msg.user { background: var(--grad); margin-right: auto; color: #fff; }
-  .msg.admin { background: var(--bg-elev-2); margin-left: auto; border: 1px solid var(--border); }
-
-  .toast {
-    position: fixed; top: 14px; left: 50%; transform: translateX(-50%) translateY(-20px);
-    background: var(--bg-elev-2); border: 1px solid var(--border); padding: 10px 20px; border-radius: 999px;
-    font-size: 13px; z-index: 999; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.4);
-  }
-  .toast.show { display: block; animation: toastIn .25s ease forwards; }
-  @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-
-  .battle-banner {
-    padding: 22px 14px; border-radius: var(--radius); text-align: center; font-weight: 800; font-size: 17px;
-    margin-bottom: 12px; animation: bannerPop .4s cubic-bezier(.34,1.56,.64,1);
-  }
-  .battle-banner.win { background: linear-gradient(135deg, rgba(52,211,153,.2), rgba(52,211,153,.05)); border: 1px solid rgba(52,211,153,.4); color: var(--success); }
-  .battle-banner.lose { background: linear-gradient(135deg, rgba(251,113,133,.2), rgba(251,113,133,.05)); border: 1px solid rgba(251,113,133,.4); color: var(--danger); }
-  @keyframes bannerPop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
-
-  .lb-row { display: flex; align-items: center; gap: 10px; padding: 10px 6px; }
-  .lb-rank {
-    width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 800; background: var(--bg-elev-2); flex: none;
-  }
-  .lb-rank.gold { background: linear-gradient(135deg,#fbbf24,#f59e0b); color: #1a1200; }
-  .lb-rank.silver { background: linear-gradient(135deg,#cbd5e1,#94a3b8); color: #0a0c12; }
-  .lb-rank.bronze { background: linear-gradient(135deg,#d97706,#92400e); color: #fff; }
-  .lb-name { flex: 1; font-size: 13px; }
-  .lb-score { font-size: 12.5px; font-weight: 700; color: var(--accent-2); }
-
-  .skeleton {
-    height: 90px; border-radius: 18px; background: linear-gradient(90deg, var(--bg-elev-2) 25%, var(--border) 37%, var(--bg-elev-2) 63%);
-    background-size: 400% 100%; animation: shimmer 1.4s ease infinite;
-  }
-  @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+:root {
+  --bg-deep: #02040a;
+  --bg-surface: rgba(15, 23, 42, 0.6);
+  --bg-elevated: rgba(30, 41, 59, 0.5);
+  --glass-border: rgba(148, 163, 184, 0.1);
+  --glass-border-hover: rgba(148, 163, 184, 0.2);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-violet: #8b5cf6;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+  --accent-pink: #ec4899;
+  --accent-gold: #f59e0b;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --glow-violet: 0 0 20px rgba(139, 92, 246, 0.3);
+  --glow-blue: 0 0 20px rgba(59, 130, 246, 0.3);
+  --glow-gold: 0 0 20px rgba(245, 158, 11, 0.3);
+  --radius-xl: 24px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: 'Vazirmatn', -apple-system, Tahoma, sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-bottom: 100px;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(236, 72, 153, 0.05) 0%, transparent 70%);
+  z-index: -2;
+  animation: aurora 20s ease-in-out infinite alternate;
+}
+@keyframes aurora {
+  0% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.8; transform: scale(1); }
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.3) 0%, transparent 2px),
+    radial-gradient(circle at 60% 20%, rgba(59, 130, 246, 0.3) 0%, transparent 2px),
+    radial-gradient(circle at 40% 70%, rgba(236, 72, 153, 0.3) 0%, transparent 2px),
+    radial-gradient(circle at 80% 60%, rgba(6, 182, 212, 0.3) 0%, transparent 2px);
+  background-size: 200% 200%;
+  animation: particles 30s linear infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+@keyframes particles {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.3); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.5); }
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border-hover);
+  color: var(--text-primary);
+  padding: 14px 28px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), var(--glow-violet);
+  max-width: 90vw;
+  text-align: center;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+header {
+  padding: 24px 20px 20px;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(2, 4, 10, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+}
+header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #c084fc, #60a5fa, #2dd4bf);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: -0.5px;
+  text-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+  animation: titleGlow 3s ease-in-out infinite alternate;
+}
+@keyframes titleGlow {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.2); }
+}
+.balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: var(--success);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+  animation: balancePulse 2s ease-in-out infinite;
+}
+@keyframes balancePulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.1); }
+  50% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.2); }
+}
+main { padding: 8px 16px 24px; max-width: 600px; margin: 0 auto; }
+.tab { display: none; animation: tabEnter 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.tab.active { display: block; }
+@keyframes tabEnter {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.card {
+  background: var(--bg-surface);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+}
+.card:hover {
+  border-color: var(--glass-border-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), var(--glow-violet);
+}
+.card:active { transform: scale(0.98) translateY(0); }
+.card img {
+  display: block;
+  border-radius: var(--radius-lg);
+  margin-bottom: 12px;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 24px 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: -0.3px;
+}
+h3::before {
+  content: '';
+  width: 4px;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--accent-violet), var(--accent-blue));
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.row + .row { margin-top: 4px; border-top: 1px solid rgba(148, 163, 184, 0.05); }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-blue));
+  color: #fff;
+  border: none;
+  font-weight: 800;
+  font-family: inherit;
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  margin-top: 10px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+  letter-spacing: 0.3px;
+}
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+.btn:hover::before { transform: translateX(100%); }
+.btn:active { transform: scale(0.96); box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2); }
+.btn.secondary {
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+.btn.secondary:hover {
+  border-color: var(--glass-border-hover);
+  background: rgba(30, 41, 59, 0.7);
+  color: var(--text-primary);
+}
+.btn.gold {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24, #f59e0b);
+  background-size: 200% 200%;
+  color: #000;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+  animation: goldShift 3s ease infinite;
+}
+@keyframes goldShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.btn.inline { width: auto; padding: 8px 16px; margin-top: 0; }
+input, select, textarea {
+  width: 100%;
+  padding: 12px 16px;
+  margin: 8px 0 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent-violet);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), 0 0 20px rgba(139, 92, 246, 0.1);
+  background: rgba(15, 23, 42, 0.8);
+}
+input::placeholder, textarea::placeholder { color: var(--text-muted); }
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  margin-top: 8px;
+}
+.pills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 4px 12px;
+  margin-bottom: 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.pills::-webkit-scrollbar { display: none; }
+.pill {
+  flex: 0 0 auto;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+}
+.pill.active {
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-blue));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
+.pill:active { transform: scale(0.95); }
+.game-subtab, .more-subtab { display: none; animation: subtabEnter 0.4s ease; }
+.game-subtab.active, .more-subtab.active { display: block; }
+@keyframes subtabEnter {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.muted { color: var(--text-muted); font-size: 13.5px; line-height: 1.6; }
+#productList, #gameShop {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+.product, .game-card {
+  background: var(--bg-surface);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.product:hover, .game-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: var(--accent-violet);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), var(--glow-violet);
+}
+.product img, .game-card img {
+  width: 100%;
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+.product .price, .game-card .price {
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-gold), #fbbf24);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 15px;
+}
+.rarity-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.skeleton {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.5) 25%, rgba(51, 65, 85, 0.5) 50%, rgba(30, 41, 59, 0.5) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-md);
+  animation: shimmer 1.5s infinite;
+  height: 120px;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.market-item, .gift-item {
+  background: var(--bg-surface);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+}
+.market-item:hover, .gift-item:hover {
+  border-color: var(--glass-border-hover);
+  transform: translateX(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+.ledger-item {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ledger-item:last-child { border-bottom: none; }
+#wheelVisual {
+  font-size: 72px;
+  margin: 20px 0;
+  transition: transform 2.2s cubic-bezier(.17,.67,.35,.99);
+  filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.4));
+  animation: wheelFloat 3s ease-in-out infinite;
+}
+@keyframes wheelFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+nav {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: 8px 4px;
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  max-width: 600px;
+  margin: 0 auto;
+}
+nav button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  border-radius: var(--radius-md);
+}
+nav button .ic {
+  font-size: 22px;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  filter: grayscale(0.3);
+}
+nav button.active { color: var(--text-primary); }
+nav button.active .ic {
+  transform: translateY(-4px) scale(1.1);
+  filter: grayscale(0) drop-shadow(0 0 8px rgba(139, 92, 246, 0.5));
+}
+.nav-indicator {
+  position: absolute;
+  bottom: 6px;
+  height: 4px;
+  width: 40px;
+  background: linear-gradient(90deg, var(--accent-violet), var(--accent-blue));
+  border-radius: 4px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+.leaderboard-item:hover {
+  border-color: var(--glass-border-hover);
+  transform: translateX(4px);
+}
+.lb-rank {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 13px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+}
+.lb-rank.gold { background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.3); color: var(--accent-gold); box-shadow: 0 0 10px rgba(245, 158, 11, 0.1); }
+.lb-rank.silver { background: rgba(148, 163, 184, 0.2); border-color: rgba(148, 163, 184, 0.3); color: #cbd5e1; }
+.lb-rank.bronze { background: rgba(251, 146, 60, 0.2); border-color: rgba(251, 146, 60, 0.3); color: #fdba74; }
+.season-tier {
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  margin-bottom: 10px;
+  transition: all 0.2s ease;
+}
+.season-tier.unlocked {
+  border-color: var(--accent-violet);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+}
+.chat-msg {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  max-width: 85%;
+  font-size: 13.5px;
+  line-height: 1.5;
+  animation: messagePop 0.3s ease;
+}
+@keyframes messagePop {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+.chat-msg.user {
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-blue));
+  color: #fff;
+  margin-left: auto;
+  border-bottom-right-radius: 4px;
+}
+.chat-msg.admin {
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  margin-right: auto;
+  border-bottom-left-radius: 4px;
+}
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.2); }
+  50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.4); }
+}
+@media (max-width: 380px) {
+  nav button { font-size: 9px; padding: 6px 2px; }
+  nav button .ic { font-size: 18px; }
+  header h1 { font-size: 22px; }
+}
 </style>
 </head>
 <body>
 <div class="toast" id="toast"></div>
+
 <header>
   <h1>🎁 Lando Gifts</h1>
   <div class="balance" id="balanceLine">در حال بارگذاری...</div>
 </header>
 
 <main>
-  <!-- فروشگاه -->
   <section class="tab active" id="tab-shop">
     <div id="productList"><div class="skeleton"></div></div>
   </section>
 
-  <!-- کیف پول (تومان + ارز، یکجا) -->
   <section class="tab" id="tab-wallet">
     <div class="card">
       <h3>شارژ کیف‌پول</h3>
       <label>مبلغ (تومان)</label>
       <input type="number" id="topupAmount" placeholder="مثلا 100000" />
       <button class="btn gold" id="zarinpalBtn" style="display:none;" onclick="doZarinpalTopup()">💳 پرداخت آنلاین (زرین‌پال)</button>
-      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
-        <p class="muted" style="margin:0 0 6px;">یا کارت‌به‌کارت:</p>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--glass-border);">
+        <p class="muted" style="margin:0 0 8px;">یا کارت‌به‌کارت:</p>
         <div class="muted" id="cardInfo"></div>
         <label>کد رهگیری یا ۴ رقم آخر کارت</label>
         <input type="text" id="topupTracking" />
@@ -206,7 +607,6 @@
       <input type="text" id="withdrawCard" />
       <button class="btn secondary" onclick="doWithdraw()">ثبت درخواست برداشت</button>
     </div>
-
     <h3>کیف‌پول ارزی</h3>
     <div class="card">
       <div id="currencyBalances" class="muted">در حال بارگذاری...</div>
@@ -233,12 +633,10 @@
       <label>آدرس مقصد</label><input type="text" id="wdAddress" />
       <button class="btn secondary" onclick="doCurrencyWithdraw()">ثبت درخواست برداشت</button>
     </div>
-
     <h3>تاریخچه تراکنش‌ها</h3>
     <div class="card"><div id="ledgerList" class="muted">در حال بارگذاری...</div></div>
   </section>
 
-  <!-- بازار گیفت -->
   <section class="tab" id="tab-market">
     <div class="card">
       <h3>ثبت آگهی فروش گیفت</h3>
@@ -258,7 +656,6 @@
     <div id="myGiftsList" class="muted">در حال بارگذاری...</div>
   </section>
 
-  <!-- بازی کارتی -->
   <section class="tab" id="tab-game">
     <div class="card">
       <div class="row"><span class="muted">بازی‌های امروز</span><b id="gamePlaysLeft">-</b></div>
@@ -266,7 +663,6 @@
       <div class="row"><span class="muted">وضعیت صف</span><b id="gameQueueState">-</b></div>
       <button class="btn secondary" onclick="buyExtraPlays()">⚡ خرید بازی اضافه</button>
     </div>
-
     <div class="pills" id="gamePills">
       <button class="pill active" data-gsub="shop" onclick="showGameSub('shop')">🛍 فروشگاه</button>
       <button class="pill" data-gsub="mycards" onclick="showGameSub('mycards')">🎴 کارت‌های من</button>
@@ -275,16 +671,14 @@
       <button class="pill" data-gsub="wheel" onclick="showGameSub('wheel')">🎡 چرخ شانس</button>
       <button class="pill" data-gsub="tasks" onclick="showGameSub('tasks')">🎯 تسک‌ها</button>
     </div>
-
     <div class="game-subtab active" id="gsub-shop">
-      <select id="categoryFilter" onchange="loadGame()" style="margin-bottom:10px;"><option value="">همه دسته‌ها</option></select>
+      <select id="categoryFilter" onchange="loadGame()" style="margin-bottom:12px;"><option value="">همه دسته‌ها</option></select>
       <div id="gameShop" class="muted">در حال بارگذاری...</div>
     </div>
-
     <div class="game-subtab" id="gsub-mycards">
       <p class="muted">برای «تقویت»، یه کارت رو هدف و یه کارت دیگه رو قربانی انتخاب کن — قربانی نابود می‌شه و بخشی از قدرتش به هدف اضافه می‌شه (سطح هدف عوض نمی‌شه).</p>
       <div id="gameMyCards" class="muted">در حال بارگذاری...</div>
-      <div id="sacrificeBar" class="card" style="display:none;position:sticky;bottom:78px;border-color:var(--gold);">
+      <div id="sacrificeBar" class="card" style="display:none;position:sticky;bottom:90px;border-color:var(--accent-gold);box-shadow:var(--glow-gold);z-index:50;">
         <button class="btn gold" onclick="doSacrifice()">💪 تقویت کن (قربانی نابود می‌شه)</button>
       </div>
       <div id="mutationsWrap" style="display:none;">
@@ -293,7 +687,6 @@
         <div id="mutationsList"></div>
       </div>
     </div>
-
     <div class="game-subtab" id="gsub-battle">
       <div id="battleBanner"></div>
       <div class="card">
@@ -305,11 +698,9 @@
       <h3>تاریخچه مسابقات</h3>
       <div id="gameHistory" class="muted">در حال بارگذاری...</div>
     </div>
-
     <div class="game-subtab" id="gsub-leaderboard">
       <div id="gameLeaderboard" class="muted">در حال بارگذاری...</div>
     </div>
-
     <div class="game-subtab" id="gsub-wheel">
       <div class="card" style="text-align:center;">
         <div id="wheelVisual" style="font-size:64px;margin:10px 0;transition:transform 2.2s cubic-bezier(.17,.67,.35,.99);">🎡</div>
@@ -321,32 +712,27 @@
       <h3>تاریخچه اسپین‌ها</h3>
       <div id="wheelHistoryList" class="muted">در حال بارگذاری...</div>
     </div>
-
     <div class="game-subtab" id="gsub-tasks">
       <div id="cardTasksList" class="muted">در حال بارگذاری...</div>
     </div>
   </section>
 
-  <!-- تسک‌ها -->
   <section class="tab" id="tab-tasks">
     <div id="tasksList" class="muted">در حال بارگذاری...</div>
   </section>
 
-  <!-- رفرال -->
   <section class="tab" id="tab-referral">
     <div class="card" id="referralCard">در حال بارگذاری...</div>
   </section>
 
-  <!-- پشتیبانی -->
   <section class="tab" id="tab-support">
-    <div class="card" id="chatBox" style="min-height:200px;"></div>
+    <div class="card" id="chatBox" style="min-height:220px;"></div>
     <div class="card">
       <textarea id="supportText" rows="3" placeholder="پیام خودتو بنویس..."></textarea>
       <button class="btn" onclick="sendSupport()">ارسال</button>
     </div>
   </section>
 
-  <!-- بیشتر: مزایده، بتل‌پس، استیکینگ، کلن -->
   <section class="tab" id="tab-more">
     <div class="pills" id="morePills">
       <button class="pill active" data-msub="auction" onclick="showMoreSub('auction')">⚡ مزایده</button>
@@ -354,19 +740,13 @@
       <button class="pill" data-msub="staking" onclick="showMoreSub('staking')">🏦 استیکینگ</button>
       <button class="pill" data-msub="clan" onclick="showMoreSub('clan')">⚔️ کلن</button>
     </div>
-
-    <!-- مزایده فلش -->
     <div class="more-subtab active" id="msub-auction">
       <div id="auctionsList" class="muted">در حال بارگذاری...</div>
     </div>
-
-    <!-- بتل‌پس فصلی -->
     <div class="more-subtab" id="msub-season">
       <div class="card" id="seasonStatusCard">در حال بارگذاری...</div>
       <div id="seasonTiersList" class="muted"></div>
     </div>
-
-    <!-- استیکینگ کارت -->
     <div class="more-subtab" id="msub-staking">
       <div class="card">
         <h3 style="margin-top:0;">استیک کردن کارت</h3>
@@ -376,8 +756,6 @@
       <h3>کارت‌های استیک‌شده من</h3>
       <div id="myStakesList" class="muted">در حال بارگذاری...</div>
     </div>
-
-    <!-- کلن -->
     <div class="more-subtab" id="msub-clan">
       <div id="clanContent" class="muted">در حال بارگذاری...</div>
       <h3>جدول کلن‌های برتر</h3>
@@ -397,7 +775,6 @@
   <button data-tab="referral" onclick="showTab('referral')"><span class="ic">👥</span>رفرال</button>
   <button data-tab="support" onclick="showTab('support')"><span class="ic">🆘</span>پشتیبانی</button>
 </nav>
-
 <script>
 const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
