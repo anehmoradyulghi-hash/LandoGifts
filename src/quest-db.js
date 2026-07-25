@@ -1,0 +1,133 @@
+import db from './db.js';
+import { adjustToman } from './db.js';
+import { addUserXp } from './rank-db.js';
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS quest_config (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  enabled INTEGER NOT NULL DEFAULT 0,
+  quest_count INTEGER NOT NULL DEFAULT 3
+);
+INSERT OR IGNORE INTO quest_config (id) VALUES (1);
+
+CREATE TABLE IF NOT EXISTS quest_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  type TEXT NOT NULL,           -- win_battles | buy_card | deposit_toman | custom
+  target_count INTEGER NOT NULL DEFAULT 1,
+  reward_type TEXT NOT NULL,    -- toman | xp | card | extra_games
+  reward_value TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS daily_quest_assignments (
+  quest_date TEXT NOT NULL,
+  template_id INTEGER NOT NULL,
+  PRIMARY KEY (quest_date, template_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_quest_progress (
+  tg_id INTEGER NOT NULL,
+  quest_date TEXT NOT NULL,
+  template_id INTEGER NOT NULL,
+  progress INTEGER NOT NULL DEFAULT 0,
+  claimed INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (tg_id, quest_date, template_id)
+);
+`);
+
+export function getQuestConfig() { return db.prepare('SELECT * FROM quest_config WHERE id = 1').get(); }
+export function setQuestConfig(c) {
+  db.prepare('UPDATE quest_config SET enabled=?, quest_count=? WHERE id=1').run(c.enabled ? 1 : 0, c.quest_count);
+}
+export function listQuestTemplates(onlyActive = false) {
+  return onlyActive
+    ? db.prepare('SELECT * FROM quest_templates WHERE active = 1 ORDER BY id DESC').all()
+    : db.prepare('SELECT * FROM quest_templates ORDER BY id DESC').all();
+}
+export function upsertQuestTemplate(t) {
+  if (t.id) {
+    db.prepare(`UPDATE quest_templates SET title=?, type=?, target_count=?, reward_type=?, reward_value=?, active=? WHERE id=?`)
+      .run(t.title, t.type, t.target_count, t.reward_type, t.reward_value, t.active ? 1 : 0, t.id);
+    return t.id;
+  }
+  return db.prepare(`INSERT INTO quest_templates (title, type, target_count, reward_type, reward_value, active) VALUES (?,?,?,?,?,?)`)
+    .run(t.title, t.type, t.target_count, t.reward_type, t.reward_value, t.active ? 1 : 0).lastInsertRowid;
+}
+export function deleteQuestTemplate(id) { db.prepare('DELETE FROM quest_templates WHERE id = ?').run(id); }
+
+// اگه برای امروز هنوز ماموریت انتخاب نشده، به تعداد لازم به‌صورت رندوم از قالب‌های فعال انتخاب می‌کنه
+function ensureTodayAssignments() {
+  const cfg = getQuestConfig();
+  const today = new Date().toISOString().slice(0, 10);
+  const existing = db.prepare('SELECT COUNT(*) c FROM daily_quest_assignments WHERE quest_date = ?').get(today).c;
+  if (existing > 0) return today;
+  const templates = listQuestTemplates(true);
+  const shuffled = [...templates].sort(() => Math.random() - 0.5).slice(0, cfg.quest_count);
+  const tx = db.transaction(() => {
+    for (const t of shuffled) db.prepare('INSERT OR IGNORE INTO daily_quest_assignments (quest_date, template_id) VALUES (?,?)').run(today, t.id);
+  });
+  tx();
+  return today;
+}
+
+export function getTodayQuestsForUser(tgId) {
+  const cfg = getQuestConfig();
+  if (!cfg.enabled) return { enabled: false, quests: [] };
+  const today = ensureTodayAssignments();
+  const rows = db.prepare(`
+    SELECT t.*, dqa.quest_date FROM daily_quest_assignments dqa JOIN quest_templates t ON t.id = dqa.template_id
+    WHERE dqa.quest_date = ?
+  `).all(today);
+  const quests = rows.map(t => {
+    const progress = db.prepare('SELECT * FROM user_quest_progress WHERE tg_id=? AND quest_date=? AND template_id=?').get(tgId, today, t.id);
+    return { ...t, progress: progress?.progress || 0, claimed: !!progress?.claimed, done: (progress?.progress || 0) >= t.target_count };
+  });
+  return { enabled: true, quests };
+}
+
+// هوکی که از قسمت‌های دیگه (برد بازی، خرید، واریز) صدا زده می‌شه تا پیشرفت ماموریت‌های امروز رو جلو ببره
+export function incrementQuestProgress(tgId, type, amount = 1) {
+  const cfg = getQuestConfig();
+  if (!cfg.enabled) return;
+  const today = ensureTodayAssignments();
+  const todays = db.prepare(`
+    SELECT t.* FROM daily_quest_assignments dqa JOIN quest_templates t ON t.id = dqa.template_id
+    WHERE dqa.quest_date = ? AND t.type = ?
+  `).all(today, type);
+  for (const t of todays) {
+    db.prepare(`
+      INSERT INTO user_quest_progress (tg_id, quest_date, template_id, progress) VALUES (?,?,?,?)
+      ON CONFLICT(tg_id, quest_date, template_id) DO UPDATE SET progress = MIN(progress + excluded.progress, ?)
+    `).run(tgId, today, t.id, amount, t.target_count);
+  }
+}
+
+export function claimQuestReward(tgId, templateId) {
+  const today = ensureTodayAssignments();
+  const assigned = db.prepare('SELECT 1 FROM daily_quest_assignments WHERE quest_date=? AND template_id=?').get(today, templateId);
+  if (!assigned) throw new Error('این ماموریت برای امروز نیست');
+  const template = db.prepare('SELECT * FROM quest_templates WHERE id = ?').get(templateId);
+  const progress = db.prepare('SELECT * FROM user_quest_progress WHERE tg_id=? AND quest_date=? AND template_id=?').get(tgId, today, templateId);
+  if (!progress || progress.progress < template.target_count) throw new Error('هنوز این ماموریت کامل نشده');
+  if (progress.claimed) throw new Error('جایزه این ماموریت رو قبلا گرفتی');
+
+  const tx = db.transaction(() => {
+    if (template.reward_type === 'toman' && Number(template.reward_value) > 0) {
+      adjustToman(tgId, Number(template.reward_value), `جایزه ماموریت روزانه: ${template.title}`);
+    } else if (template.reward_type === 'xp' && Number(template.reward_value) > 0) {
+      addUserXp(tgId, Number(template.reward_value));
+    } else if (template.reward_type === 'card' && template.reward_value) {
+      db.prepare('INSERT INTO user_cards (tg_id, card_id) VALUES (?,?)').run(tgId, Number(template.reward_value));
+    } else if (template.reward_type === 'extra_games' && Number(template.reward_value) > 0) {
+      db.prepare(`
+        INSERT INTO game_extra_plays (tg_id, extra_plays) VALUES (?, ?)
+        ON CONFLICT(tg_id) DO UPDATE SET extra_plays = extra_plays + excluded.extra_plays
+      `).run(tgId, Number(template.reward_value));
+    }
+    db.prepare('UPDATE user_quest_progress SET claimed = 1 WHERE tg_id=? AND quest_date=? AND template_id=?').run(tgId, today, templateId);
+  });
+  tx();
+  return { rewardType: template.reward_type, rewardValue: template.reward_value };
+}
