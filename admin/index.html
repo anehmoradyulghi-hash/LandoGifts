@@ -8,31 +8,22 @@
 <style>
 :root {
   --bg-deep: #02040a;
-  --bg-surface: rgba(15, 23, 42, 0.6);
-  --bg-elevated: rgba(30, 41, 59, 0.5);
-  --glass-border: rgba(148, 163, 184, 0.1);
-  --glass-border-hover: rgba(148, 163, 184, 0.2);
+  --bg-surface: rgba(15, 23, 42, 0.7);
+  --glass-border: rgba(148, 163, 184, 0.12);
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
   --accent-violet: #8b5cf6;
   --accent-blue: #3b82f6;
-  --accent-cyan: #06b6d4;
-  --accent-pink: #ec4899;
   --accent-gold: #f59e0b;
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --glow-violet: 0 0 20px rgba(139, 92, 246, 0.3);
-  --glow-blue: 0 0 20px rgba(59, 130, 246, 0.3);
-  --glow-gold: 0 0 20px rgba(245, 158, 11, 0.3);
-  --radius-xl: 24px;
-  --radius-lg: 16px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --glow-violet: 0 0 30px rgba(139, 92, 246, 0.25);
+  --radius-xl: 28px;
+  --radius-lg: 20px;
+  --radius-md: 14px;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
 body {
   margin: 0;
   font-family: 'Vazirmatn', -apple-system, Tahoma, sans-serif;
@@ -47,56 +38,28 @@ body::before {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(236, 72, 153, 0.04) 0%, transparent 70%);
-  z-index: -2;
-  animation: aurora 20s ease-in-out infinite alternate;
-}
-@keyframes aurora {
-  0% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.1); }
-  100% { opacity: 0.8; transform: scale(1); }
-}
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.2) 0%, transparent 2px),
-    radial-gradient(circle at 60% 20%, rgba(59, 130, 246, 0.2) 0%, transparent 2px),
-    radial-gradient(circle at 40% 70%, rgba(236, 72, 153, 0.2) 0%, transparent 2px),
-    radial-gradient(circle at 80% 60%, rgba(6, 182, 212, 0.2) 0%, transparent 2px);
-  background-size: 200% 200%;
-  animation: particles 30s linear infinite;
+    radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.06) 0%, transparent 50%);
   z-index: -1;
-  pointer-events: none;
-}
-@keyframes particles {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 100% 100%; }
 }
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.3); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.5); }
+::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.25); border-radius: 10px; }
 
-/* Login Box */
+/* Login */
 #loginBox {
-  max-width: 380px;
-  margin: 100px auto;
+  max-width: 400px;
+  margin: 80px auto;
   background: var(--bg-surface);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(24px);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
-  padding: 32px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), var(--glow-violet);
+  padding: 36px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5), var(--glow-violet);
   animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 #loginBox h2 {
-  margin: 0 0 20px;
-  font-size: 22px;
+  margin: 0 0 24px;
+  font-size: 24px;
   font-weight: 900;
   background: linear-gradient(135deg, #c084fc, #60a5fa);
   -webkit-background-clip: text;
@@ -104,16 +67,19 @@ body::after {
   color: transparent;
   text-align: center;
 }
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 
-/* App Header */
+/* Header */
 header {
   padding: 18px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(2, 4, 10, 0.7);
+  background: rgba(2, 4, 10, 0.75);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--glass-border);
   position: sticky;
   top: 0;
@@ -137,8 +103,10 @@ nav {
   padding: 14px 20px;
   background: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--glass-border);
+  position: sticky;
+  top: 65px;
+  z-index: 99;
 }
 nav button {
   background: var(--bg-surface);
@@ -154,7 +122,7 @@ nav button {
   transition: all 0.2s ease;
 }
 nav button:hover {
-  border-color: var(--glass-border-hover);
+  border-color: rgba(148, 163, 184, 0.25);
   color: var(--text-primary);
   transform: translateY(-1px);
 }
@@ -164,10 +132,9 @@ nav button.active {
   border-color: transparent;
   box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
 }
-nav button:active { transform: scale(0.96); }
 
-/* Main Layout */
-main { padding: 20px; max-width: 1000px; margin: 0 auto; }
+/* Main */
+main { padding: 20px; max-width: 1100px; margin: 0 auto; }
 .tab { display: none; animation: tabEnter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .tab.active { display: block; }
 @keyframes tabEnter {
@@ -175,28 +142,80 @@ main { padding: 20px; max-width: 1000px; margin: 0 auto; }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Glass Cards */
+/* Hub Cards for Admin */
+.admin-hub {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.admin-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  padding: 20px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background-size: cover;
+  background-position: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 1px solid var(--glass-border);
+}
+.admin-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
+  z-index: 1;
+}
+.admin-card:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4), var(--glow-violet);
+}
+.admin-card .card-title {
+  position: relative;
+  z-index: 2;
+  font-size: 16px;
+  font-weight: 800;
+  color: white;
+}
+.admin-card .card-meta {
+  position: relative;
+  z-index: 2;
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  margin-top: 4px;
+}
+
+/* Gradients */
+.grad-purple { background: linear-gradient(135deg, #4c1d95, #7c3aed); }
+.grad-blue { background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+.grad-green { background: linear-gradient(135deg, #064e3b, #10b981); }
+.grad-red { background: linear-gradient(135deg, #7f1d1d, #ef4444); }
+.grad-gold { background: linear-gradient(135deg, #78350f, #f59e0b); }
+.grad-pink { background: linear-gradient(135deg, #831843, #ec4899); }
+.grad-cyan { background: linear-gradient(135deg, #164e63, #06b6d4); }
+.grad-orange { background: linear-gradient(135deg, #7c2d12, #f97316); }
+.grad-teal { background: linear-gradient(135deg, #134e4a, #14b8a6); }
+.grad-indigo { background: linear-gradient(135deg, #312e81, #6366f1); }
+.grad-slate { background: linear-gradient(135deg, #0f172a, #334155); }
+
+/* Glass Card (forms) */
 .card {
   background: var(--bg-surface);
   backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   padding: 24px;
   margin-bottom: 20px;
   transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
 }
 .card:hover {
-  border-color: var(--glass-border-hover);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3), var(--glow-violet);
+  border-color: rgba(148, 163, 184, 0.2);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.3);
 }
 .card h3 {
   font-size: 16px;
@@ -213,7 +232,6 @@ main { padding: 20px; max-width: 1000px; margin: 0 auto; }
   height: 18px;
   border-radius: 4px;
   background: linear-gradient(180deg, var(--accent-violet), var(--accent-blue));
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
 }
 
 /* Tables */
@@ -232,7 +250,7 @@ table {
 th, td {
   padding: 12px 14px;
   text-align: right;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.05);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.06);
 }
 th {
   background: rgba(30, 41, 59, 0.6);
@@ -243,7 +261,6 @@ th {
   letter-spacing: 0.5px;
 }
 tr:hover td { background: rgba(139, 92, 246, 0.03); }
-tr:last-child td { border-bottom: none; }
 
 /* Inputs */
 input, select, textarea {
@@ -261,13 +278,11 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus {
   border-color: var(--accent-violet);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), 0 0 20px rgba(139, 92, 246, 0.1);
-  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
-input::placeholder, textarea::placeholder { color: var(--text-muted); }
 label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
   margin-bottom: 4px;
   display: block;
@@ -293,33 +308,21 @@ label {
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
 }
-.btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transform: translateX(-100%);
-  transition: transform 0.6s ease;
-}
-.btn:hover::before { transform: translateX(100%); }
+.btn:hover { transform: translateY(-1px); }
 .btn:active { transform: scale(0.96); }
 .btn.danger {
   background: linear-gradient(135deg, #dc2626, #ef4444);
   box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
 }
 .btn.secondary {
-  background: var(--bg-elevated);
+  background: rgba(30, 41, 59, 0.5);
   border: 1px solid var(--glass-border);
   color: var(--text-secondary);
   box-shadow: none;
 }
-.btn.secondary:hover {
-  border-color: var(--glass-border-hover);
-  background: rgba(30, 41, 59, 0.7);
-  color: var(--text-primary);
-}
+.btn.secondary:hover { color: var(--text-primary); }
 
-/* Row2 Grid */
+/* Row2 */
 .row2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -327,31 +330,22 @@ label {
 }
 @media (max-width: 600px) {
   .row2 { grid-template-columns: 1fr; }
+  .admin-hub { grid-template-columns: 1fr 1fr; }
   nav { padding: 10px; gap: 6px; }
   nav button { padding: 6px 10px; font-size: 12px; }
-  header { padding: 14px 16px; }
-  header h2 { font-size: 16px; }
-  main { padding: 12px; }
-  .card { padding: 16px; }
 }
 
 .muted { color: var(--text-muted); font-size: 13px; line-height: 1.6; }
-
-/* Animations */
-@keyframes popIn {
-  from { opacity: 0; transform: translateY(20px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
 </style>
 </head>
 <body>
 
-<div id="loginBox" class="card">
+<div id="loginBox">
   <h2>🔐 ورود ادمین</h2>
   <label>رمز عبور</label>
   <input type="password" id="pw">
-  <button class="btn" onclick="login()" style="width:100%;margin-top:8px;">ورود</button>
-  <p class="muted" id="loginErr" style="margin-top:12px;text-align:center;"></p>
+  <button class="btn" onclick="login()" style="width:100%;margin-top:10px;">ورود</button>
+  <p class="muted" id="loginErr" style="margin-top:14px;text-align:center;"></p>
 </div>
 
 <div id="app" style="display:none;">
@@ -359,6 +353,7 @@ label {
     <h2>🎁 پنل ادمین Lando Gifts</h2>
     <button class="btn secondary" onclick="logout()">خروج</button>
   </header>
+
   <nav>
     <button class="active" data-tab="dash" onclick="showTab('dash')">📊 داشبورد</button>
     <button data-tab="currencies" onclick="showTab('currencies')">💱 ارزها</button>
@@ -384,10 +379,48 @@ label {
     <button data-tab="cardtasks" onclick="showTab('cardtasks')">🎯 تسک کارتی</button>
     <button data-tab="tickets" onclick="showTab('tickets')">🆘 پشتیبانی</button>
     <button data-tab="users" onclick="showTab('users')">👥 کاربران</button>
+    <button data-tab="ranks" onclick="showTab('ranks')">🎖 رنک</button>
+    <button data-tab="avatars" onclick="showTab('avatars')">🎭 آواتار</button>
+    <button data-tab="quests" onclick="showTab('quests')">📅 کوئست</button>
+    <button data-tab="promos" onclick="showTab('promos')">🎟 پرومو</button>
+    <button data-tab="albums" onclick="showTab('albums')">📚 آلبوم</button>
+    <button data-tab="trades" onclick="showTab('trades')">🔄 ترید</button>
+    <button data-tab="seasonal" onclick="showTab('seasonal')">🎉 ایونت</button>
   </nav>
-  <main>
-    <section class="tab active" id="tab-dash"><div class="card" id="statsCard">در حال بارگذاری...</div></section>
 
+  <main>
+    <!-- DASHBOARD -->
+    <section class="tab active" id="tab-dash">
+      <div class="admin-hub">
+        <div class="admin-card grad-purple" onclick="showTab('users')">
+          <div class="card-title">👥 کاربران</div>
+          <div class="card-meta">مدیریت کاربران</div>
+        </div>
+        <div class="admin-card grad-green" onclick="showTab('topups')">
+          <div class="card-title">💰 شارژها</div>
+          <div class="card-meta">تایید شارژ</div>
+        </div>
+        <div class="admin-card grad-red" onclick="showTab('withdrawals')">
+          <div class="card-title">🏧 برداشت‌ها</div>
+          <div class="card-meta">تایید برداشت</div>
+        </div>
+        <div class="admin-card grad-blue" onclick="showTab('orders')">
+          <div class="card-title">📦 سفارش‌ها</div>
+          <div class="card-meta">مدیریت سفارش</div>
+        </div>
+        <div class="admin-card grad-gold" onclick="showTab('products')">
+          <div class="card-title">🛍 محصولات</div>
+          <div class="card-meta">افزودن/ویرایش</div>
+        </div>
+        <div class="admin-card grad-pink" onclick="showTab('gamecards')">
+          <div class="card-title">🎴 کارت‌ها</div>
+          <div class="card-meta">مدیریت بازی</div>
+        </div>
+      </div>
+      <div class="card" id="statsCard">در حال بارگذاری...</div>
+    </section>
+
+    <!-- CURRENCIES -->
     <section class="tab" id="tab-currencies">
       <div class="card">
         <h3>افزودن / ویرایش ارز</h3>
@@ -408,23 +441,22 @@ label {
       <div id="currenciesTable"></div>
     </section>
 
+    <!-- PAYMENT -->
     <section class="tab" id="tab-payment">
       <div class="card">
         <h3>شماره کارت واریزی (کارت‌به‌کارت)</h3>
-        <p class="muted">این شماره همونیه که تو مینی‌اپ به کاربر نشون داده می‌شه تا کارت‌به‌کارت واریز کنه. هروقت عوضش کنی، فوری تو اپ همه کاربرا آپدیت می‌شه.</p>
-        <label>شماره کارت</label>
-        <input id="payCardNumber" placeholder="6037-xxxx-xxxx-xxxx">
-        <label>نام صاحب کارت</label>
-        <input id="payCardOwner" placeholder="مثلا: علی محمدی">
+        <p class="muted">این شماره همونیه که تو مینی‌اپ به کاربر نشون داده می‌شه تا کارت‌به‌کارت واریز کنه.</p>
+        <label>شماره کارت</label><input id="payCardNumber" placeholder="6037-xxxx-xxxx-xxxx">
+        <label>نام صاحب کارت</label><input id="payCardOwner" placeholder="مثلا: علی محمدی">
         <h3 style="margin-top:20px;">درگاه زرین‌پال (پرداخت آنلاین)</h3>
-        <label>مرچنت کد زرین‌پال</label>
-        <input id="payZarinpal" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-        <p class="muted">اگه این رو خالی بذاری، دکمه پرداخت آنلاین تو مینی‌اپ نشون داده نمی‌شه و فقط کارت‌به‌کارت فعاله.</p>
+        <label>مرچنت کد زرین‌پال</label><input id="payZarinpal" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+        <p class="muted">اگه این رو خالی بذاری، دکمه پرداخت آنلاین تو مینی‌اپ نشون داده نمی‌شه.</p>
         <button class="btn" onclick="savePaymentSettings()">ذخیره</button>
-        <p class="muted" id="paymentSavedMsg" style="display:none;color:var(--success);margin-top:10px;">ذخیره شد ✅</p>
+        <p class="muted" id="paymentSavedMsg" style="display:none;color:var(--accent-green);margin-top:10px;">ذخیره شد ✅</p>
       </div>
     </section>
 
+    <!-- MESSAGES -->
     <section class="tab" id="tab-messages">
       <div class="card">
         <h3>پیام خوش‌آمدگویی (استارت ربات)</h3>
@@ -432,7 +464,7 @@ label {
         <h3 style="margin-top:16px;">پیام درخواست عضویت در کانال</h3>
         <textarea id="msgJoinPrompt" rows="3"></textarea>
         <button class="btn" onclick="saveMessageSettings()">ذخیره پیام‌ها</button>
-        <p class="muted" id="msgSavedMsg" style="display:none;color:var(--success);margin-top:10px;">ذخیره شد ✅</p>
+        <p class="muted" id="msgSavedMsg" style="display:none;color:var(--accent-green);margin-top:10px;">ذخیره شد ✅</p>
       </div>
       <div class="card">
         <h3>ارسال پیام به کاربران</h3>
@@ -445,10 +477,16 @@ label {
       </div>
     </section>
 
+    <!-- TOPUPS -->
     <section class="tab" id="tab-topups"><div id="topupsTable"></div></section>
+
+    <!-- WITHDRAWALS -->
     <section class="tab" id="tab-withdrawals"><div id="withdrawalsTable"></div></section>
+
+    <!-- CREQS -->
     <section class="tab" id="tab-creqs"><div id="creqsTable"></div></section>
 
+    <!-- PRODUCTS -->
     <section class="tab" id="tab-products">
       <div class="card">
         <h3>افزودن / ویرایش محصول</h3>
@@ -458,7 +496,7 @@ label {
         <label>عکس محصول</label>
         <input type="file" id="prodImageFile" accept="image/*" onchange="uploadImageTo('prodImageFile','prodImage','prodImagePreview')">
         <input type="hidden" id="prodImage">
-        <img id="prodImagePreview" style="max-width:120px;border-radius:var(--radius-sm);display:none;margin-bottom:8px;">
+        <img id="prodImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
           <div><label>قیمت (تومان)</label><input type="number" id="prodPrice"></div>
           <div><label>فعال؟</label><select id="prodActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
@@ -468,18 +506,20 @@ label {
       <div id="productsTable"></div>
     </section>
 
+    <!-- ORDERS -->
     <section class="tab" id="tab-orders"><div id="ordersTable"></div></section>
+
+    <!-- GIFTS -->
     <section class="tab" id="tab-gifts"><div id="giftsTable"></div></section>
 
+    <!-- TASKS -->
     <section class="tab" id="tab-tasks">
       <div class="card">
         <h3>افزودن / ویرایش تسک</h3>
         <input type="hidden" id="taskId">
         <label>عنوان</label><input id="taskTitle">
         <div class="row2">
-          <div><label>نوع</label>
-            <select id="taskKind"><option value="join_channel">عضویت در کانال</option><option value="custom">سفارشی</option></select>
-          </div>
+          <div><label>نوع</label><select id="taskKind"><option value="join_channel">عضویت در کانال</option><option value="custom">سفارشی</option></select></div>
           <div><label>یوزرنیم کانال (بدون @)</label><input id="taskChannel"></div>
         </div>
         <div class="row2">
@@ -491,43 +531,34 @@ label {
       <div id="tasksTable"></div>
     </section>
 
+    <!-- GAME CARDS -->
     <section class="tab" id="tab-gamecards">
       <div class="card">
         <h3>افزودن / ویرایش کارت بازی</h3>
         <input type="hidden" id="gcId">
         <label>اسم کارت</label><input id="gcName">
-        <label>دسته‌بندی</label>
-        <select id="gcCategory"><option value="">بدون دسته</option></select>
-        <label>عکس پیش‌فرض (اگه عکس مخصوص هر سطح نذاری، از همین استفاده می‌شه)</label>
+        <label>دسته‌بندی</label><select id="gcCategory"><option value="">بدون دسته</option></select>
+        <label>عکس پیش‌فرض</label>
         <input type="file" id="gcImageFile" accept="image/*" onchange="uploadImageTo('gcImageFile','gcImage','gcImagePreview')">
         <input type="hidden" id="gcImage">
-        <img id="gcImagePreview" style="max-width:120px;border-radius:var(--radius-sm);display:none;margin-bottom:8px;">
+        <img id="gcImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
-          <div class="muted" style="align-self:end;padding-bottom:8px;">🎚 ریرتی دیگه دستی نیست — خودکار از سطح کارت میاد (سطح ۱=معمولی ... سطح ۷=الهی)</div>
-          <div><label>ادیشن</label>
-            <select id="gcEdition">
-              <option value="standard">معمولی</option>
-              <option value="shiny">✨ درخشان</option>
-              <option value="gold">🟡 طلایی</option>
-            </select>
-          </div>
-        </div>
-        <div class="row2">
+          <div><label>ادیشن</label><select id="gcEdition"><option value="standard">معمولی</option><option value="shiny">✨ درخشان</option><option value="gold">🟡 طلایی</option></select></div>
           <div><label>قدرت پایه</label><input type="number" id="gcPower"></div>
-          <div><label>قیمت خرید سطح ۱ (تومان)</label><input type="number" id="gcPrice"></div>
         </div>
         <div class="row2">
+          <div><label>قیمت خرید سطح ۱ (تومان)</label><input type="number" id="gcPrice"></div>
           <div><label>محدودیت تعداد (خالی = نامحدود)</label><input type="number" id="gcMaxSupply"></div>
-          <div><label>فعال؟</label><select id="gcActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
         </div>
+        <div><label>فعال؟</label><select id="gcActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
         <h3 style="margin-top:20px;">عکس مخصوص هر سطح (اختیاری)</h3>
-        <p class="muted">اگه هرکدوم رو خالی بذاری، همون عکس پیش‌فرض بالا نشون داده می‌شه.</p>
         <div id="levelImagesGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
         <button class="btn" onclick="saveGameCard()">ذخیره</button>
       </div>
       <div id="gameCardsTable"></div>
     </section>
 
+    <!-- CARD CATEGORIES -->
     <section class="tab" id="tab-cardcategories">
       <div class="card">
         <h3>افزودن / ویرایش دسته‌بندی</h3>
@@ -536,22 +567,23 @@ label {
         <label>ایموجی/آیکون</label><input id="catIcon" placeholder="🐉">
         <label>رنگ</label><input type="color" id="catColor" value="#8b5cf6">
         <label>توضیحات</label><textarea id="catDesc" rows="2"></textarea>
-        <label>فعال؟</label>
-        <select id="catActive"><option value="1">بله</option><option value="0">خیر</option></select>
+        <label>فعال؟</label><select id="catActive"><option value="1">بله</option><option value="0">خیر</option></select>
         <button class="btn" onclick="saveCategory()">ذخیره</button>
       </div>
       <div id="categoriesTable"></div>
     </section>
 
+    <!-- MERGE COSTS -->
     <section class="tab" id="tab-mergecosts">
       <div class="card">
         <h3>هزینه جهش (ادغام) به ازای هر پله سطح</h3>
-        <p class="muted">برای هر پله، ادمین هزینه رو به تومان تعیین می‌کنه — کاربر برای جهش باید هم دو کارت یکسان داشته باشه هم این مبلغ رو بپردازه.</p>
+        <p class="muted">برای هر پله، ادمین هزینه رو به تومان تعیین می‌کنه.</p>
         <div id="mergeCostsForm"></div>
         <button class="btn" onclick="saveMergeCosts()">ذخیره همه</button>
       </div>
     </section>
 
+    <!-- GAME CONFIG -->
     <section class="tab" id="tab-gameconfig">
       <div class="card">
         <h3>تنظیمات کلی بازی</h3>
@@ -576,6 +608,7 @@ label {
       </div>
     </section>
 
+    <!-- LEADERBOARD -->
     <section class="tab" id="tab-leaderboard">
       <div class="card">
         <h3>افزودن / ویرایش جایزه رتبه</h3>
@@ -590,69 +623,57 @@ label {
       <div id="leaderboardPrizesTable"></div>
       <div class="card">
         <button class="btn danger" onclick="resetLeaderboardNow()">پخش جوایز و ریست دستی جدول امتیازات</button>
-        <p class="muted">این کار جوایز رو بین برترین‌های فعلی پخش می‌کنه و امتیازها رو صفر می‌کنه — دوره خودکار هم طبق تنظیمات بازی هست.</p>
+        <p class="muted">این کار جوایز رو بین برترین‌های فعلی پخش می‌کنه و امتیازها رو صفر می‌کنه.</p>
       </div>
       <h3 style="margin:24px 8px 12px;">جدول فعلی</h3>
       <div id="leaderboardTable"></div>
     </section>
 
+    <!-- WHEEL -->
     <section class="tab" id="tab-wheel">
       <div class="card">
         <h3>تنظیمات چرخ شانس</h3>
-        <label>فعال؟</label>
-        <select id="wheelEnabled"><option value="1">بله</option><option value="0">خیر</option></select>
-        <label>فاصله بین دو اسپین (ساعت)</label>
-        <input type="number" id="wheelCooldown" value="24">
-        <label>حتما باید قبلش خرید کرده باشه؟</label>
-        <select id="wheelRequirePurchase"><option value="0">نه</option><option value="1">بله</option></select>
+        <label>فعال؟</label><select id="wheelEnabled"><option value="1">بله</option><option value="0">خیر</option></select>
+        <label>فاصله بین دو اسپین (ساعت)</label><input type="number" id="wheelCooldown" value="24">
+        <label>حتما باید قبلش خرید کرده باشه؟</label><select id="wheelRequirePurchase"><option value="0">نه</option><option value="1">بله</option></select>
         <button class="btn" onclick="saveWheelConfig()">ذخیره تنظیمات</button>
       </div>
       <div class="card">
         <h3>افزودن / ویرایش جایزه گردونه</h3>
         <input type="hidden" id="wsId">
-        <label>عنوان (روی گردونه نشون داده می‌شه)</label><input id="wsLabel" placeholder="مثلا: 10,000 تومان">
+        <label>عنوان</label><input id="wsLabel" placeholder="مثلا: 10,000 تومان">
         <div class="row2">
-          <div><label>نوع جایزه</label>
-            <select id="wsType" onchange="toggleWheelSlotFields()">
-              <option value="toman">تومان</option>
-              <option value="card">کارت</option>
-              <option value="extra_games">بازی اضافه</option>
-            </select>
-          </div>
+          <div><label>نوع جایزه</label><select id="wsType" onchange="toggleWheelSlotFields()"><option value="toman">تومان</option><option value="card">کارت</option><option value="extra_games">بازی اضافه</option></select></div>
           <div><label>رنگ</label><input type="color" id="wsColor" value="#8b5cf6"></div>
         </div>
         <div id="wsTomanField"><label>مبلغ (تومان)</label><input type="number" id="wsAmount"></div>
         <div id="wsCardField" style="display:none;"><label>کارت جایزه</label><select id="wsCardId"></select></div>
         <div id="wsExtraField" style="display:none;"><label>تعداد بازی اضافه</label><input type="number" id="wsExtraCount"></div>
-        <label>احتمال برد (٪) — مجموع همه اسلات‌ها باید ۱۰۰ بشه</label>
-        <input type="number" id="wsProbability" step="0.1">
-        <label>فعال؟</label>
-        <select id="wsActive"><option value="1">بله</option><option value="0">خیر</option></select>
+        <label>احتمال برد (٪)</label><input type="number" id="wsProbability" step="0.1">
+        <label>فعال؟</label><select id="wsActive"><option value="1">بله</option><option value="0">خیر</option></select>
         <button class="btn" onclick="saveWheelSlot()">ذخیره</button>
       </div>
       <div id="wheelSlotsTable"></div>
     </section>
 
+    <!-- CARD TASKS -->
     <section class="tab" id="tab-cardtasks">
       <div class="card">
         <h3>افزودن / ویرایش تسک کارتی</h3>
         <input type="hidden" id="ctId">
         <label>عنوان</label><input id="ctTitle">
         <div class="row2">
-          <div><label>نوع</label>
-            <select id="ctKind"><option value="join_channel">عضویت در کانال</option><option value="custom">سفارشی</option></select>
-          </div>
+          <div><label>نوع</label><select id="ctKind"><option value="join_channel">عضویت در کانال</option><option value="custom">سفارشی</option></select></div>
           <div><label>یوزرنیم کانال (بدون @)</label><input id="ctChannel"></div>
         </div>
-        <label>کارت جایزه</label>
-        <select id="ctRewardCard"></select>
-        <label>فعال؟</label>
-        <select id="ctActive"><option value="1">بله</option><option value="0">خیر</option></select>
+        <label>کارت جایزه</label><select id="ctRewardCard"></select>
+        <label>فعال؟</label><select id="ctActive"><option value="1">بله</option><option value="0">خیر</option></select>
         <button class="btn" onclick="saveCardTask()">ذخیره</button>
       </div>
       <div id="cardTasksTable"></div>
     </section>
 
+    <!-- TICKETS -->
     <section class="tab" id="tab-tickets">
       <div id="ticketsList"></div>
       <div class="card" id="ticketDetail" style="display:none;">
@@ -663,6 +684,7 @@ label {
       </div>
     </section>
 
+    <!-- AUCTION -->
     <section class="tab" id="tab-auction">
       <div class="card">
         <h3>تنظیمات مزایده فلش</h3>
@@ -675,18 +697,18 @@ label {
           <div><label>پله هر پیشنهاد (تومان)</label><input type="number" id="aucStep"></div>
           <div><label>حداقل موجودی شرکت (تومان)</label><input type="number" id="aucMinBalance"></div>
         </div>
-        <label>Anti-Snipe (تمدید ۳۰ ثانیه‌ای)</label>
-        <select id="aucAntiSnipe"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <label>Anti-Snipe</label><select id="aucAntiSnipe"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
         <button class="btn" onclick="saveAuctionConfig()">ذخیره تنظیمات</button>
       </div>
       <div class="card">
-        <h3>ساخت مزایده جدید از یه محصول</h3>
+        <h3>ساخت مزایده جدید از محصول</h3>
         <select id="aucProductId"></select>
         <button class="btn" onclick="createAuctionUI()">بساز</button>
       </div>
       <div id="auctionsTable"></div>
     </section>
 
+    <!-- SEASON -->
     <section class="tab" id="tab-season">
       <div class="card">
         <h3>تنظیمات بتل‌پس فصلی</h3>
@@ -711,22 +733,19 @@ label {
         <h3>افزودن / ویرایش جایزه تایر</h3>
         <label>شماره تایر</label><input type="number" id="tierNumber">
         <div class="row2">
-          <div><label>نوع جایزه رایگان</label>
-            <select id="tierFreeType"><option value="none">هیچی</option><option value="toman">تومان</option><option value="card">کارت</option><option value="extra_games">بازی اضافه</option></select>
-          </div>
-          <div><label>مقدار رایگان</label><input id="tierFreeValue"></div>
+          <div><label>نوع جایزه رایگان</label><select id="tierFreeType"><option value="none">هیچی</option><option value="toman">تومان</option><option value="card">کارت</option><option value="extra_games">بازی اضافه</option><option value="avatar">آواتار</option><option value="product">محصول</option></select></div>
+          <div><label>مقدار/آیدی رایگان</label><input id="tierFreeValue"></div>
         </div>
         <div class="row2">
-          <div><label>نوع جایزه پرمیوم</label>
-            <select id="tierPremType"><option value="none">هیچی</option><option value="toman">تومان</option><option value="card">کارت</option><option value="extra_games">بازی اضافه</option></select>
-          </div>
-          <div><label>مقدار پرمیوم</label><input id="tierPremValue"></div>
+          <div><label>نوع جایزه پرمیوم</label><select id="tierPremType"><option value="none">هیچی</option><option value="toman">تومان</option><option value="card">کارت</option><option value="extra_games">بازی اضافه</option><option value="avatar">آواتار</option><option value="product">محصول</option></select></div>
+          <div><label>مقدار/آیدی پرمیوم</label><input id="tierPremValue"></div>
         </div>
         <button class="btn" onclick="saveSeasonTier()">ذخیره تایر</button>
       </div>
       <div id="seasonTiersTable"></div>
     </section>
 
+    <!-- STAKING -->
     <section class="tab" id="tab-staking">
       <div class="card">
         <h3>تنظیمات استیکینگ کارت</h3>
@@ -742,12 +761,13 @@ label {
         <button class="btn" onclick="saveStakingConfig()">ذخیره تنظیمات</button>
       </div>
       <div class="card">
-        <h3>نرخ تومان به‌ازای هر واحد قدرت در ساعت (به تفکیک ریرتی)</h3>
+        <h3>نرخ تومان به‌ازای هر واحد قدرت در ساعت</h3>
         <div id="stakingRatesForm"></div>
         <button class="btn" onclick="saveStakingRates()">ذخیره نرخ‌ها</button>
       </div>
     </section>
 
+    <!-- CLAN -->
     <section class="tab" id="tab-clan">
       <div class="card">
         <h3>تنظیمات سیستم کلن</h3>
@@ -778,11 +798,114 @@ label {
       <div id="clanLeaderboardTable"></div>
     </section>
 
+    <!-- USERS -->
     <section class="tab" id="tab-users">
       <div class="card">
         <input placeholder="جستجو با آیدی عددی، یوزرنیم یا نام" id="userSearch" oninput="loadUsers()">
       </div>
       <div id="usersTable"></div>
+    </section>
+
+    <!-- RANKS -->
+    <section class="tab" id="tab-ranks">
+      <div class="card">
+        <h3>🎖 تنظیمات سیستم رنک</h3>
+        <p class="muted">عناوین رنک و XP مورد نیاز برای هر سطح</p>
+        <div id="rankConfigForm"></div>
+        <button class="btn" onclick="saveRankConfig()">ذخیره</button>
+      </div>
+      <div id="ranksTable"></div>
+    </section>
+
+    <!-- AVATARS -->
+    <section class="tab" id="tab-avatars">
+      <div class="card">
+        <h3>🎭 مدیریت آواتارها</h3>
+        <label>نام آواتار</label><input id="avatarName">
+        <label>عکس آواتار</label><input type="file" id="avatarImageFile" accept="image/*">
+        <label>قیمت (تومان)</label><input type="number" id="avatarPrice">
+        <label>فعال؟</label><select id="avatarActive"><option value="1">بله</option><option value="0">خیر</option></select>
+        <button class="btn" onclick="saveAvatar()">ذخیره آواتار</button>
+      </div>
+      <div id="avatarsTable"></div>
+    </section>
+
+    <!-- QUESTS -->
+    <section class="tab" id="tab-quests">
+      <div class="card">
+        <h3>📅 مدیریت کوئست‌های روزانه</h3>
+        <label>عنوان کوئست</label><input id="questTitle">
+        <label>توضیحات</label><textarea id="questDesc" rows="2"></textarea>
+        <div class="row2">
+          <div><label>نوع</label><select id="questType"><option value="play_games">بازی کردن</option><option value="win_games">بردن بازی</option><option value="buy_cards">خرید کارت</option><option value="referral">رفرال</option><option value="checkin">چک‌این</option></select></div>
+          <div><label>هدف (تعداد)</label><input type="number" id="questTarget"></div>
+        </div>
+        <div class="row2">
+          <div><label>پاداش XP</label><input type="number" id="questXp"></div>
+          <div><label>پاداش تومان</label><input type="number" id="questReward"></div>
+        </div>
+        <button class="btn" onclick="saveQuest()">ذخیره کوئست</button>
+      </div>
+      <div id="questsTable"></div>
+    </section>
+
+    <!-- PROMOS -->
+    <section class="tab" id="tab-promos">
+      <div class="card">
+        <h3>🎟 مدیریت کدهای پرومو</h3>
+        <label>کد</label><input id="promoCode" placeholder="مثلا: WELCOME2024">
+        <div class="row2">
+          <div><label>نوع</label><select id="promoType"><option value="toman">تومان</option><option value="percent">درصد تخفیف</option><option value="card">کارت</option></select></div>
+          <div><label>مقدار</label><input type="number" id="promoValue"></div>
+        </div>
+        <div class="row2">
+          <div><label>حداکثر استفاده</label><input type="number" id="promoMaxUses"></div>
+          <div><label>تاریخ انقضا</label><input type="date" id="promoExpiry"></div>
+        </div>
+        <button class="btn" onclick="savePromo()">ساخت کد</button>
+      </div>
+      <div id="promosTable"></div>
+    </section>
+
+    <!-- ALBUMS -->
+    <section class="tab" id="tab-albums">
+      <div class="card">
+        <h3>📚 مدیریت آلبوم‌های کارت</h3>
+        <label>نام آلبوم</label><input id="albumName">
+        <label>توضیحات</label><textarea id="albumDesc" rows="2"></textarea>
+        <label>کارت‌های مورد نیاز (آیدی‌ها با کاما)</label><input id="albumCards" placeholder="1,2,3,4">
+        <label>جایزه تکمیل (تومان)</label><input type="number" id="albumReward">
+        <button class="btn" onclick="saveAlbum()">ذخیره آلبوم</button>
+      </div>
+      <div id="albumsTable"></div>
+    </section>
+
+    <!-- TRADES -->
+    <section class="tab" id="tab-trades">
+      <div class="card">
+        <h3>🔄 تنظیمات ترید کارت</h3>
+        <label>فعال؟</label><select id="tradeEnabled"><option value="1">بله</option><option value="0">خیر</option></select>
+        <label>کارمزد ترید (٪)</label><input type="number" id="tradeFee">
+        <label>حداکثر ترید روزانه</label><input type="number" id="tradeDailyLimit">
+        <button class="btn" onclick="saveTradeConfig()">ذخیره تنظیمات</button>
+      </div>
+      <div id="tradesTable"></div>
+    </section>
+
+    <!-- SEASONAL -->
+    <section class="tab" id="tab-seasonal">
+      <div class="card">
+        <h3>🎉 مدیریت ایونت فصلی</h3>
+        <label>نام ایونت</label><input id="eventName">
+        <label>توضیحات</label><textarea id="eventDesc" rows="2"></textarea>
+        <div class="row2">
+          <div><label>تاریخ شروع</label><input type="date" id="eventStart"></div>
+          <div><label>تاریخ پایان</label><input type="date" id="eventEnd"></div>
+        </div>
+        <label>کارت‌های ایونت (آیدی‌ها با کاما)</label><input id="eventCards">
+        <button class="btn" onclick="saveSeasonalEvent()">ساخت ایونت</button>
+      </div>
+      <div id="seasonalEventsTable"></div>
     </section>
   </main>
 </div>
@@ -1554,6 +1677,91 @@ function boot() {
   loadDash();
 }
 if (TOKEN) boot();
+</script>
+</body>
+</html>
+
+
+/* ===== NEW ADMIN HELPERS ===== */
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const target = document.getElementById('tab-' + name);
+  if(target) target.classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`nav button[data-tab="${name}"]`);
+  if(btn) btn.classList.add('active');
+  // Load data for tab
+  if(name === 'dash') loadStats();
+  if(name === 'currencies') loadCurrencies();
+  if(name === 'topups') loadTopups();
+  if(name === 'withdrawals') loadWithdrawals();
+  if(name === 'creqs') loadCreqs();
+  if(name === 'products') loadProducts();
+  if(name === 'orders') loadOrders();
+  if(name === 'gifts') loadGifts();
+  if(name === 'tasks') loadTasks();
+  if(name === 'gamecards') loadGameCards();
+  if(name === 'cardcategories') loadCategories();
+  if(name === 'mergecosts') loadMergeCosts();
+  if(name === 'gameconfig') loadGameConfig();
+  if(name === 'leaderboard') loadLeaderboardPrizes();
+  if(name === 'wheel') loadWheelConfig();
+  if(name === 'cardtasks') loadCardTasks();
+  if(name === 'auction') loadAuctionConfig();
+  if(name === 'season') loadSeasonConfig();
+  if(name === 'staking') loadStakingConfig();
+  if(name === 'clan') loadClanConfig();
+  if(name === 'users') loadUsers();
+  if(name === 'ranks') loadRankConfig();
+  if(name === 'avatars') loadAvatars();
+  if(name === 'quests') loadQuests();
+  if(name === 'promos') loadPromos();
+  if(name === 'albums') loadAlbums();
+  if(name === 'trades') loadTrades();
+  if(name === 'seasonal') loadSeasonalEvents();
+}
+
+/* Stub functions for new tabs (to be implemented by backend developer) */
+function loadRankConfig() { document.getElementById('rankConfigForm').innerHTML = '<p class="muted">بارگذاری...</p>'; }
+function saveRankConfig() { toast('ذخیره شد'); }
+function loadAvatars() { document.getElementById('avatarsTable').innerHTML = '<p class="muted">بارگذاری...</p>'; }
+function saveAvatar() { toast('ذخیره شد'); }
+function loadQuests() { document.getElementById('questsTable').innerHTML = '<p class="muted">بارگذاری...</p>'; }
+function saveQuest() { toast('ذخیره شد'); }
+function loadPromos() { document.getElementById('promosTable').innerHTML = '<p class="muted">بارگذاری...</p>'; }
+function savePromo() { toast('ذخیره شد'); }
+function loadAlbums() { document.getElementById('albumsTable').innerHTML = '<p class="muted">بارگذاری...</p>'; }
+function saveAlbum() { toast('ذخیره شد'); }
+function loadTrades() { document.getElementById('tradesTable').innerHTML = '<p class="muted">بارگذاری...</p>'; }
+function saveTradeConfig() { toast('ذخیره شد'); }
+function loadSeasonalEvents() { document.getElementById('seasonalEventsTable').innerHTML = '<p class="muted">بارگذاری...</p>'; }
+function saveSeasonalEvent() { toast('ذخیره شد'); }
+
+/* Override login to show app */
+const _origLogin = login;
+login = function() {
+  const pw = document.getElementById('pw').value;
+  apiAdmin('/login', 'POST', {password: pw}).then(r => {
+    if(r.token) {
+      localStorage.setItem('adminToken', r.token);
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      showTab('dash');
+    } else {
+      document.getElementById('loginErr').textContent = r.error || 'رمز اشتباهه';
+    }
+  }).catch(e => {
+    document.getElementById('loginErr').textContent = 'خطا در ورود';
+  });
+};
+
+/* Auto-login check */
+if(localStorage.getItem('adminToken')) {
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  showTab('dash');
+}
 </script>
 </body>
 </html>
