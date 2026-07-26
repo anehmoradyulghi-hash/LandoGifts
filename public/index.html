@@ -9,10 +9,8 @@
 <style>
 :root {
   --bg-deep: #02040a;
-  --bg-surface: rgba(15, 23, 42, 0.6);
-  --bg-elevated: rgba(30, 41, 59, 0.5);
-  --glass-border: rgba(148, 163, 184, 0.1);
-  --glass-border-hover: rgba(148, 163, 184, 0.2);
+  --bg-surface: rgba(15, 23, 42, 0.7);
+  --glass-border: rgba(148, 163, 184, 0.12);
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
@@ -21,16 +19,15 @@
   --accent-cyan: #06b6d4;
   --accent-pink: #ec4899;
   --accent-gold: #f59e0b;
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --glow-violet: 0 0 20px rgba(139, 92, 246, 0.3);
-  --glow-blue: 0 0 20px rgba(59, 130, 246, 0.3);
-  --glow-gold: 0 0 20px rgba(245, 158, 11, 0.3);
-  --radius-xl: 24px;
-  --radius-lg: 16px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --accent-orange: #f97316;
+  --accent-teal: #14b8a6;
+  --glow-violet: 0 0 30px rgba(139, 92, 246, 0.25);
+  --glow-gold: 0 0 30px rgba(245, 158, 11, 0.25);
+  --radius-xl: 28px;
+  --radius-lg: 20px;
+  --radius-md: 14px;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
@@ -41,7 +38,7 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
-  padding-bottom: 100px;
+  padding-bottom: 110px;
   position: relative;
 }
 body::before {
@@ -49,117 +46,283 @@ body::before {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(236, 72, 153, 0.05) 0%, transparent 70%);
+    radial-gradient(ellipse at 15% 15%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 85%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(236, 72, 153, 0.04) 0%, transparent 60%);
   z-index: -2;
-  animation: aurora 20s ease-in-out infinite alternate;
+  animation: aurora 18s ease-in-out infinite alternate;
 }
 @keyframes aurora {
-  0% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.1); }
-  100% { opacity: 0.8; transform: scale(1); }
+  0% { opacity: 0.7; transform: scale(1) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.05) rotate(1deg); }
+  100% { opacity: 0.7; transform: scale(1) rotate(0deg); }
 }
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.3) 0%, transparent 2px),
-    radial-gradient(circle at 60% 20%, rgba(59, 130, 246, 0.3) 0%, transparent 2px),
-    radial-gradient(circle at 40% 70%, rgba(236, 72, 153, 0.3) 0%, transparent 2px),
-    radial-gradient(circle at 80% 60%, rgba(6, 182, 212, 0.3) 0%, transparent 2px);
-  background-size: 200% 200%;
-  animation: particles 30s linear infinite;
-  z-index: -1;
-  pointer-events: none;
-}
-@keyframes particles {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 100% 100%; }
-}
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.3); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.5); }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.25); border-radius: 10px; }
+
+/* Toast */
 .toast {
   position: fixed;
-  bottom: 100px;
+  bottom: 110px;
   left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  background: rgba(15, 23, 42, 0.9);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid var(--glass-border-hover);
+  transform: translateX(-50%) translateY(120px);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
   color: var(--text-primary);
   padding: 14px 28px;
   border-radius: var(--radius-lg);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   z-index: 9999;
   opacity: 0;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), var(--glow-violet);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), var(--glow-violet);
   max-width: 90vw;
   text-align: center;
 }
-.toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Header */
 header {
-  padding: 24px 20px 20px;
+  padding: 20px 20px 16px;
   text-align: center;
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(2, 4, 10, 0.7);
+  background: rgba(2, 4, 10, 0.75);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--glass-border);
 }
 header h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 900;
   background: linear-gradient(135deg, #c084fc, #60a5fa, #2dd4bf);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  letter-spacing: -0.5px;
-  text-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
   animation: titleGlow 3s ease-in-out infinite alternate;
 }
-@keyframes titleGlow {
-  from { filter: brightness(1); }
-  to { filter: brightness(1.2); }
-}
+@keyframes titleGlow { from { filter: brightness(1); } to { filter: brightness(1.3); } }
 .balance {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 12px;
-  padding: 8px 20px;
+  margin-top: 10px;
+  padding: 8px 18px;
   border-radius: 999px;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 800;
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid rgba(16, 185, 129, 0.2);
-  color: var(--success);
+  color: var(--accent-green);
   box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
-  animation: balancePulse 2s ease-in-out infinite;
 }
-@keyframes balancePulse {
-  0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.1); }
-  50% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.2); }
-}
-main { padding: 8px 16px 24px; max-width: 600px; margin: 0 auto; }
-.tab { display: none; animation: tabEnter 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+/* Main & Tabs */
+main { padding: 12px 16px 20px; max-width: 600px; margin: 0 auto; }
+.tab { display: none; animation: tabEnter 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .tab.active { display: block; }
 @keyframes tabEnter {
-  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* Pill Tabs (Internal Navigation) */
+.pills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 4px 14px;
+  margin-bottom: 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  position: sticky;
+  top: 72px;
+  z-index: 90;
+  background: rgba(2, 4, 10, 0.6);
+  backdrop-filter: blur(12px);
+}
+.pills::-webkit-scrollbar { display: none; }
+.pill {
+  flex: 0 0 auto;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+}
+.pill.active {
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-blue));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.35);
+}
+.pill:active { transform: scale(0.94); }
+
+/* Subtab */
+.subtab { display: none; animation: subtabEnter 0.35s ease; }
+.subtab.active { display: block; }
+@keyframes subtabEnter {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ===== HUB CARDS (Game Lobby Style) ===== */
+
+/* Hero Card (full-width) */
+.hero-card {
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  margin-bottom: 14px;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 20px;
+  background-size: cover;
+  background-position: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.hero-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%);
+  z-index: 1;
+}
+.hero-card:hover {
+  transform: scale(1.01);
+  box-shadow: var(--glow-violet);
+}
+.hero-card .card-title {
+  position: relative;
+  z-index: 2;
+  font-size: 26px;
+  font-weight: 900;
+  color: white;
+  margin-bottom: 6px;
+}
+.hero-card .card-meta {
+  position: relative;
+  z-index: 2;
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+  font-weight: 600;
+}
+.hero-card .card-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  background: linear-gradient(135deg, var(--accent-orange), #fb923c);
+  color: white;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+}
+
+/* Grid Card (2-column) */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.hub-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  aspect-ratio: 1 / 1.1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 16px;
+  background-size: cover;
+  background-position: center;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  border: 1px solid var(--glass-border);
+}
+.hub-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.1) 100%);
+  z-index: 1;
+}
+.hub-card:hover {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.4), var(--glow-violet);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+.hub-card:active { transform: scale(0.97); }
+.hub-card .card-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  font-size: 48px;
+  z-index: 2;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+}
+.hub-card .card-title {
+  position: relative;
+  z-index: 2;
+  font-size: 18px;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 4px;
+}
+.hub-card .card-meta {
+  position: relative;
+  z-index: 2;
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  font-weight: 600;
+}
+.hub-card .card-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(10px);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Gradient presets for cards (fallback when no admin image) */
+.grad-purple { background: linear-gradient(135deg, #4c1d95, #7c3aed, #a855f7); }
+.grad-blue { background: linear-gradient(135deg, #1e3a8a, #3b82f6, #60a5fa); }
+.grad-green { background: linear-gradient(135deg, #064e3b, #10b981, #34d399); }
+.grad-red { background: linear-gradient(135deg, #7f1d1d, #ef4444, #f87171); }
+.grad-gold { background: linear-gradient(135deg, #78350f, #f59e0b, #fbbf24); }
+.grad-pink { background: linear-gradient(135deg, #831843, #ec4899, #f472b6); }
+.grad-cyan { background: linear-gradient(135deg, #164e63, #06b6d4, #22d3ee); }
+.grad-orange { background: linear-gradient(135deg, #7c2d12, #f97316, #fb923c); }
+.grad-teal { background: linear-gradient(135deg, #134e4a, #14b8a6, #2dd4bf); }
+.grad-indigo { background: linear-gradient(135deg, #312e81, #6366f1, #818cf8); }
+.grad-rose { background: linear-gradient(135deg, #881337, #f43f5e, #fb7185); }
+.grad-slate { background: linear-gradient(135deg, #0f172a, #334155, #475569); }
+
+/* Legacy card styling (wraps existing content in glass) */
 .card {
   background: var(--bg-surface);
   backdrop-filter: blur(20px) saturate(180%);
@@ -167,56 +330,43 @@ main { padding: 8px 16px 24px; max-width: 600px; margin: 0 auto; }
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   padding: 20px;
-  margin-bottom: 16px;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  position: relative;
-  overflow: hidden;
-}
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  margin-bottom: 14px;
+  transition: all 0.3s ease;
 }
 .card:hover {
-  border-color: var(--glass-border-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), var(--glow-violet);
+  border-color: rgba(148, 163, 184, 0.2);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.3);
 }
-.card:active { transform: scale(0.98) translateY(0); }
-.card img {
-  display: block;
-  border-radius: var(--radius-lg);
-  margin-bottom: 12px;
+
+/* Inputs */
+input, select, textarea {
   width: 100%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-h3 {
-  font-size: 16px;
-  font-weight: 800;
+  padding: 12px 16px;
+  margin: 6px 0 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
   color: var(--text-primary);
-  margin: 24px 8px 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  letter-spacing: -0.3px;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
 }
-h3::before {
-  content: '';
-  width: 4px;
-  height: 18px;
-  border-radius: 4px;
-  background: linear-gradient(180deg, var(--accent-violet), var(--accent-blue));
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent-violet);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), 0 0 20px rgba(139, 92, 246, 0.1);
 }
-.row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
+input::placeholder, textarea::placeholder { color: var(--text-muted); }
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  margin-top: 10px;
 }
-.row + .row { margin-top: 4px; border-top: 1px solid rgba(148, 163, 184, 0.05); }
+
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -237,7 +387,6 @@ h3::before {
   position: relative;
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-  letter-spacing: 0.3px;
 }
 .btn::before {
   content: '';
@@ -248,18 +397,7 @@ h3::before {
   transition: transform 0.6s ease;
 }
 .btn:hover::before { transform: translateX(100%); }
-.btn:active { transform: scale(0.96); box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2); }
-.btn.secondary {
-  background: var(--bg-elevated);
-  border: 1px solid var(--glass-border);
-  color: var(--text-secondary);
-  box-shadow: none;
-}
-.btn.secondary:hover {
-  border-color: var(--glass-border-hover);
-  background: rgba(30, 41, 59, 0.7);
-  color: var(--text-primary);
-}
+.btn:active { transform: scale(0.96); }
 .btn.gold {
   background: linear-gradient(135deg, #f59e0b, #fbbf24, #f59e0b);
   background-size: 200% 200%;
@@ -271,94 +409,50 @@ h3::before {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
-.btn.inline { width: auto; padding: 8px 16px; margin-top: 0; }
-input, select, textarea {
-  width: 100%;
-  padding: 12px 16px;
-  margin: 8px 0 12px;
-  background: rgba(15, 23, 42, 0.6);
+.btn.secondary {
+  background: rgba(30, 41, 59, 0.5);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+.btn.secondary:hover {
+  border-color: rgba(148, 163, 184, 0.25);
   color: var(--text-primary);
-  font-family: inherit;
-  font-size: 14px;
-  outline: none;
-  transition: all 0.2s ease;
 }
-input:focus, select:focus, textarea:focus {
-  border-color: var(--accent-violet);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), 0 0 20px rgba(139, 92, 246, 0.1);
-  background: rgba(15, 23, 42, 0.8);
+.btn.danger {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
 }
-input::placeholder, textarea::placeholder { color: var(--text-muted); }
-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
-  margin-top: 8px;
-}
-.pills {
+
+/* Row */
+.row {
   display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 4px 4px 12px;
-  margin-bottom: 8px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
 }
-.pills::-webkit-scrollbar { display: none; }
-.pill {
-  flex: 0 0 auto;
-  padding: 10px 18px;
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
-  white-space: nowrap;
-}
-.pill.active {
-  background: linear-gradient(135deg, var(--accent-violet), var(--accent-blue));
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-}
-.pill:active { transform: scale(0.95); }
-.game-subtab, .more-subtab { display: none; animation: subtabEnter 0.4s ease; }
-.game-subtab.active, .more-subtab.active { display: block; }
-@keyframes subtabEnter {
-  from { opacity: 0; transform: translateX(10px); }
-  to { opacity: 1; transform: translateX(0); }
-}
+.row + .row { border-top: 1px solid rgba(148, 163, 184, 0.06); }
 .muted { color: var(--text-muted); font-size: 13.5px; line-height: 1.6; }
+
+/* Product / Game cards (legacy but styled) */
 #productList, #gameShop {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
 .product, .game-card {
   background: var(--bg-surface);
-  backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   padding: 12px;
   text-align: center;
   transition: all 0.3s ease;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
 }
 .product:hover, .game-card:hover {
-  transform: translateY(-4px) scale(1.02);
+  transform: translateY(-3px);
   border-color: var(--accent-violet);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), var(--glow-violet);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3), var(--glow-violet);
 }
 .product img, .game-card img {
   width: 100%;
@@ -367,26 +461,10 @@ label {
   aspect-ratio: 1;
   object-fit: cover;
 }
-.product .price, .game-card .price {
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--accent-gold), #fbbf24);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  font-size: 15px;
-}
-.rarity-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
+
+/* Skeleton */
 .skeleton {
-  background: linear-gradient(90deg, rgba(30, 41, 59, 0.5) 25%, rgba(51, 65, 85, 0.5) 50%, rgba(30, 41, 59, 0.5) 75%);
+  background: linear-gradient(90deg, rgba(30,41,59,0.5) 25%, rgba(51,65,85,0.5) 50%, rgba(30,41,59,0.5) 75%);
   background-size: 200% 100%;
   border-radius: var(--radius-md);
   animation: shimmer 1.5s infinite;
@@ -396,96 +474,21 @@ label {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
-.market-item, .gift-item {
-  background: var(--bg-surface);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  padding: 16px;
-  margin-bottom: 12px;
-  transition: all 0.3s ease;
-}
-.market-item:hover, .gift-item:hover {
-  border-color: var(--glass-border-hover);
-  transform: translateX(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-.ledger-item {
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.05);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.ledger-item:last-child { border-bottom: none; }
+
+/* Wheel */
 #wheelVisual {
-  font-size: 72px;
-  margin: 20px 0;
+  font-size: 80px;
+  margin: 24px 0;
   transition: transform 2.2s cubic-bezier(.17,.67,.35,.99);
-  filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.4));
+  filter: drop-shadow(0 0 24px rgba(245, 158, 11, 0.5));
   animation: wheelFloat 3s ease-in-out infinite;
 }
 @keyframes wheelFloat {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-12px); }
 }
-nav {
-  position: fixed;
-  bottom: 16px;
-  left: 16px;
-  right: 16px;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  padding: 8px 4px;
-  z-index: 1000;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  max-width: 600px;
-  margin: 0 auto;
-}
-nav button {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 4px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  border-radius: var(--radius-md);
-}
-nav button .ic {
-  font-size: 22px;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  filter: grayscale(0.3);
-}
-nav button.active { color: var(--text-primary); }
-nav button.active .ic {
-  transform: translateY(-4px) scale(1.1);
-  filter: grayscale(0) drop-shadow(0 0 8px rgba(139, 92, 246, 0.5));
-}
-.nav-indicator {
-  position: absolute;
-  bottom: 6px;
-  height: 4px;
-  width: 40px;
-  background: linear-gradient(90deg, var(--accent-violet), var(--accent-blue));
-  border-radius: 4px;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
-}
+
+/* Leaderboard */
 .leaderboard-item {
   display: flex;
   align-items: center;
@@ -495,39 +498,20 @@ nav button.active .ic {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   margin-bottom: 8px;
-  transition: all 0.2s ease;
-}
-.leaderboard-item:hover {
-  border-color: var(--glass-border-hover);
-  transform: translateX(4px);
 }
 .lb-rank {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
   border-radius: 50%;
-  font-weight: 800;
-  font-size: 13px;
-  background: var(--bg-elevated);
+  font-weight: 800; font-size: 13px;
+  background: rgba(30,41,59,0.6);
   border: 1px solid var(--glass-border);
 }
-.lb-rank.gold { background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.3); color: var(--accent-gold); box-shadow: 0 0 10px rgba(245, 158, 11, 0.1); }
-.lb-rank.silver { background: rgba(148, 163, 184, 0.2); border-color: rgba(148, 163, 184, 0.3); color: #cbd5e1; }
-.lb-rank.bronze { background: rgba(251, 146, 60, 0.2); border-color: rgba(251, 146, 60, 0.3); color: #fdba74; }
-.season-tier {
-  padding: 14px;
-  border-radius: var(--radius-lg);
-  background: var(--bg-surface);
-  border: 1px solid var(--glass-border);
-  margin-bottom: 10px;
-  transition: all 0.2s ease;
-}
-.season-tier.unlocked {
-  border-color: var(--accent-violet);
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
-}
+.lb-rank.gold { background: rgba(245,158,11,0.2); border-color: rgba(245,158,11,0.3); color: var(--accent-gold); }
+.lb-rank.silver { background: rgba(148,163,184,0.2); border-color: rgba(148,163,184,0.3); color: #cbd5e1; }
+.lb-rank.bronze { background: rgba(251,146,60,0.2); border-color: rgba(251,146,60,0.3); color: #fdba74; }
+
+/* Chat */
 .chat-msg {
   padding: 10px 14px;
   border-radius: var(--radius-md);
@@ -535,11 +519,6 @@ nav button.active .ic {
   max-width: 85%;
   font-size: 13.5px;
   line-height: 1.5;
-  animation: messagePop 0.3s ease;
-}
-@keyframes messagePop {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
 }
 .chat-msg.user {
   background: linear-gradient(135deg, var(--accent-violet), var(--accent-blue));
@@ -548,27 +527,96 @@ nav button.active .ic {
   border-bottom-right-radius: 4px;
 }
 .chat-msg.admin {
-  background: var(--bg-elevated);
+  background: rgba(30, 41, 59, 0.6);
   border: 1px solid var(--glass-border);
   margin-right: auto;
   border-bottom-left-radius: 4px;
 }
-@keyframes popIn {
-  from { opacity: 0; transform: translateY(16px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+
+/* Load More */
+.load-more {
+  text-align: center;
+  padding: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  margin-top: 8px;
+  transition: all 0.2s;
 }
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+.load-more:hover {
+  border-color: var(--accent-violet);
+  color: var(--text-primary);
 }
-@keyframes glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.2); }
-  50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.4); }
+
+/* Floating Bottom Nav */
+nav {
+  position: fixed;
+  bottom: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: 8px 4px;
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+  max-width: 600px;
+  margin: 0 auto;
 }
-@media (max-width: 380px) {
-  nav button { font-size: 9px; padding: 6px 2px; }
+nav button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  border-radius: var(--radius-md);
+}
+nav button .ic {
+  font-size: 22px;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  filter: grayscale(0.4);
+}
+nav button.active { color: var(--text-primary); }
+nav button.active .ic {
+  transform: translateY(-3px) scale(1.12);
+  filter: grayscale(0) drop-shadow(0 0 10px rgba(139, 92, 246, 0.5));
+}
+.nav-indicator {
+  position: absolute;
+  bottom: 4px;
+  height: 3px;
+  width: 32px;
+  background: linear-gradient(90deg, var(--accent-violet), var(--accent-blue));
+  border-radius: 4px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+
+/* Responsive */
+@media (max-width: 360px) {
+  nav button { font-size: 8px; padding: 5px 1px; }
   nav button .ic { font-size: 18px; }
-  header h1 { font-size: 22px; }
+  .hub-card .card-title { font-size: 15px; }
+  .hero-card .card-title { font-size: 22px; }
 }
 </style>
 </head>
@@ -581,185 +629,422 @@ nav button.active .ic {
 </header>
 
 <main>
+  <!-- ====== TAB 1: SHOP ====== -->
   <section class="tab active" id="tab-shop">
-    <div id="productList"><div class="skeleton"></div></div>
-  </section>
-
-  <section class="tab" id="tab-wallet">
-    <div class="card">
-      <h3>شارژ کیف‌پول</h3>
-      <label>مبلغ (تومان)</label>
-      <input type="number" id="topupAmount" placeholder="مثلا 100000" />
-      <button class="btn gold" id="zarinpalBtn" style="display:none;" onclick="doZarinpalTopup()">💳 پرداخت آنلاین (زرین‌پال)</button>
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--glass-border);">
-        <p class="muted" style="margin:0 0 8px;">یا کارت‌به‌کارت:</p>
-        <div class="muted" id="cardInfo"></div>
-        <label>کد رهگیری یا ۴ رقم آخر کارت</label>
-        <input type="text" id="topupTracking" />
-        <button class="btn secondary" onclick="doTopup()">ثبت درخواست شارژ کارت‌به‌کارت</button>
+    <div class="hero-card grad-purple" onclick="showTab('shop');document.getElementById('shopPills').scrollIntoView({behavior:'smooth'})">
+      <div class="card-badge">🔥 پرفروش</div>
+      <div class="card-title">🛍 فروشگاه</div>
+      <div class="card-meta">جدیدترین گیفت کارت‌ها و محصولات</div>
+    </div>
+    <div class="grid-2">
+      <div class="hub-card grad-pink" onclick="loadShop();document.getElementById('shop-products').scrollIntoView({behavior:'smooth'})">
+        <div class="card-icon">🎁</div>
+        <div class="card-title">گیفت کارت</div>
+        <div class="card-meta">خرید سریع</div>
+      </div>
+      <div class="hub-card grad-green" onclick="showTab('wallet')">
+        <div class="card-icon">💎</div>
+        <div class="card-title">الماس</div>
+        <div class="card-meta">شارژ بازی</div>
+      </div>
+      <div class="hub-card grad-blue" onclick="loadShop();document.getElementById('shop-products').scrollIntoView({behavior:'smooth'})">
+        <div class="card-icon">🎮</div>
+        <div class="card-title">آیتم بازی</div>
+        <div class="card-meta">تجهیزات</div>
+      </div>
+      <div class="hub-card grad-gold" onclick="loadShop();document.getElementById('shop-products').scrollIntoView({behavior:'smooth'})">
+        <div class="card-icon">⭐</div>
+        <div class="card-title">پرفروش‌ها</div>
+        <div class="card-meta">محبوب‌ترین‌ها</div>
       </div>
     </div>
-    <div class="card">
-      <h3>برداشت تومانی</h3>
-      <label>مبلغ (تومان)</label>
-      <input type="number" id="withdrawAmount" />
-      <label>شماره کارت مقصد</label>
-      <input type="text" id="withdrawCard" />
-      <button class="btn secondary" onclick="doWithdraw()">ثبت درخواست برداشت</button>
+    <div id="shop-products" style="margin-top:8px;">
+      <div id="productList"><div class="skeleton"></div></div>
     </div>
-    <h3>کیف‌پول ارزی</h3>
-    <div class="card">
-      <div id="currencyBalances" class="muted">در حال بارگذاری...</div>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;">تبدیل تومان ⇄ ارز</h3>
-      <p class="muted">نرخ‌ها رو ادمین دستی تنظیم می‌کنه.</p>
-      <label>از</label><select id="swapFrom"></select>
-      <label>به</label><select id="swapTo"></select>
-      <label>مقدار</label><input type="number" id="swapAmount" />
-      <button class="btn" onclick="doSwap()">تبدیل کن</button>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;">واریز ارز دیجیتال</h3>
-      <label>ارز</label><select id="depCode"></select>
-      <label>مقدار</label><input type="number" id="depAmount" />
-      <label>هش تراکنش / کد رهگیری</label><input type="text" id="depTx" />
-      <button class="btn" onclick="doCurrencyDeposit()">ثبت درخواست واریز</button>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;">برداشت ارز دیجیتال</h3>
-      <label>ارز</label><select id="wdCode"></select>
-      <label>مقدار</label><input type="number" id="wdAmount" />
-      <label>آدرس مقصد</label><input type="text" id="wdAddress" />
-      <button class="btn secondary" onclick="doCurrencyWithdraw()">ثبت درخواست برداشت</button>
-    </div>
-    <h3>تاریخچه تراکنش‌ها</h3>
-    <div class="card"><div id="ledgerList" class="muted">در حال بارگذاری...</div></div>
   </section>
 
-  <section class="tab" id="tab-market">
-    <div class="card">
-      <h3>ثبت آگهی فروش گیفت</h3>
-      <label>عنوان گیفت</label>
-      <input type="text" id="giftTitle" />
-      <label>عکس گیفت</label>
-      <input type="file" id="giftImageFile" accept="image/*" onchange="uploadGiftImage()">
-      <input type="hidden" id="giftImage">
-      <img id="giftImagePreview" style="max-width:100px;border-radius:8px;display:none;margin-bottom:8px;">
-      <label>قیمت (تومان)</label>
-      <input type="number" id="giftPrice" />
-      <button class="btn" onclick="listGift()">ثبت آگهی</button>
+  <!-- ====== TAB 2: WALLET ====== -->
+  <section class="tab" id="tab-wallet">
+    <div class="pills" id="walletPills">
+      <button class="pill active" onclick="showWalletSub('toman')">💰 تومان</button>
+      <button class="pill" onclick="showWalletSub('crypto')">🪙 ارز دیجیتال</button>
+      <button class="pill" onclick="showWalletSub('history')">📜 تاریخچه</button>
     </div>
-    <h3>بازار (آگهی‌های دیگران)</h3>
-    <div id="marketList" class="muted">در حال بارگذاری...</div>
-    <h3>آگهی‌های من</h3>
-    <div id="myGiftsList" class="muted">در حال بارگذاری...</div>
+
+    <div class="subtab active" id="wsub-toman">
+      <div class="hero-card grad-green">
+        <div class="card-title" id="walletBalanceHero">موجودی: ...</div>
+        <div class="card-meta">کیف پول تومانی شما</div>
+      </div>
+      <div class="grid-2">
+        <div class="hub-card grad-green" onclick="document.getElementById('topupSection').scrollIntoView({behavior:'smooth'})">
+          <div class="card-icon">📥</div>
+          <div class="card-title">شارژ</div>
+        </div>
+        <div class="hub-card grad-red" onclick="document.getElementById('withdrawSection').scrollIntoView({behavior:'smooth'})">
+          <div class="card-icon">📤</div>
+          <div class="card-title">برداشت</div>
+        </div>
+      </div>
+      <div class="card" id="topupSection">
+        <h3 style="margin:0 0 12px;font-size:16px;">💳 شارژ کیف‌پول</h3>
+        <label>مبلغ (تومان)</label>
+        <input type="number" id="topupAmount" placeholder="مثلا 100000" />
+        <button class="btn gold" id="zarinpalBtn" style="display:none;" onclick="doZarinpalTopup()">پرداخت آنلاین (زرین‌پال)</button>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--glass-border);">
+          <p class="muted" style="margin:0 0 8px;">یا کارت‌به‌کارت:</p>
+          <div class="muted" id="cardInfo"></div>
+          <label>کد رهگیری یا ۴ رقم آخر کارت</label>
+          <input type="text" id="topupTracking" />
+          <button class="btn secondary" onclick="doTopup()">ثبت درخواست شارژ</button>
+        </div>
+      </div>
+      <div class="card" id="withdrawSection">
+        <h3 style="margin:0 0 12px;font-size:16px;">🏧 برداشت تومانی</h3>
+        <label>مبلغ (تومان)</label>
+        <input type="number" id="withdrawAmount" />
+        <label>شماره کارت مقصد</label>
+        <input type="text" id="withdrawCard" />
+        <button class="btn secondary" onclick="doWithdraw()">ثبت درخواست برداشت</button>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 12px;font-size:16px;">🎟 کد هدیه</h3>
+        <input type="text" id="promoCodeInput" placeholder="کد تخفیف یا هدیه را وارد کنید" />
+        <button class="btn" onclick="redeemPromoCode()">ثبت کد</button>
+      </div>
+    </div>
+
+    <div class="subtab" id="wsub-crypto">
+      <div class="card">
+        <div id="currencyBalances" class="muted">در حال بارگذاری...</div>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 12px;font-size:16px;">🔄 تبدیل تومان ⇄ ارز</h3>
+        <p class="muted">نرخ‌ها رو ادمین دستی تنظیم می‌کنه.</p>
+        <label>از</label><select id="swapFrom"></select>
+        <label>به</label><select id="swapTo"></select>
+        <label>مقدار</label><input type="number" id="swapAmount" />
+        <button class="btn" onclick="doSwap()">تبدیل کن</button>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 12px;font-size:16px;">📥 واریز ارز دیجیتال</h3>
+        <label>ارز</label><select id="depCode"></select>
+        <label>مقدار</label><input type="number" id="depAmount" />
+        <label>هش تراکنش / کد رهگیری</label>
+        <input type="text" id="depTx" />
+        <button class="btn" onclick="doCurrencyDeposit()">ثبت درخواست واریز</button>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 12px;font-size:16px;">📤 برداشت ارز دیجیتال</h3>
+        <label>ارز</label><select id="wdCode"></select>
+        <label>مقدار</label><input type="number" id="wdAmount" />
+        <label>آدرس مقصد</label><input type="text" id="wdAddress" />
+        <button class="btn secondary" onclick="doCurrencyWithdraw()">ثبت درخواست برداشت</button>
+      </div>
+    </div>
+
+    <div class="subtab" id="wsub-history">
+      <div class="card"><div id="ledgerList" class="muted">در حال بارگذاری...</div></div>
+    </div>
   </section>
 
+  <!-- ====== TAB 3: GAMES ====== -->
   <section class="tab" id="tab-game">
-    <div class="card">
-      <div class="row"><span class="muted">بازی‌های امروز</span><b id="gamePlaysLeft">-</b></div>
-      <div class="row"><span class="muted">رتبه من</span><b id="gameMyRank">-</b></div>
-      <div class="row"><span class="muted">وضعیت صف</span><b id="gameQueueState">-</b></div>
-      <button class="btn secondary" onclick="buyExtraPlays()">⚡ خرید بازی اضافه</button>
-    </div>
     <div class="pills" id="gamePills">
       <button class="pill active" data-gsub="shop" onclick="showGameSub('shop')">🛍 فروشگاه</button>
       <button class="pill" data-gsub="mycards" onclick="showGameSub('mycards')">🎴 کارت‌های من</button>
-      <button class="pill" data-gsub="battle" onclick="showGameSub('battle')">⚔️ مسابقه</button>
+      <button class="pill" data-gsub="battle" onclick="showGameSub('battle')">⚔️ نبرد</button>
       <button class="pill" data-gsub="leaderboard" onclick="showGameSub('leaderboard')">🏆 امتیازات</button>
-      <button class="pill" data-gsub="wheel" onclick="showGameSub('wheel')">🎡 چرخ شانس</button>
-      <button class="pill" data-gsub="tasks" onclick="showGameSub('tasks')">🎯 تسک‌ها</button>
+      <button class="pill" data-gsub="wheel" onclick="showGameSub('wheel')">🎡 چرخ</button>
+      <button class="pill" data-gsub="tasks" onclick="showGameSub('tasks')">🎯 تسک</button>
+      <button class="pill" data-gsub="trade" onclick="showGameSub('trade')">🔄 ترید</button>
+      <button class="pill" data-gsub="album" onclick="showGameSub('album')">📚 آلبوم</button>
     </div>
+
     <div class="game-subtab active" id="gsub-shop">
+      <div class="hero-card grad-purple">
+        <div class="card-title">🛍 فروشگاه کارت</div>
+        <div class="card-meta">کارت‌های منحصربفرد برای نبرد</div>
+      </div>
       <select id="categoryFilter" onchange="loadGame()" style="margin-bottom:12px;"><option value="">همه دسته‌ها</option></select>
       <div id="gameShop" class="muted">در حال بارگذاری...</div>
     </div>
+
     <div class="game-subtab" id="gsub-mycards">
-      <p class="muted">برای «تقویت»، یه کارت رو هدف و یه کارت دیگه رو قربانی انتخاب کن — قربانی نابود می‌شه و بخشی از قدرتش به هدف اضافه می‌شه (سطح هدف عوض نمی‌شه).</p>
+      <p class="muted">برای «تقویت»، یه کارت رو هدف و یه کارت دیگه رو قربانی انتخاب کن.</p>
       <div id="gameMyCards" class="muted">در حال بارگذاری...</div>
       <div id="sacrificeBar" class="card" style="display:none;position:sticky;bottom:90px;border-color:var(--accent-gold);box-shadow:var(--glow-gold);z-index:50;">
         <button class="btn gold" onclick="doSacrifice()">💪 تقویت کن (قربانی نابود می‌شه)</button>
       </div>
       <div id="mutationsWrap" style="display:none;">
         <h3>🧬 جهش‌های ممکن</h3>
-        <p class="muted">دو تا کارت کاملا یکسان (اسم و سطح) داری؟ می‌تونی جهششون بدی تا با هم ادغام بشن و سطحش (و ریرتیش) بره بالا.</p>
+        <p class="muted">دو تا کارت کاملا یکسان (اسم و سطح) داری؟ می‌تونی جهششون بدی.</p>
         <div id="mutationsList"></div>
       </div>
     </div>
+
     <div class="game-subtab" id="gsub-battle">
-      <div id="battleBanner"></div>
+      <div class="hero-card grad-red" style="min-height:200px;">
+        <div class="card-title">⚔️ مسابقه</div>
+        <div class="card-meta">با دسته کارت خودت وارد نبرد شو</div>
+      </div>
       <div class="card">
-        <h3 style="margin-top:0;">ساخت دسته و ورود به صف</h3>
+        <div class="row"><span class="muted">بازی‌های امروز</span><b id="gamePlaysLeft">-</b></div>
+        <div class="row"><span class="muted">رتبه من</span><b id="gameMyRank">-</b></div>
+        <div class="row"><span class="muted">وضعیت صف</span><b id="gameQueueState">-</b></div>
+        <button class="btn secondary" onclick="buyExtraPlays()">⚡ خرید بازی اضافه</button>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 12px;font-size:16px;">🎴 انتخاب دسته</h3>
         <p class="muted" id="deckHint"></p>
+        <div id="battleDeckSelector" class="muted">کارت‌های خود را انتخاب کنید...</div>
         <button class="btn" onclick="joinGameQueue()">⚔️ ورود به صف مسابقه</button>
         <button class="btn secondary" onclick="cancelGameQueue()">لغو صف</button>
       </div>
-      <h3>تاریخچه مسابقات</h3>
+      <h3>📜 تاریخچه مسابقات</h3>
       <div id="gameHistory" class="muted">در حال بارگذاری...</div>
     </div>
+
     <div class="game-subtab" id="gsub-leaderboard">
       <div id="gameLeaderboard" class="muted">در حال بارگذاری...</div>
     </div>
+
     <div class="game-subtab" id="gsub-wheel">
       <div class="card" style="text-align:center;">
-        <div id="wheelVisual" style="font-size:64px;margin:10px 0;transition:transform 2.2s cubic-bezier(.17,.67,.35,.99);">🎡</div>
+        <div id="wheelVisual">🎡</div>
         <p class="muted" id="wheelStatusText">در حال بارگذاری...</p>
         <button class="btn gold" id="wheelSpinBtn" onclick="doSpinWheel()">چرخوندن</button>
       </div>
-      <h3>جایزه‌های چرخ شانس</h3>
+      <h3>🎁 جایزه‌ها</h3>
       <div id="wheelSlotsList" class="muted">در حال بارگذاری...</div>
-      <h3>تاریخچه اسپین‌ها</h3>
+      <h3>📜 تاریخچه</h3>
       <div id="wheelHistoryList" class="muted">در حال بارگذاری...</div>
     </div>
+
     <div class="game-subtab" id="gsub-tasks">
       <div id="cardTasksList" class="muted">در حال بارگذاری...</div>
     </div>
+
+    <div class="game-subtab" id="gsub-trade">
+      <div class="hero-card grad-cyan">
+        <div class="card-title">🔄 ترید کارت</div>
+        <div class="card-meta">با دیگران تبادل کن</div>
+      </div>
+      <div class="grid-2">
+        <div class="hub-card grad-blue" onclick="document.getElementById('tradeCreate').style.display='block';">
+          <div class="card-icon">➕</div>
+          <div class="card-title">ساخت پیشنهاد</div>
+        </div>
+        <div class="hub-card grad-green" onclick="loadTradeOffers()">
+          <div class="card-icon">👀</div>
+          <div class="card-title">مشاهده پیشنهادات</div>
+        </div>
+      </div>
+      <div id="tradeCreate" class="card" style="display:none;">
+        <h3 style="margin:0 0 12px;">ساخت پیشنهاد ترید</h3>
+        <p class="muted">این بخش نیاز به تکمیل توسط بک‌اند دارد.</p>
+      </div>
+      <div id="tradeList"></div>
+    </div>
+
+    <div class="game-subtab" id="gsub-album">
+      <div class="hero-card grad-indigo">
+        <div class="card-title">📚 آلبوم کارت</div>
+        <div class="card-meta">ست‌های کامل کن و جایزه بگیر</div>
+      </div>
+      <div id="albumList" class="muted">در حال بارگذاری...</div>
+    </div>
   </section>
 
+  <!-- ====== TAB 4: MARKET ====== -->
+  <section class="tab" id="tab-market">
+    <div class="pills" id="marketPills">
+      <button class="pill active" onclick="showMarketSub('browse')">🔍 بازار</button>
+      <button class="pill" onclick="showMarketSub('list')">➕ ثبت آگهی</button>
+      <button class="pill" onclick="showMarketSub('my')">📋 آگهی‌های من</button>
+    </div>
+
+    <div class="subtab active" id="msub-browse">
+      <div class="grid-2">
+        <div class="hub-card grad-purple" onclick="filterMarketCategory('steam')">
+          <div class="card-icon">🎮</div>
+          <div class="card-title">استیم</div>
+        </div>
+        <div class="hub-card grad-blue" onclick="filterMarketCategory('apple')">
+          <div class="card-icon">🍎</div>
+          <div class="card-title">اپل آیدی</div>
+        </div>
+        <div class="hub-card grad-green" onclick="filterMarketCategory('google')">
+          <div class="card-icon">🤖</div>
+          <div class="card-title">گوگل پلی</div>
+        </div>
+        <div class="hub-card grad-pink" onclick="filterMarketCategory('other')">
+          <div class="card-icon">🎁</div>
+          <div class="card-title">سایر</div>
+        </div>
+      </div>
+      <div id="marketList" class="muted" style="margin-top:12px;">در حال بارگذاری...</div>
+    </div>
+
+    <div class="subtab" id="msub-list">
+      <div class="card">
+        <h3 style="margin:0 0 12px;font-size:16px;">➕ ثبت آگهی فروش گیفت</h3>
+        <label>عنوان گیفت</label>
+        <input type="text" id="giftTitle" />
+        <label>دسته‌بندی</label>
+        <select id="giftCategory"><option value="steam">استیم</option><option value="apple">اپل آیدی</option><option value="google">گوگل پلی</option><option value="other">سایر</option></select>
+        <label>عکس گیفت</label>
+        <input type="file" id="giftImageFile" accept="image/*" onchange="uploadGiftImage()">
+        <input type="hidden" id="giftImage">
+        <img id="giftImagePreview" style="max-width:100px;border-radius:8px;display:none;margin-bottom:8px;">
+        <label>قیمت (تومان)</label>
+        <input type="number" id="giftPrice" />
+        <button class="btn" onclick="listGift()">ثبت آگهی</button>
+      </div>
+    </div>
+
+    <div class="subtab" id="msub-my">
+      <div id="myGiftsList" class="muted">در حال بارگذاری...</div>
+    </div>
+  </section>
+
+  <!-- ====== TAB 5: TASKS ====== -->
   <section class="tab" id="tab-tasks">
+    <div class="hero-card grad-green">
+      <div class="card-title">✅ ماموریت‌ها</div>
+      <div class="card-meta">انجام بده و پاداش بگیر</div>
+    </div>
     <div id="tasksList" class="muted">در حال بارگذاری...</div>
   </section>
 
-  <section class="tab" id="tab-referral">
-    <div class="card" id="referralCard">در حال بارگذاری...</div>
-  </section>
-
-  <section class="tab" id="tab-support">
-    <div class="card" id="chatBox" style="min-height:220px;"></div>
-    <div class="card">
-      <textarea id="supportText" rows="3" placeholder="پیام خودتو بنویس..."></textarea>
-      <button class="btn" onclick="sendSupport()">ارسال</button>
-    </div>
-  </section>
-
+  <!-- ====== TAB 6: MORE ====== -->
   <section class="tab" id="tab-more">
-    <div class="pills" id="morePills">
-      <button class="pill active" data-msub="auction" onclick="showMoreSub('auction')">⚡ مزایده</button>
-      <button class="pill" data-msub="season" onclick="showMoreSub('season')">🏅 بتل‌پس</button>
-      <button class="pill" data-msub="staking" onclick="showMoreSub('staking')">🏦 استیکینگ</button>
-      <button class="pill" data-msub="clan" onclick="showMoreSub('clan')">⚔️ کلن</button>
-    </div>
-    <div class="more-subtab active" id="msub-auction">
-      <div id="auctionsList" class="muted">در حال بارگذاری...</div>
-    </div>
-    <div class="more-subtab" id="msub-season">
-      <div class="card" id="seasonStatusCard">در حال بارگذاری...</div>
-      <div id="seasonTiersList" class="muted"></div>
-    </div>
-    <div class="more-subtab" id="msub-staking">
-      <div class="card">
-        <h3 style="margin-top:0;">استیک کردن کارت</h3>
-        <select id="stakeCardSelect"></select>
-        <button class="btn" onclick="doStakeCard()">قفل کردن تو فارم</button>
+    <div class="grid-2">
+      <div class="hub-card grad-orange" onclick="showMoreSub('auction');showTab('more');">
+        <div class="card-icon">🔨</div>
+        <div class="card-title">مزایده</div>
+        <div class="card-meta">حراج لحظه‌ای</div>
       </div>
-      <h3>کارت‌های استیک‌شده من</h3>
-      <div id="myStakesList" class="muted">در حال بارگذاری...</div>
+      <div class="hub-card grad-gold" onclick="showMoreSub('season');showTab('more');">
+        <div class="card-icon">🏅</div>
+        <div class="card-title">بتل‌پس</div>
+        <div class="card-meta">فصل جدید</div>
+      </div>
+      <div class="hub-card grad-teal" onclick="showMoreSub('staking');showTab('more');">
+        <div class="card-icon">🏦</div>
+        <div class="card-title">استیکینگ</div>
+        <div class="card-meta">درآمد غیرفعال</div>
+      </div>
+      <div class="hub-card grad-red" onclick="showMoreSub('clan');showTab('more');">
+        <div class="card-icon">⚔️</div>
+        <div class="card-title">کلن</div>
+        <div class="card-meta">تیم خودت رو بساز</div>
+      </div>
+      <div class="hub-card grad-blue" onclick="showMoreSub('quests');showTab('more');">
+        <div class="card-icon">📅</div>
+        <div class="card-title">کوئست روزانه</div>
+        <div class="card-meta">ماموریت‌های امروز</div>
+      </div>
+      <div class="hub-card grad-pink" onclick="showMoreSub('seasonal');showTab('more');">
+        <div class="card-icon">🎉</div>
+        <div class="card-title">ایونت فصلی</div>
+        <div class="card-meta">رویداد محدود</div>
+      </div>
     </div>
-    <div class="more-subtab" id="msub-clan">
-      <div id="clanContent" class="muted">در حال بارگذاری...</div>
-      <h3>جدول کلن‌های برتر</h3>
-      <div id="clanLeaderboard" class="muted"></div>
+
+    <!-- Sub-sections (hidden by default, shown via JS) -->
+    <div id="moreContent" style="margin-top:16px;">
+      <div class="more-subtab" id="msub-auction">
+        <div id="auctionsList" class="muted">در حال بارگذاری...</div>
+      </div>
+      <div class="more-subtab" id="msub-season">
+        <div class="card" id="seasonStatusCard">در حال بارگذاری...</div>
+        <div id="seasonTiersList" class="muted"></div>
+      </div>
+      <div class="more-subtab" id="msub-staking">
+        <div class="card">
+          <h3 style="margin:0 0 12px;">🏦 استیک کردن کارت</h3>
+          <select id="stakeCardSelect"></select>
+          <button class="btn" onclick="doStakeCard()">قفل کردن تو فارم</button>
+        </div>
+        <h3>کارت‌های استیک‌شده من</h3>
+        <div id="myStakesList" class="muted">در حال بارگذاری...</div>
+      </div>
+      <div class="more-subtab" id="msub-clan">
+        <div class="pills">
+          <button class="pill active" onclick="showClanSub('my')">کلن من</button>
+          <button class="pill" onclick="showClanSub('search')">🔍 جستجو</button>
+          <button class="pill" onclick="showClanSub('leaderboard')">🏆 برترین‌ها</button>
+        </div>
+        <div id="clanContent" class="muted">در حال بارگذاری...</div>
+        <h3>جدول کلن‌های برتر</h3>
+        <div id="clanLeaderboard" class="muted"></div>
+      </div>
+      <div class="more-subtab" id="msub-quests">
+        <div id="questsList" class="muted">در حال بارگذاری...</div>
+      </div>
+      <div class="more-subtab" id="msub-seasonal">
+        <div id="seasonalEventsList" class="muted">در حال بارگذاری...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== TAB 7: PROFILE ====== -->
+  <section class="tab" id="tab-profile">
+    <div class="hero-card grad-slate" style="text-align:center;align-items:center;">
+      <div style="font-size:64px;margin-bottom:8px;">👤</div>
+      <div class="card-title" id="profileName">کاربر</div>
+      <div class="card-meta" id="profileLevel">Level 1 • Novice</div>
+      <div style="display:flex;gap:16px;justify-content:center;margin-top:12px;position:relative;z-index:2;">
+        <div style="text-align:center;"><div style="font-size:20px;font-weight:800;" id="profileBalance">0</div><div style="font-size:12px;opacity:0.7;">تومان</div></div>
+        <div style="text-align:center;"><div style="font-size:20px;font-weight:800;" id="profileCards">0</div><div style="font-size:12px;opacity:0.7;">کارت</div></div>
+        <div style="text-align:center;"><div style="font-size:20px;font-weight:800;" id="profileRank">-</div><div style="font-size:12px;opacity:0.7;">رتبه</div></div>
+      </div>
+      <button class="btn gold" style="width:auto;padding:10px 24px;margin-top:16px;position:relative;z-index:2;" onclick="doCheckin()">📅 چک‌این روزانه</button>
+    </div>
+
+    <div class="grid-2">
+      <div class="hub-card grad-blue" onclick="showProfileSub('referral')">
+        <div class="card-icon">👥</div>
+        <div class="card-title">دعوت دوستان</div>
+        <div class="card-meta">رفرال</div>
+      </div>
+      <div class="hub-card grad-green" onclick="showProfileSub('support')">
+        <div class="card-icon">🆘</div>
+        <div class="card-title">پشتیبانی</div>
+        <div class="card-meta">تیکت بزن</div>
+      </div>
+      <div class="hub-card grad-purple" onclick="showProfileSub('avatars')">
+        <div class="card-icon">🎭</div>
+        <div class="card-title">آواتار</div>
+        <div class="card-meta">تغییر چهره</div>
+      </div>
+      <div class="hub-card grad-slate" onclick="showProfileSub('settings')">
+        <div class="card-icon">⚙️</div>
+        <div class="card-title">تنظیمات</div>
+        <div class="card-meta">پیشرفته</div>
+      </div>
+    </div>
+
+    <div id="profileContent" style="margin-top:16px;">
+      <div class="subtab" id="psub-referral">
+        <div class="card" id="referralCard">در حال بارگذاری...</div>
+      </div>
+      <div class="subtab" id="psub-support">
+        <div class="card" id="chatBox" style="min-height:220px;"></div>
+        <div class="card">
+          <textarea id="supportText" rows="3" placeholder="پیام خودتو بنویس..."></textarea>
+          <button class="btn" onclick="sendSupport()">ارسال</button>
+        </div>
+      </div>
+      <div class="subtab" id="psub-avatars">
+        <div id="avatarList" class="muted">در حال بارگذاری...</div>
+      </div>
+      <div class="subtab" id="psub-settings">
+        <div class="card">
+          <p class="muted">تنظیمات حساب کاربری</p>
+        </div>
+      </div>
     </div>
   </section>
 </main>
@@ -768,13 +1053,14 @@ nav button.active .ic {
   <span class="nav-indicator" id="navIndicator"></span>
   <button data-tab="shop" class="active" onclick="showTab('shop')"><span class="ic">🛍</span>فروشگاه</button>
   <button data-tab="wallet" onclick="showTab('wallet')"><span class="ic">💳</span>کیف‌پول</button>
+  <button data-tab="game" onclick="showTab('game')"><span class="ic">🎮</span>بازی‌ها</button>
   <button data-tab="market" onclick="showTab('market')"><span class="ic">🎁</span>بازار</button>
-  <button data-tab="game" onclick="showTab('game')"><span class="ic">🎮</span>بازی</button>
-  <button data-tab="more" onclick="showTab('more')"><span class="ic">🧩</span>بیشتر</button>
   <button data-tab="tasks" onclick="showTab('tasks')"><span class="ic">✅</span>تسک‌ها</button>
-  <button data-tab="referral" onclick="showTab('referral')"><span class="ic">👥</span>رفرال</button>
-  <button data-tab="support" onclick="showTab('support')"><span class="ic">🆘</span>پشتیبانی</button>
+  <button data-tab="more" onclick="showTab('more')"><span class="ic">🧩</span>بیشتر</button>
+  <button data-tab="profile" onclick="showTab('profile')"><span class="ic">👤</span>پروفایل</button>
 </nav>
+
+<script>
 <script>
 const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
@@ -1461,6 +1747,116 @@ async function bootApp() {
   moveNavIndicator();
 }
 bootApp();
+</script>
+</body>
+</html>
+
+
+/* ===== NEW UI HELPERS (Game Hub / Portal) ===== */
+
+function showWalletSub(sub) {
+  document.querySelectorAll('#tab-wallet .subtab').forEach(el => el.classList.remove('active'));
+  document.getElementById('wsub-' + sub).classList.add('active');
+  document.querySelectorAll('#walletPills .pill').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function showMarketSub(sub) {
+  document.querySelectorAll('#tab-market .subtab').forEach(el => el.classList.remove('active'));
+  document.getElementById('msub-' + sub).classList.add('active');
+  document.querySelectorAll('#marketPills .pill').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  if(sub === 'browse') loadMarket();
+  if(sub === 'my') loadMyGifts();
+}
+
+function showProfileSub(sub) {
+  document.querySelectorAll('#tab-profile .subtab').forEach(el => el.classList.remove('active'));
+  document.getElementById('psub-' + sub).classList.add('active');
+  if(sub === 'referral') loadReferral();
+  if(sub === 'support') loadSupport();
+  if(sub === 'avatars') loadAvatars();
+}
+
+function showClanSub(sub) {
+  if(sub === 'my') loadClan();
+  if(sub === 'search') document.getElementById('clanContent').innerHTML = '<p class="muted">جستجوی کلن...</p>';
+  if(sub === 'leaderboard') loadClanLeaderboard();
+}
+
+function filterMarketCategory(cat) {
+  showMarketSub('browse');
+  // TODO: filter marketList by category
+}
+
+function loadTradeOffers() {
+  document.getElementById('tradeList').innerHTML = '<p class="muted">لیست پیشنهادات ترید...</p>';
+}
+
+function loadAvatars() {
+  document.getElementById('avatarList').innerHTML = '<p class="muted">در حال بارگذاری آواتارها...</p>';
+  api('/avatars/my').then(data => {
+    if(!data || !data.avatars) { document.getElementById('avatarList').innerHTML = '<p class="muted">آواتاری یافت نشد</p>'; return; }
+    let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">';
+    data.avatars.forEach(a => {
+      html += `<div class="hub-card grad-purple" style="aspect-ratio:1;"><div class="card-title" style="font-size:14px;">${a.name || 'آواتار'}</div></div>`;
+    });
+    html += '</div>';
+    document.getElementById('avatarList').innerHTML = html;
+  }).catch(() => {
+    document.getElementById('avatarList').innerHTML = '<p class="muted">خطا در بارگذاری</p>';
+  });
+}
+
+function doCheckin() {
+  api('/rank/checkin', 'POST').then(r => {
+    toast(r.message || 'چک‌این انجام شد!');
+    loadMe();
+  }).catch(e => toast(e.message || 'خطا'));
+}
+
+function redeemPromoCode() {
+  const code = document.getElementById('promoCodeInput').value.trim();
+  if(!code) return toast('کد را وارد کنید');
+  api('/promo/redeem', 'POST', {code}).then(r => {
+    toast(r.message || 'کد با موفقیت ثبت شد!');
+    loadMe();
+  }).catch(e => toast(e.message || 'کد نامعتبر'));
+}
+
+/* Override showTab to handle nav indicator */
+const _origShowTab = showTab;
+showTab = function(name) {
+  _origShowTab(name);
+  // Move nav indicator
+  const btn = document.querySelector(`nav button[data-tab="${name}"]`);
+  const indicator = document.getElementById('navIndicator');
+  if(btn && indicator) {
+    indicator.style.left = btn.offsetLeft + (btn.offsetWidth/2) - 16 + 'px';
+  }
+};
+
+/* Load profile data */
+function loadProfile() {
+  api('/me').then(d => {
+    document.getElementById('profileName').textContent = d.first_name || 'کاربر';
+    document.getElementById('profileBalance').textContent = (d.balance || 0).toLocaleString();
+  }).catch(()=>{});
+  api('/rank/me').then(d => {
+    document.getElementById('profileLevel').textContent = `Level ${d.level || 1} • ${d.title || 'Novice'}`;
+    document.getElementById('profileRank').textContent = d.rank || '-';
+  }).catch(()=>{});
+  api('/game/my-cards').then(d => {
+    document.getElementById('profileCards').textContent = (d.cards || []).length;
+  }).catch(()=>{});
+}
+
+/* Hook into bootApp */
+const _origBoot = bootApp;
+bootApp = function() {
+  _origBoot();
+  loadProfile();
+};
 </script>
 </body>
 </html>
