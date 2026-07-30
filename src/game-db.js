@@ -57,6 +57,8 @@ safeAddColumn('game_cards', "level_images TEXT DEFAULT '[]'"); // آرایه JSO
 safeAddColumn('game_cards', "edition TEXT DEFAULT 'standard'"); // standard | shiny | gold
 safeAddColumn('game_cards', 'max_supply INTEGER'); // خالی = نامحدود
 safeAddColumn('user_cards', 'bonus_power INTEGER NOT NULL DEFAULT 0'); // از روش «تقویت/قربانی» میاد، سطح رو عوض نمی‌کنه
+safeAddColumn('game_cards', 'instant_level INTEGER'); // اگه ست بشه (مثلا ۷)، هر کارتی که از این تمپلیت ساخته می‌شه از همون سطح شروع می‌شه (کارت ویژه/اختصاصی)
+safeAddColumn('game_cards', 'fixed_power INTEGER'); // اگه ست بشه، به‌جای فرمول سطح‌محور، همین قدرت اختصاصی استفاده می‌شه
 
 // سیستم سطح‌بندی ثابت ۷ تایی: سطح = ریرتی. هر کارتی که تو دیتابیس max_level متفاوتی داره
 // (مثلا از نسخه‌های قبلی) رو یکبار برای همیشه به ۷ اصلاح می‌کنیم تا کل سیستم یکدست بشه
@@ -241,16 +243,18 @@ export function upsertGameCard(c) {
   if (c.id) {
     db.prepare(`
       UPDATE game_cards SET name=?, image_url=?, rarity=?, base_power=?, price_toman=?, max_level=?, active=?,
-        category_id=?, level_images=?, edition=?, max_supply=? WHERE id=?
+        category_id=?, level_images=?, edition=?, max_supply=?, instant_level=?, fixed_power=? WHERE id=?
     `).run(c.name, c.image_url || null, c.rarity, c.base_power, c.price_toman, c.max_level, c.active ? 1 : 0,
-      c.category_id || null, levelImagesJson, c.edition || 'standard', c.max_supply || null, c.id);
+      c.category_id || null, levelImagesJson, c.edition || 'standard', c.max_supply || null,
+      c.instant_level || null, c.fixed_power || null, c.id);
     return c.id;
   }
   return db.prepare(`
-    INSERT INTO game_cards (name, image_url, rarity, base_power, price_toman, max_level, active, category_id, level_images, edition, max_supply)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    INSERT INTO game_cards (name, image_url, rarity, base_power, price_toman, max_level, active, category_id, level_images, edition, max_supply, instant_level, fixed_power)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(c.name, c.image_url || null, c.rarity, c.base_power, c.price_toman, c.max_level, c.active ? 1 : 0,
-    c.category_id || null, levelImagesJson, c.edition || 'standard', c.max_supply || null).lastInsertRowid;
+    c.category_id || null, levelImagesJson, c.edition || 'standard', c.max_supply || null,
+    c.instant_level || null, c.fixed_power || null).lastInsertRowid;
 }
 export function deleteGameCard(id) { db.prepare('DELETE FROM game_cards WHERE id = ?').run(id); }
 
@@ -258,7 +262,16 @@ export function computeCardPower(basePower, level) {
   return Math.round(basePower * (1 + 0.15 * (level - 1)));
 }
 function computeTotalPower(row) {
-  return computeCardPower(row.base_power, row.level) + (row.bonus_power || 0);
+  const base = row.fixed_power != null ? row.fixed_power : computeCardPower(row.base_power, row.level);
+  return base + (row.bonus_power || 0);
+}
+
+// نقطهٔ واحد اضافه‌شدن کارت به کارت‌های یه کاربر — همه‌جا (خرید، جایزهٔ تسک، بتل‌پس، مزایده)
+// از همینجا استفاده می‌کنن تا کارت‌های ویژهٔ لول ۷ (instant_level) همه‌جا درست رفتار کنن
+export function grantCardInstance(tgId, cardId) {
+  const card = getGameCard(cardId);
+  const level = card?.instant_level || 1;
+  return db.prepare('INSERT INTO user_cards (tg_id, card_id, level) VALUES (?,?,?)').run(tgId, cardId, level).lastInsertRowid;
 }
 
 /* =========================================================================
@@ -267,7 +280,7 @@ function computeTotalPower(row) {
 export function getUserCards(tgId) {
   return db.prepare(`
     SELECT uc.id, uc.card_id, uc.level, uc.bonus_power, uc.created_at,
-      c.name, c.image_url, c.level_images, c.base_power, c.max_level, c.category_id, c.edition
+      c.name, c.image_url, c.level_images, c.base_power, c.max_level, c.category_id, c.edition, c.fixed_power
     FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id
     WHERE uc.tg_id = ? ORDER BY uc.id DESC
   `).all(tgId).map(row => {
@@ -277,7 +290,7 @@ export function getUserCards(tgId) {
 }
 export function getUserCard(tgId, userCardId) {
   const row = db.prepare(`
-    SELECT uc.*, c.name, c.image_url, c.level_images, c.base_power, c.max_level, c.price_toman, c.category_id, c.edition
+    SELECT uc.*, c.name, c.image_url, c.level_images, c.base_power, c.max_level, c.price_toman, c.category_id, c.edition, c.fixed_power
     FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id
     WHERE uc.id = ? AND uc.tg_id = ?
   `).get(userCardId, tgId);
@@ -296,7 +309,7 @@ export function buyGameCard(tgId, cardId) {
   const user = getUser(tgId);
   if (!user || user.balance_toman < card.price_toman) throw new Error('موجودی کیف‌پول کافی نیست');
   adjustToman(tgId, -card.price_toman, `خرید کارت «${card.name}»`);
-  const id = db.prepare(`INSERT INTO user_cards (tg_id, card_id) VALUES (?,?)`).run(tgId, cardId).lastInsertRowid;
+  const id = grantCardInstance(tgId, cardId);
   return id;
 }
 
@@ -405,7 +418,7 @@ export function hasClaimedCardTask(tgId, taskId) { return !!db.prepare('SELECT 1
 export function claimCardTask(tgId, task) {
   const tx = db.transaction(() => {
     db.prepare('INSERT INTO card_task_claims (tg_id, task_id) VALUES (?,?)').run(tgId, task.id);
-    db.prepare('INSERT INTO user_cards (tg_id, card_id) VALUES (?,?)').run(tgId, task.reward_card_id);
+    grantCardInstance(tgId, task.reward_card_id);
   });
   tx();
 }

@@ -1,5 +1,6 @@
 import db from './db.js';
 import { adjustToman, getUser, getProduct } from './db.js';
+import { getGameCard, grantCardInstance } from './game-db.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS auction_config (
@@ -38,6 +39,13 @@ CREATE TABLE IF NOT EXISTS auction_bids (
 );
 `);
 
+function safeAddColumn(table, columnDef) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
+  catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+}
+safeAddColumn('auctions', `item_type TEXT NOT NULL DEFAULT 'product'`);
+safeAddColumn('auctions', 'card_id INTEGER');
+
 export function getAuctionConfig() { return db.prepare('SELECT * FROM auction_config WHERE id = 1').get(); }
 export function setAuctionConfig(c) {
   db.prepare(`
@@ -62,9 +70,21 @@ export function createAuctionFromProduct(productId) {
   const startPrice = Math.round(product.price_toman * (1 - cfg.discount_percent / 100));
   const endsAt = new Date(Date.now() + cfg.duration_minutes * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   return db.prepare(`
-    INSERT INTO auctions (product_id, title, image_url, start_price, current_price, bid_step, anti_snipe, min_wallet_balance, ends_at)
-    VALUES (?,?,?,?,?,?,?,?,?)
+    INSERT INTO auctions (product_id, item_type, title, image_url, start_price, current_price, bid_step, anti_snipe, min_wallet_balance, ends_at)
+    VALUES (?,'product',?,?,?,?,?,?,?,?)
   `).run(productId, product.title, product.image_url, startPrice, startPrice, cfg.bid_step, cfg.anti_snipe_enabled, cfg.min_wallet_balance, endsAt).lastInsertRowid;
+}
+// ادمین یه کارت بازی رو به مزایده می‌ذاره؛ بعد از تموم شدن مستقیم به کارت‌های برنده اضافه می‌شه
+export function createAuctionFromCard(cardId) {
+  const card = getGameCard(cardId);
+  if (!card) throw new Error('کارت پیدا نشد');
+  const cfg = getAuctionConfig();
+  const startPrice = Math.round(card.price_toman * (1 - cfg.discount_percent / 100));
+  const endsAt = new Date(Date.now() + cfg.duration_minutes * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+  return db.prepare(`
+    INSERT INTO auctions (product_id, item_type, card_id, title, image_url, start_price, current_price, bid_step, anti_snipe, min_wallet_balance, ends_at)
+    VALUES (0,'card',?,?,?,?,?,?,?,?,?)
+  `).run(cardId, card.name, card.image_url, startPrice, startPrice, cfg.bid_step, cfg.anti_snipe_enabled, cfg.min_wallet_balance, endsAt).lastInsertRowid;
 }
 export function cancelAuction(id) {
   db.prepare(`UPDATE auctions SET status = 'cancelled' WHERE id = ? AND status = 'active'`).run(id);
@@ -112,7 +132,11 @@ export function finalizeExpiredAuctions(notifyFn) {
     const user = getUser(a.winner_tg_id);
     if (user && user.balance_toman >= a.current_price) {
       adjustToman(a.winner_tg_id, -a.current_price, `برد مزایده «${a.title}»`);
-      db.prepare(`INSERT INTO orders (tg_id, product_id, qty, total_toman, note) VALUES (?,?,1,?, 'برد مزایده')`).run(a.winner_tg_id, a.product_id, a.current_price);
+      if (a.item_type === 'card') {
+        grantCardInstance(a.winner_tg_id, a.card_id);
+      } else {
+        db.prepare(`INSERT INTO orders (tg_id, product_id, qty, total_toman, note) VALUES (?,?,1,?, 'برد مزایده')`).run(a.winner_tg_id, a.product_id, a.current_price);
+      }
       db.prepare(`UPDATE auctions SET status = 'ended' WHERE id = ?`).run(a.id);
       if (notifyFn) notifyFn(a.winner_tg_id, a, 'won');
     } else {

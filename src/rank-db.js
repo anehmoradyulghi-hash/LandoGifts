@@ -97,6 +97,34 @@ export function getUserRankInfo(tgId) {
   return { xp: ur.xp, level, title: titleInfo.title, icon: titleInfo.icon, xpIntoLevel, xpPerLevel: cfg.xp_per_level, equippedAvatarId: ur.equipped_avatar_id };
 }
 
+// جدول امتیازات لول: بر اساس بیشترین XP (که مستقیم معادل بالاترین لوله)
+export function getLevelLeaderboard(limit = 10) {
+  const cfg = getRankConfig();
+  const rows = db.prepare(`
+    SELECT ur.tg_id, ur.xp, u.first_name, u.username
+    FROM user_rank ur JOIN users u ON u.tg_id = ur.tg_id
+    ORDER BY ur.xp DESC LIMIT ?
+  `).all(limit);
+  return rows.map(r => {
+    const level = Math.max(1, Math.floor(r.xp / cfg.xp_per_level) + 1);
+    const titleInfo = getTitleForLevel(level);
+    return { tg_id: r.tg_id, xp: r.xp, level, title: titleInfo.title, icon: titleInfo.icon, first_name: r.first_name, username: r.username };
+  });
+}
+export function getUserLevelRank(tgId) {
+  const row = db.prepare(`
+    SELECT COUNT(*) + 1 AS rank FROM user_rank
+    WHERE xp > (SELECT COALESCE(xp,0) FROM user_rank WHERE tg_id = ?)
+  `).get(tgId);
+  return row.rank;
+}
+// ردیف خود کاربر تو جدول لول (حتی اگه تو ۱۰ نفر برتر نباشه)
+export function getUserLevelRow(tgId) {
+  const info = getUserRankInfo(tgId);
+  const user = getUser(tgId);
+  return { tg_id: tgId, xp: info.xp, level: info.level, title: info.title, icon: info.icon, first_name: user?.first_name, username: user?.username };
+}
+
 export function canCheckinToday(tgId) {
   return !db.prepare(`SELECT 1 FROM daily_checkins WHERE tg_id = ? AND checkin_date = date('now')`).get(tgId);
 }

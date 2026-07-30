@@ -1,5 +1,6 @@
 import db from './db.js';
 import { adjustToman } from './db.js';
+import { grantCardInstance } from './game-db.js';
 
 /* =========================================================================
  * چرخ شانس روزانه — کاملا رایگان، فقط یه‌بار به ازای دوره خنک‌شدن (پیش‌فرض ۲۴ ساعت).
@@ -107,7 +108,7 @@ export function spinWheel(tgId) {
     if (chosen.type === 'toman' && chosen.amount_toman > 0) {
       adjustToman(tgId, chosen.amount_toman, `جایزه چرخ شانس: ${chosen.label}`);
     } else if (chosen.type === 'card' && chosen.card_id) {
-      db.prepare('INSERT INTO user_cards (tg_id, card_id) VALUES (?,?)').run(tgId, chosen.card_id);
+      grantCardInstance(tgId, chosen.card_id);
     } else if (chosen.type === 'extra_games' && chosen.extra_games_count > 0) {
       db.prepare(`
         INSERT INTO game_extra_plays (tg_id, extra_plays) VALUES (?, ?)

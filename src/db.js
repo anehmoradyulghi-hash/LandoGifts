@@ -252,8 +252,10 @@ export function adjustToman(tgId, amount, reason) {
   logLedger(tgId, 'TOMAN', amount >= 0 ? 'in' : 'out', Math.abs(amount), reason);
 }
 
-export function getLedger(tgId, limit = 50) {
-  return db.prepare('SELECT * FROM ledger WHERE tg_id = ? ORDER BY created_at DESC LIMIT ?').all(tgId, limit);
+export function getLedger(tgId, limit = 15, offset = 0) {
+  const rows = db.prepare('SELECT * FROM ledger WHERE tg_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?').all(tgId, limit, offset);
+  const total = db.prepare('SELECT COUNT(*) c FROM ledger WHERE tg_id = ?').get(tgId).c;
+  return { rows, total, hasMore: offset + rows.length < total };
 }
 
 export function payReferralBonus(tgId, purchaseAmountToman, percent) {
@@ -533,6 +535,14 @@ export function setPaymentSettings({ cardNumber, cardOwner, zarinpalMerchantId }
   setSetting('card_number', cardNumber || '');
   setSetting('card_owner', cardOwner || '');
   setSetting('zarinpal_merchant_id', zarinpalMerchantId || '');
+}
+
+// آیدی/یوزرنیم تلگرام که دکمه پشتیبانی کاربر رو مستقیم به چت باهاش می‌بره (به‌جای تیکت داخلی)
+export function getSupportContact() {
+  return getSetting('support_username', process.env.SUPPORT_USERNAME || '');
+}
+export function setSupportContact(username) {
+  setSetting('support_username', (username || '').replace(/^@/, ''));
 }
 
 const DEFAULT_WELCOME = 'به <b>Lando Gifts</b> خوش اومدی 🎁\nاز دکمه پایین فروشگاه رو باز کن:';

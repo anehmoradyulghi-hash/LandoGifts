@@ -1,6 +1,7 @@
 import db from './db.js';
 import { adjustToman } from './db.js';
 import { addUserXp } from './rank-db.js';
+import { grantCardInstance } from './game-db.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS quest_config (
@@ -119,7 +120,7 @@ export function claimQuestReward(tgId, templateId) {
     } else if (template.reward_type === 'xp' && Number(template.reward_value) > 0) {
       addUserXp(tgId, Number(template.reward_value));
     } else if (template.reward_type === 'card' && template.reward_value) {
-      db.prepare('INSERT INTO user_cards (tg_id, card_id) VALUES (?,?)').run(tgId, Number(template.reward_value));
+      grantCardInstance(tgId, Number(template.reward_value));
     } else if (template.reward_type === 'extra_games' && Number(template.reward_value) > 0) {
       db.prepare(`
         INSERT INTO game_extra_plays (tg_id, extra_plays) VALUES (?, ?)

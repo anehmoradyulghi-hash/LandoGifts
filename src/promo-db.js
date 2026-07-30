@@ -1,5 +1,6 @@
 import db from './db.js';
 import { adjustToman } from './db.js';
+import { grantCardInstance } from './game-db.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS promo_codes (
@@ -49,7 +50,7 @@ export function redeemPromoCode(tgId, codeInput) {
     if (promo.reward_type === 'toman' && Number(promo.reward_value) > 0) {
       adjustToman(tgId, Number(promo.reward_value), `کد هدیه: ${code}`);
     } else if (promo.reward_type === 'card' && promo.reward_value) {
-      db.prepare('INSERT INTO user_cards (tg_id, card_id) VALUES (?,?)').run(tgId, Number(promo.reward_value));
+      grantCardInstance(tgId, Number(promo.reward_value));
     }
     db.prepare('INSERT INTO promo_redemptions (code, tg_id) VALUES (?,?)').run(code, tgId);
     db.prepare('UPDATE promo_codes SET used_count = used_count + 1 WHERE code = ?').run(code);

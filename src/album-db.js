@@ -1,6 +1,7 @@
 import db from './db.js';
 import { adjustToman } from './db.js';
 import { grantAvatar } from './rank-db.js';
+import { grantCardInstance } from './game-db.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS albums (
@@ -97,7 +98,7 @@ export function claimAlbumReward(tgId, albumId) {
     } else if (album.reward_type === 'avatar' && album.reward_value) {
       grantAvatar(tgId, Number(album.reward_value));
     } else if (album.reward_type === 'card' && album.reward_value) {
-      db.prepare('INSERT INTO user_cards (tg_id, card_id) VALUES (?,?)').run(tgId, Number(album.reward_value));
+      grantCardInstance(tgId, Number(album.reward_value));
     }
     db.prepare('INSERT INTO user_album_claims (tg_id, album_id) VALUES (?,?)').run(tgId, albumId);
   });

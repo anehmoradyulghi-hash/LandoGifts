@@ -82,6 +82,13 @@ export function searchClans(query) {
 export function getClanLeaderboard(limit = 10) {
   return db.prepare('SELECT * FROM clans ORDER BY score DESC LIMIT ?').all(limit);
 }
+export function getClanRank(clanId) {
+  const row = db.prepare(`
+    SELECT COUNT(*) + 1 AS rank FROM clans
+    WHERE score > (SELECT COALESCE(score,0) FROM clans WHERE id = ?)
+  `).get(clanId);
+  return row.rank;
+}
 
 export function createClan(tgId, name, tag, avatarUrl) {
   const cfg = getClanConfig();
@@ -160,6 +167,35 @@ export function donateToClan(tgId, amount) {
     db.prepare('UPDATE clans SET bank_balance = bank_balance + ?, score = score + ? WHERE id = ?').run(amount, scoreGain, member.clan_id);
     db.prepare('UPDATE clan_members SET donated_total = donated_total + ? WHERE tg_id = ?').run(amount, tgId);
     db.prepare('INSERT INTO clan_donations (clan_id, tg_id, amount) VALUES (?,?,?)').run(member.clan_id, tgId, amount);
+  });
+  tx();
+}
+
+// رهبر کلن می‌تونه از بانک کلن (پول‌هایی که اعضا اهدا کردن) برداشت کنه به کیف‌پول خودش
+export function withdrawFromClanBank(ownerTgId, amount) {
+  const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
+  if (!owner || owner.role !== 'owner') throw new Error('فقط رهبر کلن می‌تونه از بانک کلن برداشت کنه');
+  if (!amount || amount <= 0) throw new Error('مبلغ نامعتبره');
+  const clan = getClanById(owner.clan_id);
+  if (!clan || clan.bank_balance < amount) throw new Error('موجودی بانک کلن کافی نیست');
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
+    adjustToman(ownerTgId, amount, `برداشت از بانک کلن «${clan.name}»`);
+  });
+  tx();
+}
+// رهبر کلن می‌تونه از بانک کلن مستقیم به یکی از اعضا هدیه بده
+export function giftFromClanBank(ownerTgId, targetTgId, amount) {
+  const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
+  if (!owner || owner.role !== 'owner') throw new Error('فقط رهبر کلن می‌تونه از بانک کلن هدیه بده');
+  if (!amount || amount <= 0) throw new Error('مبلغ نامعتبره');
+  const target = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(targetTgId);
+  if (!target || target.clan_id !== owner.clan_id) throw new Error('این کاربر تو کلن تو نیست');
+  const clan = getClanById(owner.clan_id);
+  if (!clan || clan.bank_balance < amount) throw new Error('موجودی بانک کلن کافی نیست');
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
+    adjustToman(targetTgId, amount, `هدیه از بانک کلن «${clan.name}»`);
   });
   tx();
 }

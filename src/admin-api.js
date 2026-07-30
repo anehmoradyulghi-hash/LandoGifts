@@ -16,11 +16,11 @@ import {
   listAllTasksAdmin, upsertTask, deleteTask,
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
-  getPaymentSettings, setPaymentSettings,
+  getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact,
   getMessageSettings, setMessageSettings, getAllUserIds,
 } from './db.js';
 import {
-  listGameCards, upsertGameCard, deleteGameCard,
+  listGameCards, upsertGameCard, deleteGameCard, grantCardInstance,
   getGameConfig, setGameConfig,
   listLeaderboardPrizes, upsertLeaderboardPrize, deleteLeaderboardPrize,
   getLeaderboard, getLeaderboardState, resetLeaderboard,
@@ -32,12 +32,11 @@ import {
   getWheelConfig, setWheelConfig, listWheelSlots, upsertWheelSlot, deleteWheelSlot,
 } from './wheel-db.js';
 import {
-  getAuctionConfig, setAuctionConfig, listAllAuctionsAdmin, createAuctionFromProduct, cancelAuction, listAuctionBids,
+  getAuctionConfig, setAuctionConfig, listAllAuctionsAdmin, createAuctionFromProduct, createAuctionFromCard, cancelAuction, listAuctionBids,
 } from './auction-db.js';
 import {
   getSeasonConfig, setSeasonConfig, getCurrentSeason, startNewSeason, listSeasonTiers, upsertSeasonTier, deleteSeasonTier,
 } from './season-db.js';
-import { getStakingConfig, setStakingConfig, listRarityRates, upsertRarityRate } from './staking-db.js';
 import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason } from './clan-db.js';
 import {
   getRankConfig, setRankConfig, listRankTitles, upsertRankTitle, deleteRankTitle,
@@ -132,6 +131,10 @@ router.post('/payment-settings', (req, res) => {
   });
   res.json({ ok: true });
 });
+
+/* ---------- آیدی پشتیبانی (به‌جای تیکت داخلی) ---------- */
+router.get('/support-contact', (req, res) => res.json({ username: getSupportContact() }));
+router.post('/support-contact', (req, res) => { setSupportContact(req.body.username); res.json({ ok: true }); });
 
 /* ---------- پیام‌های ربات (خوش‌آمد / درخواست عضویت) ---------- */
 router.get('/message-settings', (req, res) => res.json(getMessageSettings()));
@@ -292,7 +295,7 @@ router.post('/merge-costs', (req, res) => {
 /* ---------- بازی کارتی: کارت‌ها ---------- */
 router.get('/game/cards', (req, res) => res.json(listGameCards(false)));
 router.post('/game/cards', (req, res) => {
-  const { id, name, image_url, base_power, price_toman, active, category_id, level_images, edition, max_supply } = req.body;
+  const { id, name, image_url, base_power, price_toman, active, category_id, level_images, edition, max_supply, instant_level, fixed_power } = req.body;
   if (!name) return res.status(400).json({ error: 'اسم کارت لازمه' });
   const savedId = upsertGameCard({
     id: id ? Number(id) : null,
@@ -306,10 +309,16 @@ router.post('/game/cards', (req, res) => {
     level_images: Array.isArray(level_images) ? level_images : [],
     edition: edition || 'standard',
     max_supply: max_supply ? Number(max_supply) : null,
+    instant_level: instant_level ? Number(instant_level) : null,
+    fixed_power: fixed_power ? Number(fixed_power) : null,
   });
   res.json({ ok: true, id: savedId });
 });
 router.delete('/game/cards/:id', (req, res) => { deleteGameCard(Number(req.params.id)); res.json({ ok: true }); });
+router.post('/game/cards/:id/grant', (req, res) => {
+  try { const userCardId = grantCardInstance(Number(req.body.tgId), Number(req.params.id)); res.json({ ok: true, userCardId }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 
 /* ---------- چرخ شانس روزانه ---------- */
 router.get('/wheel/config', (req, res) => res.json(getWheelConfig()));
@@ -397,8 +406,12 @@ router.post('/auction/config', (req, res) => {
 router.get('/auction/list', (req, res) => res.json(listAllAuctionsAdmin()));
 router.get('/auction/:id/bids', (req, res) => res.json(listAuctionBids(Number(req.params.id))));
 router.post('/auction/create', (req, res) => {
-  try { const id = createAuctionFromProduct(Number(req.body.productId)); res.json({ ok: true, id }); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    const id = req.body.itemType === 'card'
+      ? createAuctionFromCard(Number(req.body.cardId))
+      : createAuctionFromProduct(Number(req.body.productId));
+    res.json({ ok: true, id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 router.post('/auction/:id/cancel', (req, res) => { cancelAuction(Number(req.params.id)); res.json({ ok: true }); });
 
@@ -427,24 +440,6 @@ router.post('/season/tiers', (req, res) => {
   res.json({ ok: true });
 });
 router.delete('/season/tiers/:n', (req, res) => { deleteSeasonTier(Number(req.params.n)); res.json({ ok: true }); });
-
-/* ---------- استیکینگ کارت ---------- */
-router.get('/staking/config', (req, res) => res.json(getStakingConfig()));
-router.post('/staking/config', (req, res) => {
-  const b = req.body;
-  setStakingConfig({
-    enabled: !!b.enabled, min_stake_days: Number(b.min_stake_days),
-    early_withdrawal_penalty_percent: Number(b.early_withdrawal_penalty_percent),
-    max_cards_per_user: Number(b.max_cards_per_user), daily_system_cap: Number(b.daily_system_cap) || 0,
-    min_card_power: Number(b.min_card_power) || 0,
-  });
-  res.json({ ok: true });
-});
-router.get('/staking/rates', (req, res) => res.json(listRarityRates()));
-router.post('/staking/rates', (req, res) => {
-  upsertRarityRate(req.body.rarity, Number(req.body.rate) || 0);
-  res.json({ ok: true });
-});
 
 /* ---------- سیستم کلن ---------- */
 router.get('/clan/config', (req, res) => res.json(getClanConfig()));

@@ -1,5 +1,7 @@
 import db from './db.js';
-import { adjustToman, getUser } from './db.js';
+import { adjustToman, getUser, createOrder } from './db.js';
+import { grantAvatar } from './rank-db.js';
+import { grantCardInstance } from './game-db.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS season_config (
@@ -134,12 +136,16 @@ export function claimSeasonTierReward(tgId, tierNumber, track) {
     if (type === 'toman' && Number(value) > 0) {
       adjustToman(tgId, Number(value), `جایزه تایر ${tierNumber} بتل‌پس (${track === 'free' ? 'رایگان' : 'پرمیوم'})`);
     } else if (type === 'card' && value) {
-      db.prepare('INSERT INTO user_cards (tg_id, card_id) VALUES (?,?)').run(tgId, Number(value));
+      grantCardInstance(tgId, Number(value));
     } else if (type === 'extra_games' && Number(value) > 0) {
       db.prepare(`
         INSERT INTO game_extra_plays (tg_id, extra_plays) VALUES (?, ?)
         ON CONFLICT(tg_id) DO UPDATE SET extra_plays = extra_plays + excluded.extra_plays
       `).run(tgId, Number(value));
+    } else if (type === 'avatar' && value) {
+      grantAvatar(tgId, Number(value));
+    } else if (type === 'product' && value) {
+      createOrder(tgId, Number(value), 1, 0, `جایزه تایر ${tierNumber} بتل‌پس (${track === 'free' ? 'رایگان' : 'پرمیوم'})`);
     }
     db.prepare('INSERT INTO season_tier_claims (tg_id, tier_number, track) VALUES (?,?,?)').run(tgId, tierNumber, track);
   });

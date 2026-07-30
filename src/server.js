@@ -17,8 +17,7 @@ import db, {
   createOrder, listOrdersForUser,
   createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer,
   listActiveTasks, hasClaimedTask, claimTask, getTask,
-  getOrCreateOpenTicket, addTicketMessage, listTicketMessages, listMyTickets,
-  getPaymentSettings, getMessageSettings,
+  getPaymentSettings, getMessageSettings, getSupportContact,
   createZarinpalPayment, getZarinpalPayment, markZarinpalPaymentStatus,
 } from './db.js';
 import {
@@ -27,7 +26,7 @@ import {
   joinQueue, getQueueStatus, cancelQueue, getMatchHistory,
   getLeaderboard, getMyRank, getUserLeaderboardRow, listLeaderboardPrizes, checkAndAutoResetLeaderboard,
   listActiveCardTasks, hasClaimedCardTask, claimCardTask, getCardTask,
-  listCardCategories, getCardImageForLevel, getRarityForLevel,
+  listCardCategories, getCardImageForLevel, getRarityForLevel, computeCardPower,
 } from './game-db.js';
 import { getWheelStatus, spinWheel, listWheelSlots, getWheelHistory } from './wheel-db.js';
 import {
@@ -37,15 +36,15 @@ import {
   getSeasonConfig, getCurrentSeason, checkAutoResetSeason, listSeasonTiers,
   getUserSeasonProgress, purchasePremiumPass, claimSeasonTierReward, addSeasonXp,
 } from './season-db.js';
-import { getStakingConfig, listRarityRates, listMyStakes, stakeCard, harvestStake, unstakeCard } from './staking-db.js';
 import {
-  getClanConfig, getMyClan, getClanMembers, searchClans, getClanLeaderboard,
-  createClan, joinClan, leaveClan, kickMember, setMemberRole, donateToClan,
+  getClanConfig, getMyClan, getClanMembers, searchClans, getClanLeaderboard, getClanRank,
+  createClan, joinClan, leaveClan, kickMember, setMemberRole, donateToClan, withdrawFromClanBank, giftFromClanBank,
   addClanPurchaseScore, addClanWinScore, checkAutoResetClanSeason,
 } from './clan-db.js';
 import {
   getRankConfig, getUserRankInfo, addUserXp, canCheckinToday, doCheckin,
   listAvatars, getMyAvatars, buyAvatar, equipAvatar,
+  getLevelLeaderboard, getUserLevelRank, getUserLevelRow,
 } from './rank-db.js';
 import { getTodayQuestsForUser, incrementQuestProgress, claimQuestReward } from './quest-db.js';
 import { redeemPromoCode } from './promo-db.js';
@@ -103,6 +102,7 @@ app.get('/api/config', ah(async (req, res) => {
     referralPercent: Number(process.env.REFERRAL_PERCENT || 5),
     giftMarketFeePercent: Number(process.env.GIFT_MARKET_FEE_PERCENT || 5),
     swapFeePercent: Number(process.env.SWAP_FEE_PERCENT || 1),
+    supportUsername: getSupportContact(),
   });
 }));
 
@@ -152,7 +152,11 @@ app.get('/api/me', requireTelegramAuth, (req, res) => {
   });
 });
 
-app.get('/api/wallet/ledger', requireTelegramAuth, (req, res) => res.json(getLedger(req.dbUser.tg_id)));
+app.get('/api/wallet/ledger', requireTelegramAuth, (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 15, 50);
+  const offset = Number(req.query.offset) || 0;
+  res.json(getLedger(req.dbUser.tg_id, limit, offset));
+});
 
 app.post('/api/wallet/toman-topup', requireTelegramAuth, (req, res) => {
   const amount = Number(req.body.amount);
@@ -492,25 +496,6 @@ app.post('/api/season/claim', requireTelegramAuth, (req, res) => {
 });
 
 /* =========================================================================
- * استیکینگ کارت (فارم)
- * ========================================================================= */
-app.get('/api/staking/status', requireTelegramAuth, (req, res) => {
-  res.json({ config: getStakingConfig(), rates: listRarityRates(), stakes: listMyStakes(req.dbUser.tg_id) });
-});
-app.post('/api/staking/stake', requireTelegramAuth, (req, res) => {
-  try { stakeCard(req.dbUser.tg_id, Number(req.body.userCardId)); res.json({ ok: true }); }
-  catch (e) { res.status(400).json({ error: e.message }); }
-});
-app.post('/api/staking/:id/harvest', requireTelegramAuth, (req, res) => {
-  try { res.json({ ok: true, ...harvestStake(req.dbUser.tg_id, Number(req.params.id)) }); }
-  catch (e) { res.status(400).json({ error: e.message }); }
-});
-app.post('/api/staking/:id/unstake', requireTelegramAuth, (req, res) => {
-  try { res.json({ ok: true, ...unstakeCard(req.dbUser.tg_id, Number(req.params.id)) }); }
-  catch (e) { res.status(400).json({ error: e.message }); }
-});
-
-/* =========================================================================
  * سیستم کلن
  * ========================================================================= */
 app.get('/api/clan/config', (req, res) => res.json(getClanConfig()));
@@ -519,7 +504,16 @@ app.get('/api/clan/my', requireTelegramAuth, (req, res) => {
   res.json({ clan, members: clan ? getClanMembers(clan.id) : [] });
 });
 app.get('/api/clan/search', requireTelegramAuth, (req, res) => res.json(searchClans(req.query.q || '')));
-app.get('/api/clan/leaderboard', (req, res) => res.json(getClanLeaderboard(10)));
+app.get('/api/clan/leaderboard', requireTelegramAuth, (req, res) => {
+  const leaderboard = getClanLeaderboard(10);
+  const myClan = getMyClan(req.dbUser.tg_id);
+  const cfg = getClanConfig();
+  const myRank = myClan ? getClanRank(myClan.id) : null;
+  res.json({
+    leaderboard, myRank, myClan,
+    prizeInfo: { reward_toman: cfg.reward_toman, winners_count: cfg.winners_count, distribution_method: cfg.distribution_method, reset_days: cfg.reset_days },
+  });
+});
 app.post('/api/clan/create', requireTelegramAuth, (req, res) => {
   try { const id = createClan(req.dbUser.tg_id, req.body.name, req.body.tag, req.body.avatarUrl); res.json({ ok: true, id }); }
   catch (e) { res.status(400).json({ error: e.message }); }
@@ -544,11 +538,25 @@ app.post('/api/clan/donate', requireTelegramAuth, (req, res) => {
   try { donateToClan(req.dbUser.tg_id, Number(req.body.amount)); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
+app.post('/api/clan/withdraw', requireTelegramAuth, (req, res) => {
+  try { withdrawFromClanBank(req.dbUser.tg_id, Number(req.body.amount)); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/clan/gift', requireTelegramAuth, (req, res) => {
+  try { giftFromClanBank(req.dbUser.tg_id, Number(req.body.targetTgId), Number(req.body.amount)); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 
 /* =========================================================================
  * رنکینگ، لقب، چک‌این روزانه، آواتار
  * ========================================================================= */
 app.get('/api/rank/me', requireTelegramAuth, (req, res) => res.json({ ...getUserRankInfo(req.dbUser.tg_id), canCheckin: canCheckinToday(req.dbUser.tg_id) }));
+app.get('/api/rank/leaderboard', requireTelegramAuth, (req, res) => {
+  const leaderboard = getLevelLeaderboard(10);
+  const myRank = getUserLevelRank(req.dbUser.tg_id);
+  const myRow = getUserLevelRow(req.dbUser.tg_id);
+  res.json({ leaderboard, myRank, myRow });
+});
 app.post('/api/rank/checkin', requireTelegramAuth, (req, res) => {
   try { res.json({ ok: true, ...doCheckin(req.dbUser.tg_id) }); }
   catch (e) { res.status(400).json({ error: e.message }); }
@@ -637,8 +645,10 @@ app.post('/api/trade/:id/cancel', requireTelegramAuth, (req, res) => {
  * بازی کارتی — خرید/ارتقای کارت، دسته‌بندی، صف مسابقه، جدول امتیازات
  * ========================================================================= */
 app.get('/api/game/cards', (req, res) => res.json(listGameCards(true).map(c => {
-  const rarity = getRarityForLevel(1); // تو فروشگاه همیشه سطح ۱ (معمولی) فروخته می‌شه
-  return { ...c, image_url: getCardImageForLevel(c, 1), rarity_key: rarity.key, rarity_label: rarity.label, rarity_color: rarity.color };
+  const startLevel = c.instant_level || 1;
+  const rarity = getRarityForLevel(startLevel);
+  const power = c.fixed_power != null ? c.fixed_power : computeCardPower(c.base_power, startLevel);
+  return { ...c, image_url: getCardImageForLevel(c, startLevel), power, rarity_key: rarity.key, rarity_label: rarity.label, rarity_color: rarity.color };
 })));
 app.get('/api/game/categories', (req, res) => res.json(listCardCategories(true)));
 
@@ -717,21 +727,8 @@ app.get('/api/game/leaderboard', requireTelegramAuth, (req, res) => {
 });
 
 /* =========================================================================
- * پشتیبانی
+ * پشتیبانی — به‌جای تیکت داخلی، از /api/config → supportUsername برای دیپ‌لینک مستقیم استفاده می‌شه
  * ========================================================================= */
-app.get('/api/support/messages', requireTelegramAuth, (req, res) => {
-  const ticket = getOrCreateOpenTicket(req.dbUser.tg_id);
-  res.json({ ticketId: ticket.id, messages: listTicketMessages(ticket.id) });
-});
-app.post('/api/support/send', requireTelegramAuth, upload.single('image'), (req, res) => {
-  const text = req.body.text || '';
-  if (!text.trim() && !req.file) return res.status(400).json({ error: 'پیام یا عکس رو وارد کن' });
-  const ticket = getOrCreateOpenTicket(req.dbUser.tg_id);
-  const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-  addTicketMessage(ticket.id, 'user', text, imageUrl);
-  notifyAdmins(`🎫 تیکت جدید از ${req.dbUser.first_name || ''} (${req.dbUser.tg_id})\n${text}${imageUrl ? '\n(عکس ضمیمه — از پنل ادمین ببین)' : ''}`);
-  res.json({ ok: true, ticketId: ticket.id });
-});
 
 /* =========================================================================
  * وبهوک تلگرام
