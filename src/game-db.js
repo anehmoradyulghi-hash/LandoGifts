@@ -541,10 +541,12 @@ export function getMatchHistory(tgId, limit = 20) {
  * ========================================================================= */
 export function getLeaderboard(limit = 20) {
   return db.prepare(`
-    SELECT gs.tg_id, gs.wins, gs.losses, gs.score, u.first_name, u.username
+    SELECT gs.tg_id, gs.wins, gs.losses, gs.score, u.first_name, u.username, av.image_url AS avatar_image
     FROM game_scores gs JOIN users u ON u.tg_id = gs.tg_id
+    LEFT JOIN user_rank ur ON ur.tg_id = gs.tg_id
+    LEFT JOIN avatars av ON av.id = ur.equipped_avatar_id
     ORDER BY gs.score DESC LIMIT ?
-  `).all(limit);
+  `).all(limit).map(r => ({ ...r, avatarImage: r.avatar_image || null }));
 }
 export function getMyRank(tgId) {
   const row = db.prepare(`
@@ -556,10 +558,13 @@ export function getMyRank(tgId) {
 // ردیف خود کاربر تو جدول امتیازات (حتی اگه تو ۱۰ نفر برتر نباشه)
 export function getUserLeaderboardRow(tgId) {
   const row = db.prepare(`
-    SELECT gs.tg_id, gs.wins, gs.losses, gs.score, u.first_name, u.username
-    FROM game_scores gs JOIN users u ON u.tg_id = gs.tg_id WHERE gs.tg_id = ?
+    SELECT gs.tg_id, gs.wins, gs.losses, gs.score, u.first_name, u.username, av.image_url AS avatar_image
+    FROM game_scores gs JOIN users u ON u.tg_id = gs.tg_id
+    LEFT JOIN user_rank ur ON ur.tg_id = gs.tg_id
+    LEFT JOIN avatars av ON av.id = ur.equipped_avatar_id
+    WHERE gs.tg_id = ?
   `).get(tgId);
-  return row || { tg_id: tgId, wins: 0, losses: 0, score: 0 };
+  return row ? { ...row, avatarImage: row.avatar_image || null } : { tg_id: tgId, wins: 0, losses: 0, score: 0, avatarImage: null };
 }
 export function listLeaderboardPrizes() { return db.prepare('SELECT * FROM leaderboard_prizes ORDER BY rank_from ASC').all(); }
 export function upsertLeaderboardPrize(p) {

@@ -94,21 +94,23 @@ export function getUserRankInfo(tgId) {
   const level = Math.max(1, Math.floor(ur.xp / cfg.xp_per_level) + 1);
   const titleInfo = getTitleForLevel(level);
   const xpIntoLevel = ur.xp % cfg.xp_per_level;
-  return { xp: ur.xp, level, title: titleInfo.title, icon: titleInfo.icon, xpIntoLevel, xpPerLevel: cfg.xp_per_level, equippedAvatarId: ur.equipped_avatar_id };
+  const avatarImage = ur.equipped_avatar_id ? (getAvatar(ur.equipped_avatar_id)?.image_url || null) : null;
+  return { xp: ur.xp, level, title: titleInfo.title, icon: titleInfo.icon, xpIntoLevel, xpPerLevel: cfg.xp_per_level, equippedAvatarId: ur.equipped_avatar_id, avatarImage };
 }
 
 // جدول امتیازات لول: بر اساس بیشترین XP (که مستقیم معادل بالاترین لوله)
 export function getLevelLeaderboard(limit = 10) {
   const cfg = getRankConfig();
   const rows = db.prepare(`
-    SELECT ur.tg_id, ur.xp, u.first_name, u.username
+    SELECT ur.tg_id, ur.xp, ur.equipped_avatar_id, u.first_name, u.username, av.image_url AS avatar_image
     FROM user_rank ur JOIN users u ON u.tg_id = ur.tg_id
+    LEFT JOIN avatars av ON av.id = ur.equipped_avatar_id
     ORDER BY ur.xp DESC LIMIT ?
   `).all(limit);
   return rows.map(r => {
     const level = Math.max(1, Math.floor(r.xp / cfg.xp_per_level) + 1);
     const titleInfo = getTitleForLevel(level);
-    return { tg_id: r.tg_id, xp: r.xp, level, title: titleInfo.title, icon: titleInfo.icon, first_name: r.first_name, username: r.username };
+    return { tg_id: r.tg_id, xp: r.xp, level, title: titleInfo.title, icon: titleInfo.icon, first_name: r.first_name, username: r.username, avatarImage: r.avatar_image || null };
   });
 }
 export function getUserLevelRank(tgId) {
@@ -122,7 +124,7 @@ export function getUserLevelRank(tgId) {
 export function getUserLevelRow(tgId) {
   const info = getUserRankInfo(tgId);
   const user = getUser(tgId);
-  return { tg_id: tgId, xp: info.xp, level: info.level, title: info.title, icon: info.icon, first_name: user?.first_name, username: user?.username };
+  return { tg_id: tgId, xp: info.xp, level: info.level, title: info.title, icon: info.icon, first_name: user?.first_name, username: user?.username, avatarImage: info.avatarImage };
 }
 
 export function canCheckinToday(tgId) {

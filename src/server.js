@@ -539,7 +539,7 @@ app.post('/api/clan/set-role', requireTelegramAuth, (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/clan/donate', requireTelegramAuth, (req, res) => {
-  try { donateToClan(req.dbUser.tg_id, Number(req.body.amount)); res.json({ ok: true }); }
+  try { donateToClan(req.dbUser.tg_id, Number(req.body.amount)); incrementQuestProgress(req.dbUser.tg_id, 'donate_clan', 1); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/clan/withdraw', requireTelegramAuth, (req, res) => {
@@ -602,8 +602,11 @@ app.get('/api/rank/leaderboard', requireTelegramAuth, (req, res) => {
   res.json({ leaderboard, myRank, myRow });
 });
 app.post('/api/rank/checkin', requireTelegramAuth, (req, res) => {
-  try { res.json({ ok: true, ...doCheckin(req.dbUser.tg_id) }); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    const result = doCheckin(req.dbUser.tg_id);
+    incrementQuestProgress(req.dbUser.tg_id, 'checkin', 1);
+    res.json({ ok: true, ...result });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.get('/api/avatars', (req, res) => res.json(listAvatars(true)));
 app.get('/api/avatars/my', requireTelegramAuth, (req, res) => res.json(getMyAvatars(req.dbUser.tg_id)));
@@ -730,6 +733,7 @@ app.get('/api/game/mutation-groups', requireTelegramAuth, (req, res) => res.json
 app.post('/api/game/mutate', requireTelegramAuth, (req, res) => {
   try {
     const result = mutateCards(req.dbUser.tg_id, Number(req.body.cardId), Number(req.body.level));
+    incrementQuestProgress(req.dbUser.tg_id, 'upgrade_cards', 1);
     res.json({ ok: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -750,6 +754,8 @@ app.post('/api/game/queue', requireTelegramAuth, (req, res) => {
       addSeasonXp(winnerTgId, getSeasonConfig().xp_per_win);
       addUserXp(winnerTgId, getRankConfig().xp_per_win);
       incrementQuestProgress(winnerTgId, 'win_battles', 1);
+      incrementQuestProgress(req.dbUser.tg_id, 'play_battles', 1);
+      incrementQuestProgress(result.opponentTgId, 'play_battles', 1);
       const opponent = getUser(result.opponentTgId);
       sendMessage(result.opponentTgId,
         result.won
