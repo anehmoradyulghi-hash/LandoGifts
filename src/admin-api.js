@@ -38,6 +38,7 @@ import {
   getSeasonConfig, setSeasonConfig, getCurrentSeason, startNewSeason, listSeasonTiers, upsertSeasonTier, deleteSeasonTier,
 } from './season-db.js';
 import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason } from './clan-db.js';
+import { getClanWarConfig, setClanWarConfig } from './clan-war-db.js';
 import {
   getRankConfig, setRankConfig, listRankTitles, upsertRankTitle, deleteRankTitle,
   listAvatars, upsertAvatar, deleteAvatar,
@@ -459,6 +460,13 @@ router.post('/clan/reset-season', (req, res) => {
   resetClanSeason((tgId, clan, reward) => {
     sendMessage(tgId, `🏆 کلن «${clan.name}» تو جدول برترین‌ها بود و ${reward.toLocaleString()} تومان جایزه گرفتی!`).catch(() => {});
   });
+  res.json({ ok: true });
+});
+
+/* ---------- جنگ کلن به کلن ---------- */
+router.get('/clanwar/config', (req, res) => res.json(getClanWarConfig()));
+router.post('/clanwar/config', (req, res) => {
+  setClanWarConfig(req.body);
   res.json({ ok: true });
 });
 

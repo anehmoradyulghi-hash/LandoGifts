@@ -169,6 +169,12 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 `);
 
+function safeAddColumn(table, columnDef) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
+  catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+}
+safeAddColumn('gift_offers', 'serial_number TEXT'); // شماره سریال/مدل واقعی گیفت (اختیاری)
+
 // چند ارز پیش‌فرض (غیرفعال تا ادمین نرخشون رو دستی ثبت کنه)
 const seedCurrency = db.prepare(`INSERT OR IGNORE INTO currencies (code, name, rate_toman, min_deposit, min_withdraw, active) VALUES (?,?,?,?,?,0)`);
 seedCurrency.run('USDT', 'تتر', 0, 1, 1);
@@ -411,9 +417,9 @@ export function setOrderStatus(id, status) { db.prepare('UPDATE orders SET statu
 /* =========================================================================
  * GIFT MARKET — بازار امانی گیفت‌های واقعی بین کاربران
  * ========================================================================= */
-export function createGiftOffer(sellerTgId, title, imageUrl, priceToman) {
-  return db.prepare(`INSERT INTO gift_offers (seller_tg_id, title, image_url, price_toman) VALUES (?,?,?,?)`)
-    .run(sellerTgId, title, imageUrl || null, priceToman).lastInsertRowid;
+export function createGiftOffer(sellerTgId, title, imageUrl, priceToman, serialNumber) {
+  return db.prepare(`INSERT INTO gift_offers (seller_tg_id, title, image_url, price_toman, serial_number) VALUES (?,?,?,?,?)`)
+    .run(sellerTgId, title, imageUrl || null, priceToman, serialNumber || null).lastInsertRowid;
 }
 export function getGiftOffer(id) { return db.prepare('SELECT * FROM gift_offers WHERE id = ?').get(id); }
 export function listMyGiftOffers(tgId) {

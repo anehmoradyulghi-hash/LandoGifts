@@ -42,6 +42,10 @@ import {
   addClanPurchaseScore, addClanWinScore, checkAutoResetClanSeason,
 } from './clan-db.js';
 import {
+  getClanWarConfig, listOpenClanWars, getMyActiveClanWar, getClanWarHistory,
+  createClanWar, cancelClanWar, joinClanWar, submitWarPicks, getClanWar, getMemberCardsForLeader,
+} from './clan-war-db.js';
+import {
   getRankConfig, getUserRankInfo, addUserXp, canCheckinToday, doCheckin,
   listAvatars, getMyAvatars, buyAvatar, equipAvatar,
   getLevelLeaderboard, getUserLevelRank, getUserLevelRow,
@@ -387,10 +391,10 @@ app.get('/api/gifts/my', requireTelegramAuth, (req, res) => res.json(listMyGiftO
 app.get('/api/gifts/market', requireTelegramAuth, (req, res) => res.json({ offers: listMarketGiftOffers(req.dbUser.tg_id), feePercent: Number(process.env.GIFT_MARKET_FEE_PERCENT || 5) }));
 
 app.post('/api/gifts/list', requireTelegramAuth, (req, res) => {
-  const { title, image_url, price } = req.body;
+  const { title, image_url, price, serial_number } = req.body;
   const p = Number(price);
   if (!title || !p || p < 5000) return res.status(400).json({ error: 'عنوان و قیمت معتبر (حداقل ۵,۰۰۰ تومان) لازمه' });
-  const id = createGiftOffer(req.dbUser.tg_id, title, image_url, p);
+  const id = createGiftOffer(req.dbUser.tg_id, title, image_url, p, serial_number);
   res.json({ ok: true, id });
 });
 app.post('/api/gifts/:id/cancel', requireTelegramAuth, (req, res) => {
@@ -544,6 +548,46 @@ app.post('/api/clan/withdraw', requireTelegramAuth, (req, res) => {
 });
 app.post('/api/clan/gift', requireTelegramAuth, (req, res) => {
   try { giftFromClanBank(req.dbUser.tg_id, Number(req.body.targetTgId), Number(req.body.amount)); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+/* =========================================================================
+ * جنگ کلن به کلن
+ * ========================================================================= */
+app.get('/api/clanwar/status', requireTelegramAuth, (req, res) => {
+  const clan = getMyClan(req.dbUser.tg_id);
+  res.json({
+    config: getClanWarConfig(),
+    myClan: clan,
+    myWar: clan ? getMyActiveClanWar(clan.id) : null,
+    openWars: clan ? listOpenClanWars(clan.id) : [],
+    history: clan ? getClanWarHistory(clan.id) : [],
+    members: clan ? getClanMembers(clan.id) : [],
+  });
+});
+app.post('/api/clanwar/create', requireTelegramAuth, (req, res) => {
+  try { const id = createClanWar(req.dbUser.tg_id, Number(req.body.entryToman)); res.json({ ok: true, id }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/clanwar/:id/cancel', requireTelegramAuth, (req, res) => {
+  try { cancelClanWar(Number(req.params.id), req.dbUser.tg_id); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/clanwar/:id/join', requireTelegramAuth, (req, res) => {
+  try { res.json({ ok: true, war: joinClanWar(Number(req.params.id), req.dbUser.tg_id) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/clanwar/:id/picks', requireTelegramAuth, (req, res) => {
+  try { res.json({ ok: true, war: submitWarPicks(Number(req.params.id), req.dbUser.tg_id, req.body.picks) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/clanwar/:id', requireTelegramAuth, (req, res) => {
+  const war = getClanWar(Number(req.params.id));
+  if (!war) return res.status(404).json({ error: 'پیدا نشد' });
+  res.json(war);
+});
+app.get('/api/clanwar/member-cards/:tgId', requireTelegramAuth, (req, res) => {
+  try { res.json(getMemberCardsForLeader(req.dbUser.tg_id, Number(req.params.tgId))); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
