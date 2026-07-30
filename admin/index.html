@@ -483,6 +483,16 @@
         <button class="btn" onclick="saveClanConfig()">ذخیره تنظیمات</button>
         <button class="btn danger" onclick="resetClanSeasonUI()">پخش جایزه و ریست دستی</button>
       </div>
+      <div class="card">
+        <h3>⚔️ تنظیمات جنگ کلن به کلن</h3>
+        <select id="cwEnabled"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <div class="row2">
+          <div><label>حداقل ورودی (تومان)</label><input type="number" id="cwMinEntry"></div>
+          <div><label>کارمزد برد (٪)</label><input type="number" id="cwFeePercent"></div>
+        </div>
+        <label>تعداد نفرات هر تیم</label><input type="number" id="cwTeamSize">
+        <button class="btn" onclick="saveClanWarConfig()">ذخیره تنظیمات جنگ</button>
+      </div>
       <div id="clanLeaderboardTable"></div>
     </section>
 
@@ -537,15 +547,24 @@
         <label>عنوان</label><input id="qtTitle">
         <div class="row2">
           <div><label>نوع</label>
-            <select id="qtType"><option value="win_battles">برد بازی</option><option value="buy_card">خرید کارت</option><option value="deposit_toman">واریز تومان</option><option value="custom">سفارشی</option></select>
+            <select id="qtType">
+              <option value="win_battles">برد در نبرد</option>
+              <option value="play_battles">شرکت در نبرد (برد یا باخت)</option>
+              <option value="buy_card">خرید کارت</option>
+              <option value="upgrade_cards">ارتقای کارت (جهش)</option>
+              <option value="deposit_toman">واریز تومان</option>
+              <option value="donate_clan">اهدا به کلن</option>
+              <option value="checkin">چک‌این روزانه</option>
+              <option value="custom">سفارشی</option>
+            </select>
           </div>
           <div><label>تعداد هدف</label><input type="number" id="qtTarget" value="1"></div>
         </div>
         <div class="row2">
           <div><label>نوع جایزه</label>
-            <select id="qtRewardType"><option value="toman">تومان</option><option value="xp">XP</option><option value="card">کارت</option><option value="extra_games">بازی اضافه</option></select>
+            <select id="qtRewardType" onchange="onBpValueTypeChange('qtReward')"><option value="toman">تومان</option><option value="xp">XP</option><option value="card">کارت</option><option value="extra_games">بازی اضافه</option></select>
           </div>
-          <div><label>مقدار جایزه</label><input id="qtRewardValue"></div>
+          <div id="qtRewardValueWrap"><label>مقدار جایزه</label><input id="qtRewardValue"></div>
         </div>
         <label>فعال؟</label><select id="qtActive"><option value="1">بله</option><option value="0">خیر</option></select>
         <button class="btn" onclick="saveQuestTemplate()">ذخیره</button>
@@ -1435,6 +1454,12 @@ async function loadClanAdmin() {
   document.getElementById('clnMinScore').value = cfg.min_score_threshold;
   document.getElementById('clnResetDays').value = cfg.reset_days;
 
+  const cw = await api('/clanwar/config');
+  document.getElementById('cwEnabled').value = cw.enabled ? '1' : '0';
+  document.getElementById('cwMinEntry').value = cw.min_entry_toman;
+  document.getElementById('cwFeePercent').value = cw.fee_percent;
+  document.getElementById('cwTeamSize').value = cw.team_size;
+
   const lb = await api('/clan/leaderboard');
   document.getElementById('clanLeaderboardTable').innerHTML = lb.length ? `
     <table><tr><th>اسم</th><th>تگ</th><th>امتیاز</th><th>بانک</th></tr>
@@ -1458,6 +1483,15 @@ async function saveClanConfig() {
   alert('ذخیره شد');
 }
 async function resetClanSeasonUI() { if (confirm('جوایز پخش و امتیازها صفر بشه؟')) { await api('/clan/reset-season', { method: 'POST' }); alert('انجام شد'); loadClanAdmin(); } }
+async function saveClanWarConfig() {
+  await api('/clanwar/config', { method: 'POST', body: JSON.stringify({
+    enabled: document.getElementById('cwEnabled').value === '1',
+    min_entry_toman: document.getElementById('cwMinEntry').value,
+    fee_percent: document.getElementById('cwFeePercent').value,
+    team_size: document.getElementById('cwTeamSize').value,
+  }) });
+  alert('ذخیره شد');
+}
 
 /* ---------- رنک/آواتار ---------- */
 async function loadRankAdmin() {
@@ -1534,12 +1568,13 @@ async function saveQuestConfig() {
   await api('/quests/config', { method: 'POST', body: JSON.stringify({ enabled: document.getElementById('qcEnabled').value === '1', quest_count: document.getElementById('qcCount').value }) });
   alert('ذخیره شد');
 }
-function editQuestTemplate(q) {
+async function editQuestTemplate(q) {
   document.getElementById('qtId').value = q.id;
   document.getElementById('qtTitle').value = q.title;
   document.getElementById('qtType').value = q.type;
   document.getElementById('qtTarget').value = q.target_count;
   document.getElementById('qtRewardType').value = q.reward_type;
+  await onBpValueTypeChange('qtReward');
   document.getElementById('qtRewardValue').value = q.reward_value || '';
   document.getElementById('qtActive').value = q.active ? '1' : '0';
 }
