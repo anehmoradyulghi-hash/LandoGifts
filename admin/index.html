@@ -56,6 +56,7 @@
     <button data-tab="gifts" onclick="showTab('gifts')">بازار گیفت</button>
     <button data-tab="tasks" onclick="showTab('tasks')">تسک‌ها</button>
     <button data-tab="gamecards" onclick="showTab('gamecards')">کارت‌های بازی</button>
+    <button data-tab="specialcards" onclick="showTab('specialcards')">کارت‌های ویژه (لول ۷)</button>
     <button data-tab="cardcategories" onclick="showTab('cardcategories')">دسته‌بندی‌ها</button>
     <button data-tab="mergecosts" onclick="showTab('mergecosts')">هزینه جهش</button>
     <button data-tab="gameconfig" onclick="showTab('gameconfig')">تنظیمات بازی</button>
@@ -63,7 +64,6 @@
     <button data-tab="wheel" onclick="showTab('wheel')">چرخ شانس</button>
     <button data-tab="auction" onclick="showTab('auction')">مزایده</button>
     <button data-tab="season" onclick="showTab('season')">بتل‌پس</button>
-    <button data-tab="staking" onclick="showTab('staking')">استیکینگ</button>
     <button data-tab="clan" onclick="showTab('clan')">کلن</button>
     <button data-tab="rank" onclick="showTab('rank')">رنک/آواتار</button>
     <button data-tab="quests" onclick="showTab('quests')">ماموریت روزانه</button>
@@ -73,7 +73,7 @@
     <button data-tab="seasons" onclick="showTab('seasons')">کارت فصلی</button>
     <button data-tab="trade" onclick="showTab('trade')">تبادل</button>
     <button data-tab="cardtasks" onclick="showTab('cardtasks')">تسک‌های کارتی</button>
-    <button data-tab="tickets" onclick="showTab('tickets')">پشتیبانی</button>
+    <button data-tab="tickets" onclick="showTab('tickets')">تیکت‌های قدیمی</button>
     <button data-tab="users" onclick="showTab('users')">کاربران</button>
   </nav>
   <main>
@@ -113,6 +113,13 @@
         <p class="muted">اگه این رو خالی بذاری، دکمه پرداخت آنلاین تو مینی‌اپ نشون داده نمی‌شه و فقط کارت‌به‌کارت فعاله.</p>
         <button class="btn" onclick="savePaymentSettings()">ذخیره</button>
         <p class="muted" id="paymentSavedMsg" style="display:none;color:#7ee787;">ذخیره شد ✅</p>
+      </div>
+      <div class="card">
+        <h3>پشتیبانی</h3>
+        <p class="muted">دکمهٔ «پشتیبانی» تو مینی‌اپ کاربر رو مستقیم به همین آیدی تلگرام می‌بره (بدون یوزرنیم @).</p>
+        <label>یوزرنیم تلگرام پشتیبانی</label>
+        <input id="supportUsername" placeholder="مثلا: LandoSupport">
+        <button class="btn" onclick="saveSupportContact()">ذخیره</button>
       </div>
     </section>
 
@@ -217,6 +224,31 @@
         <button class="btn" onclick="saveGameCard()">ذخیره</button>
       </div>
       <div id="gameCardsTable"></div>
+    </section>
+
+    <section class="tab" id="tab-specialcards">
+      <div class="card">
+        <h3>ساخت کارت ویژه (لول ۷ / الهی)</h3>
+        <p class="muted">این کارت‌ها از همون لحظهٔ ساخته‌شدن سطح ۷ (ماکسیموم) هستن، بدون نیاز به جهش. با عکس و قدرت کاملا اختصاصی. می‌تونی تو فروشگاه کارت بذاریشون، یا مستقیم به یه کاربر هدیه بدی، یا از همینجا تو بتل‌پس/مزایده/تسک/چرخ‌شانس/آلبوم به‌عنوان جایزه انتخابشون کنی (چون تو همون لیست کارت‌های عادی هم هستن).</p>
+        <input type="hidden" id="scId">
+        <label>اسم کارت</label><input id="scName">
+        <label>دسته‌بندی</label>
+        <select id="scCategory"><option value="">بدون دسته</option></select>
+        <label>عکس اختصاصی</label>
+        <input type="file" id="scImageFile" accept="image/*" onchange="uploadImageTo('scImageFile','scImage','scImagePreview')">
+        <input type="hidden" id="scImage">
+        <img id="scImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
+        <div class="row2">
+          <div><label>قدرت اختصاصی (ثابت)</label><input type="number" id="scPower"></div>
+          <div><label>قیمت فروشگاهی (تومان)</label><input type="number" id="scPrice"></div>
+        </div>
+        <div class="row2">
+          <div><label>محدودیت تعداد (خالی = نامحدود)</label><input type="number" id="scMaxSupply"></div>
+          <div><label>تو فروشگاه کارت فعال باشه؟</label><select id="scActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
+        </div>
+        <button class="btn" onclick="saveSpecialCard()">ذخیره</button>
+      </div>
+      <div id="specialCardsTable"></div>
     </section>
 
     <section class="tab" id="tab-cardcategories">
@@ -371,8 +403,14 @@
         <button class="btn" onclick="saveAuctionConfig()">ذخیره تنظیمات</button>
       </div>
       <div class="card">
-        <h3>ساخت مزایده جدید از یه محصول</h3>
-        <select id="aucProductId"></select>
+        <h3>ساخت مزایده جدید</h3>
+        <label>نوع کالای مزایده</label>
+        <select id="aucItemType" onchange="document.getElementById('aucProductWrap').style.display=this.value==='product'?'block':'none';document.getElementById('aucCardWrap').style.display=this.value==='card'?'block':'none';">
+          <option value="product">محصول فروشگاه</option>
+          <option value="card">کارت بازی</option>
+        </select>
+        <div id="aucProductWrap"><label>محصول</label><select id="aucProductId"></select></div>
+        <div id="aucCardWrap" style="display:none;"><label>کارت</label><select id="aucCardId"></select></div>
         <button class="btn" onclick="createAuctionUI()">بساز</button>
       </div>
       <div id="auctionsTable"></div>
@@ -403,40 +441,19 @@
         <label>شماره تایر</label><input type="number" id="tierNumber">
         <div class="row2">
           <div><label>نوع جایزه رایگان</label>
-            <select id="tierFreeType"><option value="none">هیچی</option><option value="toman">تومان</option><option value="card">کارت</option><option value="extra_games">بازی اضافه</option></select>
+            <select id="tierFreeType" onchange="onBpValueTypeChange('tierFree')"><option value="none">هیچی</option><option value="toman">تومان</option><option value="card">کارت</option><option value="avatar">آواتار</option><option value="product">محصول</option><option value="extra_games">بازی اضافه</option></select>
           </div>
-          <div><label>مقدار رایگان</label><input id="tierFreeValue"></div>
+          <div id="tierFreeValueWrap"><label>مقدار رایگان</label><input id="tierFreeValue"></div>
         </div>
         <div class="row2">
           <div><label>نوع جایزه پرمیوم</label>
-            <select id="tierPremType"><option value="none">هیچی</option><option value="toman">تومان</option><option value="card">کارت</option><option value="extra_games">بازی اضافه</option></select>
+            <select id="tierPremType" onchange="onBpValueTypeChange('tierPrem')"><option value="none">هیچی</option><option value="toman">تومان</option><option value="card">کارت</option><option value="avatar">آواتار</option><option value="product">محصول</option><option value="extra_games">بازی اضافه</option></select>
           </div>
-          <div><label>مقدار پرمیوم</label><input id="tierPremValue"></div>
+          <div id="tierPremValueWrap"><label>مقدار پرمیوم</label><input id="tierPremValue"></div>
         </div>
         <button class="btn" onclick="saveSeasonTier()">ذخیره تایر</button>
       </div>
       <div id="seasonTiersTable"></div>
-    </section>
-
-    <section class="tab" id="tab-staking">
-      <div class="card">
-        <h3>تنظیمات استیکینگ کارت</h3>
-        <select id="stkEnabled"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
-        <div class="row2">
-          <div><label>حداقل مدت (روز)</label><input type="number" id="stkMinDays"></div>
-          <div><label>جریمه برداشت زودهنگام (٪)</label><input type="number" id="stkPenalty"></div>
-        </div>
-        <div class="row2">
-          <div><label>حداکثر کارت هر کاربر</label><input type="number" id="stkMaxCards"></div>
-          <div><label>حداقل قدرت لازم</label><input type="number" id="stkMinPower"></div>
-        </div>
-        <button class="btn" onclick="saveStakingConfig()">ذخیره تنظیمات</button>
-      </div>
-      <div class="card">
-        <h3>نرخ تومان به‌ازای هر واحد قدرت در ساعت (به تفکیک ریرتی)</h3>
-        <div id="stakingRatesForm"></div>
-        <button class="btn" onclick="saveStakingRates()">ذخیره نرخ‌ها</button>
-      </div>
     </section>
 
     <section class="tab" id="tab-clan">
@@ -697,11 +714,11 @@ function showTab(name) {
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   const loaders = { dash: loadDash, currencies: loadCurrencies, payment: loadPaymentSettings, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
     cardcategories: loadCategories, mergecosts: loadMergeCosts, wheel: loadWheelAdmin,
-    auction: loadAuctionAdmin, season: loadSeasonAdmin, staking: loadStakingAdmin, clan: loadClanAdmin,
+    auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
     giftcfg: loadGiftConfigAdmin, seasons: loadSeasonsAdmin, trade: loadTradeConfigAdmin,
     creqs: loadCreqs, products: loadProducts, orders: loadOrders, gifts: loadGifts, tasks: loadTasks,
-    gamecards: loadGameCards, gameconfig: loadGameConfig, leaderboard: loadLeaderboardTab, cardtasks: loadCardTasksTab,
+    gamecards: loadGameCards, specialcards: loadSpecialCards, gameconfig: loadGameConfig, leaderboard: loadLeaderboardTab, cardtasks: loadCardTasksTab,
     tickets: loadTickets, users: loadUsers };
   loaders[name]?.();
 }
@@ -744,6 +761,12 @@ async function loadPaymentSettings() {
   document.getElementById('payCardNumber').value = s.cardNumber || '';
   document.getElementById('payCardOwner').value = s.cardOwner || '';
   document.getElementById('payZarinpal').value = s.zarinpalMerchantId || '';
+  const sup = await api('/support-contact');
+  document.getElementById('supportUsername').value = sup.username || '';
+}
+async function saveSupportContact() {
+  await api('/support-contact', { method: 'POST', body: JSON.stringify({ username: document.getElementById('supportUsername').value }) });
+  alert('ذخیره شد');
 }
 async function savePaymentSettings() {
   await api('/payment-settings', { method: 'POST', body: JSON.stringify({
@@ -944,7 +967,7 @@ async function loadCategoryOptions(selectId) {
 async function loadGameCards() {
   await loadCategoryOptions('gcCategory');
   renderLevelImageGrid();
-  const rows = await api('/game/cards');
+  const rows = (await api('/game/cards')).filter(c => c.instant_level !== 7);
   document.getElementById('gameCardsTable').innerHTML = rows.length ? `
     <table><tr><th>اسم</th><th>قدرت پایه</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
     ${rows.map(c => `<tr><td>${c.name}</td><td>${c.base_power}</td><td>${c.price_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td>
@@ -988,6 +1011,58 @@ async function saveGameCard() {
   loadGameCards();
 }
 async function deleteGameCard(id) { if (confirm('حذف بشه؟')) { await api(`/game/cards/${id}`, { method: 'DELETE' }); loadGameCards(); } }
+
+/* ---------- کارت‌های ویژه (لول ۷ / الهی) ---------- */
+async function loadSpecialCards() {
+  await loadCategoryOptions('scCategory');
+  const rows = (await api('/game/cards')).filter(c => c.instant_level === 7);
+  document.getElementById('specialCardsTable').innerHTML = rows.length ? `
+    <table><tr><th>اسم</th><th>قدرت اختصاصی</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
+    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.fixed_power}</td><td>${c.price_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td>
+      <td>
+        <button class="btn secondary" onclick='editSpecialCard(${JSON.stringify(c)})'>ویرایش</button>
+        <button class="btn gold" onclick="grantSpecialCardUI(${c.id})">🎁 هدیه به کاربر</button>
+        <button class="btn danger" onclick="deleteGameCard(${c.id}).then(loadSpecialCards)">حذف</button>
+      </td></tr>`).join('')}
+    </table>` : '<p class="muted">هنوز کارت ویژه‌ای نساختی.</p>';
+}
+function editSpecialCard(c) {
+  document.getElementById('scId').value = c.id;
+  document.getElementById('scName').value = c.name;
+  document.getElementById('scImage').value = c.image_url || '';
+  document.getElementById('scPower').value = c.fixed_power;
+  document.getElementById('scPrice').value = c.price_toman;
+  document.getElementById('scMaxSupply').value = c.max_supply || '';
+  document.getElementById('scActive').value = c.active ? '1' : '0';
+  document.getElementById('scCategory').value = c.category_id || '';
+  const preview = document.getElementById('scImagePreview');
+  if (c.image_url) { preview.src = c.image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+}
+async function saveSpecialCard() {
+  await api('/game/cards', { method: 'POST', body: JSON.stringify({
+    id: document.getElementById('scId').value || null,
+    name: document.getElementById('scName').value,
+    image_url: document.getElementById('scImage').value,
+    base_power: document.getElementById('scPower').value, // فرمول سطح روش اعمال نمی‌شه، fixed_power جایگزینش می‌شه
+    fixed_power: document.getElementById('scPower').value,
+    price_toman: document.getElementById('scPrice').value,
+    max_supply: document.getElementById('scMaxSupply').value || null,
+    active: document.getElementById('scActive').value === '1',
+    category_id: document.getElementById('scCategory').value || null,
+    instant_level: 7,
+  }) });
+  document.getElementById('scId').value = '';
+  document.getElementById('scName').value = '';
+  document.getElementById('scImage').value = '';
+  document.getElementById('scImagePreview').style.display = 'none';
+  loadSpecialCards();
+}
+async function grantSpecialCardUI(cardId) {
+  const tgId = prompt('آیدی عددی تلگرام کاربر رو وارد کن:');
+  if (!tgId) return;
+  await api(`/game/cards/${cardId}/grant`, { method: 'POST', body: JSON.stringify({ tgId }) });
+  alert('کارت به کاربر هدیه داده شد ✅');
+}
 
 /* ---------- دسته‌بندی‌های کارت ---------- */
 async function loadCategories() {
@@ -1258,11 +1333,13 @@ async function loadAuctionAdmin() {
 
   const products = await api('/products');
   document.getElementById('aucProductId').innerHTML = products.map(p => `<option value="${p.id}">${p.title} (${p.price_toman.toLocaleString()} ت)</option>`).join('');
+  const cards = await api('/game/cards');
+  document.getElementById('aucCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (${c.price_toman.toLocaleString()} ت)</option>`).join('');
 
   const rows = await api('/auction/list');
   document.getElementById('auctionsTable').innerHTML = rows.length ? `
-    <table><tr><th>عنوان</th><th>قیمت فعلی</th><th>برنده</th><th>وضعیت</th><th>عملیات</th></tr>
-    ${rows.map(a => `<tr><td>${a.title}</td><td>${a.current_price.toLocaleString()}</td><td>${a.winner_tg_id || '-'}</td><td>${a.status}</td>
+    <table><tr><th>عنوان</th><th>نوع</th><th>قیمت فعلی</th><th>برنده</th><th>وضعیت</th><th>عملیات</th></tr>
+    ${rows.map(a => `<tr><td>${a.title}</td><td>${a.item_type === 'card' ? '🎴 کارت' : '🛍 محصول'}</td><td>${a.current_price.toLocaleString()}</td><td>${a.winner_tg_id || '-'}</td><td>${a.status}</td>
       <td>${a.status === 'active' ? `<button class="btn danger" onclick="cancelAuctionUI(${a.id})">لغو</button>` : ''}</td></tr>`).join('')}
     </table>` : '<p class="muted">هنوز مزایده‌ای نساختی.</p>';
 }
@@ -1278,12 +1355,27 @@ async function saveAuctionConfig() {
   alert('ذخیره شد');
 }
 async function createAuctionUI() {
-  await api('/auction/create', { method: 'POST', body: JSON.stringify({ productId: document.getElementById('aucProductId').value }) });
+  const itemType = document.getElementById('aucItemType').value;
+  await api('/auction/create', { method: 'POST', body: JSON.stringify(
+    itemType === 'card' ? { itemType: 'card', cardId: document.getElementById('aucCardId').value } : { itemType: 'product', productId: document.getElementById('aucProductId').value }
+  ) });
   loadAuctionAdmin();
 }
 async function cancelAuctionUI(id) { if (confirm('لغو بشه؟')) { await api(`/auction/${id}/cancel`, { method: 'POST' }); loadAuctionAdmin(); } }
 
 /* ---------- بتل‌پس فصلی ---------- */
+async function onBpValueTypeChange(prefix) {
+  const type = document.getElementById(prefix + 'Type').value;
+  const wrap = document.getElementById(prefix + 'ValueWrap');
+  const label = prefix === 'tierFree' ? 'مقدار رایگان' : 'مقدار پرمیوم';
+  if (type === 'card' || type === 'avatar' || type === 'product') {
+    const endpoint = type === 'card' ? '/game/cards' : type === 'avatar' ? '/avatars' : '/products';
+    const items = await api(endpoint);
+    wrap.innerHTML = `<label>${label}</label><select id="${prefix}Value">${items.map(i => `<option value="${i.id}">${i.name || i.title}</option>`).join('')}</select>`;
+  } else {
+    wrap.innerHTML = `<label>${label}</label><input id="${prefix}Value">`;
+  }
+}
 async function loadSeasonAdmin() {
   const cfg = await api('/season/config');
   document.getElementById('seaEnabled').value = cfg.enabled ? '1' : '0';
@@ -1327,41 +1419,6 @@ async function saveSeasonTier() {
   loadSeasonAdmin();
 }
 async function deleteSeasonTierUI(n) { if (confirm('حذف بشه؟')) { await api(`/season/tiers/${n}`, { method: 'DELETE' }); loadSeasonAdmin(); } }
-
-/* ---------- استیکینگ کارت ---------- */
-async function loadStakingAdmin() {
-  const cfg = await api('/staking/config');
-  document.getElementById('stkEnabled').value = cfg.enabled ? '1' : '0';
-  document.getElementById('stkMinDays').value = cfg.min_stake_days;
-  document.getElementById('stkPenalty').value = cfg.early_withdrawal_penalty_percent;
-  document.getElementById('stkMaxCards').value = cfg.max_cards_per_user;
-  document.getElementById('stkMinPower').value = cfg.min_card_power;
-
-  const rates = await api('/staking/rates');
-  document.getElementById('stakingRatesForm').innerHTML = rates.map(r => `
-    <div class="row2" style="align-items:center;">
-      <div><label>${r.rarity}</label></div>
-      <div><input type="number" step="0.1" id="rate-${r.rarity}" value="${r.toman_per_power_per_hour}"></div>
-    </div>`).join('');
-}
-async function saveStakingConfig() {
-  await api('/staking/config', { method: 'POST', body: JSON.stringify({
-    enabled: document.getElementById('stkEnabled').value === '1',
-    min_stake_days: document.getElementById('stkMinDays').value,
-    early_withdrawal_penalty_percent: document.getElementById('stkPenalty').value,
-    max_cards_per_user: document.getElementById('stkMaxCards').value,
-    min_card_power: document.getElementById('stkMinPower').value,
-  }) });
-  alert('ذخیره شد');
-}
-async function saveStakingRates() {
-  const rates = await api('/staking/rates');
-  for (const r of rates) {
-    const val = document.getElementById('rate-' + r.rarity).value;
-    await api('/staking/rates', { method: 'POST', body: JSON.stringify({ rarity: r.rarity, rate: val }) });
-  }
-  alert('ذخیره شد');
-}
 
 /* ---------- کلن ---------- */
 async function loadClanAdmin() {
