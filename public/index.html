@@ -214,6 +214,36 @@
   .bp-node.reached .bp-node-circle { border-color:var(--p1); background:linear-gradient(135deg,var(--p1),var(--b1)); }
   .bp-node.current .bp-node-circle { border-color:var(--gold); box-shadow:0 0 10px rgba(255,215,0,.5); }
   .bp-node-free { width:32px; height:32px; border-radius:8px; background:#1c2233; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .war-vs { display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#1c2233,#141824); border:1px solid var(--border); border-radius:16px; padding:14px; }
+  .war-side { flex:1; text-align:center; }
+  .war-side .wname { font-weight:800; font-size:13px; margin-bottom:4px; }
+  .war-side .wpower { font-size:20px; font-weight:800; color:var(--gold); }
+  .war-vs-badge { flex:none; width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#ff5f6d,#ffc371); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; box-shadow:0 0 14px rgba(255,95,109,.4); }
+  .war-side.winner .wname { color:var(--success); }
+  .war-side.loser { opacity:.55; }
+  .war-slot { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid var(--border); border-radius:12px; margin-bottom:6px; background:#141824; }
+  .war-slot select { flex:1; margin:0; }
+  /* بازار گیفت — سبک پرتال */
+  .mkt-filterbar { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:10px; }
+  .mkt-select { flex:none; background:#141824; border:1px solid var(--border); border-radius:14px; padding:8px 12px; font-size:12.5px; color:#fff; }
+  .mkt-range-wrap { display:flex; align-items:center; gap:10px; margin-bottom:14px; font-size:12px; color:#8a93a8; }
+  .mkt-range { position:relative; flex:1; height:22px; }
+  .mkt-range-track { position:absolute; top:9px; left:0; right:0; height:4px; border-radius:4px; background:#1c2233; }
+  .mkt-range-fill { position:absolute; top:9px; height:4px; border-radius:4px; background:linear-gradient(90deg,var(--p1),var(--b1)); }
+  .mkt-range input[type=range] { position:absolute; top:0; left:0; width:100%; margin:0; background:transparent; -webkit-appearance:none; pointer-events:none; }
+  .mkt-range input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; pointer-events:auto; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 0 0 3px var(--p1); cursor:pointer; }
+  .mkt-range input[type=range]::-moz-range-thumb { pointer-events:auto; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 0 0 3px var(--p1); border:none; cursor:pointer; }
+  .mkt-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .mkt-card { background:#141824; border:1px solid var(--border); border-radius:18px; overflow:hidden; }
+  .mkt-imgwrap { position:relative; aspect-ratio:1/1; background:linear-gradient(135deg,#2a2140,#1c2233); }
+  .mkt-imgwrap img { width:100%; height:100%; object-fit:cover; }
+  .mkt-badge-tl, .mkt-badge-tr { position:absolute; top:8px; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .mkt-badge-tl { right:8px; background:#d9f65a; }
+  .mkt-badge-tr { left:8px; background:#ffb020; }
+  .mkt-card-body { padding:10px 12px 12px; }
+  .mkt-card-name { font-weight:800; font-size:13px; }
+  .mkt-card-serial { color:#8a93a8; font-size:11px; margin-right:4px; }
+  .mkt-price-pill { display:block; width:100%; margin-top:8px; background:linear-gradient(90deg,var(--p1),var(--b1)); border:none; border-radius:14px; padding:10px; color:#fff; font-weight:800; font-size:13px; text-align:center; }
 
   /* ---------- پیل‌ها ---------- */
   .pills { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:10px; scrollbar-width:none; }
@@ -398,6 +428,20 @@
     <button data-mtab="mine" onclick="showMarketTab('mine')">امانت‌های من</button>
   </div>
   <div class="view active" id="mtab-buy">
+    <div class="mkt-filterbar">
+      <select class="mkt-select" id="mktCategoryFilter" onchange="renderMarketGrid()"><option value="">همه دسته‌ها</option></select>
+    </div>
+    <div class="mkt-range-wrap">
+      <span>از</span>
+      <div class="mkt-range">
+        <div class="mkt-range-track"></div>
+        <div class="mkt-range-fill" id="mktRangeFill"></div>
+        <input type="range" id="mktFrom" oninput="onMktRangeInput()">
+        <input type="range" id="mktTo" oninput="onMktRangeInput()">
+      </div>
+      <span>تا</span>
+    </div>
+    <div class="row muted" style="font-size:12px;margin:-6px 0 10px;"><span id="mktFromLabel"></span><span id="mktToLabel"></span></div>
     <div id="marketList" class="muted">در حال بارگذاری...</div>
   </div>
   <div class="view" id="mtab-sell">
@@ -409,6 +453,7 @@
       <input type="hidden" id="giftImage">
       <img id="giftImagePreview" style="max-width:100px;border-radius:10px;display:none;margin-bottom:8px;">
       <label>قیمت (تومان)</label><input type="number" id="giftPrice">
+      <label>شماره سریال/مدل (اختیاری)</label><input type="text" id="giftSerial" placeholder="مثلا #126547">
       <button class="btn" onclick="listGift()">ثبت آگهی</button>
     </div>
   </div>
@@ -582,6 +627,10 @@
     <div id="clanLeaderboard" class="muted"></div>
   </div>
 
+  <div class="view" id="mview-clanwar">
+    <div id="clanWarContent" class="muted">در حال بارگذاری...</div>
+  </div>
+
   <div class="view" id="mview-album">
     <div id="albumsList" class="muted">در حال بارگذاری...</div>
   </div>
@@ -720,10 +769,11 @@ function showMView(name) {
   document.querySelectorAll('#page-more .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mview-' + name).classList.add('active');
   document.getElementById('headerBackBtn').style.display = name === 'hub' ? 'none' : 'flex';
-  const titles = { auction:'مزایده فلش', clan:'کلن', album:'آلبوم کلکسیون', trade:'تبادل کارت', avatars:'فروشگاه آواتار' };
+  const titles = { auction:'مزایده فلش', clan:'کلن', clanwar:'⚔️ جنگ کلن', album:'آلبوم کلکسیون', trade:'تبادل کارت', avatars:'فروشگاه آواتار' };
   document.getElementById('headerTitle').textContent = name === 'hub' ? 'بیشتر' : titles[name];
   if (name === 'auction') loadAuctions();
   if (name === 'clan') loadClan();
+  if (name === 'clanwar') loadClanWar();
   if (name === 'album') loadAlbums();
   if (name === 'trade') loadTrades();
   if (name === 'avatars') loadAvatarsShop();
@@ -909,33 +959,78 @@ async function uploadGiftImage() {
     preview.src = url; preview.style.display = 'block';
   } catch (e) { toast('آپلود عکس ناموفق بود'); }
 }
+let MKT_OFFERS = [];
+let MKT_FEE_PERCENT = 5;
 async function loadMarket() {
   const { offers, feePercent } = await api('/api/gifts/market');
-  document.getElementById('marketList').innerHTML = offers.length
-    ? offers.map((o, i) => `
-      <div class="card" ${staggerStyle(i)}>
-        ${o.image_url ? `<img src="${o.image_url}">` : ''}
-        <div class="row"><b>${o.title}</b><span class="tag">${o.price_toman.toLocaleString()} ت</span></div>
-        <p class="muted">کارمزد پلتفرم: ${feePercent}٪</p>
-        <button class="btn" onclick="buyGift(${o.id})">خرید (امانی)</button>
-      </div>`).join('')
-    : '<div class="empty"><div class="eic">🎁</div>آگهی فعالی نیست.</div>';
+  MKT_OFFERS = offers;
+  MKT_FEE_PERCENT = feePercent;
+
+  const categories = [...new Set(offers.map(o => o.title))];
+  const catSelect = document.getElementById('mktCategoryFilter');
+  const prevCat = catSelect.value;
+  catSelect.innerHTML = '<option value="">همه دسته‌ها</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  catSelect.value = categories.includes(prevCat) ? prevCat : '';
+
+  const prices = offers.map(o => o.price_toman);
+  const maxPrice = prices.length ? Math.max(...prices) : 1000000;
+  const fromEl = document.getElementById('mktFrom'), toEl = document.getElementById('mktTo');
+  fromEl.min = toEl.min = 0; fromEl.max = toEl.max = maxPrice; fromEl.step = toEl.step = Math.max(1000, Math.round(maxPrice / 100));
+  if (!fromEl.dataset.touched) { fromEl.value = 0; toEl.value = maxPrice; }
+
+  renderMarketGrid();
+
   const mine = await api('/api/gifts/my');
   document.getElementById('myGiftsList').innerHTML = mine.length
     ? mine.map(o => `
       <div class="card">
-        <div class="row"><b>${o.title}</b><span class="tag">${o.status}</span></div>
+        <div class="row"><b>${o.title}${o.serial_number ? ` <span class="mkt-card-serial">${o.serial_number}</span>` : ''}</b><span class="tag">${o.status}</span></div>
         <p class="muted">${o.price_toman.toLocaleString()} تومان</p>
         ${o.status === 'active' ? `<button class="btn danger" onclick="cancelGift(${o.id})">لغو آگهی</button>` : ''}
         ${o.status === 'reserved' ? `<button class="btn" onclick="confirmGift(${o.id})">تایید دریافت گیفت</button>` : ''}
       </div>`).join('')
     : 'آگهی‌ای ثبت نکردی.';
 }
+function onMktRangeInput() {
+  const fromEl = document.getElementById('mktFrom'), toEl = document.getElementById('mktTo');
+  fromEl.dataset.touched = '1';
+  if (Number(fromEl.value) > Number(toEl.value)) { const tmp = fromEl.value; fromEl.value = toEl.value; toEl.value = tmp; }
+  renderMarketGrid();
+}
+function renderMarketGrid() {
+  const fromEl = document.getElementById('mktFrom'), toEl = document.getElementById('mktTo');
+  const from = Number(fromEl.value) || 0, to = Number(toEl.value) || Number(toEl.max) || 0;
+  const max = Number(fromEl.max) || 1;
+  document.getElementById('mktFromLabel').textContent = 'از ' + from.toLocaleString() + ' ت';
+  document.getElementById('mktToLabel').textContent = 'تا ' + to.toLocaleString() + ' ت';
+  const fill = document.getElementById('mktRangeFill');
+  fill.style.right = (100 - (from / max) * 100) + '%';
+  fill.style.left = ((to / max) * 100) + '%';
+
+  const category = document.getElementById('mktCategoryFilter').value;
+  const filtered = MKT_OFFERS.filter(o => o.price_toman >= from && o.price_toman <= to && (!category || o.title === category));
+  document.getElementById('marketList').innerHTML = filtered.length
+    ? `<div class="mkt-grid">${filtered.map((o, i) => `
+      <div class="mkt-card" ${staggerStyle(i)}>
+        <div class="mkt-imgwrap">
+          ${o.image_url ? `<img src="${o.image_url}">` : ''}
+          <div class="mkt-badge-tl">🎁</div>
+          <div class="mkt-badge-tr">⭐</div>
+        </div>
+        <div class="mkt-card-body">
+          <div class="mkt-card-name">${o.title}</div>
+          ${o.serial_number ? `<span class="mkt-card-serial">${o.serial_number}</span>` : ''}
+          <button class="mkt-price-pill" onclick="buyGift(${o.id})">${o.price_toman.toLocaleString()} ت</button>
+        </div>
+      </div>`).join('')}</div>`
+    : '<div class="empty"><div class="eic">🎁</div>آگهی‌ای با این فیلتر پیدا نشد.</div>';
+}
 async function listGift() {
   const title = document.getElementById('giftTitle').value;
   const image_url = document.getElementById('giftImage').value;
   const price = Number(document.getElementById('giftPrice').value);
-  await api('/api/gifts/list', { method: 'POST', body: JSON.stringify({ title, image_url, price }) });
+  const serial_number = document.getElementById('giftSerial').value;
+  await api('/api/gifts/list', { method: 'POST', body: JSON.stringify({ title, image_url, price, serial_number }) });
   toast('آگهی ثبت شد ✅'); showMarketTab('mine');
 }
 async function buyGift(id) { await api(`/api/gifts/${id}/buy`, { method: 'POST' }); toast('رزرو شد ✅'); loadMe(); loadMarket(); }
@@ -1258,6 +1353,7 @@ async function loadClan() {
         <input type="number" id="giftAmount" placeholder="مبلغ (تومان)">
         <button class="btn secondary" onclick="giftClanUI()">هدیه بده</button>` : ''}
         <button class="btn danger" onclick="leaveClanUI()">${clan.myRole === 'owner' ? 'منحل کردن کلن' : 'خروج از کلن'}</button>
+        <button class="btn" style="margin-top:8px;background:linear-gradient(90deg,#ff5f6d,#ffc371);" onclick="showMView('clanwar')">⚔️ جنگ کلن به کلن</button>
       </div>
       <h3 class="sec">اعضا</h3>
       ${members.map(m => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${m.first_name || ''} ${m.username ? '@' + m.username : ''} ${m.role === 'owner' ? '👑' : ''}</span><span class="tag">اهدا: ${m.donated_total.toLocaleString()}</span></div>
@@ -1292,6 +1388,137 @@ async function giftClanUI() {
 }
 async function kickMemberUI(tgId) { if (!confirm('اخراج بشه؟')) return; await api('/api/clan/kick', { method: 'POST', body: JSON.stringify({ targetTgId: tgId }) }); loadClan(); }
 
+/* ================= جنگ کلن به کلن ================= */
+let WAR_STATE = null;
+let WAR_PICKS = [];
+let WAR_MEMBER_CARDS = {};
+
+async function loadClanWar() {
+  const el = document.getElementById('clanWarContent');
+  const st = await api('/api/clanwar/status');
+  WAR_STATE = st;
+  if (!st.myClan) { el.innerHTML = '<div class="card">اول باید عضو یه کلن باشی.</div>'; return; }
+  const isLeader = st.myClan.myRole === 'owner' || st.myClan.myRole === 'admin';
+  let html = '';
+
+  if (st.myWar) {
+    const w = st.myWar;
+    const iAmA = w.clan_a_id === st.myClan.id;
+    const mySide = iAmA ? 'a' : 'b';
+    const mySubmitted = mySide === 'a' ? w.clan_a_power != null : w.clan_b_power != null;
+    if (w.status === 'open') {
+      html += `<div class="card">
+        <h3 class="sec" style="margin-top:0;">⏳ در انتظار حریف...</h3>
+        <div class="row"><span class="muted">ورودی</span><b>${w.entry_toman.toLocaleString()} ت</b></div>
+        <p class="muted">این جنگ تو لیست «جنگ‌های باز» سایر کلن‌ها دیده می‌شه تا یکی باهات بجنگه.</p>
+        ${isLeader ? `<button class="btn danger" onclick="cancelWarUI(${w.id})">لغو جنگ و پس‌گیری ورودی</button>` : ''}
+      </div>`;
+    } else if (w.status === 'picking') {
+      if (mySubmitted) {
+        html += `<div class="card">
+          <div class="war-vs">
+            <div class="war-side"><div class="wname">${w.clanAName}</div></div>
+            <div class="war-vs-badge">VS</div>
+            <div class="war-side"><div class="wname">${w.clanBName || '؟'}</div></div>
+          </div>
+          <p class="muted" style="margin-top:10px;">دستهٔ کلن تو ثبت شد ✅ — منتظر ثبت دستهٔ حریف باش، به‌محض تکمیل نتیجه خودکار مشخص می‌شه.</p>
+        </div>`;
+      } else if (isLeader) {
+        if (WAR_PICKS.length !== st.config.team_size || WAR_PICKS.some(p => !p)) WAR_PICKS = Array(st.config.team_size).fill(null);
+        html += `<div class="card">
+          <h3 class="sec" style="margin-top:0;">⚔️ ${w.clanAName} vs ${w.clanBName || '؟'}</h3>
+          <p class="muted">${st.config.team_size} نفر از اعضای کلنت و کارت‌هاشون رو برای این نبرد انتخاب کن.</p>
+          <div id="warSlots"></div>
+          <button class="btn gold" style="margin-top:8px;" onclick="submitWarPicksUI(${w.id})">✅ ثبت دسته و آماده نبرد</button>
+        </div>`;
+      } else {
+        html += `<div class="card">منتظر رهبر/مدیر کلنت باش تا دستهٔ نبرد رو بچینه.</div>`;
+      }
+    }
+  } else {
+    if (isLeader) {
+      html += `<div class="card">
+        <h3 class="sec" style="margin-top:0;">🔥 شروع جنگ جدید</h3>
+        <p class="muted">ورودی از بانک کلن (پول‌های اهدایی) کسر می‌شه. برنده کل مبلغ دو طرف رو با کسر ${st.config.fee_percent}٪ کارمزد می‌بره. حداقل ورودی ${st.config.min_entry_toman.toLocaleString()} تومانه.</p>
+        <label>مبلغ ورودی (تومان)</label><input type="number" id="warEntryAmount" min="${st.config.min_entry_toman}">
+        <button class="btn gold" onclick="createWarUI()">🚩 ساخت جنگ و انتظار حریف</button>
+      </div>`;
+    }
+    html += `<h3 class="sec">جنگ‌های باز حریفان</h3>` +
+      (st.openWars.length ? st.openWars.map(w => `
+        <div class="card" style="padding:10px 14px;">
+          <div class="row"><span>${w.clanAName}</span><span class="tag">${w.entry_toman.toLocaleString()} ت</span></div>
+          ${isLeader ? `<button class="btn" style="margin-top:6px;" onclick="joinWarUI(${w.id})">⚔️ بپیوند به این جنگ</button>` : ''}
+        </div>`).join('') : '<div class="card muted">فعلا جنگ بازی نیست.</div>');
+  }
+
+  html += `<h3 class="sec">تاریخچه جنگ‌های کلنم</h3>` +
+    (st.history.length ? st.history.map(w => {
+      if (w.status === 'cancelled') return `<div class="card" style="padding:10px 14px;"><div class="row"><span>${w.clanAName}</span><span class="muted">لغو شد</span></div></div>`;
+      const won = w.winner_clan_id === st.myClan.id;
+      return `<div class="card" style="padding:10px 14px;border-color:${won ? 'var(--success)' : 'var(--danger)'};">
+        <div class="row"><span>${w.clanAName} vs ${w.clanBName}</span><b style="color:${won ? 'var(--success)' : 'var(--danger)'};">${won ? '🏆 برد' : '❌ باخت'}</b></div>
+        <div class="row"><span class="muted">استخر جایزه</span><span>${w.pot_toman.toLocaleString()} ت (کارمزد ${w.fee_toman.toLocaleString()})</span></div>
+      </div>`;
+    }).join('') : '<div class="card muted">هنوز جنگی تموم نشده.</div>');
+
+  el.innerHTML = html;
+  if (st.myWar && st.myWar.status === 'picking' && isLeader) renderWarSlots(st.members);
+}
+
+function renderWarSlots(members) {
+  const grid = document.getElementById('warSlots');
+  if (!grid) return;
+  const usedIds = WAR_PICKS.filter(Boolean).map(p => p.tgId);
+  grid.innerHTML = WAR_PICKS.map((pick, i) => `
+    <div class="war-slot">
+      <select onchange="warSelectMember(${i}, this.value)">
+        <option value="">نفر ${i + 1} — انتخاب عضو</option>
+        ${members.filter(m => !usedIds.includes(m.tg_id) || pick?.tgId === m.tg_id).map(m => `<option value="${m.tg_id}" ${pick?.tgId === m.tg_id ? 'selected' : ''}>${m.first_name || ''} ${m.username ? '@' + m.username : ''}</option>`).join('')}
+      </select>
+    </div>
+    ${pick ? `<div class="hscroll" style="margin:-2px 0 10px;">${(WAR_MEMBER_CARDS[pick.tgId] || []).map(c => `
+      <div class="mini-card" style="cursor:pointer;${pick.cardIds.includes(c.id) ? 'border:2px solid var(--gold);' : ''}" onclick="warToggleCard(${i}, ${c.id})">
+        <div class="ic">${pick.cardIds.includes(c.id) ? '✅' : '🎴'}</div><div class="t">${c.name}</div><div class="s">Lv${c.level} · ${c.power}</div>
+      </div>`).join('') || '<span class="muted" style="padding:8px;">این عضو کارتی نداره</span>'}</div>` : ''}
+  `).join('');
+}
+async function warSelectMember(slotIndex, tgId) {
+  if (!tgId) { WAR_PICKS[slotIndex] = null; renderWarSlots(WAR_STATE.members); return; }
+  tgId = Number(tgId);
+  WAR_PICKS[slotIndex] = { tgId, cardIds: [] };
+  if (!WAR_MEMBER_CARDS[tgId]) WAR_MEMBER_CARDS[tgId] = await api('/api/clanwar/member-cards/' + tgId);
+  renderWarSlots(WAR_STATE.members);
+}
+function warToggleCard(slotIndex, cardId) {
+  const pick = WAR_PICKS[slotIndex];
+  if (!pick) return;
+  pick.cardIds = pick.cardIds.includes(cardId) ? pick.cardIds.filter(x => x !== cardId) : [...pick.cardIds, cardId];
+  renderWarSlots(WAR_STATE.members);
+}
+async function submitWarPicksUI(warId) {
+  if (WAR_PICKS.some(p => !p || !p.cardIds.length)) { toast('همه نفرات باید انتخاب بشن و حداقل یه کارت داشته باشن'); return; }
+  await api(`/api/clanwar/${warId}/picks`, { method: 'POST', body: JSON.stringify({ picks: WAR_PICKS }) });
+  WAR_PICKS = []; WAR_MEMBER_CARDS = {};
+  toast('دسته ثبت شد ✅'); loadClanWar();
+}
+async function createWarUI() {
+  const amount = Number(document.getElementById('warEntryAmount').value);
+  if (!amount) return;
+  await api('/api/clanwar/create', { method: 'POST', body: JSON.stringify({ entryToman: amount }) });
+  toast('جنگ ساخته شد، منتظر حریف باش ⚔️'); loadClanWar();
+}
+async function cancelWarUI(id) {
+  if (!confirm('لغو بشه و ورودی برگرده به بانک کلن؟')) return;
+  await api(`/api/clanwar/${id}/cancel`, { method: 'POST' });
+  toast('لغو شد'); loadClanWar();
+}
+async function joinWarUI(id) {
+  if (!confirm('با پیوستن، ورودی جنگ از بانک کلنت کسر می‌شه. مطمئنی؟')) return;
+  await api(`/api/clanwar/${id}/join`, { method: 'POST' });
+  toast('پیوستی! حالا دسته‌ت رو بچین ⚔️'); loadClanWar();
+}
+
 /* ================= آلبوم ================= */
 async function loadAlbums() {
   const albums = await api('/api/albums');
@@ -1323,6 +1550,8 @@ async function cancelTradeUI(id) { await api(`/api/trade/${id}/cancel`, { method
 async function loadProfile() {
   const rank = await api('/api/rank/me');
   document.getElementById('profileLevelBadge').textContent = `Lv.${rank.level}`;
+  document.getElementById('profileAvatarCircle').innerHTML = rank.avatarImage
+    ? `<img src="${rank.avatarImage}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : '🙂';
   document.getElementById('rankCard').innerHTML = `
     <div class="row"><span class="muted">لقب</span><b>${rank.icon || ''} ${rank.title || '-'}</b></div>
     <div class="row"><span class="muted">لول</span><b>${rank.level}</b></div>
@@ -1339,7 +1568,7 @@ async function loadAvatarsShop() {
   document.getElementById('avatarShopList').innerHTML = shop.length ? shop.map((a, i) => `<div class="card" ${staggerStyle(i)}>${a.image_url ? `<img src="${a.image_url}">` : ''}<div class="row"><b>${a.name}</b><span class="tag">${a.price_toman.toLocaleString()} ت</span></div><button class="btn secondary" onclick="buyAvatarUI(${a.id})">خرید</button></div>`).join('') : 'فعلا آواتاری تو فروشگاه نیست.';
 }
 async function buyAvatarUI(id) { await api('/api/avatars/buy', { method: 'POST', body: JSON.stringify({ avatarId: id }) }); toast('خریداری شد ✅'); loadMe(); loadAvatarsShop(); }
-async function equipAvatarUI(id) { await api('/api/avatars/equip', { method: 'POST', body: JSON.stringify({ avatarId: id }) }); toast('فعال شد ✅'); }
+async function equipAvatarUI(id) { await api('/api/avatars/equip', { method: 'POST', body: JSON.stringify({ avatarId: id }) }); toast('فعال شد ✅'); loadProfile(); loadAvatarsShop(); }
 
 /* ================= رفرال ================= */
 async function loadReferral() {
@@ -1363,13 +1592,14 @@ function openSupportChat() {
 }
 
 /* ================= لیدربورد صفحه ================= */
-function renderPodium(top3, nameFn, scoreFn) {
+function renderPodium(top3, nameFn, scoreFn, avatarFn) {
   if (!top3.length) return '';
   const order = [top3[1], top3[0], top3[2]].filter(Boolean);
   return `<div class="podium">${order.map((p, idx) => {
     const rank = top3.indexOf(p) + 1;
+    const avatarUrl = avatarFn ? avatarFn(p) : null;
     return `<div class="podium-item p${rank}">
-      <div class="podium-avatar">${rank === 1 ? '👑' : '🙂'}</div>
+      <div class="podium-avatar">${avatarUrl ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (rank === 1 ? '👑' : '🙂')}</div>
       <div class="podium-name">${nameFn(p)}</div>
       <div class="podium-score">${scoreFn(p)}</div>
       <div class="podium-base">${rank}</div>
@@ -1388,8 +1618,8 @@ function fmtDistribution(m) { return m === 'donation_share' ? 'بر اساس س�
 async function loadLeaderboardPage() {
   showLbTab('game');
   const g = await api('/api/game/leaderboard');
-  document.getElementById('lbGamePodium').innerHTML = renderPodium(g.leaderboard.slice(0, 3), p => `${p.first_name || ''}`, p => `${p.score} امتیاز`);
-  document.getElementById('lbGameList').innerHTML = g.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'داده کافی نیست.';
+  document.getElementById('lbGamePodium').innerHTML = renderPodium(g.leaderboard.slice(0, 3), p => `${p.first_name || ''}`, p => `${p.score} امتیاز`, p => p.avatarImage);
+  document.getElementById('lbGameList').innerHTML = g.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div>${p.avatarImage ? `<img src="${p.avatarImage}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'داده کافی نیست.';
   const gInTop = g.leaderboard.some(p => p.tg_id === g.myRow.tg_id);
   document.getElementById('lbGameMine').innerHTML = gInTop ? '' : renderMineRow('رتبه من: #' + g.myRank + ' —', g.myRank, g.myRow.first_name, `${g.myRow.score} امتیاز`);
   const gPrizes = (g.prizes || []).filter(p => p.reward_toman > 0);
@@ -1407,8 +1637,8 @@ async function loadLeaderboardPage() {
     : '';
 
   const l = await api('/api/rank/leaderboard');
-  document.getElementById('lbLevelPodium').innerHTML = renderPodium(l.leaderboard.slice(0, 3), p => p.first_name || '', p => `Lv.${p.level}`);
-  document.getElementById('lbLevelList').innerHTML = l.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">Lv.${p.level}</div></div>`).join('') || 'داده کافی نیست.';
+  document.getElementById('lbLevelPodium').innerHTML = renderPodium(l.leaderboard.slice(0, 3), p => p.first_name || '', p => `Lv.${p.level}`, p => p.avatarImage);
+  document.getElementById('lbLevelList').innerHTML = l.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div>${p.avatarImage ? `<img src="${p.avatarImage}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">Lv.${p.level}</div></div>`).join('') || 'داده کافی نیست.';
   const lInTop = l.leaderboard.some(p => p.tg_id === l.myRow.tg_id);
   document.getElementById('lbLevelMine').innerHTML = lInTop ? '' : renderMineRow('رتبه من: #' + l.myRank + ' —', l.myRank, l.myRow.first_name, `Lv.${l.myRow.level}`);
 }
