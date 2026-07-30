@@ -204,6 +204,16 @@
   .bp-num { width:32px; height:32px; border-radius:50%; background:#1c2233; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; flex:none; }
   .bp-reward { flex:1; font-size:12px; }
   .bp-reward b { display:block; font-size:12.5px; }
+  .bp-track-wrap { overflow-x:auto; padding:10px 4px 16px; margin-bottom:6px; }
+  .bp-track { display:flex; align-items:center; position:relative; min-width:max-content; }
+  .bp-track-line { position:absolute; right:24px; left:24px; top:38px; height:4px; background:#1c2233; z-index:0; }
+  .bp-track-line-fill { position:absolute; top:38px; height:4px; background:linear-gradient(90deg,var(--p1),var(--gold)); z-index:1; }
+  .bp-node { flex:none; width:64px; display:flex; flex-direction:column; align-items:center; gap:4px; z-index:2; cursor:pointer; }
+  .bp-node-prem { width:32px; height:32px; border-radius:8px; background:#1c2233; display:flex; align-items:center; justify-content:center; font-size:15px; border:1px solid var(--gold); }
+  .bp-node-circle { width:36px; height:36px; border-radius:50%; background:#1c2233; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; }
+  .bp-node.reached .bp-node-circle { border-color:var(--p1); background:linear-gradient(135deg,var(--p1),var(--b1)); }
+  .bp-node.current .bp-node-circle { border-color:var(--gold); box-shadow:0 0 10px rgba(255,215,0,.5); }
+  .bp-node-free { width:32px; height:32px; border-radius:8px; background:#1c2233; display:flex; align-items:center; justify-content:center; font-size:15px; }
 
   /* ---------- پیل‌ها ---------- */
   .pills { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:10px; scrollbar-width:none; }
@@ -322,7 +332,8 @@
       <div class="card">
         <h3 class="sec" style="margin-top:0;">ساخت دسته و ورود به صف</h3>
         <p class="muted" id="deckHint"></p>
-        <button class="btn" onclick="joinGameQueue()">⚔️ ورود به صف مسابقه</button>
+        <div id="battleDeckPicker" class="muted">در حال بارگذاری کارت‌ها...</div>
+        <button class="btn" style="margin-top:10px;" onclick="joinGameQueue()">⚔️ ورود به صف مسابقه</button>
         <button class="btn secondary" onclick="cancelGameQueue()">لغو صف</button>
       </div>
       <h3 class="sec">تاریخچه مسابقات</h3>
@@ -352,6 +363,7 @@
   <!-- بتل‌پس -->
   <div class="view" id="gview-battlepass">
     <div class="gcard teal" id="battlepassHero">در حال بارگذاری...</div>
+    <div class="bp-track-wrap"><div class="bp-track" id="seasonTrack"></div></div>
     <div id="seasonTiersList"></div>
   </div>
 
@@ -413,16 +425,21 @@
     <button data-ltab="level" onclick="showLbTab('level')">⭐ لول</button>
   </div>
   <div class="view active" id="ltab-game">
+    <div id="lbGamePrizes" class="muted" style="font-size:13px;margin-bottom:8px;"></div>
     <div id="lbGamePodium"></div>
     <div id="lbGameList" class="card muted">در حال بارگذاری...</div>
+    <div id="lbGameMine" class="card"></div>
   </div>
   <div class="view" id="ltab-clan">
+    <div id="lbClanPrizes" class="muted" style="font-size:13px;margin-bottom:8px;"></div>
     <div id="lbClanPodium"></div>
     <div id="lbClanList" class="card muted">در حال بارگذاری...</div>
+    <div id="lbClanMine" class="card"></div>
   </div>
   <div class="view" id="ltab-level">
     <div id="lbLevelPodium"></div>
     <div id="lbLevelList" class="card muted">در حال بارگذاری...</div>
+    <div id="lbLevelMine" class="card"></div>
   </div>
 </section>
 
@@ -496,7 +513,10 @@
   </div>
 
   <h3 class="sec">تاریخچه تراکنش‌ها</h3>
-  <div class="card"><div id="ledgerList" class="muted">در حال بارگذاری...</div></div>
+  <div class="card">
+    <div id="ledgerList" class="muted">در حال بارگذاری...</div>
+    <button class="btn outline" id="ledgerMoreBtn" style="display:none;margin-top:8px;" onclick="loadMoreLedger()">نمایش تراکنش‌های قبلی‌تر</button>
+  </div>
 </section>
 
 <!-- ============ پروفایل ============ -->
@@ -525,8 +545,8 @@
     <span class="mic">👥</span><div class="mtxt"><div class="mt">دعوت دوستان</div><div class="ms" id="referralSubtitle">پورسانت رفرال</div></div><span class="arrow">‹</span>
   </div>
   <div class="card" id="referralCard">در حال بارگذاری...</div>
-  <div class="menu-row" onclick="showPage('support')">
-    <span class="mic">🎧</span><div class="mtxt"><div class="mt">پشتیبانی</div><div class="ms">ارسال تیکت</div></div><span class="arrow">‹</span>
+  <div class="menu-row" onclick="openSupportChat()">
+    <span class="mic">🎧</span><div class="mtxt"><div class="mt">پشتیبانی</div><div class="ms">ارتباط مستقیم با ادمین</div></div><span class="arrow">‹</span>
   </div>
   <div class="menu-row" onclick="toast('به‌زودی...')">
     <span class="mic">⚙️</span><div class="mtxt"><div class="mt">تنظیمات</div><div class="ms">زبان، اعلان‌ها</div></div><span class="arrow">‹</span>
@@ -534,21 +554,12 @@
   <button class="btn danger" style="margin-top:16px;" onclick="tg?.close && tg.close()">خروج از مینی‌اپ</button>
 </section>
 
-<!-- ============ پشتیبانی ============ -->
-<section class="page" id="page-support">
-  <div class="card" id="chatBox" style="min-height:200px;"></div>
-  <div class="card">
-    <textarea id="supportText" rows="3" placeholder="پیام خودتو بنویس..."></textarea>
-    <button class="btn" onclick="sendSupport()">ارسال</button>
-  </div>
-</section>
 
 <!-- ============ بیشتر ============ -->
 <section class="page" id="page-more">
   <div class="view active" id="mview-hub">
     <h3 class="sec" style="margin-top:0;">امکانات ویژه</h3>
     <div class="menu-row" onclick="showMView('auction')"><span class="mic">⚡</span><div class="mtxt"><div class="mt">مزایده فلش</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="showMView('staking')"><span class="mic">🏦</span><div class="mtxt"><div class="mt">استیکینگ کارت</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showMView('clan')"><span class="mic">🏰</span><div class="mtxt"><div class="mt">کلن</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showMView('album')"><span class="mic">🎯</span><div class="mtxt"><div class="mt">آلبوم کلکسیون</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showMView('trade')"><span class="mic">🔄</span><div class="mtxt"><div class="mt">تبادل کارت</div></div><span class="arrow">‹</span></div>
@@ -563,16 +574,6 @@
 
   <div class="view" id="mview-auction">
     <div id="auctionsList2" class="muted">در حال بارگذاری...</div>
-  </div>
-
-  <div class="view" id="mview-staking">
-    <div class="card">
-      <h3 class="sec" style="margin-top:0;">استیک کردن کارت</h3>
-      <select id="stakeCardSelect"></select>
-      <button class="btn" onclick="doStakeCard()">قفل کردن تو فارم</button>
-    </div>
-    <h3 class="sec">کارت‌های استیک‌شده من</h3>
-    <div id="myStakesList" class="muted">در حال بارگذاری...</div>
   </div>
 
   <div class="view" id="mview-clan">
@@ -679,7 +680,7 @@ async function uploadImage(file) {
 }
 
 /* ================= ناوبری صفحات ================= */
-const PAGE_TITLES = { games:'Lando Gifts', shop:'فروشگاه', market:'بازار کاربران', leaderboard:'لیدربورد', wallet:'کیف پول', profile:'پروفایل', support:'پشتیبانی', more:'بیشتر', tasks:'تسک‌ها' };
+const PAGE_TITLES = { games:'Lando Gifts', shop:'فروشگاه', market:'بازار کاربران', leaderboard:'لیدربورد', wallet:'کیف پول', profile:'پروفایل', more:'بیشتر', tasks:'تسک‌ها' };
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
@@ -693,7 +694,6 @@ function showPage(name) {
   if (name === 'leaderboard') loadLeaderboardPage();
   if (name === 'wallet') { loadWallet(); loadCurrency(); }
   if (name === 'profile') loadProfile();
-  if (name === 'support') loadSupport();
   if (name === 'games') loadGamesHub();
   if (name === 'more') loadMoreHub();
 }
@@ -720,10 +720,9 @@ function showMView(name) {
   document.querySelectorAll('#page-more .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mview-' + name).classList.add('active');
   document.getElementById('headerBackBtn').style.display = name === 'hub' ? 'none' : 'flex';
-  const titles = { auction:'مزایده فلش', staking:'استیکینگ کارت', clan:'کلن', album:'آلبوم کلکسیون', trade:'تبادل کارت', avatars:'فروشگاه آواتار' };
+  const titles = { auction:'مزایده فلش', clan:'کلن', album:'آلبوم کلکسیون', trade:'تبادل کارت', avatars:'فروشگاه آواتار' };
   document.getElementById('headerTitle').textContent = name === 'hub' ? 'بیشتر' : titles[name];
   if (name === 'auction') loadAuctions();
-  if (name === 'staking') loadStaking();
   if (name === 'clan') loadClan();
   if (name === 'album') loadAlbums();
   if (name === 'trade') loadTrades();
@@ -816,14 +815,27 @@ async function buyProduct(id) {
 }
 
 /* ================= کیف‌پول ================= */
+let ledgerOffset = 0;
+function renderLedgerRow(l) {
+  return `<div class="row"><span>${l.reason || '-'}</span><span>${l.direction === 'in' ? '+' : '-'}${l.amount.toLocaleString()} ${l.currency_code}</span></div>`;
+}
 async function loadWallet() {
   document.getElementById('cardInfo').textContent = CONFIG.cardNumber
     ? `شماره کارت: ${CONFIG.cardNumber} (${CONFIG.cardOwner || ''})` : 'شماره کارت هنوز توسط ادمین ثبت نشده.';
   document.getElementById('zarinpalBtn').style.display = CONFIG.zarinpalEnabled ? 'flex' : 'none';
-  const ledger = await api('/api/wallet/ledger');
-  document.getElementById('ledgerList').innerHTML = ledger.length
-    ? ledger.map(l => `<div class="row"><span>${l.reason || '-'}</span><span>${l.direction === 'in' ? '+' : '-'}${l.amount.toLocaleString()} ${l.currency_code}</span></div>`).join('')
+  ledgerOffset = 0;
+  const data = await api('/api/wallet/ledger?limit=15&offset=0');
+  document.getElementById('ledgerList').innerHTML = data.rows.length
+    ? data.rows.map(renderLedgerRow).join('')
     : 'تراکنشی ثبت نشده.';
+  ledgerOffset = data.rows.length;
+  document.getElementById('ledgerMoreBtn').style.display = data.hasMore ? 'block' : 'none';
+}
+async function loadMoreLedger() {
+  const data = await api('/api/wallet/ledger?limit=15&offset=' + ledgerOffset);
+  document.getElementById('ledgerList').insertAdjacentHTML('beforeend', data.rows.map(renderLedgerRow).join(''));
+  ledgerOffset += data.rows.length;
+  document.getElementById('ledgerMoreBtn').style.display = data.hasMore ? 'block' : 'none';
 }
 async function doTopup() {
   const amount = Number(document.getElementById('topupAmount').value);
@@ -977,8 +989,10 @@ async function loadGame() {
 }
 async function buyGameCard(id) { await api('/api/game/buy-card', { method: 'POST', body: JSON.stringify({ cardId: id }) }); toast('کارت خریداری شد ✅'); loadMe(); loadMyCards(); loadMutationGroups(); }
 let SAC_TARGET = null, SAC_SACRIFICE = null;
+let MY_CARDS_CACHE = [];
 async function loadMyCards() {
   const mine = await api('/api/game/my-cards');
+  MY_CARDS_CACHE = mine;
   SELECTED_DECK = SELECTED_DECK.filter(id => mine.some(c => c.id === id));
   if (SAC_TARGET && !mine.some(c => c.id === SAC_TARGET)) SAC_TARGET = null;
   if (SAC_SACRIFICE && !mine.some(c => c.id === SAC_SACRIFICE)) SAC_SACRIFICE = null;
@@ -991,11 +1005,28 @@ async function loadMyCards() {
         <button class="btn ${SAC_TARGET === c.id ? 'gold' : 'secondary'}" onclick="pickSacTarget(${c.id})">${SAC_TARGET === c.id ? '✓ هدف تقویت' : 'هدف تقویت'}</button>
         <button class="btn ${SAC_SACRIFICE === c.id ? 'danger' : 'secondary'}" onclick="pickSacSacrifice(${c.id})">${SAC_SACRIFICE === c.id ? '✓ قربانی' : 'قربانی کن'}</button>
       </div>
-      <label style="margin-top:8px;display:block;"><input type="checkbox" style="width:auto;display:inline;" ${SELECTED_DECK.includes(c.id) ? 'checked' : ''} onchange="toggleDeck(${c.id}, this.checked)"> اضافه به دسته مسابقه</label>
     </div>`).join('') : 'هنوز کارتی نداری، از فروشگاه بخر.';
   renderSacrificeBar();
+  renderBattleDeckPicker(mine);
 }
-function toggleDeck(id, checked) { if (checked) SELECTED_DECK.push(id); else SELECTED_DECK = SELECTED_DECK.filter(x => x !== id); }
+function renderBattleDeckPicker(mine) {
+  const el = document.getElementById('battleDeckPicker');
+  if (!el) return;
+  const totalPower = mine.filter(c => SELECTED_DECK.includes(c.id)).reduce((s, c) => s + c.power, 0);
+  el.innerHTML = (mine.length ? `
+    <div class="row" style="margin-bottom:6px;"><span class="muted">کارت انتخاب‌شده</span><b>${SELECTED_DECK.length} — قدرت مجموع: ${totalPower}</b></div>
+    <div class="hscroll">${mine.map(c => `
+      <div class="mini-card ${SELECTED_DECK.includes(c.id) ? 'gold' : ''}" style="cursor:pointer;${SELECTED_DECK.includes(c.id) ? 'border:2px solid var(--gold);' : ''}" onclick="toggleDeck(${c.id}, ${!SELECTED_DECK.includes(c.id)})">
+        <div class="ic">${SELECTED_DECK.includes(c.id) ? '✅' : '🎴'}</div>
+        <div class="t">${c.name}</div>
+        <div class="s">Lv${c.level} · ${c.power}</div>
+      </div>`).join('')}</div>
+  ` : 'هنوز کارتی نداری، از فروشگاه بخر.');
+}
+function toggleDeck(id, checked) {
+  if (checked) SELECTED_DECK.push(id); else SELECTED_DECK = SELECTED_DECK.filter(x => x !== id);
+  renderBattleDeckPicker(MY_CARDS_CACHE);
+}
 function pickSacTarget(id) { SAC_TARGET = SAC_TARGET === id ? null : id; loadMyCards(); }
 function pickSacSacrifice(id) { SAC_SACRIFICE = SAC_SACRIFICE === id ? null : id; loadMyCards(); }
 function renderSacrificeBar() {
@@ -1111,31 +1142,53 @@ async function doSpinWheel() {
 }
 
 /* ================= بتل‌پس ================= */
+function bpIcon(type) {
+  return { toman: '💰', card: '🎴', extra_games: '🎮', avatar: '🖼️', product: '📦', none: '➖' }[type] || '➖';
+}
 async function loadSeason() {
   const { config, progress, tiers } = await api('/api/season/status');
   const hero = document.getElementById('battlepassHero');
-  if (!config.enabled) { hero.innerHTML = 'بتل‌پس فصلی فعلا فعال نیست.'; document.getElementById('seasonTiersList').innerHTML = ''; return; }
-  const pct = Math.min(100, Math.round((progress.xpIntoLevel / progress.xpPerLevel) * 100));
+  if (!config.enabled) { hero.innerHTML = 'بتل‌پس فصلی فعلا فعال نیست.'; document.getElementById('seasonTiersList').innerHTML = ''; document.getElementById('seasonTrack').innerHTML = ''; return; }
+  const xpIntoTier = progress.xp % progress.xpPerTier;
+  const tierPct = Math.min(100, Math.round((xpIntoTier / progress.xpPerTier) * 100));
   hero.innerHTML = `
     <div class="row"><span>تایر فعلی</span><b>${progress.currentTier} / ${progress.tierCount}</b></div>
-    <div class="bp-progress"><div class="bp-progress-fill" style="width:${pct}%;"></div></div>
-    <div class="muted">${progress.xpIntoLevel} / ${progress.xpPerLevel} XP</div>
+    <div class="bp-progress"><div class="bp-progress-fill" style="width:${tierPct}%;"></div></div>
+    <div class="muted">${xpIntoTier} / ${progress.xpPerTier} XP تا تایر بعدی</div>
     ${!progress.purchasedPremium ? `<button class="btn gold" onclick="buySeasonPremium()">ارتقا به پریمیوم (${config.price_toman.toLocaleString()} ت)</button>` : '<div class="tag" style="margin-top:8px;">👑 پریمیوم فعاله</div>'}
+  `;
+  const fillPct = tiers.length > 1 ? Math.min(100, ((progress.currentTier - 1) / (tiers.length - 1)) * 100) : 0;
+  document.getElementById('seasonTrack').innerHTML = `
+    <div class="bp-track-line"></div>
+    <div class="bp-track-line-fill" style="right:24px;width:calc((100% - 48px) * ${fillPct / 100});"></div>
+    ${tiers.map(t => {
+      const reached = t.tier_number <= progress.currentTier;
+      return `<div class="bp-node ${reached ? 'reached' : ''} ${t.tier_number === progress.currentTier ? 'current' : ''}" onclick="document.getElementById('bp-detail-${t.tier_number}')?.scrollIntoView({behavior:'smooth',block:'center'})">
+        <div class="bp-node-prem" title="پریمیوم">${bpIcon(t.premium_reward_type)}</div>
+        <div class="bp-node-circle">${t.tier_number}</div>
+        <div class="bp-node-free" title="رایگان">${bpIcon(t.free_reward_type)}</div>
+      </div>`;
+    }).join('')}
   `;
   document.getElementById('seasonTiersList').innerHTML = tiers.length ? tiers.map(t => {
     const reached = t.tier_number <= progress.currentTier;
     const freeClaimed = progress.claims.some(c => c.tier_number === t.tier_number && c.track === 'free');
     const premClaimed = progress.claims.some(c => c.tier_number === t.tier_number && c.track === 'premium');
-    return `<div class="bp-tier ${t.tier_number === progress.currentTier ? 'current' : ''}">
+    return `<div class="bp-tier ${t.tier_number === progress.currentTier ? 'current' : ''}" id="bp-detail-${t.tier_number}">
       <div class="bp-num">${t.tier_number}</div>
-      <div class="bp-reward"><b>رایگان: ${t.free_reward_type}</b>
+      <div class="bp-reward"><b>${bpIcon(t.free_reward_type)} رایگان: ${t.free_reward_type}</b>
         <button class="btn secondary" style="margin-top:4px;" ${reached && !freeClaimed ? '' : 'disabled'} onclick="claimSeasonTier(${t.tier_number},'free')">${freeClaimed ? '✅' : 'دریافت'}</button>
       </div>
-      <div class="bp-reward"><b>👑 پریمیوم: ${t.premium_reward_type}</b>
+      <div class="bp-reward"><b>${bpIcon(t.premium_reward_type)} 👑 پریمیوم: ${t.premium_reward_type}</b>
         <button class="btn gold" style="margin-top:4px;" ${reached && progress.purchasedPremium && !premClaimed ? '' : 'disabled'} onclick="claimSeasonTier(${t.tier_number},'premium')">${premClaimed ? '✅' : 'دریافت'}</button>
       </div>
     </div>`;
   }).join('') : 'هنوز تایری تعریف نشده.';
+  setTimeout(() => {
+    const track = document.getElementById('seasonTrack');
+    const cur = track.querySelector('.bp-node.current');
+    if (cur) track.parentElement.scrollTo({ left: Math.max(0, cur.offsetLeft - 100), behavior: 'smooth' });
+  }, 50);
 }
 async function buySeasonPremium() { await api('/api/season/buy-premium', { method: 'POST' }); toast('پس پرمیوم فعال شد ✅'); loadMe(); loadSeason(); }
 async function claimSeasonTier(tier, track) { await api('/api/season/claim', { method: 'POST', body: JSON.stringify({ tier, track }) }); toast('جایزه گرفته شد 🎉'); loadMe(); loadSeason(); }
@@ -1180,33 +1233,6 @@ async function loadAuctions() {
 }
 async function bidAuction(id) { await api(`/api/auctions/${id}/bid`, { method: 'POST' }); toast('پیشنهادت ثبت شد ✅'); loadMe(); loadAuctions(); }
 
-/* ================= استیکینگ ================= */
-async function loadStaking() {
-  const { config, stakes } = await api('/api/staking/status');
-  if (!config.enabled) { document.getElementById('myStakesList').innerHTML = 'استیکینگ فعلا فعال نیست.'; return; }
-  const mine = await api('/api/game/my-cards');
-  const stakedIds = new Set(stakes.map(s => s.user_card_id));
-  const available = mine.filter(c => !stakedIds.has(c.id));
-  document.getElementById('stakeCardSelect').innerHTML = available.length ? available.map(c => `<option value="${c.id}">${c.name} — سطح ${c.level} — قدرت ${c.power}</option>`).join('') : '<option value="">کارت آزادی نداری</option>';
-  document.getElementById('myStakesList').innerHTML = stakes.length ? stakes.map((s, i) => `
-    <div class="card" ${staggerStyle(i)}>
-      <div class="row"><b>${s.card?.name || 'کارت'}</b><span class="tag">${s.stakedDays} روز</span></div>
-      <p class="muted">جایزه جمع‌شده: <b style="color:var(--success);">${s.accrued.toLocaleString()}</b> تومان</p>
-      <div style="display:flex;gap:6px;">
-        <button class="btn secondary" onclick="harvestStakeUI(${s.id})">برداشت جایزه</button>
-        <button class="btn danger" onclick="unstakeCardUI(${s.id})">خروج کامل</button>
-      </div>
-    </div>`).join('') : 'هنوز کارتی استیک نکردی.';
-}
-async function doStakeCard() {
-  const id = document.getElementById('stakeCardSelect').value;
-  if (!id) { toast('کارت آزادی نداری'); return; }
-  await api('/api/staking/stake', { method: 'POST', body: JSON.stringify({ userCardId: Number(id) }) });
-  toast('کارت استیک شد ✅'); loadStaking();
-}
-async function harvestStakeUI(id) { const r = await api(`/api/staking/${id}/harvest`, { method: 'POST' }); toast(`+${r.accrued.toLocaleString()} تومان برداشت شد ✅`); loadMe(); loadStaking(); }
-async function unstakeCardUI(id) { const r = await api(`/api/staking/${id}/unstake`, { method: 'POST' }); toast(r.penalized ? `با جریمه: +${r.accrued.toLocaleString()} تومان` : `+${r.accrued.toLocaleString()} تومان ✅`); loadMe(); loadStaking(); }
-
 /* ================= کلن ================= */
 async function loadClan() {
   const { clan, members } = await api('/api/clan/my');
@@ -1224,13 +1250,21 @@ async function loadClan() {
         <div class="row"><span class="muted">نقش من</span><b>${clan.myRole === 'owner' ? 'رهبر' : clan.myRole === 'admin' ? 'مدیر' : 'عضو'}</b></div>
         <label>اهدا به بانک کلن</label><input type="number" id="donateAmount">
         <button class="btn gold" onclick="donateClanUI()">اهدا کن</button>
+        ${clan.myRole === 'owner' ? `
+        <label style="margin-top:10px;">برداشت از بانک کلن به کیف‌پول خودت</label><input type="number" id="withdrawAmount">
+        <button class="btn secondary" onclick="withdrawClanUI()">برداشت</button>
+        <label style="margin-top:10px;">هدیه از بانک کلن به یکی از اعضا</label>
+        <select id="giftMemberSelect">${members.filter(m => m.tg_id !== clan.owner_tg_id).map(m => `<option value="${m.tg_id}">${m.first_name || ''} ${m.username ? '@' + m.username : ''}</option>`).join('') || '<option value="">عضوی نیست</option>'}</select>
+        <input type="number" id="giftAmount" placeholder="مبلغ (تومان)">
+        <button class="btn secondary" onclick="giftClanUI()">هدیه بده</button>` : ''}
         <button class="btn danger" onclick="leaveClanUI()">${clan.myRole === 'owner' ? 'منحل کردن کلن' : 'خروج از کلن'}</button>
       </div>
       <h3 class="sec">اعضا</h3>
       ${members.map(m => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${m.first_name || ''} ${m.username ? '@' + m.username : ''} ${m.role === 'owner' ? '👑' : ''}</span><span class="tag">اهدا: ${m.donated_total.toLocaleString()}</span></div>
         ${clan.myRole === 'owner' && m.tg_id !== clan.owner_tg_id ? `<button class="btn danger" style="margin-top:6px;" onclick="kickMemberUI(${m.tg_id})">اخراج</button>` : ''}</div>`).join('')}`;
   }
-  const lb = await api('/api/clan/leaderboard');
+  const clanLb = await api('/api/clan/leaderboard');
+  const lb = clanLb.leaderboard;
   document.getElementById('clanLeaderboard').innerHTML = lb.length
     ? lb.map((c, i) => `<div class="lb-row"><div class="lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i + 1}</div><div class="lb-name">${c.name} #${c.tag}</div><div class="lb-score">${c.score} امتیاز</div></div>`).join('')
     : 'هنوز کلنی امتیاز نگرفته.';
@@ -1243,6 +1277,19 @@ async function searchClanUI() {
 async function joinClanUI(id) { await api(`/api/clan/${id}/join`, { method: 'POST' }); toast('عضو کلن شدی ✅'); loadClan(); }
 async function leaveClanUI() { if (!confirm('مطمئنی؟')) return; await api('/api/clan/leave', { method: 'POST' }); toast('انجام شد'); loadClan(); }
 async function donateClanUI() { await api('/api/clan/donate', { method: 'POST', body: JSON.stringify({ amount: Number(document.getElementById('donateAmount').value) }) }); toast('اهدا ثبت شد ✅'); loadMe(); loadClan(); }
+async function withdrawClanUI() {
+  const amount = Number(document.getElementById('withdrawAmount').value);
+  if (!amount) return;
+  await api('/api/clan/withdraw', { method: 'POST', body: JSON.stringify({ amount }) });
+  toast('مبلغ به کیف‌پولت برداشت شد ✅'); loadMe(); loadClan();
+}
+async function giftClanUI() {
+  const targetTgId = document.getElementById('giftMemberSelect').value;
+  const amount = Number(document.getElementById('giftAmount').value);
+  if (!targetTgId || !amount) return;
+  await api('/api/clan/gift', { method: 'POST', body: JSON.stringify({ targetTgId, amount }) });
+  toast('هدیه ارسال شد ✅'); loadClan();
+}
 async function kickMemberUI(tgId) { if (!confirm('اخراج بشه؟')) return; await api('/api/clan/kick', { method: 'POST', body: JSON.stringify({ targetTgId: tgId }) }); loadClan(); }
 
 /* ================= آلبوم ================= */
@@ -1308,15 +1355,11 @@ async function loadReferral() {
 }
 
 /* ================= پشتیبانی ================= */
-async function loadSupport() {
-  const { messages } = await api('/api/support/messages');
-  document.getElementById('chatBox').innerHTML = messages.map(m => `<div class="msg ${m.sender}">${m.body || ''}${m.image_url ? `<br><img src="${m.image_url}">` : ''}</div>`).join('') || '<p class="muted">هنوز پیامی نیست، سوالتو بپرس.</p>';
-}
-async function sendSupport() {
-  const text = document.getElementById('supportText').value;
-  if (!text.trim()) return;
-  await api('/api/support/send', { method: 'POST', body: JSON.stringify({ text }) });
-  document.getElementById('supportText').value = ''; loadSupport();
+function openSupportChat() {
+  const username = CONFIG.supportUsername;
+  if (!username) { toast('آیدی پشتیبانی هنوز توسط ادمین تنظیم نشده'); return; }
+  const url = 'https://t.me/' + username.replace(/^@/, '');
+  if (tg?.openTelegramLink) tg.openTelegramLink(url); else window.open(url, '_blank');
 }
 
 /* ================= لیدربورد صفحه ================= */
@@ -1333,19 +1376,41 @@ function renderPodium(top3, nameFn, scoreFn) {
     </div>`;
   }).join('')}</div>`;
 }
+function renderMineRow(label, myRank, name, scoreLabel) {
+  if (!myRank) return '';
+  return `<div class="lb-row" style="border:1px solid #c9b3ff55;">
+    <div class="lb-rank">${myRank}</div>
+    <div class="lb-name">${label} ${name || ''}</div>
+    <div class="lb-score">${scoreLabel}</div>
+  </div>`;
+}
+function fmtDistribution(m) { return m === 'donation_share' ? 'بر اساس سهم اهدا' : 'مساوی بین اعضا'; }
 async function loadLeaderboardPage() {
   showLbTab('game');
   const g = await api('/api/game/leaderboard');
   document.getElementById('lbGamePodium').innerHTML = renderPodium(g.leaderboard.slice(0, 3), p => `${p.first_name || ''}`, p => `${p.score} امتیاز`);
-  document.getElementById('lbGameList').innerHTML = g.leaderboard.slice(3).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'داده کافی نیست.';
+  document.getElementById('lbGameList').innerHTML = g.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'داده کافی نیست.';
+  const gInTop = g.leaderboard.some(p => p.tg_id === g.myRow.tg_id);
+  document.getElementById('lbGameMine').innerHTML = gInTop ? '' : renderMineRow('رتبه من: #' + g.myRank + ' —', g.myRank, g.myRow.first_name, `${g.myRow.score} امتیاز`);
+  const gPrizes = (g.prizes || []).filter(p => p.reward_toman > 0);
+  document.getElementById('lbGamePrizes').innerHTML = gPrizes.length
+    ? '🎁 جوایز فعلی: ' + gPrizes.map(p => `رتبه ${p.rank_from}${p.rank_to !== p.rank_from ? '-' + p.rank_to : ''}: ${p.reward_toman.toLocaleString()} ت`).join(' | ')
+    : '';
 
   const c = await api('/api/clan/leaderboard');
-  document.getElementById('lbClanPodium').innerHTML = renderPodium(c.slice(0, 3), p => p.name, p => `${p.score} امتیاز`);
-  document.getElementById('lbClanList').innerHTML = c.slice(3).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.name} #${p.tag}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'داده کافی نیست.';
+  document.getElementById('lbClanPodium').innerHTML = renderPodium(c.leaderboard.slice(0, 3), p => p.name, p => `${p.score} امتیاز`);
+  document.getElementById('lbClanList').innerHTML = c.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.name} #${p.tag}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'داده کافی نیست.';
+  const cInTop = c.myClan && c.leaderboard.some(p => p.id === c.myClan.id);
+  document.getElementById('lbClanMine').innerHTML = (c.myClan && !cInTop) ? renderMineRow('رتبه کلن من: #' + c.myRank + ' —', c.myRank, `${c.myClan.name} #${c.myClan.tag}`, `${c.myClan.score} امتیاز`) : '';
+  document.getElementById('lbClanPrizes').innerHTML = c.prizeInfo && c.prizeInfo.reward_toman > 0
+    ? `🎁 جایزه فصل: ${c.prizeInfo.reward_toman.toLocaleString()} ت بین ${c.prizeInfo.winners_count} کلن برتر (${fmtDistribution(c.prizeInfo.distribution_method)}) — هر ${c.prizeInfo.reset_days} روز`
+    : '';
 
   const l = await api('/api/rank/leaderboard');
-  document.getElementById('lbLevelPodium').innerHTML = renderPodium(l.slice(0, 3), p => p.first_name || '', p => `Lv.${p.level}`);
-  document.getElementById('lbLevelList').innerHTML = l.slice(3).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">Lv.${p.level}</div></div>`).join('') || 'داده کافی نیست.';
+  document.getElementById('lbLevelPodium').innerHTML = renderPodium(l.leaderboard.slice(0, 3), p => p.first_name || '', p => `Lv.${p.level}`);
+  document.getElementById('lbLevelList').innerHTML = l.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">Lv.${p.level}</div></div>`).join('') || 'داده کافی نیست.';
+  const lInTop = l.leaderboard.some(p => p.tg_id === l.myRow.tg_id);
+  document.getElementById('lbLevelMine').innerHTML = lInTop ? '' : renderMineRow('رتبه من: #' + l.myRank + ' —', l.myRank, l.myRow.first_name, `Lv.${l.myRow.level}`);
 }
 
 /* ================= بیشتر: هاب ================= */
