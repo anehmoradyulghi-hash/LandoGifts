@@ -4,7 +4,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import {
-  getStats, listUsers, banUser, unbanUser, getUser, adjustToman,
+  getStats, listUsers, banUser, unbanUser, getUser, adjustToman, adjustCurrencyBalance,
   listCurrencies, upsertCurrency,
   listPendingTomanTopups, decideTomanTopup,
   listPendingTomanWithdrawals, decideTomanWithdrawal,
@@ -108,11 +108,19 @@ router.post('/users/:tgId/adjust-balance', (req, res) => {
   sendMessage(Number(req.params.tgId), `💰 موجودی کیف‌پول شما ${amount > 0 ? '+' : ''}${amount.toLocaleString()} تومان توسط پشتیبانی تغییر کرد.`).catch(() => {});
   res.json({ ok: true, user: getUser(Number(req.params.tgId)) });
 });
+router.post('/users/:tgId/adjust-currency', (req, res) => {
+  const amount = Number(req.body.amount);
+  const code = (req.body.code || '').toUpperCase();
+  if (!amount || !code) return res.status(400).json({ error: 'ارز و مقدار لازمه' });
+  adjustCurrencyBalance(Number(req.params.tgId), code, amount, 'اصلاح دستی موجودی ارزی توسط ادمین');
+  sendMessage(Number(req.params.tgId), `💰 موجودی ${code} شما ${amount > 0 ? '+' : ''}${amount} توسط پشتیبانی تغییر کرد.`).catch(() => {});
+  res.json({ ok: true });
+});
 
 /* ---------- ارزها (کاملا دستی) ---------- */
 router.get('/currencies', (req, res) => res.json(listCurrencies()));
 router.post('/currencies', (req, res) => {
-  const { code, name, rate_toman, min_deposit, min_withdraw, active } = req.body;
+  const { code, name, rate_toman, min_deposit, min_withdraw, active, deposit_address } = req.body;
   if (!code || !name) return res.status(400).json({ error: 'کد و نام ارز لازمه' });
   upsertCurrency({
     code: code.toUpperCase(), name,
@@ -120,6 +128,7 @@ router.post('/currencies', (req, res) => {
     min_deposit: Number(min_deposit) || 0,
     min_withdraw: Number(min_withdraw) || 0,
     active: !!active,
+    deposit_address: deposit_address || null,
   });
   res.json({ ok: true });
 });

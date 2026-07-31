@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   sendMessage, answerCallbackQuery, setWebhook, validateInitData, isChannelMember, getMe,
+  createStarsInvoiceLink, answerPreCheckoutQuery,
 } from './telegram.js';
 import db, {
   getOrCreateUser, getUser, adjustToman, isBanned, getLedger, payReferralBonus, getReferralInfo,
@@ -18,6 +19,7 @@ import db, {
   createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer, listGiftCategories,
   listActiveTasks, hasClaimedTask, claimTask, getTask,
   getPaymentSettings, getMessageSettings, getSupportContact,
+  createStarPaymentRequest, getStarPayment, completeStarPayment,
   createZarinpalPayment, getZarinpalPayment, markZarinpalPaymentStatus,
 } from './db.js';
 import {
@@ -324,6 +326,25 @@ app.post('/api/wallet/currency-deposit', requireTelegramAuth, (req, res) => {
     ]] } }
   );
   res.json({ ok: true });
+});
+
+/* ---------- شارژ حساب با تلگرام استارز (⭐ XTR) — ثانیه‌ای، بدون تایید دستی ادمین ---------- */
+app.post('/api/wallet/stars-invoice', requireTelegramAuth, async (req, res) => {
+  try {
+    const starsAmount = Math.round(Number(req.body.starsAmount));
+    if (!starsAmount || starsAmount < 1) return res.status(400).json({ error: 'مقدار استارز نامعتبره' });
+    const starsCurrency = getCurrency('STARS') || getCurrency('XTR');
+    if (!starsCurrency || !starsCurrency.active || !starsCurrency.rate_toman) {
+      return res.status(400).json({ error: 'ادمین هنوز نرخ استارز رو تنظیم نکرده' });
+    }
+    const id = createStarPaymentRequest(req.dbUser.tg_id, starsAmount, starsCurrency.rate_toman);
+    const r = await createStarsInvoiceLink(
+      'شارژ کیف‌پول', `شارژ ${starsAmount}⭐ = ${(starsAmount * starsCurrency.rate_toman).toLocaleString()} تومان`,
+      `star_topup_${id}`, starsAmount
+    );
+    if (!r.ok) return res.status(500).json({ error: 'ساخت فاکتور پرداخت با خطا مواجه شد' });
+    res.json({ ok: true, link: r.result });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 app.post('/api/wallet/currency-withdraw', requireTelegramAuth, (req, res) => {
@@ -799,6 +820,32 @@ app.post('/telegram-webhook', async (req, res) => {
 });
 
 async function handleTelegramUpdate(update) {
+  // مرحله ۱ پرداخت استارز: تلگرام قبل از گرفتن پول از کاربر می‌پرسه "تاییدش می‌کنی؟" — باید سریع جواب بدیم
+  if (update.pre_checkout_query) {
+    const payload = update.pre_checkout_query.invoice_payload || '';
+    const m = payload.match(/^star_topup_(\d+)$/);
+    const sp = m ? getStarPayment(Number(m[1])) : null;
+    if (sp && sp.status === 'pending') {
+      await answerPreCheckoutQuery(update.pre_checkout_query.id, true);
+    } else {
+      await answerPreCheckoutQuery(update.pre_checkout_query.id, false, 'این درخواست پرداخت دیگه معتبر نیست.');
+    }
+    return;
+  }
+  // مرحله ۲: پرداخت با موفقیت انجام شد — همینجا و همین لحظه کیف‌پول شارژ می‌شه
+  if (update.message?.successful_payment) {
+    const sPay = update.message.successful_payment;
+    const payload = sPay.invoice_payload || '';
+    const m = payload.match(/^star_topup_(\d+)$/);
+    if (m) {
+      const sp = completeStarPayment(Number(m[1]), sPay.telegram_payment_charge_id);
+      if (sp) {
+        await sendMessage(sp.tg_id, `⭐ پرداخت ${sp.stars_amount} استارز با موفقیت انجام شد و ${sp.toman_credited.toLocaleString()} تومان به کیف‌پولت اضافه شد.`);
+      }
+    }
+    return;
+  }
+
   if (update.message?.text?.startsWith('/start')) {
     const chatId = update.message.chat.id;
     const refParam = update.message.text.split(' ')[1];

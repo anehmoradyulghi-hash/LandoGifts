@@ -31,7 +31,17 @@ export const answerCallbackQuery = (id, text) =>
   call('answerCallbackQuery', { callback_query_id: id, ...(text ? { text } : {}) });
 
 export const setWebhook = (url, secretToken) =>
-  call('setWebhook', { url, secret_token: secretToken, allowed_updates: ['message', 'callback_query'] });
+  call('setWebhook', { url, secret_token: secretToken, allowed_updates: ['message', 'callback_query', 'pre_checkout_query'] });
+
+// ساخت لینک فاکتور پرداخت با تلگرام استارز (ارز XTR) — provider_token لازم نداره، خود تلگرام هندلش می‌کنه
+export const createStarsInvoiceLink = (title, description, payload, starsAmount) =>
+  call('createInvoiceLink', {
+    title, description, payload, currency: 'XTR', provider_token: '',
+    prices: [{ label: title, amount: starsAmount }],
+  });
+
+export const answerPreCheckoutQuery = (id, ok, errorMessage) =>
+  call('answerPreCheckoutQuery', { pre_checkout_query_id: id, ok, ...(errorMessage ? { error_message: errorMessage } : {}) });
 
 export const getMe = () => call('getMe', {});
 

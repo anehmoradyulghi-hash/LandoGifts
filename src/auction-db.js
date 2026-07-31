@@ -55,7 +55,11 @@ export function setAuctionConfig(c) {
 }
 
 export function listActiveAuctions() {
-  return db.prepare(`SELECT * FROM auctions WHERE status = 'active' ORDER BY ends_at ASC`).all();
+  return db.prepare(`
+    SELECT a.*, u.first_name AS bidder_first_name, u.username AS bidder_username
+    FROM auctions a LEFT JOIN users u ON u.tg_id = a.winner_tg_id
+    WHERE a.status = 'active' ORDER BY a.ends_at ASC
+  `).all();
 }
 export function listAllAuctionsAdmin() {
   return db.prepare(`SELECT * FROM auctions ORDER BY created_at DESC LIMIT 100`).all();

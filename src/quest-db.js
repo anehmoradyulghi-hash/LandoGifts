@@ -58,30 +58,34 @@ export function upsertQuestTemplate(t) {
 }
 export function deleteQuestTemplate(id) { db.prepare('DELETE FROM quest_templates WHERE id = ?').run(id); }
 
-// اگه برای امروز هنوز ماموریت انتخاب نشده، به تعداد لازم به‌صورت رندوم از قالب‌های فعال انتخاب می‌کنه
-function ensureTodayAssignments() {
+// انتخاب «ماموریت‌های امروز» به‌صورت قطعی از روی تاریخ (نه ذخیره‌شده تو دیتابیس) —
+// یعنی همیشه از روی لیست فعلی قالب‌های فعال محاسبه می‌شه، پس با هر تغییری که ادمین بده
+// (اضافه/ویرایش/غیرفعال کردن) بلافاصله همون لحظه اثرش رو می‌بینی، نه فقط از فردا
+function seededShuffle(arr, seed) {
+  let s = seed % 2147483647; if (s <= 0) s += 2147483646;
+  const rand = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function getTodaysQuestTemplates() {
   const cfg = getQuestConfig();
   const today = new Date().toISOString().slice(0, 10);
-  const existing = db.prepare('SELECT COUNT(*) c FROM daily_quest_assignments WHERE quest_date = ?').get(today).c;
-  if (existing > 0) return today;
   const templates = listQuestTemplates(true);
-  const shuffled = [...templates].sort(() => Math.random() - 0.5).slice(0, cfg.quest_count);
-  const tx = db.transaction(() => {
-    for (const t of shuffled) db.prepare('INSERT OR IGNORE INTO daily_quest_assignments (quest_date, template_id) VALUES (?,?)').run(today, t.id);
-  });
-  tx();
-  return today;
+  if (templates.length <= cfg.quest_count) return templates;
+  const seed = today.split('-').reduce((s, p) => s + Number(p), 0) * 7919;
+  return seededShuffle(templates, seed).slice(0, cfg.quest_count);
 }
 
 export function getTodayQuestsForUser(tgId) {
   const cfg = getQuestConfig();
   if (!cfg.enabled) return { enabled: false, quests: [] };
-  const today = ensureTodayAssignments();
-  const rows = db.prepare(`
-    SELECT t.*, dqa.quest_date FROM daily_quest_assignments dqa JOIN quest_templates t ON t.id = dqa.template_id
-    WHERE dqa.quest_date = ?
-  `).all(today);
-  const quests = rows.map(t => {
+  const today = new Date().toISOString().slice(0, 10);
+  const todaysTemplates = getTodaysQuestTemplates();
+  const quests = todaysTemplates.map(t => {
     const progress = db.prepare('SELECT * FROM user_quest_progress WHERE tg_id=? AND quest_date=? AND template_id=?').get(tgId, today, t.id);
     return { ...t, progress: progress?.progress || 0, claimed: !!progress?.claimed, done: (progress?.progress || 0) >= t.target_count };
   });
@@ -92,11 +96,8 @@ export function getTodayQuestsForUser(tgId) {
 export function incrementQuestProgress(tgId, type, amount = 1) {
   const cfg = getQuestConfig();
   if (!cfg.enabled) return;
-  const today = ensureTodayAssignments();
-  const todays = db.prepare(`
-    SELECT t.* FROM daily_quest_assignments dqa JOIN quest_templates t ON t.id = dqa.template_id
-    WHERE dqa.quest_date = ? AND t.type = ?
-  `).all(today, type);
+  const today = new Date().toISOString().slice(0, 10);
+  const todays = getTodaysQuestTemplates().filter(t => t.type === type);
   for (const t of todays) {
     db.prepare(`
       INSERT INTO user_quest_progress (tg_id, quest_date, template_id, progress) VALUES (?,?,?,?)
@@ -106,10 +107,9 @@ export function incrementQuestProgress(tgId, type, amount = 1) {
 }
 
 export function claimQuestReward(tgId, templateId) {
-  const today = ensureTodayAssignments();
-  const assigned = db.prepare('SELECT 1 FROM daily_quest_assignments WHERE quest_date=? AND template_id=?').get(today, templateId);
-  if (!assigned) throw new Error('این ماموریت برای امروز نیست');
-  const template = db.prepare('SELECT * FROM quest_templates WHERE id = ?').get(templateId);
+  const today = new Date().toISOString().slice(0, 10);
+  const template = getTodaysQuestTemplates().find(t => t.id === templateId);
+  if (!template) throw new Error('این ماموریت برای امروز نیست');
   const progress = db.prepare('SELECT * FROM user_quest_progress WHERE tg_id=? AND quest_date=? AND template_id=?').get(tgId, today, templateId);
   if (!progress || progress.progress < template.target_count) throw new Error('هنوز این ماموریت کامل نشده');
   if (progress.claimed) throw new Error('جایزه این ماموریت رو قبلا گرفتی');

@@ -174,6 +174,38 @@ function safeAddColumn(table, columnDef) {
   catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
 }
 safeAddColumn('gift_offers', 'serial_number TEXT'); // شماره سریال/مدل واقعی گیفت (اختیاری)
+safeAddColumn('currencies', 'deposit_address TEXT'); // آدرس/شمارهٔ حسابی که کاربر باید واریز کنه، به تفکیک هر ارز
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS star_payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tg_id INTEGER NOT NULL,
+  stars_amount INTEGER NOT NULL,
+  rate_toman REAL NOT NULL,
+  toman_credited INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', -- pending | paid
+  telegram_charge_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  paid_at TEXT
+);
+`);
+export function createStarPaymentRequest(tgId, starsAmount, rateToman) {
+  const tomanCredited = Math.round(starsAmount * rateToman);
+  return db.prepare('INSERT INTO star_payments (tg_id, stars_amount, rate_toman, toman_credited) VALUES (?,?,?,?)')
+    .run(tgId, starsAmount, rateToman, tomanCredited).lastInsertRowid;
+}
+export function getStarPayment(id) { return db.prepare('SELECT * FROM star_payments WHERE id = ?').get(id); }
+// ثانیه‌ای شارژ می‌کنه — همین که تلگرام تایید پرداخت رو بفرسته
+export function completeStarPayment(id, telegramChargeId) {
+  const sp = getStarPayment(id);
+  if (!sp || sp.status === 'paid') return null; // ایمن در برابر پیام تکراری از تلگرام
+  const tx = db.transaction(() => {
+    db.prepare(`UPDATE star_payments SET status='paid', telegram_charge_id=?, paid_at=datetime('now') WHERE id=?`).run(telegramChargeId, id);
+    adjustToman(sp.tg_id, sp.toman_credited, `شارژ حساب با تلگرام استارز (${sp.stars_amount}⭐)`);
+  });
+  tx();
+  return sp;
+}
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS gift_categories (
@@ -314,14 +346,14 @@ export function listCurrencies(onlyActive = false) {
 export function getCurrency(code) {
   return db.prepare('SELECT * FROM currencies WHERE code = ?').get(code);
 }
-export function upsertCurrency({ code, name, rate_toman, min_deposit, min_withdraw, active }) {
+export function upsertCurrency({ code, name, rate_toman, min_deposit, min_withdraw, active, deposit_address }) {
   db.prepare(`
-    INSERT INTO currencies (code, name, rate_toman, min_deposit, min_withdraw, active, updated_at)
-    VALUES (@code, @name, @rate_toman, @min_deposit, @min_withdraw, @active, datetime('now'))
+    INSERT INTO currencies (code, name, rate_toman, min_deposit, min_withdraw, active, deposit_address, updated_at)
+    VALUES (@code, @name, @rate_toman, @min_deposit, @min_withdraw, @active, @deposit_address, datetime('now'))
     ON CONFLICT(code) DO UPDATE SET
       name = @name, rate_toman = @rate_toman, min_deposit = @min_deposit,
-      min_withdraw = @min_withdraw, active = @active, updated_at = datetime('now')
-  `).run({ code, name, rate_toman, min_deposit, min_withdraw, active: active ? 1 : 0 });
+      min_withdraw = @min_withdraw, active = @active, deposit_address = @deposit_address, updated_at = datetime('now')
+  `).run({ code, name, rate_toman, min_deposit, min_withdraw, active: active ? 1 : 0, deposit_address: deposit_address || null });
 }
 
 export function getCurrencyBalance(tgId, code) {
