@@ -576,6 +576,12 @@
     <label>مبلغ (تومان)</label>
     <input type="number" id="topupAmount" placeholder="مثلا 100000" />
     <button class="btn gold" id="zarinpalBtn" style="display:none;" onclick="doZarinpalTopup()">💳 پرداخت آنلاین (زرین‌پال)</button>
+    <div id="starsTopupBox" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+      <p class="muted" style="margin:0 0 6px;">یا با تلگرام استارز (شارژ آنی ⚡):</p>
+      <input type="number" id="starsAmount" placeholder="تعداد استارز" />
+      <div class="muted" id="starsToTomanHint" style="margin-bottom:8px;"></div>
+      <button class="btn" style="background:linear-gradient(90deg,#ffd76b,#ff9f43);" onclick="doStarsTopup()">⭐ پرداخت با استارز</button>
+    </div>
     <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
       <p class="muted" style="margin:0 0 6px;">یا کارت‌به‌کارت:</p>
       <div class="muted" id="cardInfo"></div>
@@ -602,7 +608,8 @@
   </div>
   <div class="card">
     <h3 class="sec" style="margin-top:0;">واریز ارز دیجیتال</h3>
-    <label>ارز</label><select id="depCode"></select>
+    <label>ارز</label><select id="depCode" onchange="onDepCodeChange()"></select>
+    <div id="depAddressBox" class="muted" style="margin-bottom:10px;"></div>
     <label>مقدار</label><input type="number" id="depAmount" />
     <label>هش تراکنش</label><input type="text" id="depTx" />
     <button class="btn" onclick="doCurrencyDeposit()">ثبت درخواست واریز</button>
@@ -957,10 +964,15 @@ let ledgerOffset = 0;
 function renderLedgerRow(l) {
   return `<div class="row"><span>${l.reason || '-'}</span><span>${l.direction === 'in' ? '+' : '-'}${l.amount.toLocaleString()} ${l.currency_code}</span></div>`;
 }
+let STARS_RATE = 0;
 async function loadWallet() {
   document.getElementById('cardInfo').textContent = CONFIG.cardNumber
     ? `شماره کارت: ${CONFIG.cardNumber} (${CONFIG.cardOwner || ''})` : 'شماره کارت هنوز توسط ادمین ثبت نشده.';
   document.getElementById('zarinpalBtn').style.display = CONFIG.zarinpalEnabled ? 'flex' : 'none';
+  const allCurrencies = await api('/api/currencies');
+  const starsCur = allCurrencies.find(c => c.code === 'STARS' || c.code === 'XTR');
+  STARS_RATE = starsCur?.rate_toman || 0;
+  document.getElementById('starsTopupBox').style.display = STARS_RATE ? 'block' : 'none';
   ledgerOffset = 0;
   const data = await api('/api/wallet/ledger?limit=15&offset=0');
   document.getElementById('ledgerList').innerHTML = data.rows.length
@@ -968,6 +980,25 @@ async function loadWallet() {
     : 'تراکنشی ثبت نشده.';
   ledgerOffset = data.rows.length;
   document.getElementById('ledgerMoreBtn').style.display = data.hasMore ? 'block' : 'none';
+}
+document.addEventListener('input', (e) => {
+  if (e.target?.id === 'starsAmount') {
+    const n = Number(e.target.value) || 0;
+    document.getElementById('starsToTomanHint').textContent = n ? `≈ ${(n * STARS_RATE).toLocaleString()} تومان` : '';
+  }
+});
+async function doStarsTopup() {
+  const starsAmount = Number(document.getElementById('starsAmount').value);
+  if (!starsAmount || starsAmount < 1) { toast('تعداد استارز رو وارد کن'); return; }
+  const r = await api('/api/wallet/stars-invoice', { method: 'POST', body: JSON.stringify({ starsAmount }) });
+  if (tg?.openInvoiceLink) {
+    tg.openInvoiceLink(r.link, (status) => {
+      if (status === 'paid') { toast('پرداخت انجام شد، کیف‌پولت شارژ شد ⭐'); setTimeout(() => { loadMe(); loadWallet(); }, 1200); }
+      else if (status === 'failed') toast('پرداخت ناموفق بود');
+    });
+  } else {
+    window.open(r.link, '_blank');
+  }
 }
 async function loadMoreLedger() {
   const data = await api('/api/wallet/ledger?limit=15&offset=' + ledgerOffset);
@@ -1006,6 +1037,22 @@ async function loadCurrency() {
   document.getElementById('wdCode').innerHTML = codeOptions;
   document.getElementById('swapFrom').innerHTML = `<option value="TOMAN">تومان</option>` + codeOptions;
   document.getElementById('swapTo').innerHTML = codeOptions + `<option value="TOMAN">تومان</option>`;
+  onDepCodeChange();
+}
+function onDepCodeChange() {
+  const code = document.getElementById('depCode').value;
+  const c = CURRENCIES.find(x => x.code === code);
+  const box = document.getElementById('depAddressBox');
+  if (!c) { box.innerHTML = ''; return; }
+  box.innerHTML = c.deposit_address
+    ? `<div class="card" style="padding:10px 14px;margin:6px 0;"><div class="muted" style="font-size:11px;">آدرس واریز ${c.name}</div><div style="word-break:break-all;font-weight:700;">${c.deposit_address}</div><button class="btn secondary" style="margin-top:6px;" onclick="copyDepositAddress()">📋 کپی آدرس</button></div>`
+    : `<div class="muted">ادمین هنوز آدرس واریز این ارز رو تنظیم نکرده — قبل از واریز باهاش هماهنگ کن.</div>`;
+}
+function copyDepositAddress() {
+  const c = CURRENCIES.find(x => x.code === document.getElementById('depCode').value);
+  if (!c?.deposit_address) return;
+  navigator.clipboard?.writeText(c.deposit_address);
+  toast('کپی شد ✅');
 }
 async function doSwap() {
   const from = document.getElementById('swapFrom').value, to = document.getElementById('swapTo').value;
@@ -1427,21 +1474,38 @@ function formatAuctionCountdown(endsAt) {
   const m = Math.floor(ms / 60000), s = Math.floor((ms % 60000) / 1000);
   return `${m}:${String(s).padStart(2, '0')}`;
 }
+let AUCTION_POLL;
+let AUCTION_LIST_CACHE = [];
 async function loadAuctions() {
   clearInterval(AUCTION_TIMER);
+  clearInterval(AUCTION_POLL);
   const { auctions } = await api('/api/auctions');
+  AUCTION_LIST_CACHE = auctions;
+  renderAuctionsList(auctions);
+  AUCTION_TIMER = setInterval(() => {
+    AUCTION_LIST_CACHE.forEach(a => { const elx = document.getElementById('auction-timer-' + a.id); if (elx) elx.textContent = formatAuctionCountdown(a.ends_at); });
+  }, 1000);
+  // هر چند ثانیه یه‌بار از سرور تازه می‌کنیم تا آخرین پیشنهاددهنده و قیمت واقعی زنده بمونه
+  AUCTION_POLL = setInterval(async () => {
+    if (!document.getElementById('page-more')?.classList.contains('active') && !document.getElementById('page-games')?.classList.contains('active')) return;
+    try {
+      const fresh = await api('/api/auctions');
+      AUCTION_LIST_CACHE = fresh.auctions;
+      renderAuctionsList(fresh.auctions);
+    } catch (e) { /* بی‌صدا رد شو، شبکه موقتا قطع بوده */ }
+  }, 4000);
+}
+function renderAuctionsList(auctions) {
   const html = !auctions.length ? '<div class="empty"><div class="eic">⚡</div>فعلا مزایده فعالی نیست.</div>' : auctions.map((a, i) => `
     <div class="card" ${staggerStyle(i)}>
       ${a.image_url ? `<img src="${a.image_url}">` : ''}
       <div class="row"><b>${a.title}</b><span class="tag" id="auction-timer-${a.id}">${formatAuctionCountdown(a.ends_at)}</span></div>
       <p class="muted">قیمت فعلی: <b style="color:var(--gold);">${a.current_price.toLocaleString()}</b> تومان (پله بعدی: ${(a.current_price + a.bid_step).toLocaleString()})</p>
+      <p class="muted">آخرین پیشنهاددهنده: <b style="color:#c4b0ff;">${a.bidder_first_name ? (a.bidder_first_name + (a.bidder_username ? ' @' + a.bidder_username : '')) : 'هنوز کسی پیشنهاد نداده'}</b></p>
       <button class="btn gold" onclick="bidAuction(${a.id})">پیشنهاد بده (${(a.current_price + a.bid_step).toLocaleString()} ت)</button>
     </div>`).join('');
   document.getElementById('auctionsList').innerHTML = html;
   const el2 = document.getElementById('auctionsList2'); if (el2) el2.innerHTML = html;
-  AUCTION_TIMER = setInterval(() => {
-    auctions.forEach(a => { const elx = document.getElementById('auction-timer-' + a.id); if (elx) elx.textContent = formatAuctionCountdown(a.ends_at); });
-  }, 1000);
 }
 async function bidAuction(id) { await api(`/api/auctions/${id}/bid`, { method: 'POST' }); toast('پیشنهادت ثبت شد ✅'); loadMe(); loadAuctions(); }
 
