@@ -331,6 +331,23 @@
   .battle-banner { padding:22px 14px; border-radius:22px; text-align:center; font-weight:800; font-size:17px; margin-bottom:12px; }
   .battle-banner.win { background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.4); color:var(--success); box-shadow:0 0 24px rgba(52,211,153,.15); }
   .battle-banner.lose { background:rgba(251,113,133,.12); border:1px solid rgba(251,113,133,.4); color:var(--danger); box-shadow:0 0 24px rgba(251,113,133,.15); }
+  /* ---------- چرخ‌گردونهٔ شانس ---------- */
+  .wheel-wrap { position:relative; width:230px; height:230px; margin:6px auto 14px; }
+  .wheel-pointer { position:absolute; top:-8px; left:50%; transform:translateX(-50%); font-size:26px; z-index:5; filter:drop-shadow(0 3px 5px rgba(0,0,0,.55)); }
+  .wheel-disc {
+    width:100%; height:100%; border-radius:50%; position:relative; overflow:hidden;
+    border:6px solid var(--surface2); box-shadow:0 0 0 3px rgba(255,255,255,.08), 0 16px 36px -12px rgba(0,0,0,.65);
+    transition:transform 3.6s cubic-bezier(.11,.72,.14,1);
+  }
+  .wheel-label {
+    position:absolute; top:50%; left:50%; transform-origin:0 0; font-size:10.5px; font-weight:800; color:#fff;
+    text-shadow:0 1px 4px rgba(0,0,0,.65); white-space:nowrap; pointer-events:none;
+  }
+  .wheel-hub {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:46px; height:46px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #fff, var(--gold) 70%); box-shadow:0 4px 12px rgba(0,0,0,.45), 0 0 0 3px var(--bg);
+    z-index:4; display:flex; align-items:center; justify-content:center; font-size:19px;
+  }
 </style>
 </head>
 <body>
@@ -369,8 +386,8 @@
     <h3 class="sec">دسترسی سریع</h3>
     <div class="hscroll">
       <div class="mini-card" onclick="showGView('events')"><div class="ic">🎯</div><div class="t">تسک‌های روزانه</div><div class="s" id="questsQuickStat">...</div></div>
-      <div class="mini-card" onclick="showGView('wheel')"><div class="ic">🎡</div><div class="t">چرخ شانس</div><div class="s" id="wheelQuickStat">...</div></div>
-      <div class="mini-card" onclick="showMView('clan')"><div class="ic">🏰</div><div class="t">کلن</div><div class="s" id="clanQuickStat">...</div></div>
+      <div class="mini-card" onclick="showGView('wheel')"><div class="ic">🎰</div><div class="t">چرخ شانس</div><div class="s" id="wheelQuickStat">...</div></div>
+      <div class="mini-card" onclick="showPage('more');showMView('clan')"><div class="ic">🏰</div><div class="t">کلن</div><div class="s" id="clanQuickStat">...</div></div>
       <div class="mini-card" onclick="showGView('battlepass')"><div class="ic">🏅</div><div class="t">بتل‌پس</div><div class="s" id="bpQuickStat">...</div></div>
     </div>
   </div>
@@ -429,7 +446,11 @@
   <!-- چرخ شانس -->
   <div class="view" id="gview-wheel">
     <div class="gcard teal" style="text-align:center;">
-      <div id="wheelVisual" style="font-size:60px;margin:8px 0;transition:transform 2.2s cubic-bezier(.17,.67,.35,.99);">🎡</div>
+      <div class="wheel-wrap">
+        <div class="wheel-pointer">▼</div>
+        <div class="wheel-disc" id="wheelDisc"></div>
+        <div class="wheel-hub">🎰</div>
+      </div>
       <p id="wheelStatusText">در حال بارگذاری...</p>
       <button class="btn gold" id="wheelSpinBtn" onclick="doSpinWheel()">چرخوندن</button>
     </div>
@@ -496,7 +517,8 @@
   <div class="view" id="mtab-sell">
     <div class="card">
       <h3 class="sec" style="margin-top:0;">ثبت آگهی فروش گیفت</h3>
-      <label>عنوان گیفت</label><input type="text" id="giftTitle">
+      <label>دسته‌بندی گیفت</label>
+      <select id="giftTitle" onchange="onGiftCategoryChange()"><option value="">در حال بارگذاری...</option></select>
       <label>عکس گیفت</label>
       <input type="file" id="giftImageFile" accept="image/*" onchange="uploadGiftImage()">
       <input type="hidden" id="giftImage">
@@ -625,14 +647,14 @@
 
   <h3 class="sec">دسترسی سریع</h3>
   <div class="hscroll">
-    <div class="mini-card" onclick="showGView('cardgame');showPage('games');"><div class="ic">🎴</div><div class="t">کارت‌های من</div></div>
-    <div class="mini-card" onclick="showMarketTab('mine');showPage('market');"><div class="ic">📋</div><div class="t">آگهی‌های من</div></div>
-    <div class="mini-card" onclick="document.getElementById('ledgerList').scrollIntoView();showPage('wallet');"><div class="ic">📜</div><div class="t">تراکنش‌ها</div></div>
-    <div class="mini-card" onclick="showMView('avatars')"><div class="ic">🎨</div><div class="t">آواتارهای من</div></div>
+    <div class="mini-card" onclick="showPage('games');showGView('cardgame');"><div class="ic">🎴</div><div class="t">کارت‌های من</div></div>
+    <div class="mini-card" onclick="showPage('market');showMarketTab('mine');"><div class="ic">📋</div><div class="t">آگهی‌های من</div></div>
+    <div class="mini-card" onclick="showPage('wallet');setTimeout(()=>document.getElementById('ledgerList')?.scrollIntoView({behavior:'smooth'}),300);"><div class="ic">📜</div><div class="t">تراکنش‌ها</div></div>
+    <div class="mini-card" onclick="showPage('more');showMView('avatars')"><div class="ic">🎨</div><div class="t">آواتارهای من</div></div>
   </div>
 
   <h3 class="sec">منو</h3>
-  <div class="menu-row" onclick="showGView('events');showPage('games');">
+  <div class="menu-row" onclick="showPage('games');showGView('events');">
     <span class="mic">🎁</span><div class="mtxt"><div class="mt">تسک‌های روزانه</div><div class="ms">دریافت جایزه ماموریت‌ها</div></div><span class="arrow">‹</span>
   </div>
   <div class="menu-row" onclick="document.getElementById('referralCard').scrollIntoView()">
@@ -840,6 +862,23 @@ function showMarketTab(name) {
   document.querySelectorAll('#page-market .toptabs button').forEach(b => b.classList.toggle('active', b.dataset.mtab === name));
   if (name === 'buy') loadMarket();
   if (name === 'mine') loadMarket();
+  if (name === 'sell') loadGiftCategoriesForSell();
+}
+let GIFT_CATEGORIES = [];
+async function loadGiftCategoriesForSell() {
+  GIFT_CATEGORIES = await api('/api/gifts/categories');
+  const sel = document.getElementById('giftTitle');
+  sel.innerHTML = GIFT_CATEGORIES.length
+    ? '<option value="">انتخاب دسته...</option>' + GIFT_CATEGORIES.map(c => `<option value="${c.name}">${c.name}</option>`).join('')
+    : '<option value="">هنوز دسته‌ای تعریف نشده</option>';
+}
+function onGiftCategoryChange() {
+  const cat = GIFT_CATEGORIES.find(c => c.name === document.getElementById('giftTitle').value);
+  if (cat && cat.image_url) {
+    document.getElementById('giftImage').value = cat.image_url;
+    const preview = document.getElementById('giftImagePreview');
+    preview.src = cat.image_url; preview.style.display = 'block';
+  }
 }
 /* لیدربورد: تب‌ها */
 function showLbTab(name) {
@@ -1257,6 +1296,8 @@ function formatCountdown(ms) {
   const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
   return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} مونده`;
 }
+let WHEEL_SLOTS = [];
+let WHEEL_ROTATION = 0;
 async function loadWheel() {
   clearInterval(WHEEL_TIMER);
   const status = await api('/api/wheel/status');
@@ -1273,16 +1314,43 @@ async function loadWheel() {
     }, 1000);
   }
   const slots = await api('/api/wheel/slots');
+  WHEEL_SLOTS = slots;
+  renderWheelDisc(slots);
   document.getElementById('wheelSlotsList').innerHTML = slots.length ? slots.map((s, i) => `<div class="card" style="padding:10px 14px;border-color:${s.color}55;" ${staggerStyle(i)}><span style="color:${s.color};font-weight:700;">${s.label}</span></div>`).join('') : 'هنوز جایزه‌ای تعریف نشده.';
   const history = await api('/api/wheel/history');
   document.getElementById('wheelHistoryList').innerHTML = history.length ? history.map(h => `<div class="row"><span>${h.result_label}</span><span class="muted">${h.spun_at}</span></div>`).join('') : 'هنوز اسپینی نداشتی.';
 }
+function renderWheelDisc(slots) {
+  const disc = document.getElementById('wheelDisc');
+  if (!slots.length) { disc.style.background = 'var(--surface2)'; disc.innerHTML = ''; return; }
+  const n = slots.length, seg = 360 / n;
+  const stops = slots.map((s, i) => `${s.color} ${i * seg}deg ${(i + 1) * seg}deg`).join(',');
+  disc.style.background = `conic-gradient(${stops})`;
+  disc.innerHTML = slots.map((s, i) => {
+    const angle = i * seg + seg / 2;
+    return `<div class="wheel-label" style="transform:rotate(${angle}deg) translate(72px) rotate(90deg);">${s.label}</div>`;
+  }).join('');
+}
 async function doSpinWheel() {
-  const visual = document.getElementById('wheelVisual');
-  visual.style.transform = `rotate(${720 + Math.random() * 360}deg)`;
-  try { const r = await api('/api/wheel/spin', { method: 'POST' }); setTimeout(() => toast(`🎉 بردی: ${r.won.label}`), 700); }
-  catch (e) { visual.style.transform = 'none'; }
-  finally { setTimeout(loadWheel, 900); setTimeout(loadMe, 900); }
+  const disc = document.getElementById('wheelDisc');
+  try {
+    const r = await api('/api/wheel/spin', { method: 'POST' });
+    const n = WHEEL_SLOTS.length || 1;
+    const seg = 360 / n;
+    let idx = WHEEL_SLOTS.findIndex(s => s.id === r.won.id);
+    if (idx < 0) idx = 0;
+    // زاویه‌ای که باید زیر فلک (بالای گردونه) بیاد وسط همون قطعه‌ست
+    const targetCenter = idx * seg + seg / 2;
+    const jitter = (Math.random() - 0.5) * seg * 0.6;
+    const extraSpins = 5 * 360;
+    const currentMod = ((WHEEL_ROTATION % 360) + 360) % 360;
+    // فلک بالای گردونه‌ست (۰ درجه)، گردونه باید بچرخه تا قطعهٔ برنده زیر فلک برسه
+    let delta = (360 - targetCenter - currentMod + jitter + 360) % 360;
+    WHEEL_ROTATION += extraSpins + delta;
+    disc.style.transform = `rotate(${WHEEL_ROTATION}deg)`;
+    setTimeout(() => toast(`🎉 بردی: ${r.won.label}`), 3400);
+    setTimeout(loadWheel, 3700); setTimeout(loadMe, 3700);
+  } catch (e) { toast(e.message || 'مشکلی پیش اومد'); loadWheel(); }
 }
 
 /* ================= بتل‌پس ================= */
@@ -1395,6 +1463,7 @@ async function loadClan() {
         <label>اهدا به بانک کلن</label><input type="number" id="donateAmount">
         <button class="btn gold" onclick="donateClanUI()">اهدا کن</button>
         ${clan.myRole === 'owner' ? `
+        <div class="row" style="margin-top:6px;"><span class="muted">سهم اهدایی خودت (قابل برداشت)</span><b style="color:var(--gold);">${clan.myWithdrawableRemaining.toLocaleString()} ت</b></div>
         <label style="margin-top:10px;">برداشت از بانک کلن به کیف‌پول خودت</label><input type="number" id="withdrawAmount">
         <button class="btn secondary" onclick="withdrawClanUI()">برداشت</button>
         <label style="margin-top:10px;">هدیه از بانک کلن به یکی از اعضا</label>
