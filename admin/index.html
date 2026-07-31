@@ -240,6 +240,10 @@
           <div><label>محدودیت تعداد (خالی = نامحدود)</label><input type="number" id="gcMaxSupply"></div>
           <div><label>فعال؟</label><select id="gcActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
         </div>
+        <div class="row2">
+          <div><label>حداقل قدرت اختصاصی (خالی = بازهٔ کلی سطح)</label><input type="number" id="gcMinPower"></div>
+          <div><label>حداکثر قدرت اختصاصی (سقف مطلق، با تقویت هم رد نمی‌شه)</label><input type="number" id="gcMaxPower"></div>
+        </div>
         <h3 style="margin-top:16px;">عکس مخصوص هر سطح (اختیاری)</h3>
         <p class="muted">اگه هرکدوم رو خالی بذاری، همون عکس پیش‌فرض بالا نشون داده می‌شه.</p>
         <div id="levelImagesGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
@@ -1072,6 +1076,8 @@ function editGameCard(c) {
   document.getElementById('gcMaxSupply').value = c.max_supply || '';
   document.getElementById('gcActive').value = c.active ? '1' : '0';
   document.getElementById('gcCategory').value = c.category_id || '';
+  document.getElementById('gcMinPower').value = c.min_power ?? '';
+  document.getElementById('gcMaxPower').value = c.max_power ?? '';
   const preview = document.getElementById('gcImagePreview');
   if (c.image_url) { preview.src = c.image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
   let imgs = [];
@@ -1091,6 +1097,8 @@ async function saveGameCard() {
     active: document.getElementById('gcActive').value === '1',
     category_id: document.getElementById('gcCategory').value || null,
     level_images: LEVEL_IMAGES,
+    min_power: document.getElementById('gcMinPower').value || null,
+    max_power: document.getElementById('gcMaxPower').value || null,
   }) });
   document.getElementById('gcId').value = '';
   LEVEL_IMAGES = ['', '', '', '', '', '', ''];
