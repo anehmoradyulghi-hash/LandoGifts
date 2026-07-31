@@ -573,21 +573,23 @@
 
   <h3 class="sec">شارژ کیف‌پول</h3>
   <div class="card">
-    <label>مبلغ (تومان)</label>
-    <input type="number" id="topupAmount" placeholder="مثلا 100000" />
-    <button class="btn gold" id="zarinpalBtn" style="display:none;" onclick="doZarinpalTopup()">💳 پرداخت آنلاین (زرین‌پال)</button>
-    <div id="starsTopupBox" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
-      <p class="muted" style="margin:0 0 6px;">یا با تلگرام استارز (شارژ آنی ⚡):</p>
+    <div id="starsTopupBox" style="display:none;">
+      <p class="muted" style="margin:0 0 6px;">⚡ شارژ آنی با تلگرام استارز:</p>
       <input type="number" id="starsAmount" placeholder="تعداد استارز" />
       <div class="muted" id="starsToTomanHint" style="margin-bottom:8px;"></div>
       <button class="btn" style="background:linear-gradient(90deg,#ffd76b,#ff9f43);" onclick="doStarsTopup()">⭐ پرداخت با استارز</button>
     </div>
-    <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
-      <p class="muted" style="margin:0 0 6px;">یا کارت‌به‌کارت:</p>
-      <div class="muted" id="cardInfo"></div>
-      <label>کد رهگیری یا ۴ رقم آخر کارت</label>
-      <input type="text" id="topupTracking" />
-      <button class="btn secondary" onclick="doTopup()">ثبت درخواست شارژ کارت‌به‌کارت</button>
+    <div id="manualTopupBox" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+      <label>مبلغ (تومان)</label>
+      <input type="number" id="topupAmount" placeholder="مثلا 100000" />
+      <button class="btn gold" id="zarinpalBtn" style="display:none;" onclick="doZarinpalTopup()">💳 پرداخت آنلاین (زرین‌پال)</button>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+        <p class="muted" style="margin:0 0 6px;">یا کارت‌به‌کارت:</p>
+        <div class="muted" id="cardInfo"></div>
+        <label>کد رهگیری یا ۴ رقم آخر کارت</label>
+        <input type="text" id="topupTracking" />
+        <button class="btn secondary" onclick="doTopup()">ثبت درخواست شارژ کارت‌به‌کارت</button>
+      </div>
     </div>
   </div>
   <div class="card">
@@ -687,6 +689,7 @@
     <div class="menu-row" onclick="showMView('album')"><span class="mic">🎯</span><div class="mtxt"><div class="mt">آلبوم کلکسیون</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showMView('trade')"><span class="mic">🔄</span><div class="mtxt"><div class="mt">تبادل کارت</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showMView('avatars')"><span class="mic">🎨</span><div class="mtxt"><div class="mt">فروشگاه آواتار</div></div><span class="arrow">‹</span></div>
+    <div class="menu-row" onclick="showPage('tasks')"><span class="mic">✅</span><div class="mtxt"><div class="mt">تسک‌ها</div><div class="ms">انجام بده و جایزه بگیر</div></div><span class="arrow">‹</span></div>
     <h3 class="sec">اطلاعات</h3>
     <div class="menu-row" onclick="toast('به‌زودی...')"><span class="mic">📖</span><div class="mtxt"><div class="mt">راهنما</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="toast('به‌زودی...')"><span class="mic">❓</span><div class="mtxt"><div class="mt">سوالات متداول</div></div><span class="arrow">‹</span></div>
@@ -818,7 +821,7 @@ function showPage(name) {
   document.getElementById('page-' + name).classList.add('active');
   document.querySelectorAll('.navitem').forEach(b => b.classList.toggle('active', b.dataset.page === name));
   document.getElementById('headerTitle').textContent = PAGE_TITLES[name] || 'Lando Gifts';
-  document.getElementById('headerBackBtn').style.display = 'none';
+  document.getElementById('headerBackBtn').style.display = name === 'tasks' ? 'flex' : 'none';
   CURRENT_PAGE = name;
   window.scrollTo(0, 0);
   if (name === 'shop') loadShop();
@@ -828,6 +831,7 @@ function showPage(name) {
   if (name === 'profile') loadProfile();
   if (name === 'games') loadGamesHub();
   if (name === 'more') loadMoreHub();
+  if (name === 'tasks') loadTasks();
 }
 
 /* بازی‌ها: زیرصفحه‌ها */
@@ -864,6 +868,7 @@ function showMView(name) {
 function headerBack() {
   if (CURRENT_PAGE === 'games') showGView('hub');
   else if (CURRENT_PAGE === 'more') showMView('hub');
+  else if (CURRENT_PAGE === 'tasks') showPage('more');
   else showPage('games');
 }
 
@@ -1185,6 +1190,7 @@ async function loadTasks() {
     ? tasks.map((t, i) => `
       <div class="card" ${staggerStyle(i)}>
         <div class="row"><b>${t.title}</b><span class="tag">${t.reward_toman.toLocaleString()} ت</span></div>
+        ${t.kind === 'join_channel' && t.channel_username && !t.done ? `<button class="btn secondary" onclick="tg?.openTelegramLink ? tg.openTelegramLink('https://t.me/${t.channel_username.replace(/^@/, '')}') : window.open('https://t.me/${t.channel_username.replace(/^@/, '')}','_blank')">📢 عضویت تو کانال</button>` : ''}
         <button class="btn" ${t.done ? 'disabled' : ''} onclick="claimTask(${t.id})">${t.done ? 'انجام شده ✅' : 'انجام دادم'}</button>
       </div>`).join('')
     : 'فعلا تسکی نیست.';
@@ -1583,16 +1589,17 @@ async function leaveClanUI() { if (!confirm('مطمئنی؟')) return; await api
 async function donateClanUI() { await api('/api/clan/donate', { method: 'POST', body: JSON.stringify({ amount: Number(document.getElementById('donateAmount').value) }) }); toast('اهدا ثبت شد ✅'); loadMe(); loadClan(); }
 async function withdrawClanUI() {
   const amount = Number(document.getElementById('withdrawAmount').value);
-  if (!amount) return;
+  if (!amount || amount <= 0) { toast('یه مبلغ معتبر وارد کن'); return; }
   await api('/api/clan/withdraw', { method: 'POST', body: JSON.stringify({ amount }) });
   toast('مبلغ به کیف‌پولت برداشت شد ✅'); loadMe(); loadClan();
 }
 async function giftClanUI() {
   const targetTgId = document.getElementById('giftMemberSelect').value;
   const amount = Number(document.getElementById('giftAmount').value);
-  if (!targetTgId || !amount) return;
+  if (!targetTgId) { toast('یه عضو رو انتخاب کن'); return; }
+  if (!amount || amount <= 0) { toast('یه مبلغ معتبر وارد کن'); return; }
   await api('/api/clan/gift', { method: 'POST', body: JSON.stringify({ targetTgId, amount }) });
-  toast('هدیه ارسال شد ✅'); loadClan();
+  toast('هدیه ارسال شد ✅'); loadMe(); loadClan();
 }
 async function kickMemberUI(tgId) { if (!confirm('اخراج بشه؟')) return; await api('/api/clan/kick', { method: 'POST', body: JSON.stringify({ targetTgId: tgId }) }); loadClan(); }
 
