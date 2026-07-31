@@ -274,7 +274,7 @@
   .mkt-filterbar { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:10px; }
   .mkt-select { flex:none; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:8px 12px; font-size:12.5px; color:#fff; }
   .mkt-range-wrap { display:flex; align-items:center; gap:10px; margin-bottom:14px; font-size:12px; color:var(--muted); }
-  .mkt-range { position:relative; flex:1; height:22px; }
+  .mkt-range { position:relative; flex:1; height:22px; direction:ltr; }
   .mkt-range-track { position:absolute; top:9px; left:0; right:0; height:4px; border-radius:4px; background:var(--surface2); }
   .mkt-range-fill { position:absolute; top:9px; height:4px; border-radius:4px; background:linear-gradient(90deg,var(--p1),var(--b1)); box-shadow:0 0 8px rgba(168,85,247,.5); }
   .mkt-range input[type=range] { position:absolute; top:0; left:0; width:100%; margin:0; background:transparent; -webkit-appearance:none; pointer-events:none; }
@@ -506,8 +506,8 @@
       <div class="mkt-range">
         <div class="mkt-range-track"></div>
         <div class="mkt-range-fill" id="mktRangeFill"></div>
-        <input type="range" id="mktFrom" oninput="onMktRangeInput()">
-        <input type="range" id="mktTo" oninput="onMktRangeInput()">
+        <input type="range" id="mktFrom" oninput="onMktRangeInput('from')">
+        <input type="range" id="mktTo" oninput="onMktRangeInput('to')">
       </div>
       <span>تا</span>
     </div>
@@ -715,12 +715,17 @@
 
   <div class="view" id="mview-trade">
     <div class="card">
-      <h3 class="sec" style="margin-top:0;">پیشنهاد تبادل جدید</h3>
-      <label>آیدی عددی طرف مقابل</label><input type="number" id="tradeToTgId">
-      <label>کارت من (که می‌دم)</label><select id="tradeFromCard"></select>
-      <label>آیدی کارت طرف مقابل</label><input type="number" id="tradeToCardId">
-      <button class="btn" onclick="sendTradeOffer()">ارسال پیشنهاد</button>
+      <h3 class="sec" style="margin-top:0;">گذاشتن کارت رو تابلوی تبادل</h3>
+      <p class="muted">یکی از کارت‌های واجد شرایطت رو انتخاب کن تا بقیه ببیننش و باهات تبادل کنن.</p>
+      <select id="tradeMyCardToList"></select>
+      <label>یادداشت (اختیاری — مثلا چی می‌خوای بجاش)</label>
+      <input type="text" id="tradeListNote" placeholder="مثلا: دنبال یه کارت هم‌سطح می‌گردم">
+      <button class="btn" onclick="createTradeListingUI()">➕ گذاشتن رو تابلو</button>
     </div>
+    <h3 class="sec">آگهی‌های من</h3>
+    <div id="myTradeListings" class="muted">در حال بارگذاری...</div>
+    <h3 class="sec">تابلوی تبادل (کارت‌های بقیه)</h3>
+    <div id="tradeBoard" class="muted">در حال بارگذاری...</div>
     <h3 class="sec">پیشنهادهای دریافتی</h3>
     <div id="tradeIncoming" class="muted">در حال بارگذاری...</div>
     <h3 class="sec">پیشنهادهای ارسالی</h3>
@@ -1126,10 +1131,11 @@ async function loadMarket() {
       </div>`).join('')
     : 'آگهی‌ای ثبت نکردی.';
 }
-function onMktRangeInput() {
+function onMktRangeInput(which) {
   const fromEl = document.getElementById('mktFrom'), toEl = document.getElementById('mktTo');
   fromEl.dataset.touched = '1';
-  if (Number(fromEl.value) > Number(toEl.value)) { const tmp = fromEl.value; fromEl.value = toEl.value; toEl.value = tmp; }
+  if (which === 'from' && Number(fromEl.value) > Number(toEl.value)) fromEl.value = toEl.value;
+  if (which === 'to' && Number(toEl.value) < Number(fromEl.value)) toEl.value = fromEl.value;
   renderMarketGrid();
 }
 function renderMarketGrid() {
@@ -1415,6 +1421,15 @@ async function loadSeason() {
     <div class="bp-progress"><div class="bp-progress-fill" style="width:${tierPct}%;"></div></div>
     <div class="muted">${xpIntoTier} / ${progress.xpPerTier} XP تا تایر بعدی</div>
     ${!progress.purchasedPremium ? `<button class="btn gold" onclick="buySeasonPremium()">ارتقا به پریمیوم (${config.price_toman.toLocaleString()} ت)</button>` : '<div class="tag" style="margin-top:8px;">👑 پریمیوم فعاله</div>'}
+    ${config.tier_skip_price_toman > 0 && progress.currentTier < progress.tierCount ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+        <label>خرید تایر (رد کردن تایرهای پرنشده)</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="number" id="buyTierTarget" min="${progress.currentTier + 1}" max="${progress.tierCount}" value="${progress.currentTier + 1}" oninput="updateBuyTierCost(${config.tier_skip_price_toman}, ${progress.currentTier})" style="margin:0;">
+          <button class="btn secondary" style="width:auto;white-space:nowrap;" onclick="buySeasonTierUI()">خرید</button>
+        </div>
+        <div class="muted" id="buyTierCostHint">هزینه: ${config.tier_skip_price_toman.toLocaleString()} ت</div>
+      </div>` : ''}
   `;
   const fillPct = tiers.length > 1 ? Math.min(100, ((progress.currentTier - 1) / (tiers.length - 1)) * 100) : 0;
   document.getElementById('seasonTrack').innerHTML = `
@@ -1450,6 +1465,17 @@ async function loadSeason() {
   }, 50);
 }
 async function buySeasonPremium() { await api('/api/season/buy-premium', { method: 'POST' }); toast('پس پرمیوم فعال شد ✅'); loadMe(); loadSeason(); }
+function updateBuyTierCost(pricePerTier, currentTier) {
+  const target = Number(document.getElementById('buyTierTarget').value) || currentTier + 1;
+  const tiers = Math.max(1, target - currentTier);
+  document.getElementById('buyTierCostHint').textContent = `هزینه: ${(tiers * pricePerTier).toLocaleString()} ت (${tiers} تایر)`;
+}
+async function buySeasonTierUI() {
+  const targetTier = Number(document.getElementById('buyTierTarget').value);
+  if (!targetTier) return;
+  await api('/api/season/buy-tier', { method: 'POST', body: JSON.stringify({ targetTier }) });
+  toast('تایر خریداری شد ✅'); loadMe(); loadSeason();
+}
 async function claimSeasonTier(tier, track) { await api('/api/season/claim', { method: 'POST', body: JSON.stringify({ tier, track }) }); toast('جایزه گرفته شد 🎉'); loadMe(); loadSeason(); }
 
 /* ================= ماموریت روزانه ================= */
@@ -1527,7 +1553,7 @@ async function loadClan() {
         <label>اهدا به بانک کلن</label><input type="number" id="donateAmount">
         <button class="btn gold" onclick="donateClanUI()">اهدا کن</button>
         ${clan.myRole === 'owner' ? `
-        <div class="row" style="margin-top:6px;"><span class="muted">سهم اهدایی خودت (قابل برداشت)</span><b style="color:var(--gold);">${clan.myWithdrawableRemaining.toLocaleString()} ت</b></div>
+        <div class="row" style="margin-top:6px;"><span class="muted">موجودی قابل برداشت</span><b style="color:var(--gold);">${clan.myWithdrawableRemaining.toLocaleString()} ت</b></div>
         <label style="margin-top:10px;">برداشت از بانک کلن به کیف‌پول خودت</label><input type="number" id="withdrawAmount">
         <button class="btn secondary" onclick="withdrawClanUI()">برداشت</button>
         <label style="margin-top:10px;">هدیه از بانک کلن به یکی از اعضا</label>
@@ -1714,17 +1740,72 @@ async function loadAlbums() {
 async function claimAlbumUI(id) { await api(`/api/albums/${id}/claim`, { method: 'POST' }); toast('جایزه گرفته شد 🎉'); loadMe(); loadAlbums(); }
 
 /* ================= تبادل ================= */
+let MY_TRADABLE_CARDS = [];
 async function loadTrades() {
   const mine = await api('/api/game/my-cards');
-  document.getElementById('tradeFromCard').innerHTML = mine.map(c => `<option value="${c.id}">${c.name} — سطح ${c.level} (شناسه ${c.id})</option>`).join('');
+  const cfg = await api('/api/trade/config');
+  MY_TRADABLE_CARDS = mine.filter(c => c.level <= cfg.max_tradable_level);
+  const cardOptions = MY_TRADABLE_CARDS.length
+    ? MY_TRADABLE_CARDS.map(c => `<option value="${c.id}">${c.name} — سطح ${c.level} — قدرت ${c.power}</option>`).join('')
+    : '';
+  document.getElementById('tradeMyCardToList').innerHTML = cardOptions || '<option value="">کارت واجد شرایطی نداری</option>';
+
+  const myListings = await api('/api/trade/my-listings');
+  document.getElementById('myTradeListings').innerHTML = myListings.filter(l => l.status === 'open').length
+    ? myListings.filter(l => l.status === 'open').map(l => `
+      <div class="card" style="padding:10px 14px;">
+        <div class="row"><span><b>${l.name}</b>${l.note ? ` — <span class="muted">${l.note}</span>` : ''}</span>
+        <button class="btn danger" style="width:auto;" onclick="cancelTradeListingUI(${l.id})">لغو</button></div>
+      </div>`).join('')
+    : 'آگهی بازی رو تابلو نداری.';
+
+  const board = await api('/api/trade/board');
+  document.getElementById('tradeBoard').innerHTML = board.length
+    ? board.map(l => `
+      <div class="card">
+        ${l.image_url ? `<img src="${l.image_url}">` : ''}
+        <div class="row"><b>${l.name} (Lv${l.level})</b><span class="muted">${l.first_name || ''}</span></div>
+        ${l.note ? `<p class="muted">${l.note}</p>` : ''}
+        <button class="btn secondary" onclick="toggleOfferPicker(${l.id})">🔄 پیشنهاد بده</button>
+        <div id="offerPicker-${l.id}" style="display:none;margin-top:8px;">
+          <select id="offerCardSelect-${l.id}">${cardOptions || '<option value="">کارت واجد شرایطی نداری</option>'}</select>
+          <button class="btn gold" onclick="submitOfferOnListing(${l.id})">ارسال پیشنهاد</button>
+        </div>
+      </div>`).join('')
+    : '<div class="empty"><div class="eic">🔄</div>فعلا کارتی رو تابلو نیست.</div>';
+
   const { incoming, outgoing } = await api('/api/trade/my');
-  document.getElementById('tradeIncoming').innerHTML = incoming.length ? incoming.map(o => `<div class="card" style="padding:10px 14px;"><div class="row"><span>از کاربر ${o.from_tg_id}</span></div><div style="display:flex;gap:6px;margin-top:6px;"><button class="btn" onclick="respondTradeUI(${o.id},true)">قبول</button><button class="btn danger" onclick="respondTradeUI(${o.id},false)">رد</button></div></div>`).join('') : 'پیشنهادی نداری.';
-  document.getElementById('tradeOutgoing').innerHTML = outgoing.length ? outgoing.map(o => `<div class="card" style="padding:10px 14px;"><div class="row"><span>به کاربر ${o.to_tg_id}</span><button class="btn danger" style="width:auto;" onclick="cancelTradeUI(${o.id})">لغو</button></div></div>`).join('') : 'پیشنهادی نفرستادی.';
+  document.getElementById('tradeIncoming').innerHTML = incoming.length ? incoming.map(o => `
+    <div class="card" style="padding:10px 14px;">
+      <div class="row"><span>از ${o.fromUserName || 'کاربر ' + o.from_tg_id}</span></div>
+      <p class="muted">پیشنهاد: <b>${o.fromCardName}</b> ⇄ کارت تو: <b>${o.toCardName}</b></p>
+      <div style="display:flex;gap:6px;margin-top:6px;"><button class="btn" onclick="respondTradeUI(${o.id},true)">قبول</button><button class="btn danger" onclick="respondTradeUI(${o.id},false)">رد</button></div>
+    </div>`).join('') : 'پیشنهادی نداری.';
+  document.getElementById('tradeOutgoing').innerHTML = outgoing.length ? outgoing.map(o => `
+    <div class="card" style="padding:10px 14px;">
+      <div class="row"><span>به ${o.toUserName || 'کاربر ' + o.to_tg_id}</span><button class="btn danger" style="width:auto;" onclick="cancelTradeUI(${o.id})">لغو</button></div>
+      <p class="muted">پیشنهاد تو: <b>${o.fromCardName}</b> ⇄ کارت اون: <b>${o.toCardName}</b></p>
+    </div>`).join('') : 'پیشنهادی نفرستادی.';
 }
-async function sendTradeOffer() {
-  await api('/api/trade/create', { method: 'POST', body: JSON.stringify({ toTgId: document.getElementById('tradeToTgId').value, fromUserCardId: document.getElementById('tradeFromCard').value, toUserCardId: document.getElementById('tradeToCardId').value }) });
-  toast('پیشنهاد ارسال شد ✅'); loadMe(); loadTrades();
+function toggleOfferPicker(listingId) {
+  const el = document.getElementById('offerPicker-' + listingId);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
+async function submitOfferOnListing(listingId) {
+  const fromUserCardId = document.getElementById('offerCardSelect-' + listingId).value;
+  if (!fromUserCardId) { toast('کارت واجد شرایطی نداری'); return; }
+  await api('/api/trade/offer-on-listing', { method: 'POST', body: JSON.stringify({ listingId, fromUserCardId }) });
+  toast('پیشنهادت ارسال شد ✅'); loadTrades();
+}
+async function createTradeListingUI() {
+  const userCardId = document.getElementById('tradeMyCardToList').value;
+  if (!userCardId) { toast('کارت واجد شرایطی نداری'); return; }
+  const note = document.getElementById('tradeListNote').value;
+  await api('/api/trade/list', { method: 'POST', body: JSON.stringify({ userCardId, note }) });
+  document.getElementById('tradeListNote').value = '';
+  toast('رو تابلو گذاشته شد ✅'); loadTrades();
+}
+async function cancelTradeListingUI(id) { await api(`/api/trade/listing/${id}/cancel`, { method: 'POST' }); loadTrades(); }
 async function respondTradeUI(id, accept) { await api(`/api/trade/${id}/respond`, { method: 'POST', body: JSON.stringify({ accept }) }); toast(accept ? 'تبادل انجام شد ✅' : 'رد شد'); loadMe(); loadTrades(); loadMyCards(); }
 async function cancelTradeUI(id) { await api(`/api/trade/${id}/cancel`, { method: 'POST' }); loadTrades(); }
 
