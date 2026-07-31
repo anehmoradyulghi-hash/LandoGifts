@@ -94,6 +94,8 @@
           <div><label>حداقل واریز</label><input type="number" id="curMinDep"></div>
           <div><label>حداقل برداشت</label><input type="number" id="curMinWd"></div>
         </div>
+        <label>آدرس/شمارهٔ واریز (چیزی که کاربر باید واریز کنه)</label>
+        <input id="curDepositAddress" placeholder="مثلا آدرس کیف‌پول یا شمارهٔ حساب">
         <button class="btn" onclick="saveCurrency()">ذخیره</button>
       </div>
       <div id="currenciesTable"></div>
@@ -778,9 +780,19 @@ async function loadDash() {
 async function loadCurrencies() {
   const rows = await api('/currencies');
   document.getElementById('currenciesTable').innerHTML = `
-    <table><tr><th>کد</th><th>نام</th><th>نرخ (تومان)</th><th>فعال</th></tr>
-    ${rows.map(c => `<tr><td>${c.code}</td><td>${c.name}</td><td>${c.rate_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td></tr>`).join('')}
+    <table><tr><th>کد</th><th>نام</th><th>نرخ (تومان)</th><th>آدرس واریز</th><th>فعال</th><th></th></tr>
+    ${rows.map(c => `<tr><td>${c.code}</td><td>${c.name}</td><td>${c.rate_toman.toLocaleString()}</td><td>${c.deposit_address || '—'}</td><td>${c.active ? '✅' : '❌'}</td>
+      <td><button class="btn secondary" onclick='editCurrency(${JSON.stringify(c)})'>ویرایش</button></td></tr>`).join('')}
     </table>`;
+}
+function editCurrency(c) {
+  document.getElementById('curCode').value = c.code;
+  document.getElementById('curName').value = c.name;
+  document.getElementById('curRate').value = c.rate_toman;
+  document.getElementById('curMinDep').value = c.min_deposit;
+  document.getElementById('curMinWd').value = c.min_withdraw;
+  document.getElementById('curActive').value = c.active ? '1' : '0';
+  document.getElementById('curDepositAddress').value = c.deposit_address || '';
 }
 async function saveCurrency() {
   await api('/currencies', { method: 'POST', body: JSON.stringify({
@@ -790,6 +802,7 @@ async function saveCurrency() {
     min_deposit: document.getElementById('curMinDep').value,
     min_withdraw: document.getElementById('curMinWd').value,
     active: document.getElementById('curActive').value === '1',
+    deposit_address: document.getElementById('curDepositAddress').value,
   }) });
   loadCurrencies();
 }
@@ -1396,7 +1409,8 @@ async function loadUsers() {
     <table><tr><th>آیدی</th><th>نام</th><th>موجودی</th><th>مسدود؟</th><th>عملیات</th></tr>
     ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString()}</td><td>${u.is_banned ? '🚫' : '-'}</td>
       <td>
-        <button class="btn secondary" onclick="adjustBalance(${u.tg_id})">اصلاح موجودی</button>
+        <button class="btn secondary" onclick="adjustBalance(${u.tg_id})">اصلاح موجودی تومان</button>
+        <button class="btn secondary" onclick="adjustCurrencyBalanceUI(${u.tg_id})">اصلاح موجودی ارزی</button>
         <button class="btn secondary" onclick="messageUser(${u.tg_id})">پیام</button>
         ${u.is_banned ? `<button class="btn" onclick="unbanUser(${u.tg_id})">رفع مسدودی</button>` : `<button class="btn danger" onclick="banUser(${u.tg_id})">مسدود کن</button>`}
       </td></tr>`).join('')}
@@ -1407,6 +1421,15 @@ async function adjustBalance(tgId) {
   if (!amount) return;
   await api(`/users/${tgId}/adjust-balance`, { method: 'POST', body: JSON.stringify({ amount: Number(amount) }) });
   loadUsers();
+}
+async function adjustCurrencyBalanceUI(tgId) {
+  const currencies = await api('/currencies');
+  const code = prompt('کد ارز (' + currencies.map(c => c.code).join('، ') + '):');
+  if (!code) return;
+  const amount = prompt('مقدار (منفی برای کسر):');
+  if (!amount) return;
+  await api(`/users/${tgId}/adjust-currency`, { method: 'POST', body: JSON.stringify({ code, amount: Number(amount) }) });
+  alert('انجام شد');
 }
 async function banUser(tgId) {
   const reason = prompt('دلیل مسدودی (اختیاری):') || '';
