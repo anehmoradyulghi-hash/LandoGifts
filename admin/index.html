@@ -455,6 +455,7 @@
           <div><label>XP هر خرید</label><input type="number" id="seaXpPurchase"></div>
         </div>
         <label>XP هر اهدا به کلن</label><input type="number" id="seaXpDonation">
+        <label>قیمت خرید هر تایر (تومان) — صفر یعنی خرید تایر غیرفعال</label><input type="number" id="seaTierSkipPrice">
         <button class="btn" onclick="saveSeasonConfig()">ذخیره تنظیمات</button>
         <button class="btn danger" onclick="startNewSeasonUI()">شروع فصل جدید (ریست کامل)</button>
       </div>
@@ -1503,6 +1504,7 @@ async function loadSeasonAdmin() {
   document.getElementById('seaXpWin').value = cfg.xp_per_win;
   document.getElementById('seaXpPurchase').value = cfg.xp_per_purchase;
   document.getElementById('seaXpDonation').value = cfg.xp_per_donation;
+  document.getElementById('seaTierSkipPrice').value = cfg.tier_skip_price_toman;
 
   const tiers = await api('/season/tiers');
   document.getElementById('seasonTiersTable').innerHTML = tiers.length ? `
@@ -1521,6 +1523,7 @@ async function saveSeasonConfig() {
     xp_per_win: document.getElementById('seaXpWin').value,
     xp_per_purchase: document.getElementById('seaXpPurchase').value,
     xp_per_donation: document.getElementById('seaXpDonation').value,
+    tier_skip_price_toman: document.getElementById('seaTierSkipPrice').value,
   }) });
   alert('ذخیره شد');
 }
