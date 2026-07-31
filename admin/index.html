@@ -167,7 +167,22 @@
     </section>
 
     <section class="tab" id="tab-orders"><div id="ordersTable"></div></section>
-    <section class="tab" id="tab-gifts"><div id="giftsTable"></div></section>
+    <section class="tab" id="tab-gifts">
+      <div class="card">
+        <h3>دسته‌بندی‌های بازار گیفت</h3>
+        <p class="muted">فروشنده‌ها موقع ثبت آگهی فقط از بین همین دسته‌ها انتخاب می‌کنن (نه متن آزاد).</p>
+        <input type="hidden" id="gcatId">
+        <label>اسم دسته</label><input id="gcatName" placeholder="مثلا Lunar Snake">
+        <label>عکس پیش‌فرض (اختیاری)</label>
+        <input type="file" id="gcatImageFile" accept="image/*" onchange="uploadImageTo('gcatImageFile','gcatImage','gcatImagePreview')">
+        <input type="hidden" id="gcatImage">
+        <img id="gcatImagePreview" style="max-width:100px;border-radius:8px;display:none;margin-bottom:8px;">
+        <select id="gcatActive"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <button class="btn" onclick="saveGiftCategory()">ذخیره دسته</button>
+      </div>
+      <div id="giftCategoriesTable"></div>
+      <div id="giftsTable"></div>
+    </section>
 
     <section class="tab" id="tab-tasks">
       <div class="card">
@@ -190,6 +205,11 @@
     </section>
 
     <section class="tab" id="tab-gamecards">
+      <div class="card">
+        <h3>بازهٔ قدرت هر سطح (۱ تا ۷)</h3>
+        <p class="muted">وقتی کارتی ساخته می‌شه یا جهش پیدا می‌کنه، قدرتش تصادفی از همین بازه انتخاب می‌شه (به‌جای فرمول ثابت).</p>
+        <div id="levelPowerTable"></div>
+      </div>
       <div class="card">
         <h3>افزودن / ویرایش کارت بازی</h3>
         <input type="hidden" id="gcId">
@@ -912,6 +932,7 @@ async function setOrderStatus(id, status) { await api(`/orders/${id}/status`, { 
 
 /* ---------- بازار گیفت ---------- */
 async function loadGifts() {
+  await loadGiftCategories();
   const rows = await api('/gift-offers');
   document.getElementById('giftsTable').innerHTML = `
     <table><tr><th>فروشنده</th><th>خریدار</th><th>عنوان</th><th>قیمت</th><th>وضعیت</th><th>عملیات</th></tr>
@@ -920,6 +941,38 @@ async function loadGifts() {
     </table>`;
 }
 async function refundGift(id) { if (confirm('مبلغ به خریدار برگرده؟')) { await api(`/gift-offers/${id}/refund`, { method: 'POST' }); loadGifts(); } }
+
+async function loadGiftCategories() {
+  const rows = await api('/gift-categories');
+  document.getElementById('giftCategoriesTable').innerHTML = rows.length ? `
+    <table><tr><th>اسم</th><th>فعال</th><th>عملیات</th></tr>
+    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.active ? '✅' : '❌'}</td>
+      <td><button class="btn secondary" onclick='editGiftCategory(${JSON.stringify(c)})'>ویرایش</button>
+      <button class="btn danger" onclick="deleteGiftCategoryUI(${c.id})">حذف</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">هنوز دسته‌ای نساختی — تا وقتی نسازی، فروشنده‌ها می‌تونن هر عنوانی تایپ کنن.</p>';
+}
+function editGiftCategory(c) {
+  document.getElementById('gcatId').value = c.id;
+  document.getElementById('gcatName').value = c.name;
+  document.getElementById('gcatImage').value = c.image_url || '';
+  document.getElementById('gcatActive').value = c.active ? '1' : '0';
+  const preview = document.getElementById('gcatImagePreview');
+  if (c.image_url) { preview.src = c.image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+}
+async function saveGiftCategory() {
+  await api('/gift-categories', { method: 'POST', body: JSON.stringify({
+    id: document.getElementById('gcatId').value || null,
+    name: document.getElementById('gcatName').value,
+    image_url: document.getElementById('gcatImage').value,
+    active: document.getElementById('gcatActive').value === '1',
+  }) });
+  document.getElementById('gcatId').value = '';
+  document.getElementById('gcatName').value = '';
+  document.getElementById('gcatImage').value = '';
+  document.getElementById('gcatImagePreview').style.display = 'none';
+  loadGiftCategories();
+}
+async function deleteGiftCategoryUI(id) { if (confirm('این دسته حذف بشه؟')) { await api(`/gift-categories/${id}`, { method: 'DELETE' }); loadGiftCategories(); } }
 
 /* ---------- تسک‌ها ---------- */
 async function loadTasks() {
@@ -986,6 +1039,7 @@ async function loadCategoryOptions(selectId) {
 async function loadGameCards() {
   await loadCategoryOptions('gcCategory');
   renderLevelImageGrid();
+  await loadLevelPowerTable();
   const rows = (await api('/game/cards')).filter(c => c.instant_level !== 7);
   document.getElementById('gameCardsTable').innerHTML = rows.length ? `
     <table><tr><th>اسم</th><th>قدرت پایه</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
@@ -1030,6 +1084,27 @@ async function saveGameCard() {
   loadGameCards();
 }
 async function deleteGameCard(id) { if (confirm('حذف بشه؟')) { await api(`/game/cards/${id}`, { method: 'DELETE' }); loadGameCards(); } }
+
+/* ---------- بازهٔ قدرت هر سطح ---------- */
+async function loadLevelPowerTable() {
+  const rows = await api('/game/level-power');
+  document.getElementById('levelPowerTable').innerHTML = rows.map(r => `
+    <div class="row2" style="align-items:center;">
+      <div><label>سطح ${r.level}</label></div>
+      <div style="display:flex;gap:6px;">
+        <input type="number" id="lp-min-${r.level}" value="${r.min_power}" placeholder="حداقل">
+        <input type="number" id="lp-max-${r.level}" value="${r.max_power}" placeholder="حداکثر">
+      </div>
+    </div>`).join('') + `<button class="btn secondary" onclick="saveLevelPowerTable()">ذخیرهٔ بازه‌ها</button>`;
+}
+async function saveLevelPowerTable() {
+  for (let level = 1; level <= 7; level++) {
+    const minEl = document.getElementById(`lp-min-${level}`), maxEl = document.getElementById(`lp-max-${level}`);
+    if (!minEl) continue;
+    await api('/game/level-power', { method: 'POST', body: JSON.stringify({ level, min_power: minEl.value, max_power: maxEl.value }) });
+  }
+  alert('ذخیره شد');
+}
 
 /* ---------- کارت‌های ویژه (لول ۷ / الهی) ---------- */
 async function loadSpecialCards() {
