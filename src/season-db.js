@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS season_config (
   xp_per_tier INTEGER NOT NULL DEFAULT 100,
   xp_per_win INTEGER NOT NULL DEFAULT 20,
   xp_per_purchase INTEGER NOT NULL DEFAULT 10,
-  xp_per_donation INTEGER NOT NULL DEFAULT 15
+  xp_per_donation INTEGER NOT NULL DEFAULT 15,
+  tier_skip_price_toman INTEGER NOT NULL DEFAULT 0
 );
 INSERT OR IGNORE INTO season_config (id) VALUES (1);
 
@@ -47,12 +48,17 @@ CREATE TABLE IF NOT EXISTS season_tier_claims (
 );
 `);
 
+function safeAddColumn(table, columnDef) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
+  catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+}
+safeAddColumn('season_config', 'tier_skip_price_toman INTEGER NOT NULL DEFAULT 0');
 export function getSeasonConfig() { return db.prepare('SELECT * FROM season_config WHERE id = 1').get(); }
 export function setSeasonConfig(c) {
   db.prepare(`
-    UPDATE season_config SET enabled=?, price_toman=?, duration_days=?, tier_count=?, xp_per_tier=?, xp_per_win=?, xp_per_purchase=?, xp_per_donation=?
+    UPDATE season_config SET enabled=?, price_toman=?, duration_days=?, tier_count=?, xp_per_tier=?, xp_per_win=?, xp_per_purchase=?, xp_per_donation=?, tier_skip_price_toman=?
     WHERE id = 1
-  `).run(c.enabled ? 1 : 0, c.price_toman, c.duration_days, c.tier_count, c.xp_per_tier, c.xp_per_win, c.xp_per_purchase, c.xp_per_donation);
+  `).run(c.enabled ? 1 : 0, c.price_toman, c.duration_days, c.tier_count, c.xp_per_tier, c.xp_per_win, c.xp_per_purchase, c.xp_per_donation, c.tier_skip_price_toman || 0);
 }
 
 export function getCurrentSeason() { return db.prepare('SELECT * FROM current_season WHERE id = 1').get(); }
@@ -117,6 +123,27 @@ export function purchasePremiumPass(tgId) {
   if (!user || user.balance_toman < cfg.price_toman) throw new Error('موجودی کافی نیست');
   adjustToman(tgId, -cfg.price_toman, 'خرید بتل‌پس پرمیوم فصلی');
   db.prepare('UPDATE user_season SET purchased_premium = 1 WHERE tg_id = ?').run(tgId);
+}
+
+// خرید تایرهای پرنشده (skip) با تومان — کاربر می‌تونه بدون بازی کردن مستقیم به یه تایر جلوتر بپره
+export function buySeasonTiers(tgId, targetTier) {
+  const cfg = getSeasonConfig();
+  if (!cfg.enabled) throw new Error('فصل فعلا فعال نیست');
+  if (!cfg.tier_skip_price_toman) throw new Error('خرید تایر توسط ادمین فعال نشده');
+  const progress = getUserSeasonProgress(tgId);
+  const target = Math.min(cfg.tier_count, Math.max(1, Number(targetTier)));
+  if (target <= progress.currentTier) throw new Error('به این تایر که قبلا رسیدی');
+  const tiersToSkip = target - progress.currentTier;
+  const cost = tiersToSkip * cfg.tier_skip_price_toman;
+  const user = getUser(tgId);
+  if (!user || user.balance_toman < cost) throw new Error('موجودی کافی نیست');
+  const neededXp = (target - 1) * cfg.xp_per_tier;
+  const tx = db.transaction(() => {
+    adjustToman(tgId, -cost, `خرید ${tiersToSkip} تایر بتل‌پس`);
+    db.prepare('UPDATE user_season SET xp = MAX(xp, ?) WHERE tg_id = ?').run(neededXp, tgId);
+  });
+  tx();
+  return { cost, newTier: target };
 }
 
 // دریافت جایزه یه تایر (رایگان یا پرمیوم)

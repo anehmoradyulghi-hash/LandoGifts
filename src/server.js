@@ -36,7 +36,7 @@ import {
 } from './auction-db.js';
 import {
   getSeasonConfig, getCurrentSeason, checkAutoResetSeason, listSeasonTiers,
-  getUserSeasonProgress, purchasePremiumPass, claimSeasonTierReward, addSeasonXp,
+  getUserSeasonProgress, purchasePremiumPass, claimSeasonTierReward, addSeasonXp, buySeasonTiers,
 } from './season-db.js';
 import {
   getClanConfig, getMyClan, getClanMembers, searchClans, getClanLeaderboard, getClanRank,
@@ -57,7 +57,10 @@ import { redeemPromoCode } from './promo-db.js';
 import { listAlbums, getAlbumProgress, claimAlbumReward } from './album-db.js';
 import { getGiftConfig, giftToman, giftCard, getRemainingCardGifts } from './gift-db.js';
 import { checkExpiredSeasons } from './seasonal-db.js';
-import { getTradeConfig, createTradeOffer, respondTradeOffer, cancelTradeOffer, listMyTradeOffers } from './trade-db.js';
+import {
+  getTradeConfig, createTradeOffer, respondTradeOffer, cancelTradeOffer, listMyTradeOffers,
+  createTradeListing, cancelTradeListing, listOpenTradeListings, getMyTradeListings, createTradeOfferFromListing, getTradeListing,
+} from './trade-db.js';
 import adminApi from './admin-api.js';
 
 // بعضی سرورها (مثل این VPS) IPv6 خراب/فیلتر شده دارن ولی IPv4‌شون سالمه. بدون این خط،
@@ -523,6 +526,10 @@ app.post('/api/season/claim', requireTelegramAuth, (req, res) => {
   try { res.json({ ok: true, ...claimSeasonTierReward(req.dbUser.tg_id, Number(req.body.tier), req.body.track) }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
+app.post('/api/season/buy-tier', requireTelegramAuth, (req, res) => {
+  try { res.json({ ok: true, ...buySeasonTiers(req.dbUser.tg_id, Number(req.body.targetTier)) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 
 /* =========================================================================
  * سیستم کلن
@@ -697,6 +704,25 @@ app.post('/api/gift/card', requireTelegramAuth, (req, res) => {
  * ========================================================================= */
 app.get('/api/trade/config', (req, res) => res.json(getTradeConfig()));
 app.get('/api/trade/my', requireTelegramAuth, (req, res) => res.json(listMyTradeOffers(req.dbUser.tg_id)));
+app.get('/api/trade/board', requireTelegramAuth, (req, res) => res.json(listOpenTradeListings(req.dbUser.tg_id)));
+app.get('/api/trade/my-listings', requireTelegramAuth, (req, res) => res.json(getMyTradeListings(req.dbUser.tg_id)));
+app.post('/api/trade/list', requireTelegramAuth, (req, res) => {
+  try { const id = createTradeListing(req.dbUser.tg_id, Number(req.body.userCardId), req.body.note); res.json({ ok: true, id }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/trade/listing/:id/cancel', requireTelegramAuth, (req, res) => {
+  try { cancelTradeListing(req.dbUser.tg_id, Number(req.params.id)); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/trade/offer-on-listing', requireTelegramAuth, (req, res) => {
+  try {
+    const listingId = Number(req.body.listingId);
+    const listing = getTradeListing(listingId);
+    const id = createTradeOfferFromListing(req.dbUser.tg_id, listingId, Number(req.body.fromUserCardId));
+    if (listing) sendMessage(listing.tg_id, `🔄 ${req.dbUser.first_name || 'یه کاربر'} رو یکی از آگهی‌های تبادل کارتت پیشنهاد داد!`).catch(() => {});
+    res.json({ ok: true, id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.post('/api/trade/create', requireTelegramAuth, (req, res) => {
   try {
     const id = createTradeOffer(req.dbUser.tg_id, Number(req.body.toTgId), Number(req.body.fromUserCardId), Number(req.body.toUserCardId));
