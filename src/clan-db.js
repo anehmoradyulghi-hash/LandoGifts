@@ -52,6 +52,13 @@ CREATE TABLE IF NOT EXISTS clan_state (
 INSERT OR IGNORE INTO clan_state (id) VALUES (1);
 `);
 
+function safeAddColumn(table, columnDef) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
+  catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+}
+// چقدر از سهم اهدایی خودش رو تا الان برداشت/هدیه داده — برای اینکه بیشتر از مشارکت خودش نتونه برداره
+safeAddColumn('clan_members', 'withdrawn_total INTEGER NOT NULL DEFAULT 0');
+
 export function getClanConfig() { return db.prepare('SELECT * FROM clan_config WHERE id = 1').get(); }
 export function setClanConfig(c) {
   db.prepare(`
@@ -66,7 +73,7 @@ export function getMyClan(tgId) {
   const member = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
   if (!member) return null;
   const clan = db.prepare('SELECT * FROM clans WHERE id = ?').get(member.clan_id);
-  return clan ? { ...clan, myRole: member.role, myDonatedTotal: member.donated_total } : null;
+  return clan ? { ...clan, myRole: member.role, myDonatedTotal: member.donated_total, myWithdrawnTotal: member.withdrawn_total, myWithdrawableRemaining: member.donated_total - member.withdrawn_total } : null;
 }
 export function getClanById(id) { return db.prepare('SELECT * FROM clans WHERE id = ?').get(id); }
 export function getClanMembers(clanId) {
@@ -171,20 +178,24 @@ export function donateToClan(tgId, amount) {
   tx();
 }
 
-// رهبر کلن می‌تونه از بانک کلن (پول‌هایی که اعضا اهدا کردن) برداشت کنه به کیف‌پول خودش
+// رهبر کلن می‌تونه از بانک کلن (پول‌هایی که اعضا اهدا کردن) برداشت کنه به کیف‌پول خودش —
+// ولی نهایتا فقط به اندازهٔ سهمی که خودش اهدا کرده (منهای چیزی که قبلا برداشته)، نه کل دارایی کلن
 export function withdrawFromClanBank(ownerTgId, amount) {
   const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
   if (!owner || owner.role !== 'owner') throw new Error('فقط رهبر کلن می‌تونه از بانک کلن برداشت کنه');
   if (!amount || amount <= 0) throw new Error('مبلغ نامعتبره');
   const clan = getClanById(owner.clan_id);
   if (!clan || clan.bank_balance < amount) throw new Error('موجودی بانک کلن کافی نیست');
+  const remaining = owner.donated_total - owner.withdrawn_total;
+  if (amount > remaining) throw new Error(`فقط به اندازهٔ سهم اهدایی خودت (${remaining.toLocaleString()} تومان) می‌تونی برداشت کنی`);
   const tx = db.transaction(() => {
     db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
+    db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
     adjustToman(ownerTgId, amount, `برداشت از بانک کلن «${clan.name}»`);
   });
   tx();
 }
-// رهبر کلن می‌تونه از بانک کلن مستقیم به یکی از اعضا هدیه بده
+// رهبر کلن می‌تونه از بانک کلن مستقیم به یکی از اعضا هدیه بده — همون سقف سهم اهدایی خودش اینجا هم صدق می‌کنه
 export function giftFromClanBank(ownerTgId, targetTgId, amount) {
   const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
   if (!owner || owner.role !== 'owner') throw new Error('فقط رهبر کلن می‌تونه از بانک کلن هدیه بده');
@@ -193,8 +204,11 @@ export function giftFromClanBank(ownerTgId, targetTgId, amount) {
   if (!target || target.clan_id !== owner.clan_id) throw new Error('این کاربر تو کلن تو نیست');
   const clan = getClanById(owner.clan_id);
   if (!clan || clan.bank_balance < amount) throw new Error('موجودی بانک کلن کافی نیست');
+  const remaining = owner.donated_total - owner.withdrawn_total;
+  if (amount > remaining) throw new Error(`فقط به اندازهٔ سهم اهدایی خودت (${remaining.toLocaleString()} تومان) می‌تونی هدیه بدی`);
   const tx = db.transaction(() => {
     db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
+    db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
     adjustToman(targetTgId, amount, `هدیه از بانک کلن «${clan.name}»`);
   });
   tx();

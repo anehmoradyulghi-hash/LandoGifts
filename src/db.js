@@ -175,6 +175,31 @@ function safeAddColumn(table, columnDef) {
 }
 safeAddColumn('gift_offers', 'serial_number TEXT'); // شماره سریال/مدل واقعی گیفت (اختیاری)
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS gift_categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
+safeAddColumn('gift_categories', 'image_url TEXT');
+export function listGiftCategories(onlyActive = false) {
+  return onlyActive
+    ? db.prepare('SELECT * FROM gift_categories WHERE active = 1 ORDER BY name ASC').all()
+    : db.prepare('SELECT * FROM gift_categories ORDER BY id DESC').all();
+}
+export function upsertGiftCategory(c) {
+  if (c.id) {
+    db.prepare('UPDATE gift_categories SET name=?, image_url=?, active=? WHERE id=?')
+      .run(c.name, c.image_url || null, c.active ? 1 : 0, c.id);
+    return c.id;
+  }
+  return db.prepare('INSERT INTO gift_categories (name, image_url, active) VALUES (?,?,?)')
+    .run(c.name, c.image_url || null, c.active === false ? 0 : 1).lastInsertRowid;
+}
+export function deleteGiftCategory(id) { db.prepare('DELETE FROM gift_categories WHERE id = ?').run(id); }
+
 // چند ارز پیش‌فرض (غیرفعال تا ادمین نرخشون رو دستی ثبت کنه)
 const seedCurrency = db.prepare(`INSERT OR IGNORE INTO currencies (code, name, rate_toman, min_deposit, min_withdraw, active) VALUES (?,?,?,?,?,0)`);
 seedCurrency.run('USDT', 'تتر', 0, 1, 1);
@@ -418,6 +443,11 @@ export function setOrderStatus(id, status) { db.prepare('UPDATE orders SET statu
  * GIFT MARKET — بازار امانی گیفت‌های واقعی بین کاربران
  * ========================================================================= */
 export function createGiftOffer(sellerTgId, title, imageUrl, priceToman, serialNumber) {
+  // اگه ادمین دسته‌بندی تعریف کرده باشه، عنوان آگهی باید دقیقا یکی از همون‌ها باشه (نه متن آزاد)
+  const categories = listGiftCategories(true);
+  if (categories.length && !categories.some(c => c.name === title)) {
+    throw new Error('این دسته‌بندی معتبر نیست — یکی از دسته‌های موجود رو انتخاب کن');
+  }
   return db.prepare(`INSERT INTO gift_offers (seller_tg_id, title, image_url, price_toman, serial_number) VALUES (?,?,?,?,?)`)
     .run(sellerTgId, title, imageUrl || null, priceToman, serialNumber || null).lastInsertRowid;
 }

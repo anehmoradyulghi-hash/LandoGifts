@@ -17,10 +17,12 @@ import {
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
   getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact,
+  listGiftCategories, upsertGiftCategory, deleteGiftCategory,
   getMessageSettings, setMessageSettings, getAllUserIds,
 } from './db.js';
 import {
   listGameCards, upsertGameCard, deleteGameCard, grantCardInstance,
+  getCardLevelPowerConfig, setCardLevelPower,
   getGameConfig, setGameConfig,
   listLeaderboardPrizes, upsertLeaderboardPrize, deleteLeaderboardPrize,
   getLeaderboard, getLeaderboardState, resetLeaderboard,
@@ -228,6 +230,18 @@ router.post('/products', (req, res) => {
 });
 router.delete('/products/:id', (req, res) => { deleteProduct(Number(req.params.id)); res.json({ ok: true }); });
 
+/* ---------- دسته‌بندی‌های بازار گیفت ---------- */
+router.get('/gift-categories', (req, res) => res.json(listGiftCategories(false)));
+router.post('/gift-categories', (req, res) => {
+  if (!req.body.name) return res.status(400).json({ error: 'اسم دسته لازمه' });
+  const id = upsertGiftCategory({
+    id: req.body.id ? Number(req.body.id) : null,
+    name: req.body.name, image_url: req.body.image_url, active: req.body.active !== false,
+  });
+  res.json({ ok: true, id });
+});
+router.delete('/gift-categories/:id', (req, res) => { deleteGiftCategory(Number(req.params.id)); res.json({ ok: true }); });
+
 /* ---------- سفارش‌ها ---------- */
 router.get('/orders', (req, res) => res.json(listAllOrders()));
 router.post('/orders/:id/status', (req, res) => {
@@ -318,6 +332,13 @@ router.post('/game/cards', (req, res) => {
 router.delete('/game/cards/:id', (req, res) => { deleteGameCard(Number(req.params.id)); res.json({ ok: true }); });
 router.post('/game/cards/:id/grant', (req, res) => {
   try { const userCardId = grantCardInstance(Number(req.body.tgId), Number(req.params.id)); res.json({ ok: true, userCardId }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+/* ---------- بازهٔ قدرت هر سطح (۱ تا ۷) ---------- */
+router.get('/game/level-power', (req, res) => res.json(getCardLevelPowerConfig()));
+router.post('/game/level-power', (req, res) => {
+  try { setCardLevelPower(Number(req.body.level), req.body.min_power, req.body.max_power); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 

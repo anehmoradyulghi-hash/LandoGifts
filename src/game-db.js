@@ -57,8 +57,37 @@ safeAddColumn('game_cards', "level_images TEXT DEFAULT '[]'"); // آرایه JSO
 safeAddColumn('game_cards', "edition TEXT DEFAULT 'standard'"); // standard | shiny | gold
 safeAddColumn('game_cards', 'max_supply INTEGER'); // خالی = نامحدود
 safeAddColumn('user_cards', 'bonus_power INTEGER NOT NULL DEFAULT 0'); // از روش «تقویت/قربانی» میاد، سطح رو عوض نمی‌کنه
+safeAddColumn('user_cards', 'rolled_power INTEGER'); // قدرت واقعی که موقع ساخت/ارتقای سطح، تصادفی از بازهٔ همون سطح انتخاب شده
 safeAddColumn('game_cards', 'instant_level INTEGER'); // اگه ست بشه (مثلا ۷)، هر کارتی که از این تمپلیت ساخته می‌شه از همون سطح شروع می‌شه (کارت ویژه/اختصاصی)
 safeAddColumn('game_cards', 'fixed_power INTEGER'); // اگه ست بشه، به‌جای فرمول سطح‌محور، همین قدرت اختصاصی استفاده می‌شه
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS card_level_power (
+  level INTEGER PRIMARY KEY,
+  min_power INTEGER NOT NULL,
+  max_power INTEGER NOT NULL
+);
+`);
+// بازهٔ پیش‌فرض قدرت هر سطح (اگه ادمین قبلا چیزی ست نکرده باشه) — قابل تغییر کامل از پنل ادمین
+const seedLevelPower = db.prepare('INSERT OR IGNORE INTO card_level_power (level, min_power, max_power) VALUES (?,?,?)');
+[[1,8,14],[2,14,22],[3,22,32],[4,32,45],[5,45,60],[6,60,80],[7,80,110]].forEach(([lvl,mn,mx]) => seedLevelPower.run(lvl,mn,mx));
+
+export function getCardLevelPowerConfig() {
+  return db.prepare('SELECT * FROM card_level_power ORDER BY level ASC').all();
+}
+export function setCardLevelPower(level, minPower, maxPower) {
+  const mn = Number(minPower), mx = Number(maxPower);
+  if (mn > mx) throw new Error('حداقل نمی‌تونه از حداکثر بیشتر باشه');
+  db.prepare(`
+    INSERT INTO card_level_power (level, min_power, max_power) VALUES (?,?,?)
+    ON CONFLICT(level) DO UPDATE SET min_power = excluded.min_power, max_power = excluded.max_power
+  `).run(level, mn, mx);
+}
+function rollPowerForLevel(level) {
+  const range = db.prepare('SELECT * FROM card_level_power WHERE level = ?').get(level);
+  if (!range) return null;
+  return Math.round(range.min_power + Math.random() * (range.max_power - range.min_power));
+}
 
 // سیستم سطح‌بندی ثابت ۷ تایی: سطح = ریرتی. هر کارتی که تو دیتابیس max_level متفاوتی داره
 // (مثلا از نسخه‌های قبلی) رو یکبار برای همیشه به ۷ اصلاح می‌کنیم تا کل سیستم یکدست بشه
@@ -262,7 +291,7 @@ export function computeCardPower(basePower, level) {
   return Math.round(basePower * (1 + 0.15 * (level - 1)));
 }
 function computeTotalPower(row) {
-  const base = row.fixed_power != null ? row.fixed_power : computeCardPower(row.base_power, row.level);
+  const base = row.fixed_power != null ? row.fixed_power : (row.rolled_power != null ? row.rolled_power : computeCardPower(row.base_power, row.level));
   return base + (row.bonus_power || 0);
 }
 
@@ -271,7 +300,8 @@ function computeTotalPower(row) {
 export function grantCardInstance(tgId, cardId) {
   const card = getGameCard(cardId);
   const level = card?.instant_level || 1;
-  return db.prepare('INSERT INTO user_cards (tg_id, card_id, level) VALUES (?,?,?)').run(tgId, cardId, level).lastInsertRowid;
+  const rolledPower = rollPowerForLevel(level);
+  return db.prepare('INSERT INTO user_cards (tg_id, card_id, level, rolled_power) VALUES (?,?,?,?)').run(tgId, cardId, level, rolledPower).lastInsertRowid;
 }
 
 /* =========================================================================
@@ -279,7 +309,7 @@ export function grantCardInstance(tgId, cardId) {
  * ========================================================================= */
 export function getUserCards(tgId) {
   return db.prepare(`
-    SELECT uc.id, uc.card_id, uc.level, uc.bonus_power, uc.created_at,
+    SELECT uc.id, uc.card_id, uc.level, uc.bonus_power, uc.rolled_power, uc.created_at,
       c.name, c.image_url, c.level_images, c.base_power, c.max_level, c.category_id, c.edition, c.fixed_power
     FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id
     WHERE uc.tg_id = ? ORDER BY uc.id DESC
@@ -379,9 +409,11 @@ export function mutateCards(tgId, cardId, level) {
 
   const keepId = rows[0].id;
   const removeId = rows[1].id;
+  const newLevelNum = level + 1;
+  const newRolledPower = rollPowerForLevel(newLevelNum);
   const tx = db.transaction(() => {
     if (cost > 0) adjustToman(tgId, -cost, `هزینه جهش از سطح ${level} به ${level + 1}`);
-    const result = db.prepare('UPDATE user_cards SET level = level + 1 WHERE id = ?').run(keepId);
+    const result = db.prepare('UPDATE user_cards SET level = level + 1, rolled_power = ? WHERE id = ?').run(newRolledPower, keepId);
     if (result.changes !== 1) throw new Error('جهش با خطا مواجه شد، دوباره امتحان کن');
     db.prepare('DELETE FROM user_cards WHERE id = ?').run(removeId);
   });

@@ -15,7 +15,7 @@ import db, {
   decideTomanTopup, decideTomanWithdrawal, decideCurrencyRequest, getTomanTopup, getTomanWithdrawal, getCurrencyRequest,
   listCategories, listProducts, getProduct,
   createOrder, listOrdersForUser,
-  createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer,
+  createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer, listGiftCategories,
   listActiveTasks, hasClaimedTask, claimTask, getTask,
   getPaymentSettings, getMessageSettings, getSupportContact,
   createZarinpalPayment, getZarinpalPayment, markZarinpalPaymentStatus,
@@ -389,11 +389,15 @@ app.get('/api/referral', requireTelegramAuth, (req, res) => res.json({ ref_code:
  * ========================================================================= */
 app.get('/api/gifts/my', requireTelegramAuth, (req, res) => res.json(listMyGiftOffers(req.dbUser.tg_id)));
 app.get('/api/gifts/market', requireTelegramAuth, (req, res) => res.json({ offers: listMarketGiftOffers(req.dbUser.tg_id), feePercent: Number(process.env.GIFT_MARKET_FEE_PERCENT || 5) }));
+app.get('/api/gifts/categories', (req, res) => res.json(listGiftCategories(true)));
 
+app.get('/api/gift-categories', (req, res) => res.json(listGiftCategories(true)));
 app.post('/api/gifts/list', requireTelegramAuth, (req, res) => {
   const { title, image_url, price, serial_number } = req.body;
   const p = Number(price);
   if (!title || !p || p < 5000) return res.status(400).json({ error: 'عنوان و قیمت معتبر (حداقل ۵,۰۰۰ تومان) لازمه' });
+  const categories = listGiftCategories(true);
+  if (categories.length && !categories.some(c => c.name === title)) return res.status(400).json({ error: 'این دسته‌بندی تایید نشده، از لیست انتخاب کن' });
   const id = createGiftOffer(req.dbUser.tg_id, title, image_url, p, serial_number);
   res.json({ ok: true, id });
 });
