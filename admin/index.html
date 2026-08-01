@@ -56,7 +56,7 @@
     <button data-tab="gifts" onclick="showTab('gifts')">بازار گیفت</button>
     <button data-tab="tasks" onclick="showTab('tasks')">تسک‌ها</button>
     <button data-tab="gamecards" onclick="showTab('gamecards')">کارت‌های بازی</button>
-    <button data-tab="specialcards" onclick="showTab('specialcards')">کارت‌های ویژه (لول ۷)</button>
+    <button data-tab="specialcards" onclick="showTab('specialcards')">کارت‌های سطح ثابت</button>
     <button data-tab="cardcategories" onclick="showTab('cardcategories')">دسته‌بندی‌ها</button>
     <button data-tab="mergecosts" onclick="showTab('mergecosts')">هزینه جهش</button>
     <button data-tab="gameconfig" onclick="showTab('gameconfig')">تنظیمات بازی</button>
@@ -254,24 +254,26 @@
 
     <section class="tab" id="tab-specialcards">
       <div class="card">
-        <h3>ساخت کارت ویژه (لول ۷ / الهی)</h3>
-        <p class="muted">این کارت‌ها از همون لحظهٔ ساخته‌شدن سطح ۷ (ماکسیموم) هستن، بدون نیاز به جهش. با عکس و قدرت کاملا اختصاصی. می‌تونی تو فروشگاه کارت بذاریشون، یا مستقیم به یه کاربر هدیه بدی، یا از همینجا تو بتل‌پس/مزایده/تسک/چرخ‌شانس/آلبوم به‌عنوان جایزه انتخابشون کنی (چون تو همون لیست کارت‌های عادی هم هستن).</p>
+        <h3>ساخت کارت با سطح ثابت (۲ تا ۷)</h3>
+        <p class="muted">این کارت‌ها از همون لحظهٔ ساخته‌شدن رو سطح انتخابی می‌مونن، بدون نیاز به جهش. با عکس و قدرت اختصاصیِ همون سطح. می‌تونی تو فروشگاه کارت بذاریشون، یا مستقیم به یه کاربر هدیه بدی، یا از همینجا تو بتل‌پس/مزایده/تسک/چرخ‌شانس/آلبوم به‌عنوان جایزه انتخابشون کنی (چون تو همون لیست کارت‌های عادی هم هستن).</p>
         <input type="hidden" id="scId">
         <label>اسم کارت</label><input id="scName">
         <label>دسته‌بندی</label>
         <select id="scCategory"><option value="">بدون دسته</option></select>
-        <label>عکس اختصاصی</label>
+        <label>عکس اختصاصی همین سطح</label>
         <input type="file" id="scImageFile" accept="image/*" onchange="uploadImageTo('scImageFile','scImage','scImagePreview')">
         <input type="hidden" id="scImage">
         <img id="scImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
-          <div><label>قدرت اختصاصی (ثابت)</label><input type="number" id="scPower"></div>
-          <div><label>قیمت فروشگاهی (تومان)</label><input type="number" id="scPrice"></div>
+          <div><label>سطح ثابت</label><select id="scLevel" onchange="onScLevelChange()"><option value="2">۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option><option value="6">۶</option><option value="7">۷ (الهی)</option></select></div>
+          <div><label>قدرت اختصاصی (ثابت)</label><input type="number" id="scPower" oninput="checkScPowerRange()"></div>
         </div>
+        <p class="muted" id="scPowerRangeHint"></p>
         <div class="row2">
+          <div><label>قیمت فروشگاهی (تومان)</label><input type="number" id="scPrice"></div>
           <div><label>محدودیت تعداد (خالی = نامحدود)</label><input type="number" id="scMaxSupply"></div>
-          <div><label>تو فروشگاه کارت فعال باشه؟</label><select id="scActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
         </div>
+        <label>تو فروشگاه کارت فعال باشه؟</label><select id="scActive"><option value="1">بله</option><option value="0">خیر</option></select>
         <button class="btn" onclick="saveSpecialCard()">ذخیره</button>
       </div>
       <div id="specialCardsTable"></div>
@@ -343,6 +345,17 @@
       </div>
       <h3>جدول فعلی</h3>
       <div id="leaderboardTable"></div>
+      <div class="card">
+        <h3>⚔️ لیگ هفتگی (برنز/نقره/طلا)</h3>
+        <p class="muted">جدا از امتیاز بازی — فقط بر اساس برد/باخت همین هفته تو نبردهای کارتی. همه از برنز شروع می‌کنن.</p>
+        <select id="lgEnabled"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <div class="row2">
+          <div><label>تعداد صعودکننده هر لیگ</label><input type="number" id="lgPromote"></div>
+          <div><label>تعداد سقوط‌کننده هر لیگ</label><input type="number" id="lgRelegate"></div>
+        </div>
+        <label>دورهٔ صعود/سقوط (روز)</label><input type="number" id="lgResetDays">
+        <button class="btn" onclick="saveLeagueConfig()">ذخیره تنظیمات لیگ</button>
+      </div>
     </section>
 
     <section class="tab" id="tab-wheel">
@@ -1058,7 +1071,7 @@ async function loadGameCards() {
   await loadCategoryOptions('gcCategory');
   renderLevelImageGrid();
   await loadLevelPowerTable();
-  const rows = (await api('/game/cards')).filter(c => c.instant_level !== 7);
+  const rows = (await api('/game/cards')).filter(c => !c.instant_level);
   document.getElementById('gameCardsTable').innerHTML = rows.length ? `
     <table><tr><th>اسم</th><th>قدرت پایه</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
     ${rows.map(c => `<tr><td>${c.name}</td><td>${c.base_power}</td><td>${c.price_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td>
@@ -1128,24 +1141,40 @@ async function saveLevelPowerTable() {
   alert('ذخیره شد');
 }
 
-/* ---------- کارت‌های ویژه (لول ۷ / الهی) ---------- */
+/* ---------- کارت‌های سطح ثابت (۲ تا ۷) ---------- */
+let SC_LEVEL_POWER = [];
 async function loadSpecialCards() {
   await loadCategoryOptions('scCategory');
-  const rows = (await api('/game/cards')).filter(c => c.instant_level === 7);
+  SC_LEVEL_POWER = await api('/game/level-power');
+  onScLevelChange();
+  const rows = (await api('/game/cards')).filter(c => c.instant_level >= 2);
   document.getElementById('specialCardsTable').innerHTML = rows.length ? `
-    <table><tr><th>اسم</th><th>قدرت اختصاصی</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
-    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.fixed_power}</td><td>${c.price_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td>
+    <table><tr><th>اسم</th><th>سطح</th><th>قدرت اختصاصی</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
+    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.instant_level}</td><td>${c.fixed_power}</td><td>${c.price_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td>
       <td>
         <button class="btn secondary" onclick='editSpecialCard(${JSON.stringify(c)})'>ویرایش</button>
         <button class="btn gold" onclick="grantSpecialCardUI(${c.id})">🎁 هدیه به کاربر</button>
         <button class="btn danger" onclick="deleteGameCard(${c.id}).then(loadSpecialCards)">حذف</button>
       </td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز کارت ویژه‌ای نساختی.</p>';
+    </table>` : '<p class="muted">هنوز کارتی با سطح ثابت نساختی.</p>';
+}
+function onScLevelChange() {
+  checkScPowerRange();
+}
+function checkScPowerRange() {
+  const level = Number(document.getElementById('scLevel').value);
+  const range = SC_LEVEL_POWER.find(r => r.level === level);
+  const hint = document.getElementById('scPowerRangeHint');
+  if (!range) { hint.textContent = ''; return; }
+  const power = Number(document.getElementById('scPower').value);
+  hint.textContent = `بازهٔ مجاز سطح ${level}: ${range.min_power} تا ${range.max_power}`;
+  hint.style.color = (power && (power < range.min_power || power > range.max_power)) ? 'var(--danger)' : 'var(--muted)';
 }
 function editSpecialCard(c) {
   document.getElementById('scId').value = c.id;
   document.getElementById('scName').value = c.name;
   document.getElementById('scImage').value = c.image_url || '';
+  document.getElementById('scLevel').value = c.instant_level;
   document.getElementById('scPower').value = c.fixed_power;
   document.getElementById('scPrice').value = c.price_toman;
   document.getElementById('scMaxSupply').value = c.max_supply || '';
@@ -1153,19 +1182,27 @@ function editSpecialCard(c) {
   document.getElementById('scCategory').value = c.category_id || '';
   const preview = document.getElementById('scImagePreview');
   if (c.image_url) { preview.src = c.image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+  checkScPowerRange();
 }
 async function saveSpecialCard() {
+  const level = Number(document.getElementById('scLevel').value);
+  const power = Number(document.getElementById('scPower').value);
+  const range = SC_LEVEL_POWER.find(r => r.level === level);
+  if (range && (power < range.min_power || power > range.max_power)) {
+    alert(`قدرت باید بین ${range.min_power} تا ${range.max_power} باشه (بازهٔ مجاز سطح ${level})`);
+    return;
+  }
   await api('/game/cards', { method: 'POST', body: JSON.stringify({
     id: document.getElementById('scId').value || null,
     name: document.getElementById('scName').value,
     image_url: document.getElementById('scImage').value,
-    base_power: document.getElementById('scPower').value, // فرمول سطح روش اعمال نمی‌شه، fixed_power جایگزینش می‌شه
-    fixed_power: document.getElementById('scPower').value,
+    base_power: power, // فرمول سطح روش اعمال نمی‌شه، fixed_power جایگزینش می‌شه
+    fixed_power: power,
     price_toman: document.getElementById('scPrice').value,
     max_supply: document.getElementById('scMaxSupply').value || null,
     active: document.getElementById('scActive').value === '1',
     category_id: document.getElementById('scCategory').value || null,
-    instant_level: 7,
+    instant_level: level,
   }) });
   document.getElementById('scId').value = '';
   document.getElementById('scName').value = '';
@@ -1332,6 +1369,21 @@ async function loadLeaderboardTab() {
     <table><tr><th>رتبه</th><th>کاربر</th><th>امتیاز</th><th>برد/باخت</th></tr>
     ${leaderboard.map((p, i) => `<tr><td>${i + 1}</td><td>${p.first_name || ''} (${p.tg_id})</td><td>${p.score}</td><td>${p.wins}/${p.losses}</td></tr>`).join('')}
     </table>`;
+
+  const lg = await api('/league/config');
+  document.getElementById('lgEnabled').value = lg.enabled ? '1' : '0';
+  document.getElementById('lgPromote').value = lg.promote_count;
+  document.getElementById('lgRelegate').value = lg.relegate_count;
+  document.getElementById('lgResetDays').value = lg.reset_days;
+}
+async function saveLeagueConfig() {
+  await api('/league/config', { method: 'POST', body: JSON.stringify({
+    enabled: document.getElementById('lgEnabled').value === '1',
+    promote_count: document.getElementById('lgPromote').value,
+    relegate_count: document.getElementById('lgRelegate').value,
+    reset_days: document.getElementById('lgResetDays').value,
+  }) });
+  alert('ذخیره شد');
 }
 async function saveLeaderboardPrize() {
   await api('/game/leaderboard-prizes', { method: 'POST', body: JSON.stringify({
