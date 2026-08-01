@@ -123,6 +123,17 @@
         <input id="supportUsername" placeholder="مثلا: LandoSupport">
         <button class="btn" onclick="saveSupportContact()">ذخیره</button>
       </div>
+      <div class="card">
+        <h3>📖 صفحات اطلاعاتی مینی‌اپ</h3>
+        <p class="muted">متن این سه صفحه از تب «بیشتر ‹ اطلاعات» تو مینی‌اپ به کاربر نشون داده می‌شه.</p>
+        <label>راهنمای استفاده</label>
+        <textarea id="infoGuide" rows="5" placeholder="متن راهنما..."></textarea>
+        <label>سوالات متداول</label>
+        <textarea id="infoFaq" rows="5" placeholder="متن سوالات متداول..."></textarea>
+        <label>قوانین و مقررات</label>
+        <textarea id="infoRules" rows="5" placeholder="متن قوانین..."></textarea>
+        <button class="btn" onclick="saveInfoPages()">ذخیره صفحات اطلاعاتی</button>
+      </div>
     </section>
 
     <section class="tab" id="tab-messages">
@@ -833,9 +844,21 @@ async function loadPaymentSettings() {
   document.getElementById('payZarinpal').value = s.zarinpalMerchantId || '';
   const sup = await api('/support-contact');
   document.getElementById('supportUsername').value = sup.username || '';
+  const info = await api('/info-pages');
+  document.getElementById('infoGuide').value = info.guide || '';
+  document.getElementById('infoFaq').value = info.faq || '';
+  document.getElementById('infoRules').value = info.rules || '';
 }
 async function saveSupportContact() {
   await api('/support-contact', { method: 'POST', body: JSON.stringify({ username: document.getElementById('supportUsername').value }) });
+  alert('ذخیره شد');
+}
+async function saveInfoPages() {
+  await api('/info-pages', { method: 'POST', body: JSON.stringify({
+    guide: document.getElementById('infoGuide').value,
+    faq: document.getElementById('infoFaq').value,
+    rules: document.getElementById('infoRules').value,
+  }) });
   alert('ذخیره شد');
 }
 async function savePaymentSettings() {
