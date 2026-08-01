@@ -1560,7 +1560,7 @@ async function loadClan() {
         <button class="btn gold" onclick="donateClanUI()">اهدا کن</button>
         ${clan.myRole === 'owner' ? `
         <div class="row" style="margin-top:6px;"><span class="muted">موجودی قابل برداشت</span><b style="color:var(--gold);">${clan.myWithdrawableRemaining.toLocaleString()} ت</b></div>
-        <label style="margin-top:10px;">برداشت از بانک کلن به کیف‌پول خودت</label><input type="number" id="withdrawAmount">
+        <label style="margin-top:10px;">برداشت از بانک کلن به کیف‌پول خودت</label><input type="number" id="clanWithdrawAmount">
         <button class="btn secondary" onclick="withdrawClanUI()">برداشت</button>
         <label style="margin-top:10px;">هدیه از بانک کلن به یکی از اعضا</label>
         <select id="giftMemberSelect">${members.filter(m => m.tg_id !== clan.owner_tg_id).map(m => `<option value="${m.tg_id}">${m.first_name || ''} ${m.username ? '@' + m.username : ''}</option>`).join('') || '<option value="">عضوی نیست</option>'}</select>
@@ -1588,7 +1588,7 @@ async function joinClanUI(id) { await api(`/api/clan/${id}/join`, { method: 'POS
 async function leaveClanUI() { if (!confirm('مطمئنی؟')) return; await api('/api/clan/leave', { method: 'POST' }); toast('انجام شد'); loadClan(); }
 async function donateClanUI() { await api('/api/clan/donate', { method: 'POST', body: JSON.stringify({ amount: Number(document.getElementById('donateAmount').value) }) }); toast('اهدا ثبت شد ✅'); loadMe(); loadClan(); }
 async function withdrawClanUI() {
-  const amount = Number(document.getElementById('withdrawAmount').value);
+  const amount = Number(document.getElementById('clanWithdrawAmount').value);
   if (!amount || amount <= 0) { toast('یه مبلغ معتبر وارد کن'); return; }
   await api('/api/clan/withdraw', { method: 'POST', body: JSON.stringify({ amount }) });
   toast('مبلغ به کیف‌پولت برداشت شد ✅'); loadMe(); loadClan();
