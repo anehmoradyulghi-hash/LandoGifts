@@ -539,6 +539,7 @@
     <button class="active" data-ltab="game" onclick="showLbTab('game')">🎮 امتیاز بازی</button>
     <button data-ltab="clan" onclick="showLbTab('clan')">🏰 کلن</button>
     <button data-ltab="level" onclick="showLbTab('level')">⭐ لول</button>
+    <button data-ltab="league" onclick="showLbTab('league')">⚔️ لیگ</button>
   </div>
   <div class="view active" id="ltab-game">
     <div id="lbGamePrizes" class="muted" style="font-size:13px;margin-bottom:8px;"></div>
@@ -556,6 +557,12 @@
     <div id="lbLevelPodium"></div>
     <div id="lbLevelList" class="card muted">در حال بارگذاری...</div>
     <div id="lbLevelMine" class="card"></div>
+  </div>
+  <div class="view" id="ltab-league">
+    <div id="lbLeagueMine" class="card"></div>
+    <div class="chips" id="lbLeagueChips" style="margin-top:10px;"></div>
+    <div id="lbLeaguePodium"></div>
+    <div id="lbLeagueList" class="card muted">در حال بارگذاری...</div>
   </div>
 </section>
 
@@ -1911,6 +1918,26 @@ async function loadLeaderboardPage() {
   document.getElementById('lbLevelList').innerHTML = l.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div>${p.avatarImage ? `<img src="${p.avatarImage}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">Lv.${p.level}</div></div>`).join('') || 'داده کافی نیست.';
   const lInTop = l.leaderboard.some(p => p.tg_id === l.myRow.tg_id);
   document.getElementById('lbLevelMine').innerHTML = lInTop ? '' : renderMineRow('رتبه من: #' + l.myRank + ' —', l.myRank, l.myRow.first_name, `Lv.${l.myRow.level}`);
+
+  const lg = await api('/api/league/status');
+  const leagueNames = { bronze: '🥉 برنز', silver: '🥈 نقره', gold: '🥇 طلا' };
+  document.getElementById('lbLeagueMine').innerHTML = `
+    <div class="row"><span class="muted">لیگ من</span><b>${lg.me.leagueLabel}</b></div>
+    <div class="row"><span class="muted">رتبه این هفته</span><b>#${lg.me.rank}</b></div>
+    <div class="row"><span class="muted">برد/باخت هفته</span><b>${lg.me.weeklyWins}/${lg.me.weeklyLosses} (${lg.me.score} امتیاز)</b></div>
+  `;
+  document.getElementById('lbLeagueChips').innerHTML = Object.keys(leagueNames).map(k =>
+    `<div class="chip ${k === lg.me.league ? 'active' : ''}" data-league="${k}" onclick="loadLeagueBoard('${k}')">${leagueNames[k]}</div>`).join('');
+  renderLeagueBoard(lg.leaderboard, lg.me);
+}
+function renderLeagueBoard(leaderboard, me) {
+  document.getElementById('lbLeaguePodium').innerHTML = renderPodium(leaderboard.slice(0, 3), p => p.first_name || '', p => `${p.score}`, p => p.avatar_image);
+  document.getElementById('lbLeagueList').innerHTML = leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div>${p.avatar_image ? `<img src="${p.avatar_image}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'داده کافی نیست.';
+}
+async function loadLeagueBoard(league) {
+  document.querySelectorAll('#lbLeagueChips .chip').forEach(c => c.classList.toggle('active', c.dataset.league === league));
+  const leaderboard = await api('/api/league/leaderboard/' + league);
+  renderLeagueBoard(leaderboard, null);
 }
 
 /* ================= بیشتر: هاب ================= */
