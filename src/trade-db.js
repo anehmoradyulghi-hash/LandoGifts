@@ -35,6 +35,12 @@ CREATE TABLE IF NOT EXISTS trade_listings (
 );
 `);
 
+function safeAddColumn(table, columnDef) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
+  catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+}
+safeAddColumn('trade_offers', 'listing_id INTEGER');
+
 export function getTradeConfig() { return db.prepare('SELECT * FROM trade_config WHERE id = 1').get(); }
 export function setTradeConfig(c) {
   db.prepare(`
