@@ -331,6 +331,19 @@
   .battle-banner { padding:22px 14px; border-radius:22px; text-align:center; font-weight:800; font-size:17px; margin-bottom:12px; }
   .battle-banner.win { background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.4); color:var(--success); box-shadow:0 0 24px rgba(52,211,153,.15); }
   .battle-banner.lose { background:rgba(251,113,133,.12); border:1px solid rgba(251,113,133,.4); color:var(--danger); box-shadow:0 0 24px rgba(251,113,133,.15); }
+  /* ---------- فروشگاه ---------- */
+  .shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .shop-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; box-shadow:0 10px 24px -14px rgba(0,0,0,.55); transition:transform .12s ease; animation:popIn .35s cubic-bezier(.22,.9,.34,1) backwards; }
+  .shop-card:active { transform:scale(.97); }
+  .shop-imgwrap { position:relative; aspect-ratio:1/1; background:linear-gradient(135deg,#241f38,var(--surface2)); display:flex; align-items:center; justify-content:center; }
+  .shop-imgwrap img { width:100%; height:100%; object-fit:cover; }
+  .shop-imgwrap .ic-fallback { font-size:34px; opacity:.5; }
+  .shop-body { padding:11px 12px 13px; }
+  .shop-name { font-weight:800; font-size:13px; line-height:1.4; min-height:2.6em; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .shop-desc { color:var(--muted); font-size:11px; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .shop-note { margin:8px 0 0 !important; font-size:12px !important; padding:8px 10px !important; }
+  .shop-buy-pill { display:block; width:100%; margin-top:8px; background:linear-gradient(90deg,var(--p1),var(--b1)); border:none; border-radius:14px; padding:10px; color:#fff; font-weight:800; font-size:13px; text-align:center; box-shadow:0 6px 16px -8px rgba(168,85,247,.55); cursor:pointer; }
+  #infoPageContent { font-size:13.5px; color:#d8dbe6; }
   /* ---------- چرخ‌گردونهٔ شانس ---------- */
   .wheel-wrap { position:relative; width:230px; height:230px; margin:6px auto 14px; }
   .wheel-pointer { position:absolute; top:-8px; left:50%; transform:translateX(-50%); font-size:26px; z-index:5; filter:drop-shadow(0 3px 5px rgba(0,0,0,.55)); }
@@ -680,8 +693,8 @@
   <div class="menu-row" onclick="openSupportChat()">
     <span class="mic">🎧</span><div class="mtxt"><div class="mt">پشتیبانی</div><div class="ms">ارتباط مستقیم با ادمین</div></div><span class="arrow">‹</span>
   </div>
-  <div class="menu-row" onclick="toast('به‌زودی...')">
-    <span class="mic">⚙️</span><div class="mtxt"><div class="mt">تنظیمات</div><div class="ms">زبان، اعلان‌ها</div></div><span class="arrow">‹</span>
+  <div class="menu-row" onclick="openAboutPage()">
+    <span class="mic">⚙️</span><div class="mtxt"><div class="mt">دربارهٔ حساب من</div><div class="ms">آیدی، وضعیت اتصال</div></div><span class="arrow">‹</span>
   </div>
   <button class="btn danger" style="margin-top:16px;" onclick="tg?.close && tg.close()">خروج از مینی‌اپ</button>
 </section>
@@ -698,9 +711,9 @@
     <div class="menu-row" onclick="showMView('avatars')"><span class="mic">🎨</span><div class="mtxt"><div class="mt">فروشگاه آواتار</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showPage('tasks')"><span class="mic">✅</span><div class="mtxt"><div class="mt">تسک‌ها</div><div class="ms">انجام بده و جایزه بگیر</div></div><span class="arrow">‹</span></div>
     <h3 class="sec">اطلاعات</h3>
-    <div class="menu-row" onclick="toast('به‌زودی...')"><span class="mic">📖</span><div class="mtxt"><div class="mt">راهنما</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="toast('به‌زودی...')"><span class="mic">❓</span><div class="mtxt"><div class="mt">سوالات متداول</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="toast('به‌زودی...')"><span class="mic">📋</span><div class="mtxt"><div class="mt">قوانین و مقررات</div></div><span class="arrow">‹</span></div>
+    <div class="menu-row" onclick="openInfoPage('guide','📖 راهنما')"><span class="mic">📖</span><div class="mtxt"><div class="mt">راهنما</div></div><span class="arrow">‹</span></div>
+    <div class="menu-row" onclick="openInfoPage('faq','❓ سوالات متداول')"><span class="mic">❓</span><div class="mtxt"><div class="mt">سوالات متداول</div></div><span class="arrow">‹</span></div>
+    <div class="menu-row" onclick="openInfoPage('rules','📋 قوانین و مقررات')"><span class="mic">📋</span><div class="mtxt"><div class="mt">قوانین و مقررات</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="toast('ممنون از حمایتت 🙏')"><span class="mic">⭐</span><div class="mtxt"><div class="mt">امتیازدهی به اپ</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="toast('خبری فعلا نیست')"><span class="mic">📢</span><div class="mtxt"><div class="mt">اخبار و اطلاعیه</div></div><span class="arrow">‹</span></div>
   </div>
@@ -753,6 +766,10 @@
 <!-- ============ تسک‌های ساده (لینک قدیمی، در دسترس از پروفایل نیست ولی API حفظ می‌شه) ============ -->
 <section class="page" id="page-tasks">
   <div id="tasksList" class="muted">در حال بارگذاری...</div>
+</section>
+
+<section class="page" id="page-info">
+  <div class="card" id="infoPageContent" style="line-height:2;white-space:pre-wrap;">در حال بارگذاری...</div>
 </section>
 
 <!-- ---------- ناوبری پایین ---------- -->
@@ -828,7 +845,7 @@ function showPage(name) {
   document.getElementById('page-' + name).classList.add('active');
   document.querySelectorAll('.navitem').forEach(b => b.classList.toggle('active', b.dataset.page === name));
   document.getElementById('headerTitle').textContent = PAGE_TITLES[name] || 'Lando Gifts';
-  document.getElementById('headerBackBtn').style.display = name === 'tasks' ? 'flex' : 'none';
+  document.getElementById('headerBackBtn').style.display = (name === 'tasks' || name === 'info') ? 'flex' : 'none';
   CURRENT_PAGE = name;
   window.scrollTo(0, 0);
   if (name === 'shop') loadShop();
@@ -875,7 +892,7 @@ function showMView(name) {
 function headerBack() {
   if (CURRENT_PAGE === 'games') showGView('hub');
   else if (CURRENT_PAGE === 'more') showMView('hub');
-  else if (CURRENT_PAGE === 'tasks') showPage('more');
+  else if (CURRENT_PAGE === 'tasks' || CURRENT_PAGE === 'info') showPage('more');
   else showPage('games');
 }
 
@@ -952,15 +969,16 @@ async function loadShop() {
   try {
     const products = await api('/api/products');
     if (!products.length) { el.innerHTML = '<div class="empty"><div class="eic">🛍</div>فعلا محصولی ثبت نشده.</div>'; document.getElementById('shopBestsellers').innerHTML = ''; return; }
-    el.innerHTML = products.map((p, i) => `
-      <div class="card" ${staggerStyle(i)}>
-        ${p.image_url ? `<img src="${p.image_url}">` : ''}
-        <div class="row"><b>${p.title}</b><span class="tag">${p.price_toman.toLocaleString()} ت</span></div>
-        <p class="muted">${p.description || ''}</p>
-        <input type="text" id="note-${p.id}" placeholder="مقصد / یوزرنیم گیرنده (اختیاری)">
-        <button class="btn" onclick="buyProduct(${p.id})">خرید</button>
-      </div>
-    `).join('');
+    el.innerHTML = `<div class="shop-grid">${products.map((p, i) => `
+      <div class="shop-card" ${staggerStyle(i)}>
+        <div class="shop-imgwrap">${p.image_url ? `<img src="${p.image_url}">` : '<span class="ic-fallback">🎁</span>'}</div>
+        <div class="shop-body">
+          <div class="shop-name">${p.title}</div>
+          ${p.description ? `<div class="shop-desc">${p.description}</div>` : ''}
+          <input type="text" class="shop-note" id="note-${p.id}" placeholder="مقصد/یوزرنیم (اختیاری)">
+          <button class="shop-buy-pill" onclick="buyProduct(${p.id})">${p.price_toman.toLocaleString()} ت</button>
+        </div>
+      </div>`).join('')}</div>`;
     document.getElementById('shopBestsellers').innerHTML = products.slice(0, 5).map(p => `
       <div class="mini-card" onclick="document.getElementById('note-${p.id}')?.scrollIntoView({behavior:'smooth'})">
         <div class="ic">🎁</div><div class="t">${p.title}</div><div class="s">${p.price_toman.toLocaleString()} ت</div>
@@ -1191,6 +1209,25 @@ async function cancelGift(id) { await api(`/api/gifts/${id}/cancel`, { method: '
 async function confirmGift(id) { await api(`/api/gifts/${id}/confirm-received`, { method: 'POST' }); toast('تایید شد ✅'); loadMarket(); }
 
 /* ================= تسک‌های ساده ================= */
+async function openAboutPage() {
+  document.getElementById('infoPageContent').textContent = 'در حال بارگذاری...';
+  showPage('info');
+  document.getElementById('headerTitle').textContent = '⚙️ دربارهٔ حساب من';
+  const me = await api('/api/me');
+  document.getElementById('infoPageContent').innerHTML = `
+    <div class="row"><span class="muted">نام</span><b>${me.first_name || me.username || '-'}</b></div>
+    <div class="row"><span class="muted">آیدی عددی</span><b>${me.tg_id}</b></div>
+    <div class="row"><span class="muted">موجودی کیف‌پول</span><b>${me.balance_toman.toLocaleString()} تومان</b></div>
+    <button class="btn secondary" style="margin-top:14px;" onclick="openSupportChat()">🎧 ارتباط با پشتیبانی</button>
+  `;
+}
+async function openInfoPage(key, title) {
+  document.getElementById('infoPageContent').textContent = 'در حال بارگذاری...';
+  showPage('info');
+  document.getElementById('headerTitle').textContent = title;
+  const { content } = await api('/api/info/' + key);
+  document.getElementById('infoPageContent').textContent = content?.trim() ? content : 'ادمین هنوز این بخش رو تکمیل نکرده.';
+}
 async function loadTasks() {
   const tasks = await api('/api/tasks');
   document.getElementById('tasksList').innerHTML = tasks.length
