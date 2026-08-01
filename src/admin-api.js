@@ -16,7 +16,7 @@ import {
   listAllTasksAdmin, upsertTask, deleteTask,
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
-  getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact,
+  getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact, getInfoPage, setInfoPage,
   listGiftCategories, upsertGiftCategory, deleteGiftCategory,
   getMessageSettings, setMessageSettings, getAllUserIds,
 } from './db.js';
@@ -148,6 +148,17 @@ router.post('/payment-settings', (req, res) => {
 /* ---------- آیدی پشتیبانی (به‌جای تیکت داخلی) ---------- */
 router.get('/support-contact', (req, res) => res.json({ username: getSupportContact() }));
 router.post('/support-contact', (req, res) => { setSupportContact(req.body.username); res.json({ ok: true }); });
+
+/* ---------- صفحات اطلاعاتی (راهنما/سوالات متداول/قوانین) ---------- */
+router.get('/info-pages', (req, res) => res.json({
+  guide: getInfoPage('guide'), faq: getInfoPage('faq'), rules: getInfoPage('rules'),
+}));
+router.post('/info-pages', (req, res) => {
+  setInfoPage('guide', req.body.guide);
+  setInfoPage('faq', req.body.faq);
+  setInfoPage('rules', req.body.rules);
+  res.json({ ok: true });
+});
 
 /* ---------- پیام‌های ربات (خوش‌آمد / درخواست عضویت) ---------- */
 router.get('/message-settings', (req, res) => res.json(getMessageSettings()));

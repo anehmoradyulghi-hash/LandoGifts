@@ -613,6 +613,10 @@ export function setSupportContact(username) {
   setSetting('support_username', (username || '').replace(/^@/, ''));
 }
 
+// متن صفحات اطلاعاتی (راهنما/سوالات متداول/قوانین) — از پنل ادمین قابل ویرایش
+export function getInfoPage(key) { return getSetting('info_' + key, ''); }
+export function setInfoPage(key, content) { setSetting('info_' + key, content || ''); }
+
 const DEFAULT_WELCOME = 'به <b>Lando Gifts</b> خوش اومدی 🎁\nاز دکمه پایین فروشگاه رو باز کن:';
 const DEFAULT_JOIN_PROMPT = 'برای استفاده از ربات، اول عضو کانال ما شو:';
 export function getMessageSettings() {

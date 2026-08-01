@@ -18,7 +18,7 @@ import db, {
   createOrder, listOrdersForUser,
   createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer, listGiftCategories,
   listActiveTasks, hasClaimedTask, claimTask, getTask,
-  getPaymentSettings, getMessageSettings, getSupportContact,
+  getPaymentSettings, getMessageSettings, getSupportContact, getInfoPage,
   createStarPaymentRequest, getStarPayment, completeStarPayment,
   createZarinpalPayment, getZarinpalPayment, markZarinpalPaymentStatus,
 } from './db.js';
@@ -115,6 +115,8 @@ app.get('/api/config', ah(async (req, res) => {
     supportUsername: getSupportContact(),
   });
 }));
+
+app.get('/api/info/:key', (req, res) => res.json({ content: getInfoPage(req.params.key) }));
 
 /* =========================================================================
  * هر درخواست /api/* باید initData معتبر تلگرام رو تو هدر X-Init-Data داشته باشه
