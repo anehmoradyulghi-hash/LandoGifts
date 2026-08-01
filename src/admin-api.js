@@ -41,6 +41,7 @@ import {
 } from './season-db.js';
 import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason } from './clan-db.js';
 import { getClanWarConfig, setClanWarConfig } from './clan-war-db.js';
+import { getLeagueConfig, setLeagueConfig } from './league-db.js';
 import {
   getRankConfig, setRankConfig, listRankTitles, upsertRankTitle, deleteRankTitle,
   listAvatars, upsertAvatar, deleteAvatar,
@@ -321,6 +322,13 @@ router.get('/game/cards', (req, res) => res.json(listGameCards(false)));
 router.post('/game/cards', (req, res) => {
   const { id, name, image_url, base_power, price_toman, active, category_id, level_images, edition, max_supply, instant_level, fixed_power, min_power, max_power } = req.body;
   if (!name) return res.status(400).json({ error: 'اسم کارت لازمه' });
+  if (instant_level) {
+    const range = getCardLevelPowerConfig().find(r => r.level === Number(instant_level));
+    const fp = Number(fixed_power);
+    if (range && (fp < range.min_power || fp > range.max_power)) {
+      return res.status(400).json({ error: `قدرت باید بین ${range.min_power} تا ${range.max_power} باشه (بازهٔ مجاز سطح ${instant_level})` });
+    }
+  }
   const savedId = upsertGameCard({
     id: id ? Number(id) : null,
     name, image_url,
@@ -456,6 +464,7 @@ router.post('/season/config', (req, res) => {
     enabled: !!b.enabled, price_toman: Number(b.price_toman), duration_days: Number(b.duration_days),
     tier_count: Number(b.tier_count), xp_per_tier: Number(b.xp_per_tier),
     xp_per_win: Number(b.xp_per_win), xp_per_purchase: Number(b.xp_per_purchase), xp_per_donation: Number(b.xp_per_donation),
+    tier_skip_price_toman: Number(b.tier_skip_price_toman) || 0,
   });
   res.json({ ok: true });
 });
@@ -499,6 +508,13 @@ router.post('/clan/reset-season', (req, res) => {
 router.get('/clanwar/config', (req, res) => res.json(getClanWarConfig()));
 router.post('/clanwar/config', (req, res) => {
   setClanWarConfig(req.body);
+  res.json({ ok: true });
+});
+
+/* ---------- لیگ هفتگی ---------- */
+router.get('/league/config', (req, res) => res.json(getLeagueConfig()));
+router.post('/league/config', (req, res) => {
+  setLeagueConfig(req.body);
   res.json({ ok: true });
 });
 

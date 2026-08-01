@@ -1,5 +1,6 @@
 import db from './db.js';
 import { adjustToman, getUser } from './db.js';
+import { getOrCreateUserLeague, pickQueueOpponentInLeague, recordLeagueResult } from './league-db.js';
 
 /* =========================================================================
  * SCHEMA — بازی کارتی. همه‌چیز خودکار و داخل‌سروری (بدون تماس بیرونی)، تنظیمات
@@ -541,14 +542,16 @@ export function joinQueue(tgId, userCardIds) {
   const cards = uniqueIds.map(id => getUserCard(tgId, id));
   if (cards.some(c => !c)) throw new Error('یکی از کارت‌های انتخابی پیدا نشد');
   const power = cards.reduce((s, c) => s + c.power, 0);
+  const myLeague = getOrCreateUserLeague(tgId).league;
 
   return db.transaction(() => {
-    const opponent = db.prepare('SELECT * FROM game_queue ORDER BY joined_at ASC LIMIT 1').get();
+    let opponent = pickQueueOpponentInLeague(myLeague, tgId);
+    if (!opponent) opponent = db.prepare('SELECT * FROM game_queue WHERE tg_id != ? ORDER BY joined_at ASC LIMIT 1').get(tgId);
     if (!opponent) {
       db.prepare('INSERT INTO game_queue (tg_id, deck_json, power) VALUES (?,?,?)').run(tgId, JSON.stringify(uniqueIds), power);
       return { matched: false, waiting: true };
     }
-    // مسابقه فوری با اولین حریف تو صف
+    // مسابقه فوری — ترجیحا از همون لیگ خودت، وگرنه از هر جای صف
     db.prepare('DELETE FROM game_queue WHERE tg_id = ?').run(opponent.tg_id);
     consumePlay(tgId);
     consumePlay(opponent.tg_id);
@@ -564,6 +567,8 @@ export function joinQueue(tgId, userCardIds) {
 
     bumpScore(winner, true);
     bumpScore(loser, false);
+    recordLeagueResult(winner, true);
+    recordLeagueResult(loser, false);
 
     return {
       matched: true,

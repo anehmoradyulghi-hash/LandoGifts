@@ -47,6 +47,7 @@ import {
   getClanWarConfig, listOpenClanWars, getMyActiveClanWar, getClanWarHistory,
   createClanWar, cancelClanWar, joinClanWar, submitWarPicks, getClanWar, getMemberCardsForLeader,
 } from './clan-war-db.js';
+import { getLeagueConfig, getUserLeagueInfo, getLeagueLeaderboard, checkAutoResetLeague } from './league-db.js';
 import {
   getRankConfig, getUserRankInfo, addUserXp, canCheckinToday, doCheckin,
   listAvatars, getMyAvatars, buyAvatar, equipAvatar,
@@ -633,6 +634,15 @@ app.get('/api/rank/leaderboard', requireTelegramAuth, (req, res) => {
   const myRow = getUserLevelRow(req.dbUser.tg_id);
   res.json({ leaderboard, myRank, myRow });
 });
+app.get('/api/league/status', requireTelegramAuth, (req, res) => {
+  const config = getLeagueConfig();
+  const me = getUserLeagueInfo(req.dbUser.tg_id);
+  const leaderboard = getLeagueLeaderboard(me.league, 10);
+  res.json({ config, me, leaderboard });
+});
+app.get('/api/league/leaderboard/:league', requireTelegramAuth, (req, res) => {
+  res.json(getLeagueLeaderboard(req.params.league, 10));
+});
 app.post('/api/rank/checkin', requireTelegramAuth, (req, res) => {
   try {
     const result = doCheckin(req.dbUser.tg_id);
@@ -1027,6 +1037,7 @@ setInterval(() => {
     });
   } catch (e) { console.error('[clan auto-reset]', e); }
   try { checkExpiredSeasons(); } catch (e) { console.error('[seasonal cards auto-expire]', e); }
+  try { checkAutoResetLeague(); } catch (e) { console.error('[league auto-reset]', e); }
 }, 60 * 60 * 1000);
 
 // ثبت وبهوک تلگرام؛ اگه دامنه/تانل هنوز بالا نیومده باشه (مثلا موقع بوت شدن روی
