@@ -531,6 +531,7 @@
           <div><label>حداقل امتیاز لازم</label><input type="number" id="clnMinScore"></div>
           <div><label>دوره ریست (روز)</label><input type="number" id="clnResetDays"></div>
         </div>
+        <label>کارمزد برداشت/هدیه از بانک کلن (٪)</label><input type="number" id="clnWithdrawFee">
         <button class="btn" onclick="saveClanConfig()">ذخیره تنظیمات</button>
         <button class="btn danger" onclick="resetClanSeasonUI()">پخش جایزه و ریست دستی</button>
       </div>
@@ -1637,6 +1638,7 @@ async function loadClanAdmin() {
   document.getElementById('clnDistMethod').value = cfg.distribution_method;
   document.getElementById('clnMinScore').value = cfg.min_score_threshold;
   document.getElementById('clnResetDays').value = cfg.reset_days;
+  document.getElementById('clnWithdrawFee').value = cfg.withdraw_fee_percent;
 
   const cw = await api('/clanwar/config');
   document.getElementById('cwEnabled').value = cw.enabled ? '1' : '0';
@@ -1663,6 +1665,7 @@ async function saveClanConfig() {
     distribution_method: document.getElementById('clnDistMethod').value,
     min_score_threshold: document.getElementById('clnMinScore').value,
     reset_days: document.getElementById('clnResetDays').value,
+    withdraw_fee_percent: document.getElementById('clnWithdrawFee').value,
   }) });
   alert('ذخیره شد');
 }
