@@ -344,6 +344,13 @@
   .shop-note { margin:8px 0 0 !important; font-size:12px !important; padding:8px 10px !important; }
   .shop-buy-pill { display:block; width:100%; margin-top:8px; background:linear-gradient(90deg,var(--p1),var(--b1)); border:none; border-radius:14px; padding:10px; color:#fff; font-weight:800; font-size:13px; text-align:center; box-shadow:0 6px 16px -8px rgba(168,85,247,.55); cursor:pointer; }
   #infoPageContent { font-size:13.5px; color:#d8dbe6; }
+  .game-card-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .game-card { background:var(--surface); border-radius:18px; overflow:hidden; box-shadow:0 10px 24px -14px rgba(0,0,0,.55); border:1.5px solid var(--rc, var(--border)); transition:transform .12s ease; animation:popIn .35s cubic-bezier(.22,.9,.34,1) backwards; }
+  .game-card:active { transform:scale(.97); }
+  .game-card .gcimgwrap { position:relative; aspect-ratio:1/1; background:var(--surface2); }
+  .game-card .gcimgwrap img { width:100%; height:100%; object-fit:cover; }
+  .game-card .gcimgwrap::after { content:''; position:absolute; inset:0; box-shadow:inset 0 0 22px -2px var(--rc, transparent); pointer-events:none; }
+  .game-card .gc-body { padding:10px 11px 12px; }
   /* ---------- چرخ‌گردونهٔ شانس ---------- */
   .wheel-wrap { position:relative; width:230px; height:230px; margin:6px auto 14px; }
   .wheel-pointer { position:absolute; top:-8px; left:50%; transform:translateX(-50%); font-size:26px; z-index:5; filter:drop-shadow(0 3px 5px rgba(0,0,0,.55)); }
@@ -1282,16 +1289,19 @@ async function loadMyCards() {
   SELECTED_DECK = SELECTED_DECK.filter(id => mine.some(c => c.id === id));
   if (SAC_TARGET && !mine.some(c => c.id === SAC_TARGET)) SAC_TARGET = null;
   if (SAC_SACRIFICE && !mine.some(c => c.id === SAC_SACRIFICE)) SAC_SACRIFICE = null;
-  document.getElementById('gameMyCards').innerHTML = mine.length ? mine.map((c, i) => `
-    <div class="card" ${staggerStyle(i)}>
-      ${c.image ? `<img src="${c.image}">` : ''}
-      <div class="row"><b>${c.name}</b>${rarityBadge(c.rarity_label, c.rarity_color)}</div>
-      <div class="row"><span class="muted">سطح ${c.level}</span><span class="tag">قدرت ${c.power}</span></div>
-      <div style="display:flex;gap:6px;margin-top:8px;">
-        <button class="btn ${SAC_TARGET === c.id ? 'gold' : 'secondary'}" onclick="pickSacTarget(${c.id})">${SAC_TARGET === c.id ? '✓ هدف تقویت' : 'هدف تقویت'}</button>
-        <button class="btn ${SAC_SACRIFICE === c.id ? 'danger' : 'secondary'}" onclick="pickSacSacrifice(${c.id})">${SAC_SACRIFICE === c.id ? '✓ قربانی' : 'قربانی کن'}</button>
+  document.getElementById('gameMyCards').innerHTML = mine.length ? `<div class="game-card-grid">${mine.map((c, i) => `
+    <div class="game-card" style="--rc:${c.rarity_color || 'var(--border)'};" ${staggerStyle(i)}>
+      <div class="gcimgwrap">${c.image ? `<img src="${c.image}">` : ''}</div>
+      <div class="gc-body">
+        <div class="row"><b style="font-size:12.5px;">${c.name}</b></div>
+        <div class="row" style="margin-top:2px;">${rarityBadge(c.rarity_label, c.rarity_color)}<span class="tag">${c.power}⚡</span></div>
+        <div class="muted" style="font-size:11px;margin-top:2px;">سطح ${c.level}</div>
+        <div style="display:flex;gap:5px;margin-top:8px;">
+          <button class="btn ${SAC_TARGET === c.id ? 'gold' : 'secondary'}" style="font-size:11px;padding:8px 4px;" onclick="pickSacTarget(${c.id})">${SAC_TARGET === c.id ? '✓ هدف' : 'هدف تقویت'}</button>
+          <button class="btn ${SAC_SACRIFICE === c.id ? 'danger' : 'secondary'}" style="font-size:11px;padding:8px 4px;" onclick="pickSacSacrifice(${c.id})">${SAC_SACRIFICE === c.id ? '✓ قربانی' : 'قربانی کن'}</button>
+        </div>
       </div>
-    </div>`).join('') : 'هنوز کارتی نداری، از فروشگاه بخر.';
+    </div>`).join('')}</div>` : 'هنوز کارتی نداری، از فروشگاه بخر.';
   renderSacrificeBar();
   renderBattleDeckPicker(mine);
 }
@@ -1488,9 +1498,9 @@ async function loadSeason() {
     ${tiers.map(t => {
       const reached = t.tier_number <= progress.currentTier;
       return `<div class="bp-node ${reached ? 'reached' : ''} ${t.tier_number === progress.currentTier ? 'current' : ''}" onclick="document.getElementById('bp-detail-${t.tier_number}')?.scrollIntoView({behavior:'smooth',block:'center'})">
-        <div class="bp-node-prem" title="پریمیوم">${bpIcon(t.premium_reward_type)}</div>
+        <div class="bp-node-prem" title="پریمیوم: ${t.premium_reward_name || t.premium_reward_type}">${t.premium_reward_image ? `<img src="${t.premium_reward_image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">` : bpIcon(t.premium_reward_type)}</div>
         <div class="bp-node-circle">${t.tier_number}</div>
-        <div class="bp-node-free" title="رایگان">${bpIcon(t.free_reward_type)}</div>
+        <div class="bp-node-free" title="رایگان: ${t.free_reward_name || t.free_reward_type}">${t.free_reward_image ? `<img src="${t.free_reward_image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">` : bpIcon(t.free_reward_type)}</div>
       </div>`;
     }).join('')}
   `;
@@ -1498,12 +1508,26 @@ async function loadSeason() {
     const reached = t.tier_number <= progress.currentTier;
     const freeClaimed = progress.claims.some(c => c.tier_number === t.tier_number && c.track === 'free');
     const premClaimed = progress.claims.some(c => c.tier_number === t.tier_number && c.track === 'premium');
+    const freeLabel = t.free_reward_type === 'toman' ? `${Number(t.free_reward_value || 0).toLocaleString()} تومان`
+      : t.free_reward_type === 'extra_games' ? `${t.free_reward_value} بازی اضافه`
+      : t.free_reward_type === 'none' ? 'بدون جایزه' : (t.free_reward_name || t.free_reward_type);
+    const premLabel = t.premium_reward_type === 'toman' ? `${Number(t.premium_reward_value || 0).toLocaleString()} تومان`
+      : t.premium_reward_type === 'extra_games' ? `${t.premium_reward_value} بازی اضافه`
+      : t.premium_reward_type === 'none' ? 'بدون جایزه' : (t.premium_reward_name || t.premium_reward_type);
     return `<div class="bp-tier ${t.tier_number === progress.currentTier ? 'current' : ''}" id="bp-detail-${t.tier_number}">
       <div class="bp-num">${t.tier_number}</div>
-      <div class="bp-reward"><b>${bpIcon(t.free_reward_type)} رایگان: ${t.free_reward_type}</b>
+      <div class="bp-reward">
+        <div style="display:flex;align-items:center;gap:6px;">
+          ${t.free_reward_image ? `<img src="${t.free_reward_image}" style="width:30px;height:30px;object-fit:cover;border-radius:8px;">` : `<span>${bpIcon(t.free_reward_type)}</span>`}
+          <b>رایگان: ${freeLabel}</b>
+        </div>
         <button class="btn secondary" style="margin-top:4px;" ${reached && !freeClaimed ? '' : 'disabled'} onclick="claimSeasonTier(${t.tier_number},'free')">${freeClaimed ? '✅' : 'دریافت'}</button>
       </div>
-      <div class="bp-reward"><b>${bpIcon(t.premium_reward_type)} 👑 پریمیوم: ${t.premium_reward_type}</b>
+      <div class="bp-reward">
+        <div style="display:flex;align-items:center;gap:6px;">
+          ${t.premium_reward_image ? `<img src="${t.premium_reward_image}" style="width:30px;height:30px;object-fit:cover;border-radius:8px;">` : `<span>${bpIcon(t.premium_reward_type)}</span>`}
+          <b>👑 پریمیوم: ${premLabel}</b>
+        </div>
         <button class="btn gold" style="margin-top:4px;" ${reached && progress.purchasedPremium && !premClaimed ? '' : 'disabled'} onclick="claimSeasonTier(${t.tier_number},'premium')">${premClaimed ? '✅' : 'دریافت'}</button>
       </div>
     </div>`;
@@ -1588,6 +1612,7 @@ async function bidAuction(id) { await api(`/api/auctions/${id}/bid`, { method: '
 /* ================= کلن ================= */
 async function loadClan() {
   const { clan, members } = await api('/api/clan/my');
+  const cfg = await api('/api/clan/config');
   const el = document.getElementById('clanContent');
   if (!clan) {
     el.innerHTML = `
@@ -1604,7 +1629,7 @@ async function loadClan() {
         <button class="btn gold" onclick="donateClanUI()">اهدا کن</button>
         ${clan.myRole === 'owner' ? `
         <div class="row" style="margin-top:6px;"><span class="muted">موجودی قابل برداشت</span><b style="color:var(--gold);">${clan.myWithdrawableRemaining.toLocaleString()} ت</b></div>
-        <label style="margin-top:10px;">برداشت از بانک کلن به کیف‌پول خودت</label><input type="number" id="clanWithdrawAmount">
+        <label style="margin-top:10px;">برداشت از بانک کلن به کیف‌پول خودت${cfg.withdraw_fee_percent > 0 ? ` (کارمزد ${cfg.withdraw_fee_percent}٪)` : ''}</label><input type="number" id="clanWithdrawAmount">
         <button class="btn secondary" onclick="withdrawClanUI()">برداشت</button>
         <label style="margin-top:10px;">هدیه از بانک کلن به یکی از اعضا</label>
         <select id="giftMemberSelect">${members.filter(m => m.tg_id !== clan.owner_tg_id).map(m => `<option value="${m.tg_id}">${m.first_name || ''} ${m.username ? '@' + m.username : ''}</option>`).join('') || '<option value="">عضوی نیست</option>'}</select>
@@ -1634,16 +1659,18 @@ async function donateClanUI() { await api('/api/clan/donate', { method: 'POST', 
 async function withdrawClanUI() {
   const amount = Number(document.getElementById('clanWithdrawAmount').value);
   if (!amount || amount <= 0) { toast('یه مبلغ معتبر وارد کن'); return; }
-  await api('/api/clan/withdraw', { method: 'POST', body: JSON.stringify({ amount }) });
-  toast('مبلغ به کیف‌پولت برداشت شد ✅'); loadMe(); loadClan();
+  const r = await api('/api/clan/withdraw', { method: 'POST', body: JSON.stringify({ amount }) });
+  toast(r.fee > 0 ? `${r.net.toLocaleString()} ت به کیف‌پولت اومد (کارمزد ${r.fee.toLocaleString()} ت) ✅` : 'مبلغ به کیف‌پولت برداشت شد ✅');
+  loadMe(); loadClan();
 }
 async function giftClanUI() {
   const targetTgId = document.getElementById('giftMemberSelect').value;
   const amount = Number(document.getElementById('giftAmount').value);
   if (!targetTgId) { toast('یه عضو رو انتخاب کن'); return; }
   if (!amount || amount <= 0) { toast('یه مبلغ معتبر وارد کن'); return; }
-  await api('/api/clan/gift', { method: 'POST', body: JSON.stringify({ targetTgId, amount }) });
-  toast('هدیه ارسال شد ✅'); loadMe(); loadClan();
+  const r = await api('/api/clan/gift', { method: 'POST', body: JSON.stringify({ targetTgId, amount }) });
+  toast(r.fee > 0 ? `هدیه ارسال شد (${r.net.toLocaleString()} ت، کارمزد ${r.fee.toLocaleString()} ت) ✅` : 'هدیه ارسال شد ✅');
+  loadMe(); loadClan();
 }
 async function kickMemberUI(tgId) { if (!confirm('اخراج بشه؟')) return; await api('/api/clan/kick', { method: 'POST', body: JSON.stringify({ targetTgId: tgId }) }); loadClan(); }
 
@@ -1681,6 +1708,7 @@ async function loadClanWar() {
             <div class="war-side"><div class="wname">${w.clanBName || '؟'}</div></div>
           </div>
           <p class="muted" style="margin-top:10px;">دستهٔ کلن تو ثبت شد ✅ — منتظر ثبت دستهٔ حریف باش، به‌محض تکمیل نتیجه خودکار مشخص می‌شه.</p>
+          ${isLeader ? `<button class="btn danger" style="margin-top:8px;" onclick="cancelWarUI(${w.id})">لغو جنگ و پس‌گیری ورودی</button>` : ''}
         </div>`;
       } else if (isLeader) {
         if (WAR_PICKS.length !== st.config.team_size || WAR_PICKS.some(p => !p)) WAR_PICKS = Array(st.config.team_size).fill(null);
@@ -1689,6 +1717,7 @@ async function loadClanWar() {
           <p class="muted">${st.config.team_size} نفر از اعضای کلنت و کارت‌هاشون رو برای این نبرد انتخاب کن.</p>
           <div id="warSlots"></div>
           <button class="btn gold" style="margin-top:8px;" onclick="submitWarPicksUI(${w.id})">✅ ثبت دسته و آماده نبرد</button>
+          <button class="btn danger" style="margin-top:8px;" onclick="cancelWarUI(${w.id})">لغو جنگ و پس‌گیری ورودی</button>
         </div>`;
       } else {
         html += `<div class="card">منتظر رهبر/مدیر کلنت باش تا دستهٔ نبرد رو بچینه.</div>`;
