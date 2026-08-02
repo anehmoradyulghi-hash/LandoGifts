@@ -82,7 +82,20 @@ export function checkAutoResetSeason() {
   if (new Date(season.ends_at.replace(' ', 'T') + 'Z').getTime() <= Date.now()) startNewSeason();
 }
 
-export function listSeasonTiers() { return db.prepare('SELECT * FROM season_tiers ORDER BY tier_number ASC').all(); }
+function enrichReward(type, value) {
+  if (!value) return { image: null, name: null };
+  if (type === 'card') { const r = db.prepare('SELECT name, image_url FROM game_cards WHERE id = ?').get(value); return { image: r?.image_url || null, name: r?.name || null }; }
+  if (type === 'avatar') { const r = db.prepare('SELECT name, image_url FROM avatars WHERE id = ?').get(value); return { image: r?.image_url || null, name: r?.name || null }; }
+  if (type === 'product') { const r = db.prepare('SELECT title AS name, image_url FROM products WHERE id = ?').get(value); return { image: r?.image_url || null, name: r?.name || null }; }
+  return { image: null, name: null };
+}
+export function listSeasonTiers() {
+  return db.prepare('SELECT * FROM season_tiers ORDER BY tier_number ASC').all().map(t => {
+    const free = enrichReward(t.free_reward_type, t.free_reward_value);
+    const premium = enrichReward(t.premium_reward_type, t.premium_reward_value);
+    return { ...t, free_reward_image: free.image, free_reward_name: free.name, premium_reward_image: premium.image, premium_reward_name: premium.name };
+  });
+}
 export function getSeasonTier(n) { return db.prepare('SELECT * FROM season_tiers WHERE tier_number = ?').get(n); }
 export function upsertSeasonTier(t) {
   db.prepare(`

@@ -111,10 +111,12 @@ export function cancelClanWar(warId, leaderTgId) {
   const clan = requireLeader(leaderTgId);
   const war = db.prepare('SELECT * FROM clan_wars WHERE id = ?').get(warId);
   if (!war) throw new Error('جنگ پیدا نشد');
-  if (war.clan_a_id !== clan.id) throw new Error('فقط کلن سازنده می‌تونه لغوش کنه');
-  if (war.status !== 'open') throw new Error('این جنگ دیگه قابل لغو نیست (حریف پیدا کرده)');
+  if (war.clan_a_id !== clan.id && war.clan_b_id !== clan.id) throw new Error('این جنگ مال کلن تو نیست');
+  if (war.status !== 'open' && war.status !== 'picking') throw new Error('این جنگ دیگه تموم شده و قابل لغو نیست');
   db.transaction(() => {
-    db.prepare('UPDATE clans SET bank_balance = bank_balance + ? WHERE id = ?').run(war.entry_toman, clan.id);
+    // ورودی هر کلن به بانک خودش برمی‌گرده — نه فقط کلنی که جنگ رو ساخته
+    db.prepare('UPDATE clans SET bank_balance = bank_balance + ? WHERE id = ?').run(war.entry_toman, war.clan_a_id);
+    if (war.clan_b_id) db.prepare('UPDATE clans SET bank_balance = bank_balance + ? WHERE id = ?').run(war.entry_toman, war.clan_b_id);
     db.prepare(`UPDATE clan_wars SET status = 'cancelled' WHERE id = ?`).run(warId);
   })();
 }

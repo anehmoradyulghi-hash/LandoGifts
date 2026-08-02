@@ -23,7 +23,7 @@ import db, {
   createZarinpalPayment, getZarinpalPayment, markZarinpalPaymentStatus,
 } from './db.js';
 import {
-  listGameCards, getUserCards, buyGameCard, sacrificeCard, getMutationGroups, mutateCards,
+  listGameCards, getUserCards, buyGameCard, sacrificeCard, getMutationGroups, mutateCards, getGameCard,
   getGameConfig, getPlaysRemaining, getExtraPlays, buyExtraPlays,
   joinQueue, getQueueStatus, cancelQueue, getMatchHistory,
   getLeaderboard, getMyRank, getUserLeaderboardRow, listLeaderboardPrizes, checkAndAutoResetLeaderboard,
@@ -574,15 +574,19 @@ app.post('/api/clan/set-role', requireTelegramAuth, (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/clan/donate', requireTelegramAuth, (req, res) => {
-  try { donateToClan(req.dbUser.tg_id, Number(req.body.amount)); incrementQuestProgress(req.dbUser.tg_id, 'donate_clan', 1); res.json({ ok: true }); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    donateToClan(req.dbUser.tg_id, Number(req.body.amount));
+    incrementQuestProgress(req.dbUser.tg_id, 'donate_clan', 1);
+    addSeasonXp(req.dbUser.tg_id, getSeasonConfig().xp_per_donation);
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/clan/withdraw', requireTelegramAuth, (req, res) => {
-  try { withdrawFromClanBank(req.dbUser.tg_id, Number(req.body.amount)); res.json({ ok: true }); }
+  try { res.json({ ok: true, ...withdrawFromClanBank(req.dbUser.tg_id, Number(req.body.amount)) }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/clan/gift', requireTelegramAuth, (req, res) => {
-  try { giftFromClanBank(req.dbUser.tg_id, Number(req.body.targetTgId), Number(req.body.amount)); res.json({ ok: true }); }
+  try { res.json({ ok: true, ...giftFromClanBank(req.dbUser.tg_id, Number(req.body.targetTgId), Number(req.body.amount)) }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -781,6 +785,12 @@ app.get('/api/game/my-cards', requireTelegramAuth, (req, res) => res.json(getUse
 app.post('/api/game/buy-card', requireTelegramAuth, (req, res) => {
   try {
     const id = buyGameCard(req.dbUser.tg_id, Number(req.body.cardId));
+    const card = getGameCard(Number(req.body.cardId));
+    const price = card?.price_toman || 0;
+    addClanPurchaseScore(req.dbUser.tg_id, price);
+    addSeasonXp(req.dbUser.tg_id, getSeasonConfig().xp_per_purchase);
+    addUserXp(req.dbUser.tg_id, Math.floor(price / 1000) * getRankConfig().xp_per_1k_purchase);
+    incrementQuestProgress(req.dbUser.tg_id, 'buy_card', 1);
     res.json({ ok: true, id });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

@@ -58,15 +58,16 @@ function safeAddColumn(table, columnDef) {
 }
 // چقدر از سهم اهدایی خودش رو تا الان برداشت/هدیه داده — برای اینکه بیشتر از مشارکت خودش نتونه برداره
 safeAddColumn('clan_members', 'withdrawn_total INTEGER NOT NULL DEFAULT 0');
+safeAddColumn('clan_config', 'withdraw_fee_percent INTEGER NOT NULL DEFAULT 0');
 
 export function getClanConfig() { return db.prepare('SELECT * FROM clan_config WHERE id = 1').get(); }
 export function setClanConfig(c) {
   db.prepare(`
     UPDATE clan_config SET enabled=?, creation_cost_toman=?, max_members=?, score_per_1k_purchase=?, score_per_win=?,
-      score_per_1k_donation=?, reward_toman=?, winners_count=?, distribution_method=?, min_score_threshold=?, reset_days=?
+      score_per_1k_donation=?, reward_toman=?, winners_count=?, distribution_method=?, min_score_threshold=?, reset_days=?, withdraw_fee_percent=?
     WHERE id = 1
   `).run(c.enabled ? 1 : 0, c.creation_cost_toman, c.max_members, c.score_per_1k_purchase, c.score_per_win,
-    c.score_per_1k_donation, c.reward_toman, c.winners_count, c.distribution_method, c.min_score_threshold, c.reset_days);
+    c.score_per_1k_donation, c.reward_toman, c.winners_count, c.distribution_method, c.min_score_threshold, c.reset_days, c.withdraw_fee_percent || 0);
 }
 
 export function getMyClan(tgId) {
@@ -185,12 +186,16 @@ export function withdrawFromClanBank(ownerTgId, amount) {
   if (!amount || amount <= 0) throw new Error('مبلغ نامعتبره');
   const clan = getClanById(owner.clan_id);
   if (!clan || clan.bank_balance < amount) throw new Error('موجودی بانک کلن کافی نیست');
+  const cfg = getClanConfig();
+  const fee = Math.round(amount * (cfg.withdraw_fee_percent || 0) / 100);
+  const net = amount - fee;
   const tx = db.transaction(() => {
     db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
     db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
-    adjustToman(ownerTgId, amount, `برداشت از بانک کلن «${clan.name}»`);
+    adjustToman(ownerTgId, net, `برداشت از بانک کلن «${clan.name}»${fee > 0 ? ` (کارمزد ${fee.toLocaleString()} ت کسر شد)` : ''}`);
   });
   tx();
+  return { net, fee };
 }
 // رهبر کلن می‌تونه از بانک کلن مستقیم به یکی از اعضا هدیه بده
 export function giftFromClanBank(ownerTgId, targetTgId, amount) {
@@ -201,12 +206,16 @@ export function giftFromClanBank(ownerTgId, targetTgId, amount) {
   if (!target || target.clan_id !== owner.clan_id) throw new Error('این کاربر تو کلن تو نیست');
   const clan = getClanById(owner.clan_id);
   if (!clan || clan.bank_balance < amount) throw new Error('موجودی بانک کلن کافی نیست');
+  const cfg = getClanConfig();
+  const fee = Math.round(amount * (cfg.withdraw_fee_percent || 0) / 100);
+  const net = amount - fee;
   const tx = db.transaction(() => {
     db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
     db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
-    adjustToman(targetTgId, amount, `هدیه از بانک کلن «${clan.name}»`);
+    adjustToman(targetTgId, net, `هدیه از بانک کلن «${clan.name}»${fee > 0 ? ` (کارمزد ${fee.toLocaleString()} ت کسر شد)` : ''}`);
   });
   tx();
+  return { net, fee };
 }
 
 // هوک‌هایی که از بخش‌های دیگه صدا زده می‌شن (خرید از فروشگاه، برد بازی)
