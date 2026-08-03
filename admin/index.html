@@ -61,6 +61,7 @@
     <button data-tab="mergecosts" onclick="showTab('mergecosts')">هزینه جهش</button>
     <button data-tab="gameconfig" onclick="showTab('gameconfig')">تنظیمات بازی</button>
     <button data-tab="leaderboard" onclick="showTab('leaderboard')">جدول امتیازات</button>
+    <button data-tab="raffles" onclick="showTab('raffles')">🎟 گردونهٔ بزرگ</button>
     <button data-tab="wheel" onclick="showTab('wheel')">چرخ شانس</button>
     <button data-tab="auction" onclick="showTab('auction')">مزایده</button>
     <button data-tab="season" onclick="showTab('season')">بتل‌پس</button>
@@ -73,7 +74,6 @@
     <button data-tab="seasons" onclick="showTab('seasons')">کارت فصلی</button>
     <button data-tab="trade" onclick="showTab('trade')">تبادل</button>
     <button data-tab="cardtasks" onclick="showTab('cardtasks')">تسک‌های کارتی</button>
-    <button data-tab="tickets" onclick="showTab('tickets')">تیکت‌های قدیمی</button>
     <button data-tab="users" onclick="showTab('users')">کاربران</button>
   </nav>
   <main>
@@ -194,6 +194,11 @@
         <button class="btn" onclick="saveGiftCategory()">ذخیره دسته</button>
       </div>
       <div id="giftCategoriesTable"></div>
+      <div class="card">
+        <h3>⏳ آگهی‌های در انتظار تایید</h3>
+        <div id="pendingGiftsTable"></div>
+      </div>
+      <h3>همهٔ آگهی‌ها</h3>
       <div id="giftsTable"></div>
     </section>
 
@@ -369,6 +374,31 @@
       </div>
     </section>
 
+    <section class="tab" id="tab-raffles">
+      <div class="card">
+        <h3>ساخت / ویرایش گردونهٔ بزرگ</h3>
+        <input type="hidden" id="rfId">
+        <label>عنوان گردونه</label><input id="rfTitle" placeholder="مثلا: قرعه‌کشی هفتگی گیفت">
+        <label>توضیح جایزه</label><textarea id="rfPrize" rows="2" placeholder="مثلا: هر برنده ۵۰ هزار تومان می‌گیره"></textarea>
+        <div class="row2">
+          <div><label>ظرفیت کل (نفر)</label><input type="number" id="rfCapacity" value="100"></div>
+          <div><label>تعداد برنده</label><input type="number" id="rfWinners" value="10"></div>
+        </div>
+        <label>تسک لازم برای ورود (اختیاری)</label>
+        <select id="rfTaskId"><option value="">بدون نیاز به تسک</option></select>
+        <div class="row2">
+          <div><label>قیمت هر بلیط اضافه (تومان) — صفر یعنی غیرفعال</label><input type="number" id="rfTicketPrice" value="0"></div>
+          <div><label>سقف بلیط هر نفر</label><input type="number" id="rfMaxTickets" value="1"></div>
+        </div>
+        <button class="btn" onclick="saveRaffle()">ذخیره</button>
+      </div>
+      <div id="rafflesTable"></div>
+      <div class="card" id="raffleEntriesBox" style="display:none;">
+        <h3 id="raffleEntriesTitle"></h3>
+        <div id="raffleEntriesTable"></div>
+      </div>
+    </section>
+
     <section class="tab" id="tab-wheel">
       <div class="card">
         <h3>تنظیمات چرخ شانس</h3>
@@ -426,15 +456,6 @@
       <div id="cardTasksTable"></div>
     </section>
 
-    <section class="tab" id="tab-tickets">
-      <div id="ticketsList"></div>
-      <div class="card" id="ticketDetail" style="display:none;">
-        <div id="ticketMessages"></div>
-        <textarea id="replyText" rows="2" placeholder="پاسخ..."></textarea>
-        <button class="btn" onclick="sendReply()">ارسال پاسخ</button>
-        <button class="btn secondary" onclick="closeCurrentTicket()">بستن تیکت</button>
-      </div>
-    </section>
 
     <section class="tab" id="tab-auction">
       <div class="card">
@@ -729,7 +750,6 @@
 
 <script>
 let TOKEN = localStorage.getItem('lando_admin_token') || '';
-let currentTicketId = null;
 
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN, ...(opts.headers || {}) };
@@ -790,7 +810,8 @@ function showTab(name) {
     giftcfg: loadGiftConfigAdmin, seasons: loadSeasonsAdmin, trade: loadTradeConfigAdmin,
     creqs: loadCreqs, products: loadProducts, orders: loadOrders, gifts: loadGifts, tasks: loadTasks,
     gamecards: loadGameCards, specialcards: loadSpecialCards, gameconfig: loadGameConfig, leaderboard: loadLeaderboardTab, cardtasks: loadCardTasksTab,
-    tickets: loadTickets, users: loadUsers };
+    raffles: loadRafflesAdmin,
+    users: loadUsers };
   loaders[name]?.();
 }
 
@@ -802,7 +823,6 @@ async function loadDash() {
     <p>مجموع واریزی تومانی: <b>${s.totalToman.toLocaleString()}</b></p>
     <p>شارژهای در انتظار: <b>${s.pendingTopups}</b></p>
     <p>درخواست‌های ارزی در انتظار: <b>${s.pendingCurrency}</b></p>
-    <p>تیکت‌های باز: <b>${s.openTickets}</b></p>
   `;
 }
 
@@ -988,14 +1008,25 @@ async function setOrderStatus(id, status) { await api(`/orders/${id}/status`, { 
 /* ---------- بازار گیفت ---------- */
 async function loadGifts() {
   await loadGiftCategories();
+  const pending = await api('/gift-offers/pending');
+  document.getElementById('pendingGiftsTable').innerHTML = pending.length ? `
+    <table><tr><th>فروشنده</th><th>عنوان</th><th>قیمت</th><th>سریال</th><th>لینک</th><th>عملیات</th></tr>
+    ${pending.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString()}</td><td>${g.serial_number || '-'}</td><td>${g.link ? `<a href="${g.link}" target="_blank">لینک</a>` : '-'}</td>
+      <td><button class="btn" onclick="approveGift(${g.id})">✅ تایید</button> <button class="btn danger" onclick="rejectGift(${g.id})">❌ رد</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">آگهی در انتظار تایید نیست.</p>';
+
   const rows = await api('/gift-offers');
   document.getElementById('giftsTable').innerHTML = `
     <table><tr><th>فروشنده</th><th>خریدار</th><th>عنوان</th><th>قیمت</th><th>وضعیت</th><th>عملیات</th></tr>
     ${rows.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.buyer_tg_id || '-'}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString()}</td><td>${g.status}</td>
-      <td>${g.status === 'reserved' ? `<button class="btn danger" onclick="refundGift(${g.id})">بازگشت وجه به خریدار</button>` : ''}</td></tr>`).join('')}
+      <td>${g.status === 'reserved' ? `<button class="btn danger" onclick="refundGift(${g.id})">بازگشت وجه</button>` : ''}
+        <button class="btn danger" onclick="deleteGiftOfferUI(${g.id})">حذف</button></td></tr>`).join('')}
     </table>`;
 }
 async function refundGift(id) { if (confirm('مبلغ به خریدار برگرده؟')) { await api(`/gift-offers/${id}/refund`, { method: 'POST' }); loadGifts(); } }
+async function approveGift(id) { await api(`/gift-offers/${id}/approve`, { method: 'POST' }); loadGifts(); }
+async function rejectGift(id) { const reason = prompt('دلیل رد (اختیاری):') || ''; await api(`/gift-offers/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }); loadGifts(); }
+async function deleteGiftOfferUI(id) { if (confirm('این آگهی کامل حذف بشه؟ (اگه رزرو بود پول به خریدار برمی‌گرده)')) { await api(`/gift-offers/${id}`, { method: 'DELETE' }); loadGifts(); } }
 
 async function loadGiftCategories() {
   const rows = await api('/gift-categories');
@@ -1060,6 +1091,68 @@ async function saveTask() {
   loadTasks();
 }
 async function deleteTask(id) { if (confirm('حذف بشه؟')) { await api(`/tasks/${id}`, { method: 'DELETE' }); loadTasks(); } }
+
+/* ---------- گردونهٔ بزرگ (قرعه‌کشی) ---------- */
+async function loadRafflesAdmin() {
+  const tasks = await api('/tasks');
+  document.getElementById('rfTaskId').innerHTML = '<option value="">بدون نیاز به تسک</option>' + tasks.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+  const rows = await api('/raffles');
+  document.getElementById('rafflesTable').innerHTML = rows.length ? `
+    <table><tr><th>عنوان</th><th>ظرفیت</th><th>برنده</th><th>وضعیت</th><th>عملیات</th></tr>
+    ${rows.map(r => `<tr><td>${r.title}</td><td>${r.capacity}</td><td>${r.winners_count}</td><td>${r.status === 'open' ? '🟢 باز' : r.status === 'finished' ? '🏁 تموم‌شده' : '❌ لغوشده'}</td>
+      <td>
+        <button class="btn secondary" onclick="viewRaffleEntries(${r.id}, '${r.title.replace(/'/g, "\\'")}')">شرکت‌کننده‌ها</button>
+        ${r.status === 'open' ? `<button class="btn secondary" onclick='editRaffleUI(${JSON.stringify(r)})'>ویرایش</button>
+        <button class="btn gold" onclick="finishRaffleUI(${r.id})">🏁 اتمام قرعه</button>
+        <button class="btn danger" onclick="cancelRaffleUI(${r.id})">لغو</button>` : ''}
+        <button class="btn danger" onclick="deleteRaffleUI(${r.id})">حذف</button>
+      </td></tr>`).join('')}
+    </table>` : '<p class="muted">هنوز گردونه‌ای نساختی.</p>';
+}
+function editRaffleUI(r) {
+  document.getElementById('rfId').value = r.id;
+  document.getElementById('rfTitle').value = r.title;
+  document.getElementById('rfPrize').value = r.prize_description || '';
+  document.getElementById('rfCapacity').value = r.capacity;
+  document.getElementById('rfWinners').value = r.winners_count;
+  document.getElementById('rfTaskId').value = r.required_task_id || '';
+  document.getElementById('rfTicketPrice').value = r.ticket_price_toman;
+  document.getElementById('rfMaxTickets').value = r.max_tickets_per_user;
+}
+async function saveRaffle() {
+  await api('/raffles', { method: 'POST', body: JSON.stringify({
+    id: document.getElementById('rfId').value || null,
+    title: document.getElementById('rfTitle').value,
+    prize_description: document.getElementById('rfPrize').value,
+    capacity: document.getElementById('rfCapacity').value,
+    winners_count: document.getElementById('rfWinners').value,
+    required_task_id: document.getElementById('rfTaskId').value || null,
+    ticket_price_toman: document.getElementById('rfTicketPrice').value,
+    max_tickets_per_user: document.getElementById('rfMaxTickets').value,
+  }) });
+  document.getElementById('rfId').value = '';
+  document.getElementById('rfTitle').value = '';
+  document.getElementById('rfPrize').value = '';
+  loadRafflesAdmin();
+}
+async function deleteRaffleUI(id) { if (confirm('این گردونه کامل حذف بشه؟')) { await api(`/raffles/${id}`, { method: 'DELETE' }); loadRafflesAdmin(); } }
+async function cancelRaffleUI(id) { if (confirm('این گردونه لغو بشه؟')) { await api(`/raffles/${id}/cancel`, { method: 'POST' }); loadRafflesAdmin(); } }
+async function viewRaffleEntries(id, title) {
+  const rows = await api(`/raffles/${id}/entries`);
+  document.getElementById('raffleEntriesBox').style.display = 'block';
+  document.getElementById('raffleEntriesTitle').textContent = `شرکت‌کننده‌های «${title}» (${rows.length} نفر)`;
+  document.getElementById('raffleEntriesTable').innerHTML = rows.length ? `
+    <table><tr><th>آیدی</th><th>نام</th><th>بلیط</th><th>برنده؟</th></tr>
+    ${rows.map(e => `<tr><td>${e.tg_id}</td><td>${e.first_name || ''} ${e.username ? '@'+e.username : ''}</td><td>${e.tickets}</td><td>${e.is_winner ? '🏆' : '-'}</td></tr>`).join('')}
+    </table>` : '<p class="muted">هنوز کسی ثبت‌نام نکرده.</p>';
+  document.getElementById('raffleEntriesBox').scrollIntoView({ behavior: 'smooth' });
+}
+async function finishRaffleUI(id) {
+  if (!confirm('قرعه‌کشی نهایی انجام بشه؟ این عمل برگشت‌ناپذیره.')) return;
+  const r = await api(`/raffles/${id}/finish`, { method: 'POST' });
+  alert('برنده‌ها:\n' + r.winners.map(w => `${w.first_name || ''} (${w.tg_id}) — ${w.tickets} بلیط`).join('\n'));
+  loadRafflesAdmin();
+}
 
 /* ---------- عکس هر سطح کارت (۷ تا) ---------- */
 let LEVEL_IMAGES = ['', '', '', '', '', '', ''];
@@ -1460,39 +1553,13 @@ async function saveCardTask() {
 }
 async function deleteCardTask(id) { if (confirm('حذف بشه؟')) { await api(`/card-tasks/${id}`, { method: 'DELETE' }); loadCardTasksTab(); } }
 
-/* ---------- تیکت‌ها ---------- */
-async function loadTickets() {
-  const rows = await api('/tickets');
-  document.getElementById('ticketsList').innerHTML = `
-    <table><tr><th>کاربر</th><th>آخرین پیام</th><th>وضعیت</th><th></th></tr>
-    ${rows.map(t => `<tr><td>${t.first_name || ''} (${t.tg_id})</td><td>${(t.last_message || '').slice(0,40)}</td><td>${t.status}</td>
-      <td><button class="btn secondary" onclick="openTicket(${t.id})">باز کردن</button></td></tr>`).join('')}
-    </table>`;
-}
-async function openTicket(id) {
-  currentTicketId = id;
-  const { messages } = await api(`/tickets/${id}/messages`);
-  document.getElementById('ticketDetail').style.display = 'block';
-  document.getElementById('ticketMessages').innerHTML = messages.map(m =>
-    `<p><b>${m.sender === 'user' ? '👤 کاربر' : '🛠 ادمین'}:</b> ${m.body || ''}${m.image_url ? `<br><img src="${m.image_url}" style="max-width:200px;">` : ''}</p>`
-  ).join('');
-}
-async function sendReply() {
-  const text = document.getElementById('replyText').value;
-  if (!text.trim()) return;
-  await api(`/tickets/${currentTicketId}/reply`, { method: 'POST', body: JSON.stringify({ text }) });
-  document.getElementById('replyText').value = '';
-  openTicket(currentTicketId);
-}
-async function closeCurrentTicket() { await api(`/tickets/${currentTicketId}/close`, { method: 'POST' }); loadTickets(); document.getElementById('ticketDetail').style.display = 'none'; }
-
 /* ---------- کاربران ---------- */
 async function loadUsers() {
   const q = document.getElementById('userSearch').value;
   const rows = await api('/users?q=' + encodeURIComponent(q));
   document.getElementById('usersTable').innerHTML = `
-    <table><tr><th>آیدی</th><th>نام</th><th>موجودی</th><th>مسدود؟</th><th>عملیات</th></tr>
-    ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString()}</td><td>${u.is_banned ? '🚫' : '-'}</td>
+    <table><tr><th>آیدی</th><th>نام</th><th>موجودی</th><th>بتل‌پس؟</th><th>مسدود؟</th><th>عملیات</th></tr>
+    ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString()}</td><td>${u.has_battlepass ? '👑 داره' : '-'}</td><td>${u.is_banned ? '🚫' : '-'}</td>
       <td>
         <button class="btn secondary" onclick="adjustBalance(${u.tg_id})">اصلاح موجودی تومان</button>
         <button class="btn secondary" onclick="adjustCurrencyBalanceUI(${u.tg_id})">اصلاح موجودی ارزی</button>
@@ -1646,11 +1713,23 @@ async function loadClanAdmin() {
   document.getElementById('cwFeePercent').value = cw.fee_percent;
   document.getElementById('cwTeamSize').value = cw.team_size;
 
-  const lb = await api('/clan/leaderboard');
+  const lb = await api('/clan/all');
   document.getElementById('clanLeaderboardTable').innerHTML = lb.length ? `
-    <table><tr><th>اسم</th><th>تگ</th><th>امتیاز</th><th>بانک</th></tr>
-    ${lb.map(c => `<tr><td>${c.name}</td><td>#${c.tag}</td><td>${c.score}</td><td>${c.bank_balance.toLocaleString()}</td></tr>`).join('')}
+    <table><tr><th>اسم</th><th>تگ</th><th>امتیاز</th><th>بانک</th><th>عملیات</th></tr>
+    ${lb.map(c => `<tr><td>${c.name}</td><td>#${c.tag}</td><td>${c.score}</td><td>${c.bank_balance.toLocaleString()}</td>
+      <td><button class="btn secondary" onclick="adjustClanBankUI(${c.id})">اصلاح بانک</button> <button class="btn danger" onclick="deleteClanUI(${c.id})">حذف کلن</button></td></tr>`).join('')}
     </table>` : '<p class="muted">هنوز کلنی ساخته نشده.</p>';
+}
+async function deleteClanUI(id) {
+  if (!confirm('این کلن کامل حذف بشه؟ همهٔ اعضا از کلن خارج می‌شن. این عمل برگشت‌ناپذیره.')) return;
+  await api(`/clan/${id}`, { method: 'DELETE' });
+  loadClanAdmin();
+}
+async function adjustClanBankUI(id) {
+  const amount = prompt('مبلغ (منفی برای کسر):');
+  if (!amount) return;
+  await api(`/clan/${id}/adjust-bank`, { method: 'POST', body: JSON.stringify({ amount: Number(amount) }) });
+  loadClanAdmin();
 }
 async function saveClanConfig() {
   await api('/clan/config', { method: 'POST', body: JSON.stringify({
