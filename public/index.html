@@ -351,6 +351,15 @@
   .game-card .gcimgwrap img { width:100%; height:100%; object-fit:cover; }
   .game-card .gcimgwrap::after { content:''; position:absolute; inset:0; box-shadow:inset 0 0 22px -2px var(--rc, transparent); pointer-events:none; }
   .game-card .gc-body { padding:10px 11px 12px; }
+  .gshop-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .gshop-card { background:var(--surface); border-radius:18px; overflow:hidden; box-shadow:0 10px 24px -14px rgba(0,0,0,.55); border:1.5px solid var(--rc, var(--border)); animation:popIn .35s cubic-bezier(.22,.9,.34,1) backwards; }
+  .gshop-card .gcimgwrap { position:relative; aspect-ratio:3/4; background:var(--surface2); }
+  .gshop-card .gcimgwrap img { width:100%; height:100%; object-fit:cover; }
+  .gshop-card .gcimgwrap::after { content:''; position:absolute; inset:0; box-shadow:inset 0 0 22px -2px var(--rc, transparent); pointer-events:none; }
+  .gshop-card .gc-body { padding:9px 10px 11px; }
+  .gshop-card .gc-name { font-weight:800; font-size:12px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gshop-card .gc-price { font-size:11px; color:var(--muted); margin-top:3px; }
+  .gshop-card .gc-buy { display:block; width:100%; margin-top:7px; background:linear-gradient(90deg,var(--p1),var(--b1)); border:none; border-radius:12px; padding:8px; color:#fff; font-weight:800; font-size:12px; cursor:pointer; }
   /* ---------- چرخ‌گردونهٔ شانس ---------- */
   .wheel-wrap { position:relative; width:230px; height:230px; margin:6px auto 14px; }
   .wheel-pointer { position:absolute; top:-8px; left:50%; transform:translateX(-50%); font-size:26px; z-index:5; filter:drop-shadow(0 3px 5px rgba(0,0,0,.55)); }
@@ -536,7 +545,8 @@
   </div>
   <div class="view" id="mtab-sell">
     <div class="card">
-      <h3 class="sec" style="margin-top:0;">ثبت آگهی فروش گیفت</h3>
+      <h3 class="sec" style="margin-top:0;" id="sellFormTitle">ثبت آگهی فروش گیفت</h3>
+      <input type="hidden" id="giftEditId">
       <label>دسته‌بندی گیفت</label>
       <select id="giftTitle" onchange="onGiftCategoryChange()"><option value="">در حال بارگذاری...</option></select>
       <label>عکس گیفت</label>
@@ -545,7 +555,9 @@
       <img id="giftImagePreview" style="max-width:100px;border-radius:10px;display:none;margin-bottom:8px;">
       <label>قیمت (تومان)</label><input type="number" id="giftPrice">
       <label>شماره سریال/مدل (اختیاری)</label><input type="text" id="giftSerial" placeholder="مثلا #126547">
-      <button class="btn" onclick="listGift()">ثبت آگهی</button>
+      <label>لینک گیفت (اختیاری)</label><input type="text" id="giftLink" placeholder="https://t.me/nft/...">
+      <button class="btn" id="giftSubmitBtn" onclick="listGift()">ثبت آگهی</button>
+      <button class="btn ghost" id="giftCancelEditBtn" style="display:none;" onclick="cancelEditGift()">انصراف از ویرایش</button>
     </div>
   </div>
   <div class="view" id="mtab-mine">
@@ -717,6 +729,7 @@
     <div class="menu-row" onclick="showMView('trade')"><span class="mic">🔄</span><div class="mtxt"><div class="mt">تبادل کارت</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showMView('avatars')"><span class="mic">🎨</span><div class="mtxt"><div class="mt">فروشگاه آواتار</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showPage('tasks')"><span class="mic">✅</span><div class="mtxt"><div class="mt">تسک‌ها</div><div class="ms">انجام بده و جایزه بگیر</div></div><span class="arrow">‹</span></div>
+    <div class="menu-row" onclick="showMView('raffle')"><span class="mic">🎟</span><div class="mtxt"><div class="mt">گردونهٔ بزرگ</div><div class="ms">قرعه‌کشی جوایز</div></div><span class="arrow">‹</span></div>
     <h3 class="sec">اطلاعات</h3>
     <div class="menu-row" onclick="openInfoPage('guide','📖 راهنما')"><span class="mic">📖</span><div class="mtxt"><div class="mt">راهنما</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="openInfoPage('faq','❓ سوالات متداول')"><span class="mic">❓</span><div class="mtxt"><div class="mt">سوالات متداول</div></div><span class="arrow">‹</span></div>
@@ -737,6 +750,10 @@
 
   <div class="view" id="mview-clanwar">
     <div id="clanWarContent" class="muted">در حال بارگذاری...</div>
+  </div>
+
+  <div class="view" id="mview-raffle">
+    <div id="raffleContent" class="muted">در حال بارگذاری...</div>
   </div>
 
   <div class="view" id="mview-album">
@@ -887,11 +904,12 @@ function showMView(name) {
   document.querySelectorAll('#page-more .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mview-' + name).classList.add('active');
   document.getElementById('headerBackBtn').style.display = name === 'hub' ? 'none' : 'flex';
-  const titles = { auction:'مزایده فلش', clan:'کلن', clanwar:'⚔️ جنگ کلن', album:'آلبوم کلکسیون', trade:'تبادل کارت', avatars:'فروشگاه آواتار' };
+  const titles = { auction:'مزایده فلش', clan:'کلن', clanwar:'⚔️ جنگ کلن', album:'آلبوم کلکسیون', trade:'تبادل کارت', avatars:'فروشگاه آواتار', raffle:'🎟 گردونهٔ بزرگ' };
   document.getElementById('headerTitle').textContent = name === 'hub' ? 'بیشتر' : titles[name];
   if (name === 'auction') loadAuctions();
   if (name === 'clan') loadClan();
   if (name === 'clanwar') loadClanWar();
+  if (name === 'raffle') loadRaffles();
   if (name === 'album') loadAlbums();
   if (name === 'trade') loadTrades();
   if (name === 'avatars') loadAvatarsShop();
@@ -1158,12 +1176,15 @@ async function loadMarket() {
   renderMarketGrid();
 
   const mine = await api('/api/gifts/my');
+  MY_GIFTS_CACHE = mine;
+  const statusLabel = { pending: '⏳ در انتظار تایید', active: '✅ فعال تو بازار', reserved: '🤝 رزرو شده', completed: '🏁 تکمیل‌شده', cancelled: '❌ لغوشده' };
   document.getElementById('myGiftsList').innerHTML = mine.length
     ? mine.map(o => `
       <div class="card">
-        <div class="row"><b>${o.title}${o.serial_number ? ` <span class="mkt-card-serial">${o.serial_number}</span>` : ''}</b><span class="tag">${o.status}</span></div>
+        <div class="row"><b>${o.title}${o.serial_number ? ` <span class="mkt-card-serial">${o.serial_number}</span>` : ''}</b><span class="tag">${statusLabel[o.status] || o.status}</span></div>
         <p class="muted">${o.price_toman.toLocaleString()} تومان</p>
-        ${o.status === 'active' ? `<button class="btn danger" onclick="cancelGift(${o.id})">لغو آگهی</button>` : ''}
+        ${o.link ? `<p class="muted">🔗 <a href="${o.link}" target="_blank" style="color:#c9b3ff;">لینک گیفت</a></p>` : ''}
+        ${(o.status === 'active' || o.status === 'pending') ? `<button class="btn secondary" onclick="editGiftUI(${o.id})">ویرایش</button> <button class="btn danger" onclick="cancelGift(${o.id})">لغو آگهی</button>` : ''}
         ${o.status === 'reserved' ? `<button class="btn" onclick="confirmGift(${o.id})">تایید دریافت گیفت</button>` : ''}
       </div>`).join('')
     : 'آگهی‌ای ثبت نکردی.';
@@ -1198,18 +1219,56 @@ function renderMarketGrid() {
         <div class="mkt-card-body">
           <div class="mkt-card-name">${o.title}</div>
           ${o.serial_number ? `<span class="mkt-card-serial">${o.serial_number}</span>` : ''}
+          ${o.link ? `<div><a href="${o.link}" target="_blank" style="color:#c9b3ff;font-size:11px;">🔗 مشاهدهٔ گیفت</a></div>` : ''}
           <button class="mkt-price-pill" onclick="buyGift(${o.id})">${o.price_toman.toLocaleString()} ت</button>
         </div>
       </div>`).join('')}</div>`
     : '<div class="empty"><div class="eic">🎁</div>آگهی‌ای با این فیلتر پیدا نشد.</div>';
 }
+let MY_GIFTS_CACHE = [];
 async function listGift() {
   const title = document.getElementById('giftTitle').value;
   const image_url = document.getElementById('giftImage').value;
   const price = Number(document.getElementById('giftPrice').value);
   const serial_number = document.getElementById('giftSerial').value;
-  await api('/api/gifts/list', { method: 'POST', body: JSON.stringify({ title, image_url, price, serial_number }) });
-  toast('آگهی ثبت شد ✅'); showMarketTab('mine');
+  const link = document.getElementById('giftLink').value;
+  const editId = document.getElementById('giftEditId').value;
+  if (editId) {
+    await api(`/api/gifts/${editId}/edit`, { method: 'POST', body: JSON.stringify({ title, image_url, price, serial_number, link }) });
+    toast('آگهی ویرایش شد و دوباره در انتظار تایید ادمینه ✅');
+  } else {
+    await api('/api/gifts/list', { method: 'POST', body: JSON.stringify({ title, image_url, price, serial_number, link }) });
+    toast('آگهی ثبت شد، بعد از تایید ادمین تو بازار نشون داده می‌شه ✅');
+  }
+  cancelEditGift();
+  showMarketTab('mine');
+}
+function editGiftUI(id) {
+  const o = MY_GIFTS_CACHE.find(g => g.id === id);
+  if (!o) return;
+  document.getElementById('giftEditId').value = o.id;
+  document.getElementById('giftTitle').value = o.title;
+  document.getElementById('giftImage').value = o.image_url || '';
+  document.getElementById('giftPrice').value = o.price_toman;
+  document.getElementById('giftSerial').value = o.serial_number || '';
+  document.getElementById('giftLink').value = o.link || '';
+  const preview = document.getElementById('giftImagePreview');
+  if (o.image_url) { preview.src = o.image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+  document.getElementById('sellFormTitle').textContent = 'ویرایش آگهی';
+  document.getElementById('giftSubmitBtn').textContent = 'ذخیرهٔ ویرایش';
+  document.getElementById('giftCancelEditBtn').style.display = 'block';
+  showMarketTab('sell');
+}
+function cancelEditGift() {
+  document.getElementById('giftEditId').value = '';
+  document.getElementById('giftPrice').value = '';
+  document.getElementById('giftSerial').value = '';
+  document.getElementById('giftLink').value = '';
+  document.getElementById('giftImage').value = '';
+  document.getElementById('giftImagePreview').style.display = 'none';
+  document.getElementById('sellFormTitle').textContent = 'ثبت آگهی فروش گیفت';
+  document.getElementById('giftSubmitBtn').textContent = 'ثبت آگهی';
+  document.getElementById('giftCancelEditBtn').style.display = 'none';
 }
 async function buyGift(id) { await api(`/api/gifts/${id}/buy`, { method: 'POST' }); toast('رزرو شد ✅'); loadMe(); loadMarket(); }
 async function cancelGift(id) { await api(`/api/gifts/${id}/cancel`, { method: 'POST' }); loadMarket(); }
@@ -1270,14 +1329,16 @@ async function loadGame() {
   const selectedCat = catSelect.value;
   const cards = await api('/api/game/cards');
   const filtered = selectedCat ? cards.filter(c => String(c.category_id) === selectedCat) : cards;
-  document.getElementById('gameShop').innerHTML = filtered.length ? filtered.map((c, i) => `
-    <div class="card" ${staggerStyle(i)}>
-      ${c.image_url ? `<img src="${c.image_url}">` : ''}
-      <div class="row"><b>${c.name}</b>${rarityBadge(c.rarity_label, c.rarity_color)}</div>
-      ${c.edition && c.edition !== 'standard' ? `<span class="tag">${c.edition === 'gold' ? '🟡 طلایی' : '✨ درخشان'}</span>` : ''}
-      <p class="muted">قدرت پایه: ${c.base_power} — قیمت: ${c.price_toman.toLocaleString()} ت</p>
-      <button class="btn" onclick="buyGameCard(${c.id})">خرید</button>
-    </div>`).join('') : 'فعلا کارتی در این دسته نیست.';
+  document.getElementById('gameShop').innerHTML = filtered.length ? `<div class="gshop-grid">${filtered.map((c, i) => `
+    <div class="gshop-card" style="--rc:${c.rarity_color || 'var(--border)'};" ${staggerStyle(i)}>
+      <div class="gcimgwrap">${c.image_url ? `<img src="${c.image_url}">` : ''}</div>
+      <div class="gc-body">
+        <div class="gc-name">${c.name}</div>
+        ${c.edition && c.edition !== 'standard' ? `<span class="tag">${c.edition === 'gold' ? '🟡 طلایی' : '✨ درخشان'}</span>` : rarityBadge(c.rarity_label, c.rarity_color)}
+        <div class="gc-price">قدرت ${c.base_power} — ${c.price_toman.toLocaleString()} ت</div>
+        <button class="gc-buy" onclick="buyGameCard(${c.id})">خرید</button>
+      </div>
+    </div>`).join('')}</div>` : 'فعلا کارتی در این دسته نیست.';
   await loadMyCards(); await loadMutationGroups(); await loadGameLeaderboard(); await loadCardTasks(); await loadGameHistory();
 }
 async function buyGameCard(id) { await api('/api/game/buy-card', { method: 'POST', body: JSON.stringify({ cardId: id }) }); toast('کارت خریداری شد ✅'); loadMe(); loadMyCards(); loadMutationGroups(); }
@@ -1433,28 +1494,36 @@ async function loadWheel() {
   const history = await api('/api/wheel/history');
   document.getElementById('wheelHistoryList').innerHTML = history.length ? history.map(h => `<div class="row"><span>${h.result_label}</span><span class="muted">${h.spun_at}</span></div>`).join('') : 'هنوز اسپینی نداشتی.';
 }
+function computeWheelSegments(slots) {
+  const total = slots.reduce((s, x) => s + (Number(x.probability_percent) || 0), 0) || slots.length;
+  let acc = 0;
+  return slots.map(s => {
+    const size = ((Number(s.probability_percent) || 0) / total) * 360 || (360 / slots.length);
+    const seg = { start: acc, end: acc + size, center: acc + size / 2 };
+    acc += size;
+    return seg;
+  });
+}
 function renderWheelDisc(slots) {
   const disc = document.getElementById('wheelDisc');
   if (!slots.length) { disc.style.background = 'var(--surface2)'; disc.innerHTML = ''; return; }
-  const n = slots.length, seg = 360 / n;
-  const stops = slots.map((s, i) => `${s.color} ${i * seg}deg ${(i + 1) * seg}deg`).join(',');
+  const segs = computeWheelSegments(slots);
+  const stops = slots.map((s, i) => `${s.color} ${segs[i].start}deg ${segs[i].end}deg`).join(',');
   disc.style.background = `conic-gradient(${stops})`;
   disc.innerHTML = slots.map((s, i) => {
-    const angle = i * seg + seg / 2;
-    return `<div class="wheel-label" style="transform:rotate(${angle}deg) translate(72px) rotate(90deg);">${s.label}</div>`;
+    return `<div class="wheel-label" style="transform:rotate(${segs[i].center}deg) translate(72px) rotate(90deg);">${s.label}</div>`;
   }).join('');
 }
 async function doSpinWheel() {
   const disc = document.getElementById('wheelDisc');
   try {
     const r = await api('/api/wheel/spin', { method: 'POST' });
-    const n = WHEEL_SLOTS.length || 1;
-    const seg = 360 / n;
     let idx = WHEEL_SLOTS.findIndex(s => s.id === r.won.id);
     if (idx < 0) idx = 0;
-    // زاویه‌ای که باید زیر فلک (بالای گردونه) بیاد وسط همون قطعه‌ست
-    const targetCenter = idx * seg + seg / 2;
-    const jitter = (Math.random() - 0.5) * seg * 0.6;
+    const segs = computeWheelSegments(WHEEL_SLOTS);
+    const targetCenter = segs[idx].center;
+    const segSize = segs[idx].end - segs[idx].start;
+    const jitter = (Math.random() - 0.5) * segSize * 0.6;
     const extraSpins = 5 * 360;
     const currentMod = ((WHEEL_ROTATION % 360) + 360) % 360;
     // فلک بالای گردونه‌ست (۰ درجه)، گردونه باید بچرخه تا قطعهٔ برنده زیر فلک برسه
@@ -1805,6 +1874,37 @@ async function joinWarUI(id) {
   if (!confirm('با پیوستن، ورودی جنگ از بانک کلنت کسر می‌شه. مطمئنی؟')) return;
   await api(`/api/clanwar/${id}/join`, { method: 'POST' });
   toast('پیوستی! حالا دسته‌ت رو بچین ⚔️'); loadClanWar();
+}
+
+/* ================= گردونهٔ بزرگ (قرعه‌کشی) ================= */
+async function loadRaffles() {
+  const raffles = await api('/api/raffle/list');
+  const el = document.getElementById('raffleContent');
+  el.innerHTML = raffles.length ? raffles.map(r => {
+    const pct = Math.min(100, Math.round((r.entriesCount / r.raffle.capacity) * 100));
+    const canBuyMore = r.raffle.ticket_price_toman > 0 && r.myEntry && r.myEntry.tickets < r.raffle.max_tickets_per_user;
+    return `<div class="card">
+      <h3 class="sec" style="margin-top:0;">${r.raffle.title}</h3>
+      ${r.raffle.prize_description ? `<p class="muted">${r.raffle.prize_description}</p>` : ''}
+      <div class="row"><span class="muted">ظرفیت</span><b>${r.entriesCount} / ${r.raffle.capacity}</b></div>
+      <div class="bp-progress"><div class="bp-progress-fill" style="width:${pct}%;"></div></div>
+      <div class="row" style="margin-top:6px;"><span class="muted">تعداد برنده</span><b>${r.raffle.winners_count} نفر</b></div>
+      ${r.raffle.required_task_id ? `<div class="row"><span class="muted">شرط ورود</span><b>${r.taskDone ? '✅ تسک انجام‌شده' : `❌ تسک «${r.requiredTask?.title || ''}» رو انجام بده`}</b></div>` : ''}
+      ${r.myEntry
+        ? `<div class="tag" style="margin-top:8px;">✅ ثبت‌نام کردی — ${r.myEntry.tickets} بلیط داری</div>
+           ${canBuyMore ? `<button class="btn gold" style="margin-top:8px;" onclick="buyRaffleTicketUI(${r.raffle.id})">🎫 خرید بلیط اضافه (${r.raffle.ticket_price_toman.toLocaleString()} ت)</button>` : ''}`
+        : `<button class="btn gold" style="margin-top:8px;" ${!r.taskDone ? 'disabled' : ''} onclick="registerRaffleUI(${r.raffle.id})">🎟 ثبت‌نام تو قرعه‌کشی</button>
+           ${!r.taskDone ? `<button class="btn secondary" style="margin-top:6px;" onclick="showPage('tasks')">رفتن به تسک‌ها</button>` : ''}`}
+    </div>`;
+  }).join('') : '<div class="empty"><div class="eic">🎟</div>فعلا گردونهٔ بازی نیست.</div>';
+}
+async function registerRaffleUI(id) {
+  await api(`/api/raffle/${id}/register`, { method: 'POST' });
+  toast('ثبت‌نام شدی 🎉'); loadRaffles();
+}
+async function buyRaffleTicketUI(id) {
+  await api(`/api/raffle/${id}/buy-ticket`, { method: 'POST' });
+  toast('بلیط اضافه خریداری شد ✅'); loadMe(); loadRaffles();
 }
 
 /* ================= آلبوم ================= */
