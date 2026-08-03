@@ -92,7 +92,7 @@ export function spinWheel(tgId) {
   if (status.requirePurchaseNotMet) throw new Error('برای چرخوندن، اول باید یه خرید انجام بدی');
   if (!status.canSpin) throw new Error('هنوز نوبت اسپین بعدیت نرسیده');
 
-  const slots = listWheelSlots(true);
+  const slots = listWheelSlots(true).filter(s => s.type !== 'card' || db.prepare('SELECT 1 FROM game_cards WHERE id = ?').get(s.card_id));
   if (!slots.length) throw new Error('هیچ جایزه‌ای تعریف نشده');
   const totalWeight = slots.reduce((s, x) => s + x.probability_percent, 0);
   if (totalWeight <= 0) throw new Error('احتمال جایزه‌ها تنظیم نشده');

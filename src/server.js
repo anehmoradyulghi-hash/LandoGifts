@@ -16,7 +16,7 @@ import db, {
   decideTomanTopup, decideTomanWithdrawal, decideCurrencyRequest, getTomanTopup, getTomanWithdrawal, getCurrencyRequest,
   listCategories, listProducts, getProduct,
   createOrder, listOrdersForUser,
-  createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer, listGiftCategories,
+  createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer, listGiftCategories, updateGiftOffer,
   listActiveTasks, hasClaimedTask, claimTask, getTask,
   getPaymentSettings, getMessageSettings, getSupportContact, getInfoPage,
   createStarPaymentRequest, getStarPayment, completeStarPayment,
@@ -48,6 +48,7 @@ import {
   createClanWar, cancelClanWar, joinClanWar, submitWarPicks, getClanWar, getMemberCardsForLeader,
 } from './clan-war-db.js';
 import { getLeagueConfig, getUserLeagueInfo, getLeagueLeaderboard, checkAutoResetLeague } from './league-db.js';
+import { listOpenRaffles, getRaffleStatusForUser, registerForRaffle, buyRaffleTicket, getRaffle } from './raffle-db.js';
 import {
   getRankConfig, getUserRankInfo, addUserXp, canCheckinToday, doCheckin,
   listAvatars, getMyAvatars, buyAvatar, equipAvatar,
@@ -420,13 +421,22 @@ app.get('/api/gifts/categories', (req, res) => res.json(listGiftCategories(true)
 
 app.get('/api/gift-categories', (req, res) => res.json(listGiftCategories(true)));
 app.post('/api/gifts/list', requireTelegramAuth, (req, res) => {
-  const { title, image_url, price, serial_number } = req.body;
+  const { title, image_url, price, serial_number, link } = req.body;
   const p = Number(price);
   if (!title || !p || p < 5000) return res.status(400).json({ error: 'عنوان و قیمت معتبر (حداقل ۵,۰۰۰ تومان) لازمه' });
   const categories = listGiftCategories(true);
   if (categories.length && !categories.some(c => c.name === title)) return res.status(400).json({ error: 'این دسته‌بندی تایید نشده، از لیست انتخاب کن' });
-  const id = createGiftOffer(req.dbUser.tg_id, title, image_url, p, serial_number);
+  const id = createGiftOffer(req.dbUser.tg_id, title, image_url, p, serial_number, link);
   res.json({ ok: true, id });
+});
+app.post('/api/gifts/:id/edit', requireTelegramAuth, (req, res) => {
+  try {
+    const { title, image_url, price, serial_number, link } = req.body;
+    const p = Number(price);
+    if (!title || !p || p < 5000) return res.status(400).json({ error: 'عنوان و قیمت معتبر (حداقل ۵,۰۰۰ تومان) لازمه' });
+    updateGiftOffer(req.dbUser.tg_id, Number(req.params.id), { title, image_url, price_toman: p, serial_number, link });
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/gifts/:id/cancel', requireTelegramAuth, (req, res) => {
   try { cancelGiftOffer(req.dbUser.tg_id, Number(req.params.id)); res.json({ ok: true }); }
@@ -648,6 +658,20 @@ app.get('/api/league/status', requireTelegramAuth, (req, res) => {
 });
 app.get('/api/league/leaderboard/:league', requireTelegramAuth, (req, res) => {
   res.json(getLeagueLeaderboard(req.params.league, 10));
+});
+
+/* ---------- گردونهٔ بزرگ (قرعه‌کشی) ---------- */
+app.get('/api/raffle/list', requireTelegramAuth, (req, res) => {
+  const raffles = listOpenRaffles().map(r => getRaffleStatusForUser(r.id, req.dbUser.tg_id));
+  res.json(raffles);
+});
+app.post('/api/raffle/:id/register', requireTelegramAuth, (req, res) => {
+  try { registerForRaffle(req.dbUser.tg_id, Number(req.params.id)); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/raffle/:id/buy-ticket', requireTelegramAuth, (req, res) => {
+  try { buyRaffleTicket(req.dbUser.tg_id, Number(req.params.id)); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/rank/checkin', requireTelegramAuth, (req, res) => {
   try {

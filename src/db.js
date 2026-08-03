@@ -174,6 +174,7 @@ function safeAddColumn(table, columnDef) {
   catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
 }
 safeAddColumn('gift_offers', 'serial_number TEXT'); // شماره سریال/مدل واقعی گیفت (اختیاری)
+safeAddColumn('gift_offers', 'link TEXT'); // لینک اختیاری خود گیفت
 safeAddColumn('currencies', 'deposit_address TEXT'); // آدرس/شمارهٔ حسابی که کاربر باید واریز کنه، به تفکیک هر ارز
 
 db.exec(`
@@ -296,10 +297,18 @@ export function unbanUser(tgId) {
 export function listUsers(search) {
   if (search) {
     const like = `%${search}%`;
-    return db.prepare(`SELECT * FROM users WHERE CAST(tg_id AS TEXT) LIKE ? OR username LIKE ? OR first_name LIKE ? ORDER BY created_at DESC LIMIT 100`)
-      .all(like, like, like);
+    return db.prepare(`
+      SELECT u.*, COALESCE(us.purchased_premium, 0) AS has_battlepass FROM users u
+      LEFT JOIN user_season us ON us.tg_id = u.tg_id
+      WHERE CAST(u.tg_id AS TEXT) LIKE ? OR u.username LIKE ? OR u.first_name LIKE ?
+      ORDER BY u.created_at DESC LIMIT 100
+    `).all(like, like, like);
   }
-  return db.prepare('SELECT * FROM users ORDER BY created_at DESC LIMIT 100').all();
+  return db.prepare(`
+    SELECT u.*, COALESCE(us.purchased_premium, 0) AS has_battlepass FROM users u
+    LEFT JOIN user_season us ON us.tg_id = u.tg_id
+    ORDER BY u.created_at DESC LIMIT 100
+  `).all();
 }
 
 /* =========================================================================
@@ -474,14 +483,15 @@ export function setOrderStatus(id, status) { db.prepare('UPDATE orders SET statu
 /* =========================================================================
  * GIFT MARKET — بازار امانی گیفت‌های واقعی بین کاربران
  * ========================================================================= */
-export function createGiftOffer(sellerTgId, title, imageUrl, priceToman, serialNumber) {
+export function createGiftOffer(sellerTgId, title, imageUrl, priceToman, serialNumber, link) {
   // اگه ادمین دسته‌بندی تعریف کرده باشه، عنوان آگهی باید دقیقا یکی از همون‌ها باشه (نه متن آزاد)
   const categories = listGiftCategories(true);
   if (categories.length && !categories.some(c => c.name === title)) {
     throw new Error('این دسته‌بندی معتبر نیست — یکی از دسته‌های موجود رو انتخاب کن');
   }
-  return db.prepare(`INSERT INTO gift_offers (seller_tg_id, title, image_url, price_toman, serial_number) VALUES (?,?,?,?,?)`)
-    .run(sellerTgId, title, imageUrl || null, priceToman, serialNumber || null).lastInsertRowid;
+  // آگهی‌های جدید اول باید توسط ادمین تایید بشن، بعد تو بازار نشون داده می‌شن
+  return db.prepare(`INSERT INTO gift_offers (seller_tg_id, title, image_url, price_toman, serial_number, link, status) VALUES (?,?,?,?,?,?,'pending')`)
+    .run(sellerTgId, title, imageUrl || null, priceToman, serialNumber || null, link || null).lastInsertRowid;
 }
 export function getGiftOffer(id) { return db.prepare('SELECT * FROM gift_offers WHERE id = ?').get(id); }
 export function listMyGiftOffers(tgId) {
@@ -493,8 +503,21 @@ export function listMarketGiftOffers(excludeTgId) {
 export function cancelGiftOffer(tgId, id) {
   const offer = getGiftOffer(id);
   if (!offer || offer.seller_tg_id !== tgId) throw new Error('این آگهی مال شما نیست');
-  if (offer.status !== 'active') throw new Error('این آگهی دیگه قابل لغو نیست');
+  if (offer.status !== 'active' && offer.status !== 'pending') throw new Error('این آگهی دیگه قابل لغو نیست');
   db.prepare(`UPDATE gift_offers SET status = 'cancelled' WHERE id = ?`).run(id);
+}
+// ویرایش آگهی توسط فروشنده — بعد از ویرایش دوباره باید تایید بشه
+export function updateGiftOffer(tgId, id, { title, image_url, price_toman, serial_number, link }) {
+  const offer = getGiftOffer(id);
+  if (!offer || offer.seller_tg_id !== tgId) throw new Error('این آگهی مال شما نیست');
+  if (offer.status !== 'active' && offer.status !== 'pending') throw new Error('این آگهی تو این وضعیت قابل ویرایش نیست');
+  const categories = listGiftCategories(true);
+  if (categories.length && !categories.some(c => c.name === title)) {
+    throw new Error('این دسته‌بندی معتبر نیست — یکی از دسته‌های موجود رو انتخاب کن');
+  }
+  db.prepare(`
+    UPDATE gift_offers SET title=?, image_url=?, price_toman=?, serial_number=?, link=?, status='pending' WHERE id=?
+  `).run(title, image_url || null, price_toman, serial_number || null, link || null, id);
 }
 export function reserveGiftOffer(buyerTgId, id) {
   const offer = getGiftOffer(id);
@@ -519,6 +542,28 @@ export function confirmGiftReceived(buyerTgId, id, feePercent) {
 }
 export function listAllGiftOffersAdmin() {
   return db.prepare('SELECT * FROM gift_offers ORDER BY created_at DESC LIMIT 200').all();
+}
+export function listPendingGiftOffers() {
+  return db.prepare(`SELECT * FROM gift_offers WHERE status = 'pending' ORDER BY created_at ASC`).all();
+}
+export function approveGiftOffer(id) {
+  const offer = getGiftOffer(id);
+  if (!offer || offer.status !== 'pending') throw new Error('این آگهی در انتظار تایید نیست');
+  db.prepare(`UPDATE gift_offers SET status = 'active' WHERE id = ?`).run(id);
+}
+export function rejectGiftOffer(id) {
+  const offer = getGiftOffer(id);
+  if (!offer || offer.status !== 'pending') throw new Error('این آگهی در انتظار تایید نیست');
+  db.prepare(`UPDATE gift_offers SET status = 'cancelled' WHERE id = ?`).run(id);
+}
+// حذف کامل آگهی توسط ادمین (تو هر وضعیتی) — اگه رزرو بود، پول به خریدار برمی‌گرده
+export function adminDeleteGiftOffer(id) {
+  const offer = getGiftOffer(id);
+  if (!offer) throw new Error('آگهی پیدا نشد');
+  if (offer.status === 'reserved') {
+    adjustToman(offer.buyer_tg_id, offer.price_toman, `حذف آگهی توسط ادمین — بازگشت وجه «${offer.title}»`);
+  }
+  db.prepare('DELETE FROM gift_offers WHERE id = ?').run(id);
 }
 // ادمین برای رفع اختلاف: برگردوندن پول به خریدار (مثلا گیفت هیچوقت نرسید)
 export function adminRefundGiftOffer(id) {

@@ -265,3 +265,25 @@ export function checkAutoResetClanSeason(notifyFn) {
   const startedAt = new Date(state.period_started_at.replace(' ', 'T') + 'Z').getTime();
   if (Date.now() >= startedAt + cfg.reset_days * 24 * 60 * 60 * 1000) resetClanSeason(notifyFn);
 }
+
+/* ---------- عملیات ادمین روی هر کلنی ---------- */
+export function adminDeleteClan(clanId) {
+  const clan = getClanById(clanId);
+  if (!clan) throw new Error('کلن پیدا نشد');
+  const tx = db.transaction(() => {
+    db.prepare('DELETE FROM clan_members WHERE clan_id = ?').run(clanId);
+    db.prepare('DELETE FROM clan_donations WHERE clan_id = ?').run(clanId);
+    db.prepare('DELETE FROM clans WHERE id = ?').run(clanId);
+  });
+  tx();
+}
+// ادمین می‌تونه بدون محدودیت (بدون کارمزد) موجودی بانک هر کلنی رو دستی کم/زیاد کنه
+export function adminAdjustClanBank(clanId, amount) {
+  const clan = getClanById(clanId);
+  if (!clan) throw new Error('کلن پیدا نشد');
+  if (clan.bank_balance + amount < 0) throw new Error('موجودی بانک کلن نمی‌تونه منفی بشه');
+  db.prepare('UPDATE clans SET bank_balance = bank_balance + ? WHERE id = ?').run(amount, clanId);
+}
+export function listAllClansAdmin() {
+  return db.prepare('SELECT * FROM clans ORDER BY score DESC').all();
+}

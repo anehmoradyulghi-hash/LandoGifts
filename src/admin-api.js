@@ -12,7 +12,7 @@ import {
   listCategories, addCategory, deleteCategory,
   listProducts, upsertProduct, deleteProduct,
   listAllOrders, setOrderStatus,
-  listAllGiftOffersAdmin, adminRefundGiftOffer,
+  listAllGiftOffersAdmin, adminRefundGiftOffer, listPendingGiftOffers, approveGiftOffer, rejectGiftOffer, adminDeleteGiftOffer, getGiftOffer,
   listAllTasksAdmin, upsertTask, deleteTask,
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
@@ -39,9 +39,12 @@ import {
 import {
   getSeasonConfig, setSeasonConfig, getCurrentSeason, startNewSeason, listSeasonTiers, upsertSeasonTier, deleteSeasonTier,
 } from './season-db.js';
-import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason } from './clan-db.js';
+import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason, adminDeleteClan, adminAdjustClanBank, listAllClansAdmin } from './clan-db.js';
 import { getClanWarConfig, setClanWarConfig } from './clan-war-db.js';
 import { getLeagueConfig, setLeagueConfig } from './league-db.js';
+import {
+  listRafflesAdmin, createRaffle, updateRaffle, deleteRaffle, cancelRaffle, listRaffleEntries, finishRaffle,
+} from './raffle-db.js';
 import {
   getRankConfig, setRankConfig, listRankTitles, upsertRankTitle, deleteRankTitle,
   listAvatars, upsertAvatar, deleteAvatar,
@@ -276,6 +279,27 @@ router.post('/gift-offers/:id/refund', (req, res) => {
   try { adminRefundGiftOffer(Number(req.params.id)); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
+router.get('/gift-offers/pending', (req, res) => res.json(listPendingGiftOffers()));
+router.post('/gift-offers/:id/approve', (req, res) => {
+  try {
+    approveGiftOffer(Number(req.params.id));
+    const offer = getGiftOffer(Number(req.params.id));
+    sendMessage(offer.seller_tg_id, `✅ آگهی گیفت «${offer.title}» تایید شد و الان تو بازار قابل مشاهده‌ست.`).catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.post('/gift-offers/:id/reject', (req, res) => {
+  try {
+    const offer = getGiftOffer(Number(req.params.id));
+    rejectGiftOffer(Number(req.params.id));
+    if (offer) sendMessage(offer.seller_tg_id, `❌ آگهی گیفت «${offer.title}» رد شد.${req.body.reason ? ` دلیل: ${req.body.reason}` : ''}`).catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/gift-offers/:id', (req, res) => {
+  try { adminDeleteGiftOffer(Number(req.params.id)); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 
 /* ---------- تسک‌ها ---------- */
 router.get('/tasks', (req, res) => res.json(listAllTasksAdmin()));
@@ -508,6 +532,15 @@ router.post('/clan/config', (req, res) => {
   res.json({ ok: true });
 });
 router.get('/clan/leaderboard', (req, res) => res.json(getClanLeaderboard(20)));
+router.get('/clan/all', (req, res) => res.json(listAllClansAdmin()));
+router.delete('/clan/:id', (req, res) => {
+  try { adminDeleteClan(Number(req.params.id)); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.post('/clan/:id/adjust-bank', (req, res) => {
+  try { adminAdjustClanBank(Number(req.params.id), Number(req.body.amount)); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 router.post('/clan/reset-season', (req, res) => {
   resetClanSeason((tgId, clan, reward) => {
     sendMessage(tgId, `🏆 کلن «${clan.name}» تو جدول برترین‌ها بود و ${reward.toLocaleString()} تومان جایزه گرفتی!`).catch(() => {});
@@ -527,6 +560,23 @@ router.get('/league/config', (req, res) => res.json(getLeagueConfig()));
 router.post('/league/config', (req, res) => {
   setLeagueConfig(req.body);
   res.json({ ok: true });
+});
+
+/* ---------- گردونهٔ بزرگ (قرعه‌کشی) ---------- */
+router.get('/raffles', (req, res) => res.json(listRafflesAdmin()));
+router.post('/raffles', (req, res) => {
+  try {
+    if (!req.body.title) return res.status(400).json({ error: 'عنوان لازمه' });
+    const id = req.body.id ? (updateRaffle(Number(req.body.id), req.body), Number(req.body.id)) : createRaffle(req.body);
+    res.json({ ok: true, id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/raffles/:id', (req, res) => { deleteRaffle(Number(req.params.id)); res.json({ ok: true }); });
+router.post('/raffles/:id/cancel', (req, res) => { cancelRaffle(Number(req.params.id)); res.json({ ok: true }); });
+router.get('/raffles/:id/entries', (req, res) => res.json(listRaffleEntries(Number(req.params.id))));
+router.post('/raffles/:id/finish', (req, res) => {
+  try { res.json({ ok: true, winners: finishRaffle(Number(req.params.id)) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 /* ---------- رنکینگ، لقب، آواتار ---------- */
