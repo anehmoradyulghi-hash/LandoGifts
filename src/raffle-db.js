@@ -2,11 +2,11 @@ import db from './db.js';
 import { adjustToman, getUser, hasClaimedTask, getTask } from './db.js';
 
 /* =========================================================================
- * گردونهٔ بزرگ (قرعه‌کشی) — کاملا جدا از چرخ شانس روزانه.
- * کاربر ثبت‌نام می‌کنه (شاید نیازمند انجام یه تسک مشخص باشه)، می‌تونه با خرید
- * بلیط شانسش رو بیشتر کنه، و وقتی ادمین «اتمام قرعه» رو می‌زنه، به تعداد
- * برنده‌های تعیین‌شده به‌صورت وزن‌دار (بر اساس تعداد بلیط) قرعه‌کشی می‌شه.
- * جایزه‌ها واریز دستی توسط ادمینه، اینجا فقط آیدی برنده‌ها نشون داده می‌شه.
+ * Big wheel (raffle) — completely separate from the daily wheel of fortune.
+ * The user registers (may require completing a specific task), can buy extra
+ * tickets increase their chance, and when the admin clicks "End raffle",
+ * the specified number of winners are drawn with weighting (based on ticket count).
+ * Prizes are deposited manually by the admin, this just shows the winners' IDs.
  * ========================================================================= */
 db.exec(`
 CREATE TABLE IF NOT EXISTS raffles (
@@ -48,8 +48,8 @@ export function createRaffle(r) {
 }
 export function updateRaffle(id, r) {
   const raffle = getRaffle(id);
-  if (!raffle) throw new Error('گردونه پیدا نشد');
-  if (raffle.status !== 'open') throw new Error('این گردونه دیگه باز نیست');
+  if (!raffle) throw new Error('Raffle not found');
+  if (raffle.status !== 'open') throw new Error('This raffle is no longer open');
   db.prepare(`
     UPDATE raffles SET title=?, prize_description=?, capacity=?, winners_count=?, required_task_id=?, ticket_price_toman=?, max_tickets_per_user=?
     WHERE id=?
@@ -83,31 +83,31 @@ export function getRaffleStatusForUser(raffleId, tgId) {
   return { raffle, entriesCount, myEntry, taskDone, requiredTask };
 }
 
-// ثبت‌نام اولیه (رایگان، فقط اگه تسک لازم انجام شده باشه و ظرفیت خالی باشه) — همیشه ۱ بلیط پایه می‌ده
+// Initial registration (free, only if the required task is done and there's capacity) — always gives 1 base ticket
 export function registerForRaffle(tgId, raffleId) {
   const raffle = getRaffle(raffleId);
-  if (!raffle || raffle.status !== 'open') throw new Error('این گردونه فعلا باز نیست');
-  if (getEntry(raffleId, tgId)) throw new Error('قبلا تو این گردونه ثبت‌نام کردی');
+  if (!raffle || raffle.status !== 'open') throw new Error('This raffle is not open yet');
+  if (getEntry(raffleId, tgId)) throw new Error('You have already registered for this raffle');
   const entriesCount = db.prepare('SELECT COUNT(*) c FROM raffle_entries WHERE raffle_id = ?').get(raffleId).c;
-  if (entriesCount >= raffle.capacity) throw new Error('ظرفیت این گردونه تکمیل شده');
+  if (entriesCount >= raffle.capacity) throw new Error('This raffle is at full capacity');
   if (raffle.required_task_id && !hasClaimedTask(tgId, raffle.required_task_id)) {
-    throw new Error('اول باید تسک لازم برای ورود رو انجام بدی');
+    throw new Error('You must first complete the required task to enter');
   }
   db.prepare('INSERT INTO raffle_entries (raffle_id, tg_id, tickets) VALUES (?,?,1)').run(raffleId, tgId);
 }
 
-// خرید بلیط اضافه برای افزایش شانس (تا سقف max_tickets_per_user)
+// Buying extra tickets to increase your chance (up to the cap max_tickets_per_user)
 export function buyRaffleTicket(tgId, raffleId) {
   const raffle = getRaffle(raffleId);
-  if (!raffle || raffle.status !== 'open') throw new Error('این گردونه فعلا باز نیست');
-  if (!raffle.ticket_price_toman) throw new Error('خرید بلیط برای این گردونه فعال نیست');
+  if (!raffle || raffle.status !== 'open') throw new Error('This raffle is not open yet');
+  if (!raffle.ticket_price_toman) throw new Error('Ticket purchase is not enabled for this raffle');
   const entry = getEntry(raffleId, tgId);
-  if (!entry) throw new Error('اول باید تو گردونه ثبت‌نام کنی');
-  if (entry.tickets >= raffle.max_tickets_per_user) throw new Error('به سقف تعداد بلیط مجاز رسیدی');
+  if (!entry) throw new Error('You must first register for the raffle');
+  if (entry.tickets >= raffle.max_tickets_per_user) throw new Error('You have reached the maximum allowed ticket count');
   const user = getUser(tgId);
-  if (!user || user.balance_toman < raffle.ticket_price_toman) throw new Error('موجودی کیف‌پول کافی نیست');
+  if (!user || user.balance_toman < raffle.ticket_price_toman) throw new Error('Insufficient wallet balance');
   const tx = db.transaction(() => {
-    adjustToman(tgId, -raffle.ticket_price_toman, `خرید بلیط گردونهٔ «${raffle.title}»`);
+    adjustToman(tgId, -raffle.ticket_price_toman, `Ticket purchase for raffle «${raffle.title}»`);
     db.prepare('UPDATE raffle_entries SET tickets = tickets + 1 WHERE raffle_id = ? AND tg_id = ?').run(raffleId, tgId);
   });
   tx();
@@ -129,11 +129,11 @@ function drawWeightedWinners(entries, winnersCount) {
   return winners;
 }
 
-// ادمین دکمهٔ «اتمام قرعه» رو می‌زنه — برنده‌ها وزن‌دار (بر اساس تعداد بلیط) انتخاب می‌شن
+// The admin clicks the "End raffle" button — winners are chosen with weighting (based on ticket count)
 export function finishRaffle(raffleId) {
   const raffle = getRaffle(raffleId);
-  if (!raffle) throw new Error('گردونه پیدا نشد');
-  if (raffle.status !== 'open') throw new Error('این گردونه قبلا تموم شده');
+  if (!raffle) throw new Error('Raffle not found');
+  if (raffle.status !== 'open') throw new Error('This raffle has already ended');
   const entries = listRaffleEntries(raffleId);
   const winnerIds = drawWeightedWinners(entries, raffle.winners_count);
   const tx = db.transaction(() => {

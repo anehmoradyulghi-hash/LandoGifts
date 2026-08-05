@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS clan_config (
   score_per_win INTEGER NOT NULL DEFAULT 5,
   score_per_1k_donation INTEGER NOT NULL DEFAULT 20,
   reward_toman INTEGER NOT NULL DEFAULT 0,
-  winners_count INTEGER NOT NULL DEFAULT 1,     -- 1 یا 3
+  winners_count INTEGER NOT NULL DEFAULT 1,     -- 1 or 3
   distribution_method TEXT NOT NULL DEFAULT 'equal', -- equal | donation_share
   min_score_threshold INTEGER NOT NULL DEFAULT 0,
   reset_days INTEGER NOT NULL DEFAULT 7
@@ -56,7 +56,7 @@ function safeAddColumn(table, columnDef) {
   try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
   catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
 }
-// چقدر از سهم اهدایی خودش رو تا الان برداشت/هدیه داده — برای اینکه بیشتر از مشارکت خودش نتونه برداره
+// how much of their own donated share they've withdrawn/gifted so far — so they cannot withdraw more than their own contribution
 safeAddColumn('clan_members', 'withdrawn_total INTEGER NOT NULL DEFAULT 0');
 safeAddColumn('clan_config', 'withdraw_fee_percent INTEGER NOT NULL DEFAULT 0');
 
@@ -100,17 +100,17 @@ export function getClanRank(clanId) {
 
 export function createClan(tgId, name, tag, avatarUrl) {
   const cfg = getClanConfig();
-  if (!cfg.enabled) throw new Error('سیستم کلن فعلا غیرفعاله');
-  if (getMyClan(tgId)) throw new Error('قبلا عضو یه کلن هستی');
-  if (!name || !tag) throw new Error('اسم و تگ کلن لازمه');
+  if (!cfg.enabled) throw new Error('The clan system is currently disabled');
+  if (getMyClan(tgId)) throw new Error('You are already a member of a clan');
+  if (!name || !tag) throw new Error('Clan name and tag are required');
   const exists = db.prepare('SELECT 1 FROM clans WHERE tag = ?').get(tag);
-  if (exists) throw new Error('این تگ قبلا استفاده شده');
+  if (exists) throw new Error('This tag is already in use');
   const user = getUser(tgId);
-  if (!user || user.balance_toman < cfg.creation_cost_toman) throw new Error(`برای ساخت کلن ${cfg.creation_cost_toman.toLocaleString()} تومان لازمه`);
+  if (!user || user.balance_toman < cfg.creation_cost_toman) throw new Error(`${cfg.creation_cost_toman.toLocaleString()} LNDC is required to create a clan`);
 
   let clanId;
   const tx = db.transaction(() => {
-    adjustToman(tgId, -cfg.creation_cost_toman, `ساخت کلن «${name}»`);
+    adjustToman(tgId, -cfg.creation_cost_toman, `Create clan «${name}»`);
     clanId = db.prepare('INSERT INTO clans (name, tag, avatar_url, owner_tg_id) VALUES (?,?,?,?)').run(name, tag, avatarUrl || null, tgId).lastInsertRowid;
     db.prepare(`INSERT INTO clan_members (tg_id, clan_id, role) VALUES (?,?,'owner')`).run(tgId, clanId);
   });
@@ -120,19 +120,19 @@ export function createClan(tgId, name, tag, avatarUrl) {
 
 export function joinClan(tgId, clanId) {
   const cfg = getClanConfig();
-  if (!cfg.enabled) throw new Error('سیستم کلن فعلا غیرفعاله');
-  if (getMyClan(tgId)) throw new Error('قبلا عضو یه کلن هستی');
+  if (!cfg.enabled) throw new Error('The clan system is currently disabled');
+  if (getMyClan(tgId)) throw new Error('You are already a member of a clan');
   const clan = getClanById(clanId);
-  if (!clan) throw new Error('کلن پیدا نشد');
+  if (!clan) throw new Error('Clan not found');
   const memberCount = db.prepare('SELECT COUNT(*) c FROM clan_members WHERE clan_id = ?').get(clanId).c;
-  if (memberCount >= cfg.max_members) throw new Error('این کلن پره');
+  if (memberCount >= cfg.max_members) throw new Error('This clan is full');
   db.prepare(`INSERT INTO clan_members (tg_id, clan_id, role) VALUES (?,?,'member')`).run(tgId, clanId);
 }
 
-// اگه رهبر بره، کلن کامل منحل می‌شه؛ عضو عادی فقط خارج می‌شه
+// If the leader leaves, the clan is fully disbanded; a regular member just leaves
 export function leaveClan(tgId) {
   const member = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
-  if (!member) throw new Error('تو هیچ کلنی نیستی');
+  if (!member) throw new Error('You are not in any clan');
   if (member.role === 'owner') {
     const tx = db.transaction(() => {
       db.prepare('DELETE FROM clan_members WHERE clan_id = ?').run(member.clan_id);
@@ -147,31 +147,31 @@ export function leaveClan(tgId) {
 
 export function kickMember(ownerTgId, targetTgId) {
   const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
-  if (!owner || owner.role !== 'owner') throw new Error('فقط رهبر کلن می‌تونه اخراج کنه');
+  if (!owner || owner.role !== 'owner') throw new Error('Only the clan leader can kick');
   const target = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(targetTgId);
-  if (!target || target.clan_id !== owner.clan_id) throw new Error('این کاربر تو کلن تو نیست');
-  if (target.role === 'owner') throw new Error('نمی‌تونی خودتو اخراج کنی');
+  if (!target || target.clan_id !== owner.clan_id) throw new Error('This user is not in your clan');
+  if (target.role === 'owner') throw new Error('You cannot kick yourself');
   db.prepare('DELETE FROM clan_members WHERE tg_id = ?').run(targetTgId);
 }
 export function setMemberRole(ownerTgId, targetTgId, role) {
   const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
-  if (!owner || owner.role !== 'owner') throw new Error('فقط رهبر کلن می‌تونه نقش بده');
+  if (!owner || owner.role !== 'owner') throw new Error('Only the clan leader can assign roles');
   const target = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(targetTgId);
-  if (!target || target.clan_id !== owner.clan_id) throw new Error('این کاربر تو کلن تو نیست');
+  if (!target || target.clan_id !== owner.clan_id) throw new Error('This user is not in your clan');
   db.prepare(`UPDATE clan_members SET role = ? WHERE tg_id = ?`).run(role === 'admin' ? 'admin' : 'member', targetTgId);
 }
 
 export function donateToClan(tgId, amount) {
   const member = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
-  if (!member) throw new Error('تو هیچ کلنی نیستی');
-  if (!amount || amount <= 0) throw new Error('مبلغ نامعتبره');
+  if (!member) throw new Error('You are not in any clan');
+  if (!amount || amount <= 0) throw new Error('Invalid amount');
   const user = getUser(tgId);
-  if (!user || user.balance_toman < amount) throw new Error('موجودی کافی نیست');
+  if (!user || user.balance_toman < amount) throw new Error('Insufficient balance');
   const cfg = getClanConfig();
   const scoreGain = Math.floor(amount / 1000) * cfg.score_per_1k_donation;
 
   const tx = db.transaction(() => {
-    adjustToman(tgId, -amount, 'اهدا به بانک کلن');
+    adjustToman(tgId, -amount, 'Donation to clan bank');
     db.prepare('UPDATE clans SET bank_balance = bank_balance + ?, score = score + ? WHERE id = ?').run(amount, scoreGain, member.clan_id);
     db.prepare('UPDATE clan_members SET donated_total = donated_total + ? WHERE tg_id = ?').run(amount, tgId);
     db.prepare('INSERT INTO clan_donations (clan_id, tg_id, amount) VALUES (?,?,?)').run(member.clan_id, tgId, amount);
@@ -179,46 +179,46 @@ export function donateToClan(tgId, amount) {
   tx();
 }
 
-// رهبر کلن می‌تونه از بانک کلن (پول‌هایی که اعضا اهدا کردن) برداشت کنه به کیف‌پول خودش
+// The clan leader can withdraw from the clan bank (funds members donated) to their own wallet
 export function withdrawFromClanBank(ownerTgId, amount) {
   const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
-  if (!owner || owner.role !== 'owner') throw new Error('فقط رهبر کلن می‌تونه از بانک کلن برداشت کنه');
-  if (!amount || amount <= 0) throw new Error('مبلغ نامعتبره');
+  if (!owner || owner.role !== 'owner') throw new Error('Only the clan leader can withdraw from the clan bank');
+  if (!amount || amount <= 0) throw new Error('Invalid amount');
   const clan = getClanById(owner.clan_id);
-  if (!clan || clan.bank_balance < amount) throw new Error('موجودی بانک کلن کافی نیست');
+  if (!clan || clan.bank_balance < amount) throw new Error('Insufficient clan bank balance');
   const cfg = getClanConfig();
   const fee = Math.round(amount * (cfg.withdraw_fee_percent || 0) / 100);
   const net = amount - fee;
   const tx = db.transaction(() => {
     db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
     db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
-    adjustToman(ownerTgId, net, `برداشت از بانک کلن «${clan.name}»${fee > 0 ? ` (کارمزد ${fee.toLocaleString()} ت کسر شد)` : ''}`);
+    adjustToman(ownerTgId, net, `Withdrawal from clan bank «${clan.name}»${fee > 0 ? ` (${fee.toLocaleString()} LNDC fee deducted)` : ''}`);
   });
   tx();
   return { net, fee };
 }
-// رهبر کلن می‌تونه از بانک کلن مستقیم به یکی از اعضا هدیه بده
+// The clan leader can gift directly from the clan bank to a member
 export function giftFromClanBank(ownerTgId, targetTgId, amount) {
   const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
-  if (!owner || owner.role !== 'owner') throw new Error('فقط رهبر کلن می‌تونه از بانک کلن هدیه بده');
-  if (!amount || amount <= 0) throw new Error('مبلغ نامعتبره');
+  if (!owner || owner.role !== 'owner') throw new Error('Only the clan leader can gift from the clan bank');
+  if (!amount || amount <= 0) throw new Error('Invalid amount');
   const target = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(targetTgId);
-  if (!target || target.clan_id !== owner.clan_id) throw new Error('این کاربر تو کلن تو نیست');
+  if (!target || target.clan_id !== owner.clan_id) throw new Error('This user is not in your clan');
   const clan = getClanById(owner.clan_id);
-  if (!clan || clan.bank_balance < amount) throw new Error('موجودی بانک کلن کافی نیست');
+  if (!clan || clan.bank_balance < amount) throw new Error('Insufficient clan bank balance');
   const cfg = getClanConfig();
   const fee = Math.round(amount * (cfg.withdraw_fee_percent || 0) / 100);
   const net = amount - fee;
   const tx = db.transaction(() => {
     db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
     db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
-    adjustToman(targetTgId, net, `هدیه از بانک کلن «${clan.name}»${fee > 0 ? ` (کارمزد ${fee.toLocaleString()} ت کسر شد)` : ''}`);
+    adjustToman(targetTgId, net, `Gift from clan bank «${clan.name}»${fee > 0 ? ` (${fee.toLocaleString()} LNDC fee deducted)` : ''}`);
   });
   tx();
   return { net, fee };
 }
 
-// هوک‌هایی که از بخش‌های دیگه صدا زده می‌شن (خرید از فروشگاه، برد بازی)
+// Hooks called from other parts of the app (shop purchases, game wins)
 export function addClanPurchaseScore(tgId, amountToman) {
   const member = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
   if (!member) return;
@@ -235,7 +235,7 @@ export function addClanWinScore(tgId) {
 
 export function getClanState() { return db.prepare('SELECT * FROM clan_state WHERE id = 1').get(); }
 
-// جوایز کلن‌های برتر رو پخش و امتیازها رو صفر می‌کنه (بانک دست‌نخورده می‌مونه)
+// Distributes prizes to the top clans and resets scores (the bank remains untouched)
 export function resetClanSeason(notifyFn) {
   const cfg = getClanConfig();
   const top = db.prepare('SELECT * FROM clans WHERE score >= ? ORDER BY score DESC LIMIT ?').all(cfg.min_score_threshold, cfg.winners_count);
@@ -246,12 +246,12 @@ export function resetClanSeason(notifyFn) {
       const totalDonated = members.reduce((s, m) => s + m.donated_total, 0);
       for (const m of members) {
         const share = totalDonated > 0 ? Math.floor((cfg.reward_toman * m.donated_total) / totalDonated) : Math.floor(cfg.reward_toman / members.length);
-        if (share > 0) { adjustToman(m.tg_id, share, `جایزه کلن «${clan.name}» (بر اساس سهم اهدا)`); if (notifyFn) notifyFn(m.tg_id, clan, share); }
+        if (share > 0) { adjustToman(m.tg_id, share, `Clan prize "${clan.name}" (based on donation share)`); if (notifyFn) notifyFn(m.tg_id, clan, share); }
       }
     } else {
       const share = Math.floor(cfg.reward_toman / members.length);
       for (const m of members) {
-        if (share > 0) { adjustToman(m.tg_id, share, `جایزه کلن «${clan.name}»`); if (notifyFn) notifyFn(m.tg_id, clan, share); }
+        if (share > 0) { adjustToman(m.tg_id, share, `Clan prize «${clan.name}»`); if (notifyFn) notifyFn(m.tg_id, clan, share); }
       }
     }
   }
@@ -266,10 +266,10 @@ export function checkAutoResetClanSeason(notifyFn) {
   if (Date.now() >= startedAt + cfg.reset_days * 24 * 60 * 60 * 1000) resetClanSeason(notifyFn);
 }
 
-/* ---------- عملیات ادمین روی هر کلنی ---------- */
+/* ---------- Admin operations on any clan ---------- */
 export function adminDeleteClan(clanId) {
   const clan = getClanById(clanId);
-  if (!clan) throw new Error('کلن پیدا نشد');
+  if (!clan) throw new Error('Clan not found');
   const tx = db.transaction(() => {
     db.prepare('DELETE FROM clan_members WHERE clan_id = ?').run(clanId);
     db.prepare('DELETE FROM clan_donations WHERE clan_id = ?').run(clanId);
@@ -277,11 +277,11 @@ export function adminDeleteClan(clanId) {
   });
   tx();
 }
-// ادمین می‌تونه بدون محدودیت (بدون کارمزد) موجودی بانک هر کلنی رو دستی کم/زیاد کنه
+// The admin can manually increase/decrease any clan's bank balance without limit (no fee)
 export function adminAdjustClanBank(clanId, amount) {
   const clan = getClanById(clanId);
-  if (!clan) throw new Error('کلن پیدا نشد');
-  if (clan.bank_balance + amount < 0) throw new Error('موجودی بانک کلن نمی‌تونه منفی بشه');
+  if (!clan) throw new Error('Clan not found');
+  if (clan.bank_balance + amount < 0) throw new Error('The clan bank balance cannot go negative');
   db.prepare('UPDATE clans SET bank_balance = bank_balance + ? WHERE id = ?').run(amount, clanId);
 }
 export function listAllClansAdmin() {

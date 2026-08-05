@@ -16,7 +16,7 @@ function safeAddColumn(table, columnDef) {
   try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
   catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
 }
-safeAddColumn('game_cards', 'season_id INTEGER'); // خالی = کارت همیشگی، نه فصلی
+safeAddColumn('game_cards', 'season_id INTEGER'); // empty = a permanent card, not seasonal
 
 export function listSeasons() { return db.prepare('SELECT * FROM seasons ORDER BY created_at DESC').all(); }
 export function getSeason(id) { return db.prepare('SELECT * FROM seasons WHERE id = ?').get(id); }
@@ -32,7 +32,7 @@ export function setCardSeason(cardId, seasonId) {
   db.prepare('UPDATE game_cards SET season_id = ? WHERE id = ?').run(seasonId || null, cardId);
 }
 
-// فصل‌های تموم‌شده رو می‌بنده و کارت‌های داخلشون رو از فروش خارج می‌کنه (کارت‌های قبلا خریده‌شده دست‌نخورده می‌مونن)
+// Closes finished seasons and pulls their cards from sale (previously purchased cards remain untouched)
 export function checkExpiredSeasons() {
   const expired = db.prepare(`SELECT * FROM seasons WHERE active = 1 AND ends_at <= datetime('now')`).all();
   for (const s of expired) {

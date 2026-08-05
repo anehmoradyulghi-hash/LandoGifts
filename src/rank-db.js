@@ -20,15 +20,15 @@ CREATE TABLE IF NOT EXISTS rank_titles (
   icon TEXT
 );
 INSERT OR IGNORE INTO rank_titles (level_threshold, title, icon) VALUES
-  (1,'تازه‌کار','🌱'), (10,'بازیکن','⭐'), (25,'جنگجو','⚔️'),
-  (50,'قهرمان','🏆'), (75,'افسانه‌ای','🔥'), (100,'خدای بازی','👑');
+  (1,'Newcomer','🌱'), (10,'Player','⭐'), (25,'Warrior','⚔️'),
+  (50,'Hero','🏆'), (75,'Legendary','🔥'), (100,'Game God','👑');
 
 CREATE TABLE IF NOT EXISTS avatars (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   image_url TEXT,
   price_toman INTEGER NOT NULL DEFAULT 0,
-  quantity INTEGER,          -- خالی = نامحدود
+  quantity INTEGER,          -- empty = unlimited
   sold_count INTEGER NOT NULL DEFAULT 0,
   source TEXT NOT NULL DEFAULT 'shop', -- shop | battlepass | event
   active INTEGER NOT NULL DEFAULT 1,
@@ -98,7 +98,7 @@ export function getUserRankInfo(tgId) {
   return { xp: ur.xp, level, title: titleInfo.title, icon: titleInfo.icon, xpIntoLevel, xpPerLevel: cfg.xp_per_level, equippedAvatarId: ur.equipped_avatar_id, avatarImage };
 }
 
-// جدول امتیازات لول: بر اساس بیشترین XP (که مستقیم معادل بالاترین لوله)
+// Level leaderboard: based on highest XP (which directly equals the highest level)
 export function getLevelLeaderboard(limit = 10) {
   const cfg = getRankConfig();
   const rows = db.prepare(`
@@ -120,7 +120,7 @@ export function getUserLevelRank(tgId) {
   `).get(tgId);
   return row.rank;
 }
-// ردیف خود کاربر تو جدول لول (حتی اگه تو ۱۰ نفر برتر نباشه)
+// The user's own row in the level leaderboard (even if not in the top 10)
 export function getUserLevelRow(tgId) {
   const info = getUserRankInfo(tgId);
   const user = getUser(tgId);
@@ -131,7 +131,7 @@ export function canCheckinToday(tgId) {
   return !db.prepare(`SELECT 1 FROM daily_checkins WHERE tg_id = ? AND checkin_date = date('now')`).get(tgId);
 }
 export function doCheckin(tgId) {
-  if (!canCheckinToday(tgId)) throw new Error('امروز قبلا چک‌این کردی');
+  if (!canCheckinToday(tgId)) throw new Error('You have already checked in today');
   const cfg = getRankConfig();
   const tx = db.transaction(() => {
     db.prepare('INSERT INTO daily_checkins (tg_id) VALUES (?)').run(tgId);
@@ -141,7 +141,7 @@ export function doCheckin(tgId) {
   return { xpGained: cfg.xp_per_checkin };
 }
 
-/* ---------- آواتارها ---------- */
+/* ---------- Avatars ---------- */
 export function listAvatars(onlyActive = false) {
   return onlyActive
     ? db.prepare('SELECT * FROM avatars WHERE active = 1 ORDER BY price_toman ASC').all()
@@ -167,21 +167,21 @@ export function getMyAvatars(tgId) {
 }
 export function buyAvatar(tgId, avatarId) {
   const avatar = getAvatar(avatarId);
-  if (!avatar || !avatar.active) throw new Error('این آواتار در دسترس نیست');
+  if (!avatar || !avatar.active) throw new Error('This avatar is not available');
   const already = db.prepare('SELECT 1 FROM user_avatars WHERE tg_id = ? AND avatar_id = ?').get(tgId, avatarId);
-  if (already) throw new Error('این آواتار رو قبلا داری');
-  if (avatar.quantity != null && avatar.sold_count >= avatar.quantity) throw new Error('موجودی این آواتار تموم شده');
+  if (already) throw new Error('You already have this avatar');
+  if (avatar.quantity != null && avatar.sold_count >= avatar.quantity) throw new Error('This avatar is out of stock');
   const user = getUser(tgId);
-  if (!user || user.balance_toman < avatar.price_toman) throw new Error('موجودی کیف‌پول کافی نیست');
+  if (!user || user.balance_toman < avatar.price_toman) throw new Error('Insufficient wallet balance');
 
   const tx = db.transaction(() => {
-    if (avatar.price_toman > 0) adjustToman(tgId, -avatar.price_toman, `خرید آواتار «${avatar.name}»`);
+    if (avatar.price_toman > 0) adjustToman(tgId, -avatar.price_toman, `Avatar purchase «${avatar.name}»`);
     db.prepare('INSERT INTO user_avatars (tg_id, avatar_id) VALUES (?,?)').run(tgId, avatarId);
     db.prepare('UPDATE avatars SET sold_count = sold_count + 1 WHERE id = ?').run(avatarId);
   });
   tx();
 }
-// برای دادن آواتار رایگان از منابع دیگه (بتل‌پس، ایونت) — بدون پرداخت
+// For giving a free avatar from other sources (battle pass, event) — without payment
 export function grantAvatar(tgId, avatarId) {
   const already = db.prepare('SELECT 1 FROM user_avatars WHERE tg_id = ? AND avatar_id = ?').get(tgId, avatarId);
   if (already) return;
@@ -190,7 +190,7 @@ export function grantAvatar(tgId, avatarId) {
 }
 export function equipAvatar(tgId, avatarId) {
   const owned = db.prepare('SELECT 1 FROM user_avatars WHERE tg_id = ? AND avatar_id = ?').get(tgId, avatarId);
-  if (!owned) throw new Error('این آواتار رو نداری');
+  if (!owned) throw new Error('You do not have this avatar');
   getOrCreateUserRank(tgId);
   db.prepare('UPDATE user_rank SET equipped_avatar_id = ? WHERE tg_id = ?').run(avatarId, tgId);
 }

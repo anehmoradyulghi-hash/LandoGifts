@@ -3,9 +3,9 @@ import { getMyClan, getClanById, getClanMembers, addClanWinScore } from './clan-
 import { getUserCard, getUserCards } from './game-db.js';
 
 /* =========================================================================
- * جنگ کلن به کلن — ورودی از بانک کلن (پول‌های اهدایی)، هر طرف ۵ نفر از اعضاش
- * رو با کارت‌هاشون می‌فرسته، مجموع قدرت مقایسه می‌شه، برنده کل مبلغ رو با
- * کسر کارمزد می‌بره. کاملا داخل‌سروری، بدون نیاز به تماس بیرونی.
+ * Clan vs clan war — entry fee from the clan bank (donated funds), each side sends 5 members
+ * sends them with their cards, total power is compared, the winner takes the full amount minus
+ * minus a fee. Fully server-side, no external calls needed.
  * ========================================================================= */
 db.exec(`
 CREATE TABLE IF NOT EXISTS clan_war_config (
@@ -44,8 +44,8 @@ export function setClanWarConfig(c) {
 
 function requireLeader(tgId) {
   const clan = getMyClan(tgId);
-  if (!clan) throw new Error('عضو هیچ کلنی نیستی');
-  if (clan.myRole !== 'owner' && clan.myRole !== 'admin') throw new Error('فقط رهبر یا مدیر کلن می‌تونه این کارو بکنه');
+  if (!clan) throw new Error('You are not a member of any clan');
+  if (clan.myRole !== 'owner' && clan.myRole !== 'admin') throw new Error('Only the clan leader or manager can do this');
   return clan;
 }
 
@@ -65,12 +65,12 @@ export function getClanWar(id) {
   const w = db.prepare('SELECT * FROM clan_wars WHERE id = ?').get(id);
   return w ? decorateWar(w) : null;
 }
-// جنگ‌های بازی که منتظر حریفن (کلن خودم رو نشون نمی‌ده)
+// Open wars waiting for an opponent (does not show my own clan)
 export function listOpenClanWars(excludeClanId) {
   return db.prepare(`SELECT * FROM clan_wars WHERE status = 'open' AND clan_a_id != ? ORDER BY id DESC LIMIT 30`)
     .all(excludeClanId || 0).map(decorateWar);
 }
-// جنگ فعال کلن خودم (چه در انتظار حریف، چه در حال چیدن دسته)
+// My clan's active war (whether waiting for an opponent or setting the deck)
 export function getMyActiveClanWar(clanId) {
   const w = db.prepare(`
     SELECT * FROM clan_wars WHERE (clan_a_id = ? OR clan_b_id = ?) AND status IN ('open','picking')
@@ -88,18 +88,18 @@ export function getClanWarHistory(clanId, limit = 20) {
 export function getMemberCardsForLeader(leaderTgId, memberTgId) {
   const clan = requireLeader(leaderTgId);
   const isMember = getClanMembers(clan.id).some(m => m.tg_id === Number(memberTgId));
-  if (!isMember) throw new Error('این فرد عضو کلن تو نیست');
+  if (!isMember) throw new Error('This person is not a member of your clan');
   return getUserCards(Number(memberTgId));
 }
 
 export function createClanWar(leaderTgId, entryToman) {
   const cfg = getClanWarConfig();
-  if (!cfg.enabled) throw new Error('جنگ کلن‌ها فعلا غیرفعاله');
+  if (!cfg.enabled) throw new Error('Clan wars are currently disabled');
   const clan = requireLeader(leaderTgId);
   const entry = Number(entryToman);
-  if (!entry || entry < cfg.min_entry_toman) throw new Error(`حداقل ورودی ${cfg.min_entry_toman.toLocaleString()} تومانه`);
-  if (getMyActiveClanWar(clan.id)) throw new Error('کلنت همین الان یه جنگ باز داره');
-  if (clan.bank_balance < entry) throw new Error('موجودی بانک کلن (پول‌های اهدایی) کافی نیست');
+  if (!entry || entry < cfg.min_entry_toman) throw new Error(`Minimum entry is ${cfg.min_entry_toman.toLocaleString()} LNDC`);
+  if (getMyActiveClanWar(clan.id)) throw new Error('Your clan already has an open war right now');
+  if (clan.bank_balance < entry) throw new Error('Insufficient clan bank balance (donated funds)');
 
   return db.transaction(() => {
     db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(entry, clan.id);
@@ -110,11 +110,11 @@ export function createClanWar(leaderTgId, entryToman) {
 export function cancelClanWar(warId, leaderTgId) {
   const clan = requireLeader(leaderTgId);
   const war = db.prepare('SELECT * FROM clan_wars WHERE id = ?').get(warId);
-  if (!war) throw new Error('جنگ پیدا نشد');
-  if (war.clan_a_id !== clan.id && war.clan_b_id !== clan.id) throw new Error('این جنگ مال کلن تو نیست');
-  if (war.status !== 'open' && war.status !== 'picking') throw new Error('این جنگ دیگه تموم شده و قابل لغو نیست');
+  if (!war) throw new Error('War not found');
+  if (war.clan_a_id !== clan.id && war.clan_b_id !== clan.id) throw new Error('This war does not belong to your clan');
+  if (war.status !== 'open' && war.status !== 'picking') throw new Error('This war has already ended and can no longer be cancelled');
   db.transaction(() => {
-    // ورودی هر کلن به بانک خودش برمی‌گرده — نه فقط کلنی که جنگ رو ساخته
+    // Each clan's entry fee returns to its own bank — not only the clan that created the war
     db.prepare('UPDATE clans SET bank_balance = bank_balance + ? WHERE id = ?').run(war.entry_toman, war.clan_a_id);
     if (war.clan_b_id) db.prepare('UPDATE clans SET bank_balance = bank_balance + ? WHERE id = ?').run(war.entry_toman, war.clan_b_id);
     db.prepare(`UPDATE clan_wars SET status = 'cancelled' WHERE id = ?`).run(warId);
@@ -124,11 +124,11 @@ export function cancelClanWar(warId, leaderTgId) {
 export function joinClanWar(warId, leaderTgId) {
   const clan = requireLeader(leaderTgId);
   const war = db.prepare('SELECT * FROM clan_wars WHERE id = ?').get(warId);
-  if (!war) throw new Error('جنگ پیدا نشد');
-  if (war.status !== 'open') throw new Error('این جنگ در انتظار حریف نیست');
-  if (war.clan_a_id === clan.id) throw new Error('نمی‌تونی با کلن خودت بجنگی');
-  if (getMyActiveClanWar(clan.id)) throw new Error('کلنت همین الان یه جنگ باز داره');
-  if (clan.bank_balance < war.entry_toman) throw new Error('موجودی بانک کلن (پول‌های اهدایی) کافی نیست');
+  if (!war) throw new Error('War not found');
+  if (war.status !== 'open') throw new Error('This war is not waiting for an opponent');
+  if (war.clan_a_id === clan.id) throw new Error('You cannot fight your own clan');
+  if (getMyActiveClanWar(clan.id)) throw new Error('Your clan already has an open war right now');
+  if (clan.bank_balance < war.entry_toman) throw new Error('Insufficient clan bank balance (donated funds)');
 
   db.transaction(() => {
     db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(war.entry_toman, clan.id);
@@ -138,38 +138,38 @@ export function joinClanWar(warId, leaderTgId) {
 }
 
 function validatePicks(clanId, cfg, picks) {
-  if (!Array.isArray(picks) || picks.length !== cfg.team_size) throw new Error(`باید دقیقا ${cfg.team_size} نفر رو با کارت‌هاشون انتخاب کنی`);
+  if (!Array.isArray(picks) || picks.length !== cfg.team_size) throw new Error(`You must select exactly ${cfg.team_size} members with their cards`);
   const memberIds = new Set(getClanMembers(clanId).map(m => m.tg_id));
   const seen = new Set();
   let totalPower = 0;
   for (const p of picks) {
     const tgId = Number(p.tgId);
-    if (!memberIds.has(tgId)) throw new Error('یکی از افراد انتخاب‌شده عضو این کلن نیست');
-    if (seen.has(tgId)) throw new Error('یه نفر رو نمی‌تونی دوبار انتخاب کنی');
+    if (!memberIds.has(tgId)) throw new Error('One of the selected members is not part of this clan');
+    if (seen.has(tgId)) throw new Error('You cannot select the same person twice');
     seen.add(tgId);
     const cardIds = Array.isArray(p.cardIds) ? [...new Set(p.cardIds.map(Number))] : [];
-    if (!cardIds.length) throw new Error('هر عضو باید حداقل یه کارت داشته باشه');
+    if (!cardIds.length) throw new Error('Each member must have at least one card');
     for (const cid of cardIds) {
       const card = getUserCard(tgId, cid);
-      if (!card) throw new Error('یکی از کارت‌های انتخابی معتبر نیست');
+      if (!card) throw new Error('One of the selected cards is not valid');
       totalPower += card.power;
     }
   }
   return { picks: picks.map(p => ({ tgId: Number(p.tgId), cardIds: [...new Set(p.cardIds.map(Number))] })), totalPower };
 }
 
-// رهبر/مدیر هر طرف، ۵ نفر و کارت‌هاشون رو ثبت می‌کنه؛ وقتی هر دو طرف ثبت کردن، جنگ خودکار حل می‌شه
+// Each side's leader/manager sets 5 members and their cards; once both sides have set theirs, the war resolves automatically
 export function submitWarPicks(warId, leaderTgId, picks) {
   const cfg = getClanWarConfig();
   const clan = requireLeader(leaderTgId);
   const war = db.prepare('SELECT * FROM clan_wars WHERE id = ?').get(warId);
-  if (!war) throw new Error('جنگ پیدا نشد');
-  if (war.status !== 'picking') throw new Error('این جنگ الان تو مرحله چیدن دسته نیست');
-  if (war.clan_a_id !== clan.id && war.clan_b_id !== clan.id) throw new Error('این جنگ مال کلن تو نیست');
+  if (!war) throw new Error('War not found');
+  if (war.status !== 'picking') throw new Error('This war is not in the deck-setting stage right now');
+  if (war.clan_a_id !== clan.id && war.clan_b_id !== clan.id) throw new Error('This war does not belong to your clan');
 
   const side = war.clan_a_id === clan.id ? 'a' : 'b';
-  if (side === 'a' && war.clan_a_power != null) throw new Error('کلن تو قبلا دسته‌ش رو ثبت کرده');
-  if (side === 'b' && war.clan_b_power != null) throw new Error('کلن تو قبلا دسته‌ش رو ثبت کرده');
+  if (side === 'a' && war.clan_a_power != null) throw new Error('Your clan has already set its deck');
+  if (side === 'b' && war.clan_b_power != null) throw new Error('Your clan has already set its deck');
 
   const { picks: cleanPicks, totalPower } = validatePicks(clan.id, cfg, picks);
 
@@ -189,7 +189,7 @@ export function submitWarPicks(warId, leaderTgId, picks) {
 
 function resolveClanWar(war) {
   const cfg = getClanWarConfig();
-  // کمی شانس تصادفی (تا ۱۵٪) تا مسابقه صرفا ریاضی نباشه — همون فرمول نبرد ۱به۱
+  // A bit of random chance (up to 15%) so the match is not purely mathematical — the same formula as 1v1 battles
   const rollA = war.clan_a_power * (1 + Math.random() * 0.15);
   const rollB = war.clan_b_power * (1 + Math.random() * 0.15);
   const winnerClanId = rollA >= rollB ? war.clan_a_id : war.clan_b_id;

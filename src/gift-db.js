@@ -37,19 +37,19 @@ function findReceiver(usernameOrId) {
 
 export function giftToman(senderTgId, receiverInput, amount) {
   const cfg = getGiftConfig();
-  if (!cfg.enabled) throw new Error('سیستم هدیه فعلا غیرفعاله');
-  if (!amount || amount <= 0) throw new Error('مبلغ نامعتبره');
+  if (!cfg.enabled) throw new Error('The gift system is currently disabled');
+  if (!amount || amount <= 0) throw new Error('Invalid amount');
   const receiver = findReceiver(receiverInput);
-  if (!receiver) throw new Error('کاربر گیرنده پیدا نشد — باید قبلا وارد ربات شده باشه');
-  if (receiver.tg_id === senderTgId) throw new Error('نمی‌تونی به خودت هدیه بدی');
+  if (!receiver) throw new Error('Recipient user not found — they must have already opened the bot');
+  if (receiver.tg_id === senderTgId) throw new Error('You cannot gift yourself');
   const sender = getUser(senderTgId);
-  if (!sender || sender.balance_toman < amount) throw new Error('موجودی کافی نیست');
+  if (!sender || sender.balance_toman < amount) throw new Error('Insufficient balance');
 
   const fee = Math.floor((amount * cfg.toman_gift_fee_percent) / 100);
   const receiverGets = amount - fee;
   const tx = db.transaction(() => {
-    adjustToman(senderTgId, -amount, `هدیه تومان به ${receiver.first_name || receiver.tg_id}`);
-    adjustToman(receiver.tg_id, receiverGets, `هدیه تومان از ${sender.first_name || sender.tg_id}`);
+    adjustToman(senderTgId, -amount, `LNDC gift to ${receiver.first_name || receiver.tg_id}`);
+    adjustToman(receiver.tg_id, receiverGets, `LNDC gift from ${sender.first_name || sender.tg_id}`);
   });
   tx();
   return { receiverGets, fee, receiverTgId: receiver.tg_id, receiverName: receiver.first_name };
@@ -57,25 +57,25 @@ export function giftToman(senderTgId, receiverInput, amount) {
 
 export function giftCard(senderTgId, receiverInput, userCardId) {
   const cfg = getGiftConfig();
-  if (!cfg.enabled) throw new Error('سیستم هدیه فعلا غیرفعاله');
+  if (!cfg.enabled) throw new Error('The gift system is currently disabled');
   const receiver = findReceiver(receiverInput);
-  if (!receiver) throw new Error('کاربر گیرنده پیدا نشد — باید قبلا وارد ربات شده باشه');
-  if (receiver.tg_id === senderTgId) throw new Error('نمی‌تونی به خودت هدیه بدی');
+  if (!receiver) throw new Error('Recipient user not found — they must have already opened the bot');
+  if (receiver.tg_id === senderTgId) throw new Error('You cannot gift yourself');
 
   const invitedCount = db.prepare('SELECT COUNT(*) c FROM users WHERE referred_by = ?').get(senderTgId).c;
   if (invitedCount < cfg.card_gift_min_referrals) {
-    throw new Error(`برای هدیه کارت باید حداقل ${cfg.card_gift_min_referrals} نفر دعوت کرده باشی`);
+    throw new Error(`You need to have invited at least ${cfg.card_gift_min_referrals} people to gift a card`);
   }
   const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   const usedThisMonth = db.prepare('SELECT COUNT(*) c FROM card_gifts_log WHERE sender_tg_id = ? AND sent_at >= ?').get(senderTgId, monthAgo).c;
-  if (usedThisMonth >= cfg.card_gift_max_per_month) throw new Error('سهمیه هدیه کارت این ماهت تموم شده');
+  if (usedThisMonth >= cfg.card_gift_max_per_month) throw new Error('You have used up your card gift quota for this month');
 
   const card = db.prepare(`
     SELECT uc.*, c.name, c.max_level FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id
     WHERE uc.id = ? AND uc.tg_id = ?
   `).get(userCardId, senderTgId);
-  if (!card) throw new Error('این کارت پیدا نشد');
-  if (card.level > cfg.card_gift_max_level) throw new Error(`فقط کارت‌های سطح ۱ تا ${cfg.card_gift_max_level} قابل هدیه‌ن`);
+  if (!card) throw new Error('This card was not found');
+  if (card.level > cfg.card_gift_max_level) throw new Error(`Only level 1 to ${cfg.card_gift_max_level} cards can be gifted`);
 
   const tx = db.transaction(() => {
     db.prepare('UPDATE user_cards SET tg_id = ? WHERE id = ?').run(receiver.tg_id, userCardId);

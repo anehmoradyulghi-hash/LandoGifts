@@ -3,9 +3,9 @@ import { adjustToman, getUser } from './db.js';
 import { getOrCreateUserLeague, pickQueueOpponentInLeague, recordLeagueResult } from './league-db.js';
 
 /* =========================================================================
- * SCHEMA — بازی کارتی. همه‌چیز خودکار و داخل‌سروری (بدون تماس بیرونی)، تنظیمات
- * (تعداد بازی روزانه، سایز دسته، قیمت بازی اضافه، دوره ریست جدول امتیازات و
- * جوایزش) کاملا از پنل ادمین قابل تغییره.
+ * SCHEMA — Card game. Everything automatic and server-side (no external calls), settings
+ * (Daily game count, deck size, extra game price, leaderboard reset period, and
+ * prizes) is fully changeable from the admin panel.
  * ========================================================================= */
 db.exec(`
 CREATE TABLE IF NOT EXISTS game_cards (
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS card_categories (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- هزینه ادغام (جهش) به ازای هر پله سطح — ادمین کامل قابل تغییره
+-- Merge (mutation) cost per level step — fully changeable by the admin
 CREATE TABLE IF NOT EXISTS merge_costs (
   from_level INTEGER PRIMARY KEY,
   cost_toman INTEGER NOT NULL
@@ -47,22 +47,22 @@ INSERT OR IGNORE INTO merge_costs (from_level, cost_toman) VALUES
   (1,5000), (2,10000), (3,25000), (4,60000), (5,150000), (6,250000);
 `);
 
-// ستون‌های جدید رو با ALTER اضافه می‌کنیم (چون دیتابیس ممکنه از قبل ساخته شده باشه)؛
-// اگه قبلا اضافه شده باشن، خطای «duplicate column» رو نادیده می‌گیریم — کاملا امن برای اجرای مکرر
+// We add new columns with ALTER (since the database might already exist);
+// if they were already added, we ignore the "duplicate column" error — completely safe to run repeatedly
 function safeAddColumn(table, columnDef) {
   try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
   catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
 }
 safeAddColumn('game_cards', 'category_id INTEGER');
-safeAddColumn('game_cards', "level_images TEXT DEFAULT '[]'"); // آرایه JSON با ۷ لینک عکس، یکی برای هر سطح
+safeAddColumn('game_cards', "level_images TEXT DEFAULT '[]'"); // JSON array with 7 image links, one per level
 safeAddColumn('game_cards', "edition TEXT DEFAULT 'standard'"); // standard | shiny | gold
-safeAddColumn('game_cards', 'max_supply INTEGER'); // خالی = نامحدود
-safeAddColumn('user_cards', 'bonus_power INTEGER NOT NULL DEFAULT 0'); // از روش «تقویت/قربانی» میاد، سطح رو عوض نمی‌کنه
-safeAddColumn('user_cards', 'rolled_power INTEGER'); // قدرت واقعی که موقع ساخت/ارتقای سطح، تصادفی از بازهٔ همون سطح انتخاب شده
-safeAddColumn('game_cards', 'instant_level INTEGER'); // اگه ست بشه (مثلا ۷)، هر کارتی که از این تمپلیت ساخته می‌شه از همون سطح شروع می‌شه (کارت ویژه/اختصاصی)
-safeAddColumn('game_cards', 'fixed_power INTEGER'); // اگه ست بشه، به‌جای فرمول سطح‌محور، همین قدرت اختصاصی استفاده می‌شه
-safeAddColumn('game_cards', 'min_power INTEGER'); // بازهٔ قدرت اختصاصی این کارت (اگه ست بشه، به‌جای بازهٔ کلی سطح استفاده می‌شه)
-safeAddColumn('game_cards', 'max_power INTEGER'); // سقف قدرت این کارت — با تقویت/قربانی هم نباید ازش رد بشه
+safeAddColumn('game_cards', 'max_supply INTEGER'); // empty = unlimited
+safeAddColumn('user_cards', 'bonus_power INTEGER NOT NULL DEFAULT 0'); // comes from the "boost/sacrifice" method, does not change the level
+safeAddColumn('user_cards', 'rolled_power INTEGER'); // The actual power randomly picked from that level's range at creation/level-up time
+safeAddColumn('game_cards', 'instant_level INTEGER'); // if set (e.g. 7), every card created from this template starts at that level (special/custom card)
+safeAddColumn('game_cards', 'fixed_power INTEGER'); // if set, this custom power is used instead of the level-based formula
+safeAddColumn('game_cards', 'min_power INTEGER'); // This card's custom power range (if set, used instead of the level's general range)
+safeAddColumn('game_cards', 'max_power INTEGER'); // This card's power cap — should not be exceeded even with boost/sacrifice
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS card_level_power (
@@ -71,18 +71,18 @@ CREATE TABLE IF NOT EXISTS card_level_power (
   max_power INTEGER NOT NULL
 );
 `);
-// بازهٔ پیش‌فرض قدرت هر سطح (اگه ادمین قبلا چیزی ست نکرده باشه) — قابل تغییر کامل از پنل ادمین
+// Default power range per level (if the admin has not set anything yet) — fully changeable from the admin panel
 const seedLevelPower = db.prepare('INSERT OR IGNORE INTO card_level_power (level, min_power, max_power) VALUES (?,?,?)');
 [[1,8,14],[2,14,22],[3,22,32],[4,32,45],[5,45,60],[6,60,80],[7,80,110]].forEach(([lvl,mn,mx]) => seedLevelPower.run(lvl,mn,mx));
 
 export function getCardLevelPowerConfig() {
   return db.prepare('SELECT * FROM card_level_power ORDER BY level ASC').all();
 }
-// دیگه بازه‌ای نیست — فقط یه عدد «حداکثر قدرت قابل ارتقا» برای هر سطح تنظیم می‌شه.
-// (min_power هم تو دیتابیس برابر همون مقدار ذخیره می‌شه، صرفا برای سازگاری با کدهای قدیمی/کارت‌های اختصاصی)
+// No longer a range — just one "max upgradable power" number is set per level.
+// (min_power is also stored equal to that same value in the database, purely for compatibility with legacy code/custom cards)
 export function setCardLevelPower(level, maxPower) {
   const mx = Number(maxPower);
-  if (!Number.isFinite(mx) || mx <= 0) throw new Error('عدد حداکثر قدرت نامعتبره');
+  if (!Number.isFinite(mx) || mx <= 0) throw new Error('Invalid max power number');
   db.prepare(`
     INSERT INTO card_level_power (level, min_power, max_power) VALUES (?,?,?)
     ON CONFLICT(level) DO UPDATE SET min_power = excluded.min_power, max_power = excluded.max_power
@@ -93,34 +93,34 @@ function rollPowerForLevel(level) {
   if (!range) return null;
   return Math.round(range.min_power + Math.random() * (range.max_power - range.min_power));
 }
-// اگه خود کارت بازهٔ قدرت اختصاصی داشته باشه (تنظیم‌شده تو پنل ادمین)، همون رو استفاده می‌کنه؛
-// وگرنه از بازهٔ کلی همون سطح استفاده می‌شه
+// if the card itself has a custom power range (set in the admin panel), that is used;
+// otherwise that level's general range is used
 function rollPowerForCard(card, level) {
   if (card && card.min_power != null && card.max_power != null) {
     return Math.round(card.min_power + Math.random() * (card.max_power - card.min_power));
   }
   return rollPowerForLevel(level);
 }
-// سقف مطلق قدرتی که این کارت (تو این سطح) هیچ‌وقت نباید ازش رد بشه، حتی با تقویت/قربانی
+// The absolute power cap this card (at this level) should never exceed, even with boost/sacrifice
 function getPowerCapForCard(card, level) {
   if (card?.max_power != null) return card.max_power;
   const range = db.prepare('SELECT * FROM card_level_power WHERE level = ?').get(level);
   return range ? range.max_power : null;
 }
 
-// سیستم سطح‌بندی ثابت ۷ تایی: سطح = ریرتی. هر کارتی که تو دیتابیس max_level متفاوتی داره
-// (مثلا از نسخه‌های قبلی) رو یکبار برای همیشه به ۷ اصلاح می‌کنیم تا کل سیستم یکدست بشه
+// Fixed 7-tier leveling system: level = rarity. Any card in the database with a different max_level
+// (e.g. from earlier versions) we fix to 7 once and for all so the whole system is consistent
 db.prepare('UPDATE game_cards SET max_level = 7 WHERE max_level != 7').run();
 
-// نگاشت ثابت سطح ⇄ ریرتی — این تنها منبع حقیقت برای اسم/رنگ ریرتیه، نه یه فیلد جدا رو کارت
+// Fixed level ⇄ rarity mapping — the single source of truth for rarity name/color, not a separate field on the card
 export const LEVEL_RARITY = [
-  { level: 1, key: 'common', label: 'معمولی', color: '#9ca3af' },
-  { level: 2, key: 'uncommon', label: 'غیرمعمولی', color: '#34d399' },
-  { level: 3, key: 'rare', label: 'نادر', color: '#60a5fa' },
-  { level: 4, key: 'epic', label: 'حماسی', color: '#a78bfa' },
-  { level: 5, key: 'legendary', label: 'افسانه‌ای', color: '#fbbf24' },
-  { level: 6, key: 'mythic', label: 'اسطوره‌ای', color: '#fb7185' },
-  { level: 7, key: 'god', label: 'الهی', color: '#f472b6' },
+  { level: 1, key: 'common', label: 'Common', color: '#9ca3af' },
+  { level: 2, key: 'uncommon', label: 'Uncommon', color: '#34d399' },
+  { level: 3, key: 'rare', label: 'Rare', color: '#60a5fa' },
+  { level: 4, key: 'epic', label: 'Epic', color: '#a78bfa' },
+  { level: 5, key: 'legendary', label: 'Legendary', color: '#fbbf24' },
+  { level: 6, key: 'mythic', label: 'Mythic', color: '#fb7185' },
+  { level: 7, key: 'god', label: 'Divine', color: '#f472b6' },
 ];
 export function getRarityForLevel(level) {
   const clamped = Math.min(7, Math.max(1, Math.round(level)));
@@ -139,8 +139,8 @@ CREATE TABLE IF NOT EXISTS game_config (
   upgrade_base_cost_toman INTEGER NOT NULL DEFAULT 3000
 );
 INSERT OR IGNORE INTO game_config (id) VALUES (1);
--- اگه از قبل با مقدار پیش‌فرض قدیمی (۳) ساخته شده، به حداقل جدید (۱) اصلاحش کن؛
--- اگه ادمین خودش دستی چیز دیگه‌ای گذاشته، دست نمی‌زنیم
+-- if it was already created with the old default value (3), fix it to the new minimum (1);
+-- if the admin has already manually set something else, we leave it alone
 UPDATE game_config SET min_deck_size = 1 WHERE id = 1 AND min_deck_size = 3;
 
 CREATE TABLE IF NOT EXISTS game_queue (
@@ -235,7 +235,7 @@ export function setGameConfig(cfg) {
 }
 
 /* =========================================================================
- * دسته‌بندی کارت‌ها (مثلا «اژدها»، «شوالیه»)
+ * Card categories (e.g. "Dragon", "Knight»)
  * ========================================================================= */
 export function listCardCategories(onlyActive = false) {
   return onlyActive
@@ -255,7 +255,7 @@ export function upsertCardCategory(c) {
 export function deleteCardCategory(id) { db.prepare('DELETE FROM card_categories WHERE id = ?').run(id); }
 
 /* =========================================================================
- * هزینه ادغام/جهش به ازای هر پله سطح
+ * Merge/mutation cost per level step
  * ========================================================================= */
 export function listMergeCosts() { return db.prepare('SELECT * FROM merge_costs ORDER BY from_level ASC').all(); }
 export function getMergeCost(fromLevel) {
@@ -306,9 +306,9 @@ export function upsertGameCard(c) {
 }
 export function deleteGameCard(id) { db.prepare('DELETE FROM game_cards WHERE id = ?').run(id); }
 
-// قدرت «نمایشی» یه سطح — همیشه از تنظیمات پنل ادمین (card_level_power) میاد.
-// فقط اگه ادمین هنوز برای این سطح چیزی ثبت نکرده باشه (مثلا سطح‌های فراتر از ۷ که تازه اضافه شدن)،
-// به‌عنوان آخرین راه‌حل از فرمول قدیمی استفاده می‌شه تا حداقل عدد منطقی‌ای نشون داده بشه.
+// A level's "display" power — always comes from the admin panel settings (card_level_power).
+// only if the admin has not set anything for this level yet (e.g. levels beyond 7 that were just added),
+// as a last resort the old formula is used, so at least a reasonable number is shown.
 export function computeCardPower(basePower, level) {
   const range = db.prepare('SELECT * FROM card_level_power WHERE level = ?').get(level);
   if (range) return range.max_power;
@@ -319,8 +319,8 @@ function computeTotalPower(row) {
   return base + (row.bonus_power || 0);
 }
 
-// نقطهٔ واحد اضافه‌شدن کارت به کارت‌های یه کاربر — همه‌جا (خرید، جایزهٔ تسک، بتل‌پس، مزایده)
-// از همینجا استفاده می‌کنن تا کارت‌های ویژهٔ لول ۷ (instant_level) همه‌جا درست رفتار کنن
+// Single point where a card gets added to a user's cards — used everywhere (purchase, task reward, battle pass, auction)
+// used here so level-7 special cards (instant_level) behave correctly everywhere
 export function grantCardInstance(tgId, cardId) {
   const card = getGameCard(cardId);
   const level = card?.instant_level || 1;
@@ -329,7 +329,7 @@ export function grantCardInstance(tgId, cardId) {
 }
 
 /* =========================================================================
- * USER CARDS — خرید، دیدن مجموعه، دو روش ارتقا (جهش یا تقویت)
+ * USER CARDS — Buying, viewing collection, two upgrade methods (mutation or boost)
  * ========================================================================= */
 export function getUserCards(tgId) {
   return db.prepare(`
@@ -355,41 +355,41 @@ export function getUserCard(tgId, userCardId) {
 
 export function buyGameCard(tgId, cardId) {
   const card = getGameCard(cardId);
-  if (!card || !card.active) throw new Error('این کارت در دسترس نیست');
+  if (!card || !card.active) throw new Error('This card is not available');
   if (card.max_supply != null) {
     const sold = db.prepare('SELECT COUNT(*) c FROM user_cards WHERE card_id = ?').get(cardId).c;
-    if (sold >= card.max_supply) throw new Error('موجودی این کارت تموم شده');
+    if (sold >= card.max_supply) throw new Error('This card is out of stock');
   }
   const user = getUser(tgId);
-  if (!user || user.balance_toman < card.price_toman) throw new Error('موجودی کیف‌پول کافی نیست');
-  adjustToman(tgId, -card.price_toman, `خرید کارت «${card.name}»`);
+  if (!user || user.balance_toman < card.price_toman) throw new Error('Insufficient wallet balance');
+  adjustToman(tgId, -card.price_toman, `Buy card «${card.name}»`);
   const id = grantCardInstance(tgId, cardId);
   return id;
 }
 
-// روش دوم ارتقا — «ارتقا»: یک یا چند کارت (هر کارتی، فرقی نداره اسم/سطحش چیه) رو کامل نابود می‌کنی
-// تا بخشی از قدرت هرکدوم (پیش‌فرض ۲۰٪) به یه کارت هدف اضافه بشه. سطح و عکس کارت هدف عوض نمی‌شه،
-// فقط عدد قدرتش بالا می‌ره. این کاملا از «جهش» جداست. هزینهٔ ثابت فقط یه‌بار برای کل عملیات گرفته می‌شه،
-// فارغ از اینکه چندتا کارت قربانی می‌شن.
+// Second upgrade method — "Upgrade": you fully destroy one or more cards (any card, regardless of name/level)
+// so part of each one's power (default 20%) is added to a target card. The target's level and image do not change,
+// only its power number goes up. This is completely separate from "mutation". The flat fee is charged only once for the whole operation,
+// regardless of how many cards are sacrificed.
 export function sacrificeCards(tgId, targetUserCardId, sacrificeUserCardIds) {
   const ids = [...new Set((sacrificeUserCardIds || []).map(Number))].filter(id => id && id !== Number(targetUserCardId));
-  if (!ids.length) throw new Error('حداقل یه کارت برای قربانی‌کردن انتخاب کن');
+  if (!ids.length) throw new Error('Select at least one card to sacrifice');
 
   const target = getUserCard(tgId, targetUserCardId);
-  if (!target) throw new Error('کارت هدف پیدا نشد');
+  if (!target) throw new Error('Target card not found');
 
   const cfg = getGameConfig();
   const fee = cfg.sacrifice_fee_toman || 0;
   const user = getUser(tgId);
-  if (fee > 0 && (!user || user.balance_toman < fee)) throw new Error(`برای ارتقا ${fee.toLocaleString()} تومان لازمه`);
+  if (fee > 0 && (!user || user.balance_toman < fee)) throw new Error(`You need ${fee.toLocaleString()} LNDC to upgrade`);
 
   const targetCard = getGameCard(target.card_id);
   const powerCap = getPowerCapForCard(targetCard, target.level);
   let room = powerCap != null ? powerCap - target.power : Infinity;
-  if (room <= 0) throw new Error('این کارت به حداکثر قدرت ممکنش رسیده، دیگه قابل ارتقا نیست');
+  if (room <= 0) throw new Error('This card has reached its maximum possible power, it can no longer be upgraded');
 
   const sacs = ids.map(id => getUserCard(tgId, id)).filter(Boolean);
-  if (!sacs.length) throw new Error('کارت‌های انتخابی پیدا نشدن');
+  if (!sacs.length) throw new Error('Selected cards not found');
 
   const percent = cfg.sacrifice_transfer_percent || 20;
   let transferAmount = 0;
@@ -402,10 +402,10 @@ export function sacrificeCards(tgId, targetUserCardId, sacrificeUserCardIds) {
     room -= amount;
     usedIds.push(sac.id);
   }
-  if (!usedIds.length) throw new Error('این کارت به حداکثر قدرت ممکنش رسیده، دیگه قابل ارتقا نیست');
+  if (!usedIds.length) throw new Error('This card has reached its maximum possible power, it can no longer be upgraded');
 
   const tx = db.transaction(() => {
-    if (fee > 0) adjustToman(tgId, -fee, `هزینه ارتقای کارت «${target.name}»`);
+    if (fee > 0) adjustToman(tgId, -fee, `Card upgrade cost «${target.name}»`);
     db.prepare('UPDATE user_cards SET bonus_power = bonus_power + ? WHERE id = ?').run(transferAmount, targetUserCardId);
     const delOne = db.prepare('DELETE FROM user_cards WHERE id = ?');
     for (const id of usedIds) delOne.run(id);
@@ -417,8 +417,8 @@ export function sacrificeCards(tgId, targetUserCardId, sacrificeUserCardIds) {
   };
 }
 
-// گروه‌بندی کارت‌های کاملا یکسان (همون کارت، همون سطح) که حداقل دوتاشون هست —
-// برای دکمه «جهش»، کاربر چیزی رو دستی انتخاب نمی‌کنه، خودمون جفت‌شون رو پیدا می‌کنیم
+// Grouping of fully identical cards (same card, same level) where at least two exist —
+// For the "mutate" button, the user does not manually pick anything, we find the pairs ourselves
 export function getMutationGroups(tgId) {
   const rows = db.prepare(`
     SELECT uc.card_id, uc.level, COUNT(*) AS cnt, c.name, c.image_url, c.level_images, c.base_power, c.max_level
@@ -441,20 +441,20 @@ export function getMutationGroups(tgId) {
   });
 }
 
-// جهش: دو کارت کاملا یکسان (اسم و سطح) رو خودکار پیدا و با هزینه پله‌ای ادغام می‌کنه؛
-// یکی حذف می‌شه و اون یکی یه سطح میره بالا (سطح = ریرتی، پس عکس و برچسب هم خودکار عوض می‌شه)
+// Mutation: automatically finds two fully identical cards (same name and level) and merges them for a step-based cost;
+// one is removed and the other goes up one level (level = rarity, so the image and label also change automatically)
 export function mutateCards(tgId, cardId, level) {
   const rows = db.prepare(`
     SELECT uc.id, uc.level, c.max_level FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id
     WHERE uc.tg_id = ? AND uc.card_id = ? AND uc.level = ?
     ORDER BY uc.id ASC LIMIT 2
   `).all(tgId, cardId, level);
-  if (rows.length < 2) throw new Error('برای جهش به دو کارت کاملا یکسان (اسم و سطح) نیاز داری');
-  if (rows[0].level >= rows[0].max_level) throw new Error('این کارت به حداکثر سطح (الهی) رسیده');
+  if (rows.length < 2) throw new Error('You need two fully identical cards (same name and level) to mutate');
+  if (rows[0].level >= rows[0].max_level) throw new Error('This card has reached the max level (Divine)');
 
   const cost = getMergeCost(level);
   const user = getUser(tgId);
-  if (cost > 0 && (!user || user.balance_toman < cost)) throw new Error(`برای جهش ${cost.toLocaleString()} تومان لازمه`);
+  if (cost > 0 && (!user || user.balance_toman < cost)) throw new Error(`You need ${cost.toLocaleString()} LNDC to mutate`);
 
   const card = getGameCard(cardId);
   const keepId = rows[0].id;
@@ -462,9 +462,9 @@ export function mutateCards(tgId, cardId, level) {
   const newLevelNum = level + 1;
   const newRolledPower = rollPowerForCard(card, newLevelNum);
   const tx = db.transaction(() => {
-    if (cost > 0) adjustToman(tgId, -cost, `هزینه جهش از سطح ${level} به ${level + 1}`);
+    if (cost > 0) adjustToman(tgId, -cost, `Mutation cost from level ${level} to ${level + 1}`);
     const result = db.prepare('UPDATE user_cards SET level = level + 1, rolled_power = ? WHERE id = ?').run(newRolledPower, keepId);
-    if (result.changes !== 1) throw new Error('جهش با خطا مواجه شد، دوباره امتحان کن');
+    if (result.changes !== 1) throw new Error('Mutation failed, try again');
     db.prepare('DELETE FROM user_cards WHERE id = ?').run(removeId);
   });
   tx();
@@ -475,7 +475,7 @@ export function mutateCards(tgId, cardId, level) {
 }
 
 /* =========================================================================
- * تسک‌های کارتی — پاداششون به‌جای تومان، یه کارت مشخصه
+ * Card tasks — their reward is a specific card instead of LNDC
  * ========================================================================= */
 export function listActiveCardTasks() {
   return db.prepare(`
@@ -506,7 +506,7 @@ export function claimCardTask(tgId, task) {
 }
 
 /* =========================================================================
- * محدودیت بازی روزانه + بازی اضافه
+ * Daily game limit + extra games
  * ========================================================================= */
 function todayCount(tgId) {
   return db.prepare(`SELECT COUNT(*) c FROM game_play_log WHERE tg_id = ? AND play_date = date('now')`).get(tgId).c;
@@ -523,8 +523,8 @@ export function getPlaysRemaining(tgId) {
 export function buyExtraPlays(tgId) {
   const cfg = getGameConfig();
   const user = getUser(tgId);
-  if (user.balance_toman < cfg.extra_play_price_toman) throw new Error('موجودی کافی نیست');
-  adjustToman(tgId, -cfg.extra_play_price_toman, `خرید ${cfg.extra_play_count} بازی اضافه`);
+  if (user.balance_toman < cfg.extra_play_price_toman) throw new Error('Insufficient balance');
+  adjustToman(tgId, -cfg.extra_play_price_toman, `Buy ${cfg.extra_play_count} extra games`);
   db.prepare(`
     INSERT INTO game_extra_plays (tg_id, extra_plays) VALUES (?, ?)
     ON CONFLICT(tg_id) DO UPDATE SET extra_plays = extra_plays + excluded.extra_plays
@@ -536,14 +536,14 @@ function consumePlay(tgId) {
   const extra = getExtraPlays(tgId);
   const cfg = getGameConfig();
   const used = todayCount(tgId);
-  // بازی‌های روزانه رایگان اول مصرف می‌شن، بعد بازی‌های اضافه
+  // Free daily games are consumed first, then extra games
   if (used > cfg.daily_play_limit && extra > 0) {
     db.prepare('UPDATE game_extra_plays SET extra_plays = MAX(0, extra_plays - 1) WHERE tg_id = ?').run(tgId);
   }
 }
 
 /* =========================================================================
- * صف بازی و مسابقه — کاملا سینک (بدون await) تا هیچ race condition‌ای پیش نیاد
+ * Game and match queue — fully sync (no await) so no race condition occurs
  * ========================================================================= */
 export function getQueueStatus(tgId) {
   const row = db.prepare('SELECT * FROM game_queue WHERE tg_id = ?').get(tgId);
@@ -556,16 +556,16 @@ export function cancelQueue(tgId) {
 export function joinQueue(tgId, userCardIds) {
   const cfg = getGameConfig();
   if (!Array.isArray(userCardIds) || userCardIds.length < cfg.min_deck_size || userCardIds.length > cfg.max_deck_size) {
-    throw new Error(`دسته باید بین ${cfg.min_deck_size} تا ${cfg.max_deck_size} کارت داشته باشه`);
+    throw new Error(`The deck must have between ${cfg.min_deck_size} and ${cfg.max_deck_size} cards`);
   }
-  if (getQueueStatus(tgId).waiting) throw new Error('همین الان تو صف انتظاری');
-  if (getPlaysRemaining(tgId) <= 0) throw new Error('بازی‌های امروزت تموم شده — از فروشگاه بازی اضافه بخر');
+  if (getQueueStatus(tgId).waiting) throw new Error('You are already in the queue right now');
+  if (getPlaysRemaining(tgId) <= 0) throw new Error('Your games for today are used up — buy extra games from the shop');
 
   const uniqueIds = [...new Set(userCardIds.map(Number))];
-  if (uniqueIds.length !== userCardIds.length) throw new Error('کارت تکراری تو دسته مجاز نیست');
+  if (uniqueIds.length !== userCardIds.length) throw new Error('Duplicate cards are not allowed in the deck');
 
   const cards = uniqueIds.map(id => getUserCard(tgId, id));
-  if (cards.some(c => !c)) throw new Error('یکی از کارت‌های انتخابی پیدا نشد');
+  if (cards.some(c => !c)) throw new Error('One of the selected cards was not found');
   const power = cards.reduce((s, c) => s + c.power, 0);
   const myLeague = getOrCreateUserLeague(tgId).league;
 
@@ -576,12 +576,12 @@ export function joinQueue(tgId, userCardIds) {
       db.prepare('INSERT INTO game_queue (tg_id, deck_json, power) VALUES (?,?,?)').run(tgId, JSON.stringify(uniqueIds), power);
       return { matched: false, waiting: true };
     }
-    // مسابقه فوری — ترجیحا از همون لیگ خودت، وگرنه از هر جای صف
+    // Instant match — preferably from your own league, otherwise from anywhere in the queue
     db.prepare('DELETE FROM game_queue WHERE tg_id = ?').run(opponent.tg_id);
     consumePlay(tgId);
     consumePlay(opponent.tg_id);
 
-    // کمی شانس تصادفی (تا ۱۵٪) به قدرت هر طرف اضافه می‌شه تا مسابقه صرفا ریاضی نباشه
+    // A bit of random chance (up to 15%) is added to each side's power so the match is not purely mathematical
     const rollA = power * (1 + Math.random() * 0.15);
     const rollB = opponent.power * (1 + Math.random() * 0.15);
     const winner = rollA >= rollB ? tgId : opponent.tg_id;
@@ -623,7 +623,7 @@ export function getMatchHistory(tgId, limit = 20) {
 }
 
 /* =========================================================================
- * جدول امتیازات + جوایز + ریست دوره‌ای
+ * Leaderboard + prizes + periodic reset
  * ========================================================================= */
 export function getLeaderboard(limit = 20) {
   return db.prepare(`
@@ -641,7 +641,7 @@ export function getMyRank(tgId) {
   `).get(tgId);
   return row.rank;
 }
-// ردیف خود کاربر تو جدول امتیازات (حتی اگه تو ۱۰ نفر برتر نباشه)
+// The user's own row in the leaderboard (even if not in the top 10)
 export function getUserLeaderboardRow(tgId) {
   const row = db.prepare(`
     SELECT gs.tg_id, gs.wins, gs.losses, gs.score, u.first_name, u.username, av.image_url AS avatar_image
@@ -666,7 +666,7 @@ export function deleteLeaderboardPrize(id) { db.prepare('DELETE FROM leaderboard
 
 export function getLeaderboardState() { return db.prepare('SELECT * FROM leaderboard_state WHERE id = 1').get(); }
 
-// جوایز رو بین برترین‌ها پخش می‌کنه و جدول رو صفر می‌کنه — چه دستی چه خودکار صدا زده بشه، امن‌ه
+// Distributes prizes among the top performers and resets the table — safe whether called manually or automatically
 export function resetLeaderboard(notifyFn) {
   const prizes = listLeaderboardPrizes();
   if (prizes.length) {
@@ -677,7 +677,7 @@ export function resetLeaderboard(notifyFn) {
     ranked.forEach(r => {
       const prize = prizes.find(p => r.rnk >= p.rank_from && r.rnk <= p.rank_to);
       if (prize && prize.reward_toman > 0) {
-        adjustToman(r.tg_id, prize.reward_toman, `جایزه رتبه ${r.rnk} جدول امتیازات`);
+        adjustToman(r.tg_id, prize.reward_toman, `Leaderboard rank #${r.rnk} prize`);
         if (typeof notifyFn === 'function') notifyFn(r.tg_id, r.rnk, prize.reward_toman);
       }
     });
@@ -686,7 +686,7 @@ export function resetLeaderboard(notifyFn) {
   db.prepare(`UPDATE leaderboard_state SET period_started_at = datetime('now'), last_reset_at = datetime('now') WHERE id = 1`).run();
 }
 
-// اگه دوره فعلی تموم شده باشه، خودکار جوایز رو پخش و ریست می‌کنه؛ در غیر این‌صورت کاری نمی‌کنه
+// if the current period has ended, automatically distributes prizes and resets; otherwise does nothing
 export function checkAndAutoResetLeaderboard(notifyFn) {
   const cfg = getGameConfig();
   const state = getLeaderboardState();

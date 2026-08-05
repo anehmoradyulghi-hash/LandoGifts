@@ -84,17 +84,17 @@ export function getAlbumProgress(tgId, albumId) {
 
 export function claimAlbumReward(tgId, albumId) {
   const album = getAlbum(albumId);
-  if (!album || !album.active) throw new Error('این آلبوم در دسترس نیست');
+  if (!album || !album.active) throw new Error('This album is not available');
   if (album.is_seasonal && album.ends_at && new Date(album.ends_at.replace(' ', 'T') + 'Z').getTime() < Date.now()) {
-    throw new Error('مهلت این آلبوم فصلی تموم شده');
+    throw new Error('This seasonal album deadline has passed');
   }
   const { complete, claimed } = getAlbumProgress(tgId, albumId);
-  if (!complete) throw new Error('هنوز آلبوم کامل نشده');
-  if (claimed) throw new Error('جایزه این آلبوم رو قبلا گرفتی');
+  if (!complete) throw new Error('The album is not complete yet');
+  if (claimed) throw new Error('You have already claimed this album reward');
 
   const tx = db.transaction(() => {
     if (album.reward_type === 'toman' && Number(album.reward_value) > 0) {
-      adjustToman(tgId, Number(album.reward_value), `جایزه تکمیل آلبوم «${album.name}»`);
+      adjustToman(tgId, Number(album.reward_value), `Album completion reward «${album.name}»`);
     } else if (album.reward_type === 'avatar' && album.reward_value) {
       grantAvatar(tgId, Number(album.reward_value));
     } else if (album.reward_type === 'card' && album.reward_value) {

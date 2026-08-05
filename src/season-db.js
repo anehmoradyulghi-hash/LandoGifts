@@ -63,7 +63,7 @@ export function setSeasonConfig(c) {
 
 export function getCurrentSeason() { return db.prepare('SELECT * FROM current_season WHERE id = 1').get(); }
 
-// شروع فصل جدید: امتیاز و claim های همه پاک می‌شه، تاریخ شروع/پایان جدید ثبت می‌شه
+// Starting a new season: everyone's score and claims are wiped, new start/end dates are recorded
 export function startNewSeason() {
   const cfg = getSeasonConfig();
   const endsAt = new Date(Date.now() + cfg.duration_days * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
@@ -129,52 +129,52 @@ export function getUserSeasonProgress(tgId) {
 
 export function purchasePremiumPass(tgId) {
   const cfg = getSeasonConfig();
-  if (!cfg.enabled) throw new Error('فصل فعلا فعال نیست');
+  if (!cfg.enabled) throw new Error('The season is not active right now');
   const us = getOrCreateUserSeason(tgId);
-  if (us.purchased_premium) throw new Error('قبلا پس پرمیوم رو خریدی');
+  if (us.purchased_premium) throw new Error('You have already bought the Premium pass');
   const user = getUser(tgId);
-  if (!user || user.balance_toman < cfg.price_toman) throw new Error('موجودی کافی نیست');
-  adjustToman(tgId, -cfg.price_toman, 'خرید بتل‌پس پرمیوم فصلی');
+  if (!user || user.balance_toman < cfg.price_toman) throw new Error('Insufficient balance');
+  adjustToman(tgId, -cfg.price_toman, 'Buy seasonal Premium battle pass');
   db.prepare('UPDATE user_season SET purchased_premium = 1 WHERE tg_id = ?').run(tgId);
 }
 
-// خرید تایرهای پرنشده (skip) با تومان — کاربر می‌تونه بدون بازی کردن مستقیم به یه تایر جلوتر بپره
+// Buying unfilled (skip) tiers with LNDC — the user can jump straight to a later tier without playing
 export function buySeasonTiers(tgId, targetTier) {
   const cfg = getSeasonConfig();
-  if (!cfg.enabled) throw new Error('فصل فعلا فعال نیست');
-  if (!cfg.tier_skip_price_toman) throw new Error('خرید تایر توسط ادمین فعال نشده');
+  if (!cfg.enabled) throw new Error('The season is not active right now');
+  if (!cfg.tier_skip_price_toman) throw new Error('Tier purchase has not been enabled by the admin');
   const progress = getUserSeasonProgress(tgId);
   const target = Math.min(cfg.tier_count, Math.max(1, Number(targetTier)));
-  if (target <= progress.currentTier) throw new Error('به این تایر که قبلا رسیدی');
+  if (target <= progress.currentTier) throw new Error('you have already reached this tier');
   const tiersToSkip = target - progress.currentTier;
   const cost = tiersToSkip * cfg.tier_skip_price_toman;
   const user = getUser(tgId);
-  if (!user || user.balance_toman < cost) throw new Error('موجودی کافی نیست');
+  if (!user || user.balance_toman < cost) throw new Error('Insufficient balance');
   const neededXp = (target - 1) * cfg.xp_per_tier;
   const tx = db.transaction(() => {
-    adjustToman(tgId, -cost, `خرید ${tiersToSkip} تایر بتل‌پس`);
+    adjustToman(tgId, -cost, `Buy ${tiersToSkip} battle pass tier(s)`);
     db.prepare('UPDATE user_season SET xp = MAX(xp, ?) WHERE tg_id = ?').run(neededXp, tgId);
   });
   tx();
   return { cost, newTier: target };
 }
 
-// دریافت جایزه یه تایر (رایگان یا پرمیوم)
+// Claiming a tier's reward (free or Premium)
 export function claimSeasonTierReward(tgId, tierNumber, track) {
   const progress = getUserSeasonProgress(tgId);
-  if (tierNumber > progress.currentTier) throw new Error('هنوز به این تایر نرسیدی');
-  if (track === 'premium' && !progress.purchasedPremium) throw new Error('این جایزه فقط برای پس پرمیومه');
+  if (tierNumber > progress.currentTier) throw new Error('You have not reached this tier yet');
+  if (track === 'premium' && !progress.purchasedPremium) throw new Error('This reward is only for Premium pass holders');
   const already = db.prepare('SELECT 1 FROM season_tier_claims WHERE tg_id=? AND tier_number=? AND track=?').get(tgId, tierNumber, track);
-  if (already) throw new Error('این جایزه رو قبلا گرفتی');
+  if (already) throw new Error('You have already claimed this reward');
 
   const tier = getSeasonTier(tierNumber);
-  if (!tier) throw new Error('این تایر تعریف نشده');
+  if (!tier) throw new Error('This tier is not defined');
   const type = track === 'free' ? tier.free_reward_type : tier.premium_reward_type;
   const value = track === 'free' ? tier.free_reward_value : tier.premium_reward_value;
 
   const tx = db.transaction(() => {
     if (type === 'toman' && Number(value) > 0) {
-      adjustToman(tgId, Number(value), `جایزه تایر ${tierNumber} بتل‌پس (${track === 'free' ? 'رایگان' : 'پرمیوم'})`);
+      adjustToman(tgId, Number(value), `Battle pass tier ${tierNumber} reward (${track === 'free' ? 'Free' : 'Premium'})`);
     } else if (type === 'card' && value) {
       grantCardInstance(tgId, Number(value));
     } else if (type === 'extra_games' && Number(value) > 0) {
@@ -185,7 +185,7 @@ export function claimSeasonTierReward(tgId, tierNumber, track) {
     } else if (type === 'avatar' && value) {
       grantAvatar(tgId, Number(value));
     } else if (type === 'product' && value) {
-      createOrder(tgId, Number(value), 1, 0, `جایزه تایر ${tierNumber} بتل‌پس (${track === 'free' ? 'رایگان' : 'پرمیوم'})`);
+      createOrder(tgId, Number(value), 1, 0, `Battle pass tier ${tierNumber} reward (${track === 'free' ? 'Free' : 'Premium'})`);
     }
     db.prepare('INSERT INTO season_tier_claims (tg_id, tier_number, track) VALUES (?,?,?)').run(tgId, tierNumber, track);
   });

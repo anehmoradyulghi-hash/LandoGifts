@@ -3,8 +3,8 @@ import { adjustToman } from './db.js';
 import { grantCardInstance } from './game-db.js';
 
 /* =========================================================================
- * چرخ شانس روزانه — کاملا رایگان، فقط یه‌بار به ازای دوره خنک‌شدن (پیش‌فرض ۲۴ ساعت).
- * هیچ خریدی برای اسپین لازم نیست؛ فقط می‌شه شرط گذاشت که قبلش حداقل یه خرید داشته باشه.
+ * Daily wheel of fortune — completely free, once per cooldown period (default 24 hours).
+ * No purchase is required to spin by default; it can just be set as a condition that at least one purchase happened before.
  * ========================================================================= */
 db.exec(`
 CREATE TABLE IF NOT EXISTS wheel_config (
@@ -85,17 +85,17 @@ export function getWheelStatus(tgId) {
   return { enabled: true, canSpin: canSpin && purchaseOk, nextSpinAt, requirePurchaseNotMet: cfg.require_purchase && !purchaseOk };
 }
 
-// چرخوندن گردونه: یه اسلات وزن‌دار تصادفی انتخاب می‌کنه و جایزه رو فورا اعمال می‌کنه
+// Spinning the wheel: picks a random weighted slot and applies the prize immediately
 export function spinWheel(tgId) {
   const status = getWheelStatus(tgId);
-  if (!status.enabled) throw new Error('چرخ شانس فعلا خاموشه');
-  if (status.requirePurchaseNotMet) throw new Error('برای چرخوندن، اول باید یه خرید انجام بدی');
-  if (!status.canSpin) throw new Error('هنوز نوبت اسپین بعدیت نرسیده');
+  if (!status.enabled) throw new Error('The wheel is off right now');
+  if (status.requirePurchaseNotMet) throw new Error('You need to make a purchase before you can spin');
+  if (!status.canSpin) throw new Error('Not time for your next spin yet');
 
   const slots = listWheelSlots(true).filter(s => s.type !== 'card' || db.prepare('SELECT 1 FROM game_cards WHERE id = ?').get(s.card_id));
-  if (!slots.length) throw new Error('هیچ جایزه‌ای تعریف نشده');
+  if (!slots.length) throw new Error('No prize defined');
   const totalWeight = slots.reduce((s, x) => s + x.probability_percent, 0);
-  if (totalWeight <= 0) throw new Error('احتمال جایزه‌ها تنظیم نشده');
+  if (totalWeight <= 0) throw new Error('Prize probabilities are not configured');
 
   let roll = Math.random() * totalWeight;
   let chosen = slots[slots.length - 1];
@@ -106,7 +106,7 @@ export function spinWheel(tgId) {
 
   const tx = db.transaction(() => {
     if (chosen.type === 'toman' && chosen.amount_toman > 0) {
-      adjustToman(tgId, chosen.amount_toman, `جایزه چرخ شانس: ${chosen.label}`);
+      adjustToman(tgId, chosen.amount_toman, `Wheel of fortune prize: ${chosen.label}`);
     } else if (chosen.type === 'card' && chosen.card_id) {
       grantCardInstance(tgId, chosen.card_id);
     } else if (chosen.type === 'extra_games' && chosen.extra_games_count > 0) {

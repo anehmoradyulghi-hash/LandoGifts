@@ -1,9 +1,9 @@
 import db from './db.js';
 
 /* =========================================================================
- * لیگ هفتگی سه‌بخشی (برنز/نقره/طلا) — جدا از امتیاز کلی بازی، XP یا امتیاز کلن.
- * فقط بر اساس برد/باخت همین هفته تو نبردهای کارتی PvP. هر یکشنبه شب صعود/سقوط
- * خودکار انجام می‌شه و شمارنده‌ها صفر می‌شن. حریف‌ها تا حد امکان از همون لیگ انتخاب می‌شن.
+ * Three-tier weekly league (Bronze/Silver/Gold) — separate from the overall game score, XP, or clan score.
+ * based only on this week's wins/losses in PvP card battles. Every Sunday night, promotion/demotion
+ * happens automatically and counters reset. Opponents are picked from the same league whenever possible.
  * ========================================================================= */
 db.exec(`
 CREATE TABLE IF NOT EXISTS league_config (
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS user_league (
 `);
 
 const LEAGUES = ['bronze', 'silver', 'gold'];
-const LEAGUE_LABELS = { bronze: '🥉 برنز', silver: '🥈 نقره', gold: '🥇 طلا' };
+const LEAGUE_LABELS = { bronze: '🥉 Bronze', silver: '🥈 Silver', gold: '🥇 Gold' };
 
 export function getLeagueConfig() { return db.prepare('SELECT * FROM league_config WHERE id = 1').get(); }
 export function setLeagueConfig(c) {
@@ -80,7 +80,7 @@ export function getLeagueLeaderboard(league, limit = 10) {
   `).all(league, limit);
 }
 
-// موقع صف‌بندی نبرد، اول دنبال یه حریف تو همون لیگ می‌گرده؛ اگه نبود، از کل صف (بدون فیلتر لیگ)
+// When queuing a battle, it first looks for an opponent in the same league; if none, from the whole queue (no league filter)
 export function pickQueueOpponentInLeague(league, excludeTgId) {
   const row = db.prepare(`
     SELECT gq.* FROM game_queue gq

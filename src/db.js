@@ -11,9 +11,9 @@ db.pragma('journal_mode = WAL');
 
 /* =========================================================================
  * SCHEMA
- * همه‌چیز دستی طراحی شده: قیمت ارزها رو ادمین از پنل ثبت می‌کنه، هیچ درخواست
- * شبکه‌ای به هیچ صرافی یا API قیمتی زده نمی‌شه. واریز/برداشت هم با تایید
- * دستی ادمین انجام میشه، نه اتوماتیک.
+ * Everything is designed to be manual: the admin sets currency prices from the panel, no request
+ * No network calls are made to any exchange or pricing API. Deposit/withdrawal also require approval
+ * done manually by the admin, not automatic.
  * ========================================================================= */
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
@@ -155,14 +155,14 @@ CREATE TABLE IF NOT EXISTS ticket_messages (
 CREATE TABLE IF NOT EXISTS ledger (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tg_id INTEGER NOT NULL,
-  currency_code TEXT NOT NULL DEFAULT 'TOMAN',
+  currency_code TEXT NOT NULL DEFAULT 'LNDC',
   direction TEXT NOT NULL,  -- in | out
   amount REAL NOT NULL,
   reason TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- تنظیمات ساده کلید/مقدار که ادمین از پنل عوضشون می‌کنه (مثلا شماره کارت واریزی)
+-- Simple key/value settings the admin changes from the panel (e.g. the deposit card number)
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
@@ -173,9 +173,9 @@ function safeAddColumn(table, columnDef) {
   try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
   catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
 }
-safeAddColumn('gift_offers', 'serial_number TEXT'); // شماره سریال/مدل واقعی گیفت (اختیاری)
-safeAddColumn('gift_offers', 'link TEXT'); // لینک اختیاری خود گیفت
-safeAddColumn('currencies', 'deposit_address TEXT'); // آدرس/شمارهٔ حسابی که کاربر باید واریز کنه، به تفکیک هر ارز
+safeAddColumn('gift_offers', 'serial_number TEXT'); // The gift's real serial/model number (optional)
+safeAddColumn('gift_offers', 'link TEXT'); // Optional link to the gift itself
+safeAddColumn('currencies', 'deposit_address TEXT'); // The deposit address/account number the user should send to, per currency
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS star_payments (
@@ -196,13 +196,13 @@ export function createStarPaymentRequest(tgId, starsAmount, rateToman) {
     .run(tgId, starsAmount, rateToman, tomanCredited).lastInsertRowid;
 }
 export function getStarPayment(id) { return db.prepare('SELECT * FROM star_payments WHERE id = ?').get(id); }
-// ثانیه‌ای شارژ می‌کنه — همین که تلگرام تایید پرداخت رو بفرسته
+// tops up instantly — as soon as Telegram sends payment confirmation
 export function completeStarPayment(id, telegramChargeId) {
   const sp = getStarPayment(id);
-  if (!sp || sp.status === 'paid') return null; // ایمن در برابر پیام تکراری از تلگرام
+  if (!sp || sp.status === 'paid') return null; // Safe against duplicate messages from Telegram
   const tx = db.transaction(() => {
     db.prepare(`UPDATE star_payments SET status='paid', telegram_charge_id=?, paid_at=datetime('now') WHERE id=?`).run(telegramChargeId, id);
-    adjustToman(sp.tg_id, sp.toman_credited, `شارژ حساب با تلگرام استارز (${sp.stars_amount}⭐)`);
+    adjustToman(sp.tg_id, sp.toman_credited, `Account top-up with Telegram Stars (${sp.stars_amount}⭐)`);
   });
   tx();
   return sp;
@@ -233,22 +233,22 @@ export function upsertGiftCategory(c) {
 }
 export function deleteGiftCategory(id) { db.prepare('DELETE FROM gift_categories WHERE id = ?').run(id); }
 
-// چند ارز پیش‌فرض (غیرفعال تا ادمین نرخشون رو دستی ثبت کنه)
+// A few default currencies (inactive until the admin manually sets their rate)
 const seedCurrency = db.prepare(`INSERT OR IGNORE INTO currencies (code, name, rate_toman, min_deposit, min_withdraw, active) VALUES (?,?,?,?,?,0)`);
-seedCurrency.run('USDT', 'تتر', 0, 1, 1);
-seedCurrency.run('TON', 'تون‌کوین', 0, 0.1, 0.1);
+seedCurrency.run('USDT', 'USDT', 0, 1, 1);
+seedCurrency.run('TON', 'TON Coin', 0, 0.1, 0.1);
 
 /* =========================================================================
  * USERS
  * ========================================================================= */
 function makeRefCode() {
-  // چند بار امتحان می‌کنیم تا مطمئن بشیم کد رفرال تکراری نیست (احتمالش خیلی کمه ولی صفر نیست)
+  // We retry a few times to make sure the referral code isn't a duplicate (very unlikely but not zero)
   for (let i = 0; i < 5; i++) {
     const code = 'L' + crypto.randomBytes(4).toString('hex').toUpperCase();
     const exists = db.prepare('SELECT 1 FROM users WHERE ref_code = ?').get(code);
     if (!exists) return code;
   }
-  return 'L' + crypto.randomBytes(8).toString('hex').toUpperCase(); // fallback، عملا برخورد ناممکنه
+  return 'L' + crypto.randomBytes(8).toString('hex').toUpperCase(); // fallback, collisions are practically impossible
 }
 
 export function getUser(tgId) {
@@ -256,7 +256,7 @@ export function getUser(tgId) {
 }
 
 export function getOrCreateUser(tgUser, startParam) {
-  if (!tgUser?.id) throw new Error('اطلاعات کاربر تلگرام نامعتبره');
+  if (!tgUser?.id) throw new Error('Invalid Telegram user data');
   let user = getUser(tgUser.id);
   if (user) {
     db.prepare(`UPDATE users SET username = ?, first_name = ?, last_seen_at = datetime('now') WHERE tg_id = ?`)
@@ -275,7 +275,7 @@ export function getOrCreateUser(tgUser, startParam) {
     db.prepare(`INSERT INTO users (tg_id, username, first_name, ref_code, referred_by) VALUES (?,?,?,?,?)`)
       .run(tgUser.id, tgUser.username || null, tgUser.first_name || null, makeRefCode(), referredBy);
   } catch (e) {
-    // اگه دو درخواست هم‌زمان از همون کاربر جدید اومده باشن (خیلی بعیده ولی ممکنه)، به‌جای کرش، رکورد موجود رو برگردون
+    // If two simultaneous requests come from the same new user (very unlikely but possible), return the existing record instead of crashing
     const existing = getUser(tgUser.id);
     if (existing) return existing;
     throw e;
@@ -313,7 +313,7 @@ export function listUsers(search) {
 }
 
 /* =========================================================================
- * LEDGER + TOMAN BALANCE
+ * LEDGER + LNDC BALANCE
  * ========================================================================= */
 function logLedger(tgId, currencyCode, direction, amount, reason) {
   db.prepare(`INSERT INTO ledger (tg_id, currency_code, direction, amount, reason) VALUES (?,?,?,?,?)`)
@@ -322,7 +322,7 @@ function logLedger(tgId, currencyCode, direction, amount, reason) {
 
 export function adjustToman(tgId, amount, reason) {
   db.prepare(`UPDATE users SET balance_toman = balance_toman + ? WHERE tg_id = ?`).run(amount, tgId);
-  logLedger(tgId, 'TOMAN', amount >= 0 ? 'in' : 'out', Math.abs(amount), reason);
+  logLedger(tgId, 'LNDC', amount >= 0 ? 'in' : 'out', Math.abs(amount), reason);
 }
 
 export function getLedger(tgId, limit = 15, offset = 0) {
@@ -336,10 +336,10 @@ export function payReferralBonus(tgId, purchaseAmountToman, percent) {
   if (!user?.referred_by || !percent) return;
   const bonus = Math.floor((purchaseAmountToman * percent) / 100);
   if (bonus <= 0) return;
-  adjustToman(user.referred_by, bonus, `پورسانت رفرال از خرید کاربر ${tgId}`);
+  adjustToman(user.referred_by, bonus, `Referral commission from user purchase ${tgId}`);
 }
 
-// تنظیمات رفرال — کاملا از پنل ادمین قابل تغییره (دیگه فقط .env نیست)
+// Referral settings — fully changeable from the admin panel (no longer just .env)
 export function getReferralSettings() {
   return {
     percent: Number(getSetting('referral_percent', process.env.REFERRAL_PERCENT || '5')),
@@ -350,16 +350,16 @@ export function setReferralSettings({ percent, signupBonus }) {
   setSetting('referral_percent', String(Number(percent) || 0));
   setSetting('referral_signup_bonus', String(Number(signupBonus) || 0));
 }
-// پاداش ثابت یه‌بارهٔ رفرال — همون لحظه‌ای که کاربر جدید از لینک دعوت وارد می‌شه، به دعوت‌کننده تعلق می‌گیره
+// One-time flat referral reward — given to the inviter the moment a new user opens the app via the invite link
 export function payReferralSignupBonus(referrerTgId, newUserTgId) {
   const bonus = getReferralSettings().signupBonus;
   if (!bonus || bonus <= 0) return;
-  adjustToman(referrerTgId, bonus, `پاداش دعوت کاربر جدید (${newUserTgId})`);
+  adjustToman(referrerTgId, bonus, `New member invite reward (${newUserTgId})`);
 }
 
 export function getReferralInfo(tgId) {
   const invited = db.prepare('SELECT tg_id, username, first_name, created_at FROM users WHERE referred_by = ? ORDER BY created_at DESC').all(tgId);
-  const totalEarned = db.prepare(`SELECT COALESCE(SUM(amount),0) s FROM ledger WHERE tg_id = ? AND direction = 'in' AND reason LIKE 'پورسانت%'`).get(tgId).s;
+  const totalEarned = db.prepare(`SELECT COALESCE(SUM(amount),0) s FROM ledger WHERE tg_id = ? AND direction = 'in' AND reason LIKE 'Commission%'`).get(tgId).s;
   return { invited, invitedCount: invited.length, totalEarned };
 }
 
@@ -413,7 +413,7 @@ export function decideTomanTopup(id, approve) {
   if (!row || row.status !== 'pending') return null;
   db.prepare(`UPDATE toman_topups SET status = ?, decided_at = datetime('now') WHERE id = ?`)
     .run(approve ? 'approved' : 'rejected', id);
-  if (approve) adjustToman(row.tg_id, row.amount, 'شارژ کیف‌پول (کارت‌به‌کارت، تاییدشده)');
+  if (approve) adjustToman(row.tg_id, row.amount, 'Wallet top-up (card-to-card, approved)');
   return row;
 }
 export function listPendingTomanTopups() {
@@ -431,7 +431,7 @@ export function decideTomanWithdrawal(id, approve) {
   if (!row || row.status !== 'pending') return null;
   db.prepare(`UPDATE toman_withdrawals SET status = ?, decided_at = datetime('now') WHERE id = ?`)
     .run(approve ? 'approved' : 'rejected', id);
-  if (!approve) adjustToman(row.tg_id, row.amount, 'بازگشت وجه برداشت ردشده'); // بلوکه‌شده موقع درخواست برمی‌گرده
+  if (!approve) adjustToman(row.tg_id, row.amount, 'Refund for rejected withdrawal'); // the blocked amount is returned on request
   return row;
 }
 export function listPendingTomanWithdrawals() {
@@ -452,10 +452,10 @@ export function decideCurrencyRequest(id, approve) {
   db.prepare(`UPDATE currency_requests SET status = ?, decided_at = datetime('now') WHERE id = ?`)
     .run(approve ? 'approved' : 'rejected', id);
   if (row.kind === 'deposit' && approve) {
-    adjustCurrencyBalance(row.tg_id, row.currency_code, row.amount, `واریز ${row.currency_code} تاییدشده`);
+    adjustCurrencyBalance(row.tg_id, row.currency_code, row.amount, `${row.currency_code} deposit approved`);
   }
   if (row.kind === 'withdraw' && !approve) {
-    adjustCurrencyBalance(row.tg_id, row.currency_code, row.amount, 'بازگشت برداشت ردشده'); // بلوکه‌شده برمی‌گرده
+    adjustCurrencyBalance(row.tg_id, row.currency_code, row.amount, 'Refund of rejected withdrawal'); // the blocked amount is returned
   }
   return row;
 }
@@ -500,15 +500,15 @@ export function listAllOrders() {
 export function setOrderStatus(id, status) { db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, id); }
 
 /* =========================================================================
- * GIFT MARKET — بازار امانی گیفت‌های واقعی بین کاربران
+ * GIFT MARKET — Consignment market for real gifts between users
  * ========================================================================= */
 export function createGiftOffer(sellerTgId, title, imageUrl, priceToman, serialNumber, link) {
-  // اگه ادمین دسته‌بندی تعریف کرده باشه، عنوان آگهی باید دقیقا یکی از همون‌ها باشه (نه متن آزاد)
+  // If the admin has defined categories, the listing title must be exactly one of them (not free text)
   const categories = listGiftCategories(true);
   if (categories.length && !categories.some(c => c.name === title)) {
-    throw new Error('این دسته‌بندی معتبر نیست — یکی از دسته‌های موجود رو انتخاب کن');
+    throw new Error('This category is not valid — pick one of the existing categories');
   }
-  // آگهی‌های جدید اول باید توسط ادمین تایید بشن، بعد تو بازار نشون داده می‌شن
+  // New listings must first be approved by the admin before showing up in the market
   return db.prepare(`INSERT INTO gift_offers (seller_tg_id, title, image_url, price_toman, serial_number, link, status) VALUES (?,?,?,?,?,?,'pending')`)
     .run(sellerTgId, title, imageUrl || null, priceToman, serialNumber || null, link || null).lastInsertRowid;
 }
@@ -521,18 +521,18 @@ export function listMarketGiftOffers(excludeTgId) {
 }
 export function cancelGiftOffer(tgId, id) {
   const offer = getGiftOffer(id);
-  if (!offer || offer.seller_tg_id !== tgId) throw new Error('این آگهی مال شما نیست');
-  if (offer.status !== 'active' && offer.status !== 'pending') throw new Error('این آگهی دیگه قابل لغو نیست');
+  if (!offer || offer.seller_tg_id !== tgId) throw new Error('This listing does not belong to you');
+  if (offer.status !== 'active' && offer.status !== 'pending') throw new Error('This listing can no longer be cancelled');
   db.prepare(`UPDATE gift_offers SET status = 'cancelled' WHERE id = ?`).run(id);
 }
-// ویرایش آگهی توسط فروشنده — بعد از ویرایش دوباره باید تایید بشه
+// Listing edited by seller — needs re-approval after editing
 export function updateGiftOffer(tgId, id, { title, image_url, price_toman, serial_number, link }) {
   const offer = getGiftOffer(id);
-  if (!offer || offer.seller_tg_id !== tgId) throw new Error('این آگهی مال شما نیست');
-  if (offer.status !== 'active' && offer.status !== 'pending') throw new Error('این آگهی تو این وضعیت قابل ویرایش نیست');
+  if (!offer || offer.seller_tg_id !== tgId) throw new Error('This listing does not belong to you');
+  if (offer.status !== 'active' && offer.status !== 'pending') throw new Error('This listing cannot be edited in its current state');
   const categories = listGiftCategories(true);
   if (categories.length && !categories.some(c => c.name === title)) {
-    throw new Error('این دسته‌بندی معتبر نیست — یکی از دسته‌های موجود رو انتخاب کن');
+    throw new Error('This category is not valid — pick one of the existing categories');
   }
   db.prepare(`
     UPDATE gift_offers SET title=?, image_url=?, price_toman=?, serial_number=?, link=?, status='pending' WHERE id=?
@@ -540,22 +540,22 @@ export function updateGiftOffer(tgId, id, { title, image_url, price_toman, seria
 }
 export function reserveGiftOffer(buyerTgId, id) {
   const offer = getGiftOffer(id);
-  if (!offer || offer.status !== 'active') throw new Error('این آگهی در دسترس نیست');
-  if (offer.seller_tg_id === buyerTgId) throw new Error('نمی‌تونی آگهی خودت رو بخری');
+  if (!offer || offer.status !== 'active') throw new Error('This listing is not available');
+  if (offer.seller_tg_id === buyerTgId) throw new Error('You cannot buy your own listing');
   const buyer = getUser(buyerTgId);
-  if (buyer.balance_toman < offer.price_toman) throw new Error('موجودی کیف‌پول کافی نیست');
+  if (buyer.balance_toman < offer.price_toman) throw new Error('Insufficient wallet balance');
 
-  adjustToman(buyerTgId, -offer.price_toman, `رزرو خرید گیفت «${offer.title}» (امانی)`);
+  adjustToman(buyerTgId, -offer.price_toman, `Reserved purchase of gift "${offer.title}" (consignment)`);
   db.prepare(`UPDATE gift_offers SET status = 'reserved', buyer_tg_id = ?, reserved_at = datetime('now') WHERE id = ?`)
     .run(buyerTgId, id);
   return getGiftOffer(id);
 }
 export function confirmGiftReceived(buyerTgId, id, feePercent) {
   const offer = getGiftOffer(id);
-  if (!offer || offer.status !== 'reserved' || offer.buyer_tg_id !== buyerTgId) throw new Error('این آگهی قابل تایید نیست');
+  if (!offer || offer.status !== 'reserved' || offer.buyer_tg_id !== buyerTgId) throw new Error('This listing cannot be approved');
   const fee = Math.floor((offer.price_toman * feePercent) / 100);
   const sellerReceives = offer.price_toman - fee;
-  adjustToman(offer.seller_tg_id, sellerReceives, `فروش گیفت «${offer.title}» (امانی، پس از تایید خریدار)`);
+  adjustToman(offer.seller_tg_id, sellerReceives, `Sale of gift "${offer.title}" (consignment, after buyer confirmation)`);
   db.prepare(`UPDATE gift_offers SET status = 'completed', completed_at = datetime('now') WHERE id = ?`).run(id);
   return { ...offer, sellerReceives };
 }
@@ -567,28 +567,28 @@ export function listPendingGiftOffers() {
 }
 export function approveGiftOffer(id) {
   const offer = getGiftOffer(id);
-  if (!offer || offer.status !== 'pending') throw new Error('این آگهی در انتظار تایید نیست');
+  if (!offer || offer.status !== 'pending') throw new Error('This listing is not pending approval');
   db.prepare(`UPDATE gift_offers SET status = 'active' WHERE id = ?`).run(id);
 }
 export function rejectGiftOffer(id) {
   const offer = getGiftOffer(id);
-  if (!offer || offer.status !== 'pending') throw new Error('این آگهی در انتظار تایید نیست');
+  if (!offer || offer.status !== 'pending') throw new Error('This listing is not pending approval');
   db.prepare(`UPDATE gift_offers SET status = 'cancelled' WHERE id = ?`).run(id);
 }
-// حذف کامل آگهی توسط ادمین (تو هر وضعیتی) — اگه رزرو بود، پول به خریدار برمی‌گرده
+// Listing fully removed by admin (in any state) — if it was reserved, the money is refunded to the buyer
 export function adminDeleteGiftOffer(id) {
   const offer = getGiftOffer(id);
-  if (!offer) throw new Error('آگهی پیدا نشد');
+  if (!offer) throw new Error('Listing not found');
   if (offer.status === 'reserved') {
-    adjustToman(offer.buyer_tg_id, offer.price_toman, `حذف آگهی توسط ادمین — بازگشت وجه «${offer.title}»`);
+    adjustToman(offer.buyer_tg_id, offer.price_toman, `Listing removed by admin — refund «${offer.title}»`);
   }
   db.prepare('DELETE FROM gift_offers WHERE id = ?').run(id);
 }
-// ادمین برای رفع اختلاف: برگردوندن پول به خریدار (مثلا گیفت هیچوقت نرسید)
+// For admin dispute resolution: refunding the buyer (e.g. the gift never arrived)
 export function adminRefundGiftOffer(id) {
   const offer = getGiftOffer(id);
-  if (!offer || offer.status !== 'reserved') throw new Error('این آگهی رزرو نیست');
-  adjustToman(offer.buyer_tg_id, offer.price_toman, `بازگشت وجه توسط پشتیبانی — گیفت «${offer.title}»`);
+  if (!offer || offer.status !== 'reserved') throw new Error('This listing is not reserved');
+  adjustToman(offer.buyer_tg_id, offer.price_toman, `Refund by support — gift «${offer.title}»`);
   db.prepare(`UPDATE gift_offers SET status = 'cancelled' WHERE id = ?`).run(id);
 }
 
@@ -611,7 +611,7 @@ export function deleteTask(id) { db.prepare('DELETE FROM tasks WHERE id = ?').ru
 export function hasClaimedTask(tgId, taskId) { return !!db.prepare('SELECT 1 FROM task_claims WHERE tg_id = ? AND task_id = ?').get(tgId, taskId); }
 export function claimTask(tgId, task) {
   db.prepare('INSERT INTO task_claims (tg_id, task_id) VALUES (?,?)').run(tgId, task.id);
-  if (task.reward_toman > 0) adjustToman(tgId, task.reward_toman, `پاداش انجام تسک: ${task.title}`);
+  if (task.reward_toman > 0) adjustToman(tgId, task.reward_toman, `Task completion reward: ${task.title}`);
 }
 
 /* =========================================================================
@@ -644,7 +644,7 @@ export function getTicket(id) { return db.prepare('SELECT * FROM tickets WHERE i
 export function closeTicket(id) { db.prepare(`UPDATE tickets SET status = 'closed' WHERE id = ?`).run(id); }
 
 /* =========================================================================
- * SETTINGS — مقادیر ساده که ادمین از پنل عوض می‌کنه (مثلا شماره کارت واریزی)
+ * SETTINGS — Simple values the admin changes from the panel (e.g. the deposit card number)
  * ========================================================================= */
 export function getSetting(key, fallback = null) {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
@@ -669,7 +669,7 @@ export function setPaymentSettings({ cardNumber, cardOwner, zarinpalMerchantId }
   setSetting('zarinpal_merchant_id', zarinpalMerchantId || '');
 }
 
-// آیدی/یوزرنیم تلگرام که دکمه پشتیبانی کاربر رو مستقیم به چت باهاش می‌بره (به‌جای تیکت داخلی)
+// The Telegram ID/username the user's support button links directly to (instead of an internal ticket)
 export function getSupportContact() {
   return getSetting('support_username', process.env.SUPPORT_USERNAME || '');
 }
@@ -677,12 +677,12 @@ export function setSupportContact(username) {
   setSetting('support_username', (username || '').replace(/^@/, ''));
 }
 
-// متن صفحات اطلاعاتی (راهنما/سوالات متداول/قوانین) — از پنل ادمین قابل ویرایش
+// Info page text (guide/FAQ/rules) — editable from the admin panel
 export function getInfoPage(key) { return getSetting('info_' + key, ''); }
 export function setInfoPage(key, content) { setSetting('info_' + key, content || ''); }
 
-const DEFAULT_WELCOME = 'به <b>Lando Gifts</b> خوش اومدی 🎁\nاز دکمه پایین فروشگاه رو باز کن:';
-const DEFAULT_JOIN_PROMPT = 'برای استفاده از ربات، اول عضو کانال ما شو:';
+const DEFAULT_WELCOME = 'Welcome to <b>Lando Gifts</b> 🎁\nUse the button below to open the shop:';
+const DEFAULT_JOIN_PROMPT = 'To use the bot, first join our channel:';
 export function getMessageSettings() {
   return {
     welcomeMessage: getSetting('welcome_message', DEFAULT_WELCOME),
@@ -694,7 +694,7 @@ export function setMessageSettings({ welcomeMessage, joinPromptMessage }) {
   setSetting('join_prompt_message', joinPromptMessage || DEFAULT_JOIN_PROMPT);
 }
 
-/* ---- زرین‌پال: ثبت درخواست پرداخت تا موقع تایید در کال‌بک ردیابی بشه ---- */
+/* ---- Zarinpal: record the payment request so it can be tracked at confirmation in the callback ---- */
 db.exec(`
 CREATE TABLE IF NOT EXISTS zarinpal_payments (
   authority TEXT PRIMARY KEY,
@@ -720,7 +720,7 @@ export function markZarinpalPaymentStatus(authority, status) {
 export function getStats() {
   const users = db.prepare('SELECT COUNT(*) c FROM users').get().c;
   const orders = db.prepare('SELECT COUNT(*) c FROM orders').get().c;
-  const totalToman = db.prepare(`SELECT COALESCE(SUM(amount),0) s FROM ledger WHERE currency_code='TOMAN' AND direction='in'`).get().s;
+  const totalToman = db.prepare(`SELECT COALESCE(SUM(amount),0) s FROM ledger WHERE currency_code='LNDC' AND direction='in'`).get().s;
   const pendingTopups = db.prepare(`SELECT COUNT(*) c FROM toman_topups WHERE status='pending'`).get().c;
   const pendingCurrency = db.prepare(`SELECT COUNT(*) c FROM currency_requests WHERE status='pending'`).get().c;
   const openTickets = db.prepare(`SELECT COUNT(*) c FROM tickets WHERE status='open'`).get().c;

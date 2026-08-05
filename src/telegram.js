@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 
 const API = () => `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
-const TIMEOUT_MS = 8000; // اگه تلگرام تو این مدت جواب نده، دیگه منتظر نمی‌مونیم
+const TIMEOUT_MS = 8000; // if Telegram does not respond within this time, we stop waiting
 
 async function call(method, payload) {
   try {
@@ -9,14 +9,14 @@ async function call(method, payload) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(TIMEOUT_MS), // <- نکته اصلی: بدون این، یه تماس کند/بی‌جواب به API تلگرام کل مینی‌اپ رو برای همیشه قفل می‌کرد
+      signal: AbortSignal.timeout(TIMEOUT_MS), // <- Key point: without this, a slow/unresponsive call to the Telegram API would lock up the whole mini app forever
     });
     const data = await res.json();
     if (!data.ok) console.error(`[telegram:${method}]`, data.description || data);
     return data;
   } catch (e) {
     const timedOut = e.name === 'TimeoutError' || e.name === 'AbortError';
-    console.error(`[telegram:${method}] ${timedOut ? 'timeout (۸ ثانیه‌ای رد شد)' : 'network error'}`, e.message);
+    console.error(`[telegram:${method}] ${timedOut ? 'timeout (was rejected after 8 seconds)' : 'network error'}`, e.message);
     return { ok: false, error: e.message, timedOut };
   }
 }
@@ -33,7 +33,7 @@ export const answerCallbackQuery = (id, text) =>
 export const setWebhook = (url, secretToken) =>
   call('setWebhook', { url, secret_token: secretToken, allowed_updates: ['message', 'callback_query', 'pre_checkout_query'] });
 
-// ساخت لینک فاکتور پرداخت با تلگرام استارز (ارز XTR) — provider_token لازم نداره، خود تلگرام هندلش می‌کنه
+// Creating a payment invoice link with Telegram Stars (XTR currency) — does not need a provider_token, Telegram handles it itself
 export const createStarsInvoiceLink = (title, description, payload, starsAmount) =>
   call('createInvoiceLink', {
     title, description, payload, currency: 'XTR', provider_token: '',
@@ -45,17 +45,17 @@ export const answerPreCheckoutQuery = (id, ok, errorMessage) =>
 
 export const getMe = () => call('getMe', {});
 
-// چک عضویت در کانال، برای تسک‌ها و جوین اجباری
+// Channel membership check, for tasks and mandatory join
 export async function isChannelMember(channelUsername, userId) {
   if (!channelUsername) return true;
   const data = await call('getChatMember', { chat_id: '@' + channelUsername.replace('@', ''), user_id: userId });
-  if (!data.ok || !data.result?.status) return true; // اگه چک نشد یا جواب عجیب بود، کاربر رو بی‌دلیل مسدود نکن
+  if (!data.ok || !data.result?.status) return true; // if it was not checked or the response was odd, do not block the user without reason
   return !['left', 'kicked'].includes(data.result.status);
 }
 
-// اعتبارسنجی initData مینی‌اپ طبق مستندات رسمی تلگرام
-// هر ورودی عجیب/دستکاری‌شده باعث throw نمی‌شه؛ فقط null برمی‌گرده تا درخواست
-// با یه ۴۰۱ تمیز رد بشه، نه با یه ۵۰۰ ناشی از کرش این تابع
+// Mini app initData validation per Telegram's official docs
+// Any odd/tampered input does not throw; it just returns null so the request
+// gets rejected with a clean 401, not a 500 from this function crashing
 export function validateInitData(initData, botToken) {
   try {
     if (!initData || !botToken) return null;
@@ -80,7 +80,7 @@ export function validateInitData(initData, botToken) {
     if (!userJson) return null;
     return JSON.parse(userJson);
   } catch (e) {
-    console.error('[validateInitData] بدشکل یا دستکاری‌شده بود، رد شد:', e.message);
+    console.error('[validateInitData] was malformed or tampered with, rejected:', e.message);
     return null;
   }
 }

@@ -58,9 +58,9 @@ export function upsertQuestTemplate(t) {
 }
 export function deleteQuestTemplate(id) { db.prepare('DELETE FROM quest_templates WHERE id = ?').run(id); }
 
-// انتخاب «ماموریت‌های امروز» به‌صورت قطعی از روی تاریخ (نه ذخیره‌شده تو دیتابیس) —
-// یعنی همیشه از روی لیست فعلی قالب‌های فعال محاسبه می‌شه، پس با هر تغییری که ادمین بده
-// (اضافه/ویرایش/غیرفعال کردن) بلافاصله همون لحظه اثرش رو می‌بینی، نه فقط از فردا
+// Picking "today's quests" deterministically from the date (not stored in the database) —
+// meaning it's always computed from the current list of active templates, so with any change the admin makes
+// (add/edit/disable) you see the effect immediately, not just from tomorrow
 function seededShuffle(arr, seed) {
   let s = seed % 2147483647; if (s <= 0) s += 2147483646;
   const rand = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
@@ -92,7 +92,7 @@ export function getTodayQuestsForUser(tgId) {
   return { enabled: true, quests };
 }
 
-// هوکی که از قسمت‌های دیگه (برد بازی، خرید، واریز) صدا زده می‌شه تا پیشرفت ماموریت‌های امروز رو جلو ببره
+// A hook called from other parts (game win, purchase, deposit) to advance today's quest progress
 export function incrementQuestProgress(tgId, type, amount = 1) {
   const cfg = getQuestConfig();
   if (!cfg.enabled) return;
@@ -109,14 +109,14 @@ export function incrementQuestProgress(tgId, type, amount = 1) {
 export function claimQuestReward(tgId, templateId) {
   const today = new Date().toISOString().slice(0, 10);
   const template = getTodaysQuestTemplates().find(t => t.id === templateId);
-  if (!template) throw new Error('این ماموریت برای امروز نیست');
+  if (!template) throw new Error('This quest is not for today');
   const progress = db.prepare('SELECT * FROM user_quest_progress WHERE tg_id=? AND quest_date=? AND template_id=?').get(tgId, today, templateId);
-  if (!progress || progress.progress < template.target_count) throw new Error('هنوز این ماموریت کامل نشده');
-  if (progress.claimed) throw new Error('جایزه این ماموریت رو قبلا گرفتی');
+  if (!progress || progress.progress < template.target_count) throw new Error('This quest is not complete yet');
+  if (progress.claimed) throw new Error('You have already claimed this quest reward');
 
   const tx = db.transaction(() => {
     if (template.reward_type === 'toman' && Number(template.reward_value) > 0) {
-      adjustToman(tgId, Number(template.reward_value), `جایزه ماموریت روزانه: ${template.title}`);
+      adjustToman(tgId, Number(template.reward_value), `Daily quest reward: ${template.title}`);
     } else if (template.reward_type === 'xp' && Number(template.reward_value) > 0) {
       addUserXp(tgId, Number(template.reward_value));
     } else if (template.reward_type === 'card' && template.reward_value) {

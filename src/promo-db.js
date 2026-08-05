@@ -7,9 +7,9 @@ CREATE TABLE IF NOT EXISTS promo_codes (
   code TEXT PRIMARY KEY,
   reward_type TEXT NOT NULL,   -- toman | card | bp_discount | lootbox_discount
   reward_value TEXT,
-  max_uses INTEGER,            -- خالی = نامحدود
+  max_uses INTEGER,            -- empty = unlimited
   used_count INTEGER NOT NULL DEFAULT 0,
-  expires_at TEXT,             -- خالی = بدون انقضا
+  expires_at TEXT,             -- empty = no expiry
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -40,15 +40,15 @@ export function listRedemptions(code) {
 export function redeemPromoCode(tgId, codeInput) {
   const code = String(codeInput || '').trim().toUpperCase();
   const promo = getPromoCode(code);
-  if (!promo || !promo.active) throw new Error('این کد معتبر نیست');
-  if (promo.expires_at && new Date(promo.expires_at.replace(' ', 'T') + 'Z').getTime() < Date.now()) throw new Error('این کد منقضی شده');
-  if (promo.max_uses != null && promo.used_count >= promo.max_uses) throw new Error('ظرفیت این کد تموم شده');
+  if (!promo || !promo.active) throw new Error('This code is not valid');
+  if (promo.expires_at && new Date(promo.expires_at.replace(' ', 'T') + 'Z').getTime() < Date.now()) throw new Error('This code has expired');
+  if (promo.max_uses != null && promo.used_count >= promo.max_uses) throw new Error('This code is out of uses');
   const already = db.prepare('SELECT 1 FROM promo_redemptions WHERE code = ? AND tg_id = ?').get(code, tgId);
-  if (already) throw new Error('این کد رو قبلا استفاده کردی');
+  if (already) throw new Error('You have already used this code');
 
   const tx = db.transaction(() => {
     if (promo.reward_type === 'toman' && Number(promo.reward_value) > 0) {
-      adjustToman(tgId, Number(promo.reward_value), `کد هدیه: ${code}`);
+      adjustToman(tgId, Number(promo.reward_value), `Gift code: ${code}`);
     } else if (promo.reward_type === 'card' && promo.reward_value) {
       grantCardInstance(tgId, Number(promo.reward_value));
     }

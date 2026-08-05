@@ -66,10 +66,10 @@ export function listAllAuctionsAdmin() {
 }
 export function getAuction(id) { return db.prepare('SELECT * FROM auctions WHERE id = ?').get(id); }
 
-// ادمین یه محصول از فروشگاه رو انتخاب می‌کنه و باهاش یه مزایده می‌سازه
+// The admin picks a shop product and creates an auction with it
 export function createAuctionFromProduct(productId) {
   const product = getProduct(productId);
-  if (!product) throw new Error('محصول پیدا نشد');
+  if (!product) throw new Error('Product not found');
   const cfg = getAuctionConfig();
   const startPrice = Math.round(product.price_toman * (1 - cfg.discount_percent / 100));
   const endsAt = new Date(Date.now() + cfg.duration_minutes * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
@@ -78,10 +78,10 @@ export function createAuctionFromProduct(productId) {
     VALUES (?,'product',?,?,?,?,?,?,?,?)
   `).run(productId, product.title, product.image_url, startPrice, startPrice, cfg.bid_step, cfg.anti_snipe_enabled, cfg.min_wallet_balance, endsAt).lastInsertRowid;
 }
-// ادمین یه کارت بازی رو به مزایده می‌ذاره؛ بعد از تموم شدن مستقیم به کارت‌های برنده اضافه می‌شه
+// The admin puts a game card up for auction; once it ends it's added directly to the winner's cards
 export function createAuctionFromCard(cardId) {
   const card = getGameCard(cardId);
-  if (!card) throw new Error('کارت پیدا نشد');
+  if (!card) throw new Error('Card not found');
   const cfg = getAuctionConfig();
   const startPrice = Math.round(card.price_toman * (1 - cfg.discount_percent / 100));
   const endsAt = new Date(Date.now() + cfg.duration_minutes * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
@@ -98,19 +98,19 @@ export function listAuctionBids(auctionId, limit = 20) {
   return db.prepare('SELECT * FROM auction_bids WHERE auction_id = ? ORDER BY created_at DESC LIMIT ?').all(auctionId, limit);
 }
 
-// ثبت پیشنهاد: قیمت خودکار یه پله (bid_step) بالاتر میره؛ اگه تو ۱۰ ثانیه آخر باشه و anti-snipe فعال باشه، ۳۰ ثانیه به وقت اضافه می‌شه
+// Placing a bid: the price automatically goes up by one step (bid_step); if within the last 10 seconds and anti-snipe is enabled, 30 seconds are added to the timer
 export function placeBid(tgId, auctionId) {
   const auction = getAuction(auctionId);
-  if (!auction || auction.status !== 'active') throw new Error('این مزایده فعال نیست');
+  if (!auction || auction.status !== 'active') throw new Error('This auction is not active');
   const endsAtMs = new Date(auction.ends_at.replace(' ', 'T') + 'Z').getTime();
-  if (Date.now() >= endsAtMs) throw new Error('زمان این مزایده تموم شده');
+  if (Date.now() >= endsAtMs) throw new Error('This auction time has ended');
 
   const user = getUser(tgId);
   if (!user || user.balance_toman < auction.min_wallet_balance) {
-    throw new Error(`برای شرکت باید حداقل ${auction.min_wallet_balance.toLocaleString()} تومان موجودی داشته باشی`);
+    throw new Error(`You need at least ${auction.min_wallet_balance.toLocaleString()} LNDC balance to participate`);
   }
   const newPrice = auction.current_price + auction.bid_step;
-  if (user.balance_toman < newPrice) throw new Error('موجودی کیف‌پول برای این پیشنهاد کافی نیست');
+  if (user.balance_toman < newPrice) throw new Error('Insufficient wallet balance for this bid');
 
   let newEndsAtMs = endsAtMs;
   if (auction.anti_snipe && endsAtMs - Date.now() <= 10000) newEndsAtMs = Date.now() + 30000;
@@ -124,8 +124,8 @@ export function placeBid(tgId, auctionId) {
   return { newPrice, newEndsAt, extended: newEndsAtMs !== endsAtMs };
 }
 
-// مزایده‌های تموم‌شده رو می‌بنده: اگه برنده داشته و پول کافی داشته باشه، خودکار پرداخت و سفارش ثبت می‌شه؛
-// وگرنه با وضعیت «unpaid» می‌مونه تا ادمین دستی رسیدگی کنه
+// Closes finished auctions: if there's a winner with enough funds, payment and order are recorded automatically;
+// otherwise it stays with status "unpaid" until the admin handles it manually
 export function finalizeExpiredAuctions(notifyFn) {
   const expired = db.prepare(`SELECT * FROM auctions WHERE status = 'active' AND ends_at <= datetime('now')`).all();
   for (const a of expired) {
@@ -135,11 +135,11 @@ export function finalizeExpiredAuctions(notifyFn) {
     }
     const user = getUser(a.winner_tg_id);
     if (user && user.balance_toman >= a.current_price) {
-      adjustToman(a.winner_tg_id, -a.current_price, `برد مزایده «${a.title}»`);
+      adjustToman(a.winner_tg_id, -a.current_price, `Auction win «${a.title}»`);
       if (a.item_type === 'card') {
         grantCardInstance(a.winner_tg_id, a.card_id);
       } else {
-        db.prepare(`INSERT INTO orders (tg_id, product_id, qty, total_toman, note) VALUES (?,?,1,?, 'برد مزایده')`).run(a.winner_tg_id, a.product_id, a.current_price);
+        db.prepare(`INSERT INTO orders (tg_id, product_id, qty, total_toman, note) VALUES (?,?,1,?, 'Auction win')`).run(a.winner_tg_id, a.product_id, a.current_price);
       }
       db.prepare(`UPDATE auctions SET status = 'ended' WHERE id = ?`).run(a.id);
       if (notifyFn) notifyFn(a.winner_tg_id, a, 'won');

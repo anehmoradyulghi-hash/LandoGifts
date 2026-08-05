@@ -71,7 +71,7 @@ const upload = multer({
   fileFilter: (req, file, cb) => cb(null, /image\/(jpeg|png|webp|gif)/.test(file.mimetype)),
 });
 
-/* ---------- ورود ساده با رمز واحد + توکن نشست در حافظه ---------- */
+/* ---------- Simple login with a single password + in-memory session token ---------- */
 const sessions = new Map();
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 
@@ -85,8 +85,8 @@ function requireAdmin(req, res, next) {
 }
 
 router.post('/login', (req, res) => {
-  if (!process.env.ADMIN_PANEL_PASSWORD) return res.status(500).json({ error: 'ADMIN_PANEL_PASSWORD تنظیم نشده' });
-  if (req.body.password !== process.env.ADMIN_PANEL_PASSWORD) return res.status(401).json({ error: 'رمز اشتباه است' });
+  if (!process.env.ADMIN_PANEL_PASSWORD) return res.status(500).json({ error: 'ADMIN_PANEL_PASSWORD Not set' });
+  if (req.body.password !== process.env.ADMIN_PANEL_PASSWORD) return res.status(401).json({ error: 'Incorrect password' });
   const token = crypto.randomBytes(24).toString('hex');
   sessions.set(token, Date.now() + TOKEN_TTL_MS);
   res.json({ token });
@@ -95,38 +95,38 @@ router.post('/login', (req, res) => {
 router.use(requireAdmin);
 
 router.post('/upload-image', upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'فایل عکس ارسال نشد' });
+  if (!req.file) return res.status(400).json({ error: 'No image file was sent' });
   res.json({ url: `/uploads/${req.file.filename}` });
 });
 
-/* ---------- داشبورد ---------- */
+/* ---------- Dashboard ---------- */
 router.get('/stats', (req, res) => res.json(getStats()));
 
-/* ---------- کاربران ---------- */
+/* ---------- Users ---------- */
 router.get('/users', (req, res) => res.json(listUsers(req.query.q)));
 router.post('/users/:tgId/ban', (req, res) => { banUser(Number(req.params.tgId), req.body.reason); res.json({ ok: true }); });
 router.post('/users/:tgId/unban', (req, res) => { unbanUser(Number(req.params.tgId)); res.json({ ok: true }); });
 router.post('/users/:tgId/adjust-balance', (req, res) => {
   const amount = Number(req.body.amount);
-  if (!amount) return res.status(400).json({ error: 'مقدار نامعتبر' });
-  adjustToman(Number(req.params.tgId), amount, 'اصلاح دستی موجودی توسط ادمین');
-  sendMessage(Number(req.params.tgId), `💰 موجودی کیف‌پول شما ${amount > 0 ? '+' : ''}${amount.toLocaleString()} تومان توسط پشتیبانی تغییر کرد.`).catch(() => {});
+  if (!amount) return res.status(400).json({ error: 'Invalid amount' });
+  adjustToman(Number(req.params.tgId), amount, 'Manual balance adjustment by admin');
+  sendMessage(Number(req.params.tgId), `💰 Your wallet balance ${amount > 0 ? '+' : ''}${amount.toLocaleString()} LNDC changed by support.`).catch(() => {});
   res.json({ ok: true, user: getUser(Number(req.params.tgId)) });
 });
 router.post('/users/:tgId/adjust-currency', (req, res) => {
   const amount = Number(req.body.amount);
   const code = (req.body.code || '').toUpperCase();
-  if (!amount || !code) return res.status(400).json({ error: 'ارز و مقدار لازمه' });
-  adjustCurrencyBalance(Number(req.params.tgId), code, amount, 'اصلاح دستی موجودی ارزی توسط ادمین');
-  sendMessage(Number(req.params.tgId), `💰 موجودی ${code} شما ${amount > 0 ? '+' : ''}${amount} توسط پشتیبانی تغییر کرد.`).catch(() => {});
+  if (!amount || !code) return res.status(400).json({ error: 'Currency and amount are required' });
+  adjustCurrencyBalance(Number(req.params.tgId), code, amount, 'Manual currency balance adjustment by admin');
+  sendMessage(Number(req.params.tgId), `💰 Your ${code} balance ${amount > 0 ? '+' : ''}${amount} changed by support.`).catch(() => {});
   res.json({ ok: true });
 });
 
-/* ---------- ارزها (کاملا دستی) ---------- */
+/* ---------- Currencies (fully manual) ---------- */
 router.get('/currencies', (req, res) => res.json(listCurrencies()));
 router.post('/currencies', (req, res) => {
   const { code, name, rate_toman, min_deposit, min_withdraw, active, deposit_address } = req.body;
-  if (!code || !name) return res.status(400).json({ error: 'کد و نام ارز لازمه' });
+  if (!code || !name) return res.status(400).json({ error: 'Currency code and name are required' });
   upsertCurrency({
     code: code.toUpperCase(), name,
     rate_toman: Number(rate_toman) || 0,
@@ -138,7 +138,7 @@ router.post('/currencies', (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------- تنظیمات پرداخت (شماره کارت واریزی، دستی از پنل) ---------- */
+/* ---------- Payment settings (deposit card number, manual from the panel) ---------- */
 router.get('/payment-settings', (req, res) => res.json(getPaymentSettings()));
 router.post('/payment-settings', (req, res) => {
   setPaymentSettings({
@@ -149,18 +149,18 @@ router.post('/payment-settings', (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------- آیدی پشتیبانی (به‌جای تیکت داخلی) ---------- */
+/* ---------- Support ID (instead of internal ticket) ---------- */
 router.get('/support-contact', (req, res) => res.json({ username: getSupportContact() }));
 router.post('/support-contact', (req, res) => { setSupportContact(req.body.username); res.json({ ok: true }); });
 
-/* ---------- پاداش رفرال (درصد پورسانت خرید + پاداش ثابت عضویت) ---------- */
+/* ---------- Referral reward (purchase commission percent + flat membership reward) ---------- */
 router.get('/referral-settings', (req, res) => res.json(getReferralSettings()));
 router.post('/referral-settings', (req, res) => {
   setReferralSettings({ percent: req.body.percent, signupBonus: req.body.signupBonus });
   res.json({ ok: true });
 });
 
-/* ---------- صفحات اطلاعاتی (راهنما/سوالات متداول/قوانین) ---------- */
+/* ---------- Info pages (guide/FAQ/rules) ---------- */
 router.get('/info-pages', (req, res) => res.json({
   guide: getInfoPage('guide'), faq: getInfoPage('faq'), rules: getInfoPage('rules'),
 }));
@@ -171,82 +171,82 @@ router.post('/info-pages', (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------- پیام‌های ربات (خوش‌آمد / درخواست عضویت) ---------- */
+/* ---------- Bot messages (welcome / membership request) ---------- */
 router.get('/message-settings', (req, res) => res.json(getMessageSettings()));
 router.post('/message-settings', (req, res) => {
   setMessageSettings({ welcomeMessage: req.body.welcomeMessage, joinPromptMessage: req.body.joinPromptMessage });
   res.json({ ok: true });
 });
 
-/* ---------- پیام‌رسانی همگانی/تکی به کاربران ---------- */
+/* ---------- Broadcast/individual messaging to users ---------- */
 router.post('/broadcast', async (req, res) => {
   const text = String(req.body.message || '').trim();
-  if (!text) return res.status(400).json({ error: 'متن پیام خالیه' });
+  if (!text) return res.status(400).json({ error: 'Message text is empty' });
 
   if (req.body.targetTgId) {
     const result = await sendMessage(Number(req.body.targetTgId), text);
-    if (!result.ok) return res.status(400).json({ error: 'ارسال ناموفق بود — کاربر رباتو بلاک کرده یا آیدی اشتباهه' });
+    if (!result.ok) return res.status(400).json({ error: 'Sending failed — the user blocked the bot or the ID is wrong' });
     return res.json({ ok: true, sent: 1 });
   }
 
   const ids = getAllUserIds();
-  res.json({ ok: true, queued: ids.length }); // فورا جواب می‌دیم؛ ارسال به همه تو پس‌زمینه ادامه پیدا می‌کنه و ریکوئست ادمین معطل نمی‌مونه
+  res.json({ ok: true, queued: ids.length }); // we respond immediately; sending to everyone continues in the background and the admin's request does not hang
   (async () => {
     let sent = 0;
     for (const id of ids) {
       const r = await sendMessage(id, text).catch(() => ({ ok: false }));
       if (r.ok) sent++;
     }
-    console.log(`[broadcast] ${sent}/${ids.length} پیام با موفقیت ارسال شد`);
+    console.log(`[broadcast] ${sent}/${ids.length} Message sent successfully`);
   })();
 });
 
-/* ---------- شارژ کارت‌به‌کارت ---------- */
+/* ---------- Card-to-card top-up ---------- */
 router.get('/toman-topups', (req, res) => res.json(listPendingTomanTopups()));
 router.post('/toman-topups/:id/decide', (req, res) => {
   const row = decideTomanTopup(Number(req.params.id), !!req.body.approve);
-  if (!row) return res.status(404).json({ error: 'پیدا نشد یا قبلاً پردازش شده' });
+  if (!row) return res.status(404).json({ error: 'Not found or already processed' });
   const msg = req.body.approve
-    ? `✅ شارژ کارت‌به‌کارت شما تایید شد.\n+${row.amount.toLocaleString()} تومان به کیف‌پولت اضافه شد.`
-    : `❌ متاسفانه شارژ کارت‌به‌کارت شما تایید نشد. با پشتیبانی در ارتباط باش.`;
+    ? `✅ Your card-to-card top-up was approved.\n+${row.amount.toLocaleString()} LNDC added to your wallet.`
+    : `❌ Unfortunately your card-to-card top-up was not approved. Please contact support.`;
   sendMessage(row.tg_id, msg).catch(() => {});
   res.json({ ok: true });
 });
 
-/* ---------- برداشت تومانی ---------- */
+/* ---------- LNDC withdrawal ---------- */
 router.get('/toman-withdrawals', (req, res) => res.json(listPendingTomanWithdrawals()));
 router.post('/toman-withdrawals/:id/decide', (req, res) => {
   const row = decideTomanWithdrawal(Number(req.params.id), !!req.body.approve);
-  if (!row) return res.status(404).json({ error: 'پیدا نشد یا قبلاً پردازش شده' });
+  if (!row) return res.status(404).json({ error: 'Not found or already processed' });
   const msg = req.body.approve
-    ? `✅ برداشت ${row.amount.toLocaleString()} تومان شما انجام و به کارت ${row.card_number} واریز شد.`
-    : `❌ برداشت شما رد شد و مبلغ به کیف‌پولت برگشت.`;
+    ? `✅ Your withdrawal of ${row.amount.toLocaleString()} LNDC was completed and deposited to card ${row.card_number}.`
+    : `❌ Your withdrawal was rejected and the amount was refunded to your wallet.`;
   sendMessage(row.tg_id, msg).catch(() => {});
   res.json({ ok: true });
 });
 
-/* ---------- واریز/برداشت ارز دیجیتال ---------- */
+/* ---------- Crypto deposit/withdrawal ---------- */
 router.get('/currency-requests', (req, res) => res.json(listPendingCurrencyRequests()));
 router.post('/currency-requests/:id/decide', (req, res) => {
   const row = decideCurrencyRequest(Number(req.params.id), !!req.body.approve);
-  if (!row) return res.status(404).json({ error: 'پیدا نشد یا قبلاً پردازش شده' });
+  if (!row) return res.status(404).json({ error: 'Not found or already processed' });
   const label = `${row.amount} ${row.currency_code}`;
   let msg;
   if (row.kind === 'deposit') {
-    msg = req.body.approve ? `✅ واریز ${label} تایید شد و به کیف‌پولت اضافه شد.` : `❌ واریز ${label} تایید نشد.`;
+    msg = req.body.approve ? `✅ ${label} deposit approved and added to your wallet.` : `❌ ${label} deposit was not approved.`;
   } else {
-    msg = req.body.approve ? `✅ برداشت ${label} انجام و به آدرس زیر ارسال شد:\n${row.address}` : `❌ برداشت ${label} رد شد و مبلغ به کیف‌پولت برگشت.`;
+    msg = req.body.approve ? `✅ ${label} withdrawal completed and sent to the address below:\n${row.address}` : `❌ ${label} withdrawal was rejected and the amount was refunded to your wallet.`;
   }
   sendMessage(row.tg_id, msg).catch(() => {});
   res.json({ ok: true });
 });
 
-/* ---------- دسته‌بندی‌ها ---------- */
+/* ---------- Categories ---------- */
 router.get('/categories', (req, res) => res.json(listCategories()));
 router.post('/categories', (req, res) => res.json({ id: addCategory(req.body.title) }));
 router.delete('/categories/:id', (req, res) => { deleteCategory(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- محصولات ---------- */
+/* ---------- Products ---------- */
 router.get('/products', (req, res) => res.json(listProducts(false)));
 router.post('/products', (req, res) => {
   const id = upsertProduct({
@@ -262,10 +262,10 @@ router.post('/products', (req, res) => {
 });
 router.delete('/products/:id', (req, res) => { deleteProduct(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- دسته‌بندی‌های بازار گیفت ---------- */
+/* ---------- Gift market categories ---------- */
 router.get('/gift-categories', (req, res) => res.json(listGiftCategories(false)));
 router.post('/gift-categories', (req, res) => {
-  if (!req.body.name) return res.status(400).json({ error: 'اسم دسته لازمه' });
+  if (!req.body.name) return res.status(400).json({ error: 'Category name is required' });
   const id = upsertGiftCategory({
     id: req.body.id ? Number(req.body.id) : null,
     name: req.body.name, image_url: req.body.image_url, active: req.body.active !== false,
@@ -274,14 +274,14 @@ router.post('/gift-categories', (req, res) => {
 });
 router.delete('/gift-categories/:id', (req, res) => { deleteGiftCategory(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- سفارش‌ها ---------- */
+/* ---------- Orders ---------- */
 router.get('/orders', (req, res) => res.json(listAllOrders()));
 router.post('/orders/:id/status', (req, res) => {
   setOrderStatus(Number(req.params.id), req.body.status);
   res.json({ ok: true });
 });
 
-/* ---------- بازار گیفت ---------- */
+/* ---------- Gift market ---------- */
 router.get('/gift-offers', (req, res) => res.json(listAllGiftOffersAdmin()));
 router.post('/gift-offers/:id/refund', (req, res) => {
   try { adminRefundGiftOffer(Number(req.params.id)); res.json({ ok: true }); }
@@ -292,7 +292,7 @@ router.post('/gift-offers/:id/approve', (req, res) => {
   try {
     approveGiftOffer(Number(req.params.id));
     const offer = getGiftOffer(Number(req.params.id));
-    sendMessage(offer.seller_tg_id, `✅ آگهی گیفت «${offer.title}» تایید شد و الان تو بازار قابل مشاهده‌ست.`).catch(() => {});
+    sendMessage(offer.seller_tg_id, `✅ Gift listing "${offer.title}" was approved and is now visible in the market.`).catch(() => {});
     res.json({ ok: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -300,7 +300,7 @@ router.post('/gift-offers/:id/reject', (req, res) => {
   try {
     const offer = getGiftOffer(Number(req.params.id));
     rejectGiftOffer(Number(req.params.id));
-    if (offer) sendMessage(offer.seller_tg_id, `❌ آگهی گیفت «${offer.title}» رد شد.${req.body.reason ? ` دلیل: ${req.body.reason}` : ''}`).catch(() => {});
+    if (offer) sendMessage(offer.seller_tg_id, `❌ Gift listing "${offer.title}" was rejected.${req.body.reason ? ` Reason: ${req.body.reason}` : ''}`).catch(() => {});
     res.json({ ok: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -309,7 +309,7 @@ router.delete('/gift-offers/:id', (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-/* ---------- تسک‌ها ---------- */
+/* ---------- Tasks ---------- */
 router.get('/tasks', (req, res) => res.json(listAllTasksAdmin()));
 router.post('/tasks', (req, res) => {
   const id = upsertTask({
@@ -324,62 +324,62 @@ router.post('/tasks', (req, res) => {
 });
 router.delete('/tasks/:id', (req, res) => { deleteTask(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- تیکت‌های پشتیبانی ---------- */
+/* ---------- Support tickets ---------- */
 router.get('/tickets', (req, res) => res.json(listAllTicketsAdmin()));
 router.get('/tickets/:id/messages', (req, res) => {
   const ticket = getTicket(Number(req.params.id));
-  if (!ticket) return res.status(404).json({ error: 'تیکت پیدا نشد' });
+  if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
   res.json({ ticket, messages: listTicketMessages(ticket.id) });
 });
 router.post('/tickets/:id/reply', upload.single('image'), (req, res) => {
   const ticket = getTicket(Number(req.params.id));
-  if (!ticket) return res.status(404).json({ error: 'تیکت پیدا نشد' });
+  if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
   const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
   addTicketMessage(ticket.id, 'admin', req.body.text || '', imageUrl);
-  sendMessage(ticket.tg_id, `📩 پیام پشتیبانی:\n${req.body.text || ''}`).catch(() => {});
+  sendMessage(ticket.tg_id, `📩 Support message:\n${req.body.text || ''}`).catch(() => {});
   res.json({ ok: true });
 });
 router.post('/tickets/:id/close', (req, res) => { closeTicket(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- دسته‌بندی‌های کارت ---------- */
+/* ---------- Card categories ---------- */
 router.get('/card-categories', (req, res) => res.json(listCardCategories(false)));
 router.post('/card-categories', (req, res) => {
   const { id, name, icon, color, description, active } = req.body;
-  if (!name) return res.status(400).json({ error: 'اسم دسته لازمه' });
+  if (!name) return res.status(400).json({ error: 'Category name is required' });
   const savedId = upsertCardCategory({ id: id ? Number(id) : null, name, icon, color, description, active: active !== false });
   res.json({ ok: true, id: savedId });
 });
 router.delete('/card-categories/:id', (req, res) => { deleteCardCategory(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- هزینه ادغام/جهش هر پله ---------- */
+/* ---------- Merge/mutation cost per step ---------- */
 router.get('/merge-costs', (req, res) => res.json(listMergeCosts()));
 router.post('/merge-costs', (req, res) => {
   const { from_level, cost_toman } = req.body;
-  if (!from_level) return res.status(400).json({ error: 'سطح مبدا لازمه' });
+  if (!from_level) return res.status(400).json({ error: 'Source level is required' });
   upsertMergeCost(Number(from_level), Number(cost_toman) || 0);
   res.json({ ok: true });
 });
 
-/* ---------- بازی کارتی: کارت‌ها ---------- */
+/* ---------- Card game: cards ---------- */
 router.get('/game/cards', (req, res) => res.json(listGameCards(false)));
 router.post('/game/cards', (req, res) => {
   const { id, name, image_url, base_power, price_toman, active, category_id, level_images, edition, max_supply, instant_level, fixed_power, min_power, max_power } = req.body;
-  if (!name) return res.status(400).json({ error: 'اسم کارت لازمه' });
+  if (!name) return res.status(400).json({ error: 'Card name is required' });
   if (instant_level) {
-    // این کارت اختصاصیه، پس فقط سقف همون سطح رو رعایت می‌کنه (نه اینکه دقیقا برابرش باشه)
+    // This card is custom, so it only respects that level's cap (not that it must equal it exactly)
     const range = getCardLevelPowerConfig().find(r => r.level === Number(instant_level));
     const fp = Number(fixed_power);
     if (range && fp > range.max_power) {
-      return res.status(400).json({ error: `قدرت نباید از ${range.max_power} بیشتر باشه (سقف مجاز سطح ${instant_level})` });
+      return res.status(400).json({ error: `Power must not exceed ${range.max_power} (the allowed cap for level ${instant_level})` });
     }
   }
   const savedId = upsertGameCard({
     id: id ? Number(id) : null,
     name, image_url,
-    rarity: 'common', // دیگه استفاده نمی‌شه؛ ریرتی نمایشی از خود سطح کارت محاسبه می‌شه
+    rarity: 'common', // no longer used; the displayed rarity is computed from the card's level
     base_power: Number(base_power) || 10,
     price_toman: Number(price_toman) || 0,
-    max_level: 7, // سیستم سطح‌بندی ثابت ۷ تایی: معمولی تا الهی — قابل تغییر نیست
+    max_level: 7, // Fixed 7-tier leveling system: Common to Divine — not changeable
     active: active !== false,
     category_id: category_id ? Number(category_id) : null,
     level_images: Array.isArray(level_images) ? level_images : [],
@@ -398,16 +398,16 @@ router.post('/game/cards/:id/grant', (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-/* ---------- حداکثر قدرت قابل ارتقا هر سطح (۱ تا ۷) ---------- */
+/* ---------- Max upgradable power per level (1 to 7) ---------- */
 router.get('/game/level-power', (req, res) => res.json(getCardLevelPowerConfig()));
 router.post('/game/level-power', (req, res) => {
-  // max_power اسم اصلیه؛ power هم برای سادگی کلاینت قبول می‌شه
+  // max_power is the main name; power is also accepted for client simplicity
   const maxPower = req.body.max_power !== undefined ? req.body.max_power : req.body.power;
   try { setCardLevelPower(Number(req.body.level), maxPower); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-/* ---------- چرخ شانس روزانه ---------- */
+/* ---------- Daily wheel of fortune ---------- */
 router.get('/wheel/config', (req, res) => res.json(getWheelConfig()));
 router.post('/wheel/config', (req, res) => {
   setWheelConfig({ enabled: !!req.body.enabled, cooldown_hours: req.body.cooldown_hours, require_purchase: !!req.body.require_purchase });
@@ -416,7 +416,7 @@ router.post('/wheel/config', (req, res) => {
 router.get('/wheel/slots', (req, res) => res.json(listWheelSlots(false)));
 router.post('/wheel/slots', (req, res) => {
   const { id, label, type, amount_toman, card_id, extra_games_count, probability_percent, color, active } = req.body;
-  if (!label || !type) return res.status(400).json({ error: 'عنوان و نوع جایزه لازمه' });
+  if (!label || !type) return res.status(400).json({ error: 'Title and prize type are required' });
   const savedId = upsertWheelSlot({
     id: id ? Number(id) : null, label, type,
     amount_toman: Number(amount_toman) || 0,
@@ -429,7 +429,7 @@ router.post('/wheel/slots', (req, res) => {
 });
 router.delete('/wheel/slots/:id', (req, res) => { deleteWheelSlot(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- بازی کارتی: تنظیمات ---------- */
+/* ---------- Card game: settings ---------- */
 router.get('/game/config', (req, res) => res.json(getGameConfig()));
 router.post('/game/config', (req, res) => {
   const b = req.body;
@@ -447,12 +447,12 @@ router.post('/game/config', (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------- بازی کارتی: جدول امتیازات و جوایز ---------- */
+/* ---------- Card game: leaderboard and prizes ---------- */
 router.get('/game/leaderboard', (req, res) => res.json({ leaderboard: getLeaderboard(50), state: getLeaderboardState() }));
 router.get('/game/leaderboard-prizes', (req, res) => res.json(listLeaderboardPrizes()));
 router.post('/game/leaderboard-prizes', (req, res) => {
   const { id, rank_from, rank_to, reward_toman } = req.body;
-  if (!rank_from || !rank_to || !reward_toman) return res.status(400).json({ error: 'همه فیلدها لازمه' });
+  if (!rank_from || !rank_to || !reward_toman) return res.status(400).json({ error: 'All fields are required' });
   const savedId = upsertLeaderboardPrize({ id: id ? Number(id) : null, rank_from: Number(rank_from), rank_to: Number(rank_to), reward_toman: Number(reward_toman) });
   res.json({ ok: true, id: savedId });
 });
@@ -460,17 +460,17 @@ router.delete('/game/leaderboard-prizes/:id', (req, res) => { deleteLeaderboardP
 router.post('/game/leaderboard-reset', (req, res) => {
   try {
     resetLeaderboard((tgId, rank, reward) => {
-      sendMessage(tgId, `🏆 تبریک! تو رتبه ${rank} جدول امتیازات شدی و ${reward.toLocaleString()} تومان جایزه گرفتی!`).catch(() => {});
+      sendMessage(tgId, `🏆 Congrats! You placed #${rank} on the leaderboard and got a ${reward.toLocaleString()} LNDC prize!`).catch(() => {});
     });
     res.json({ ok: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-/* ---------- تسک‌های کارتی ---------- */
+/* ---------- Card tasks ---------- */
 router.get('/card-tasks', (req, res) => res.json(listAllCardTasksAdmin()));
 router.post('/card-tasks', (req, res) => {
   const { id, title, kind, channel_username, reward_card_id, active } = req.body;
-  if (!title || !reward_card_id) return res.status(400).json({ error: 'عنوان و کارت جایزه لازمه' });
+  if (!title || !reward_card_id) return res.status(400).json({ error: 'Title and prize card are required' });
   const savedId = upsertCardTask({
     id: id ? Number(id) : null, title, kind: kind || 'join_channel',
     channel_username, reward_card_id: Number(reward_card_id), active: active !== false,
@@ -479,7 +479,7 @@ router.post('/card-tasks', (req, res) => {
 });
 router.delete('/card-tasks/:id', (req, res) => { deleteCardTask(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- مزایده فلش ---------- */
+/* ---------- Flash auction ---------- */
 router.get('/auction/config', (req, res) => res.json(getAuctionConfig()));
 router.post('/auction/config', (req, res) => {
   const b = req.body;
@@ -502,7 +502,7 @@ router.post('/auction/create', (req, res) => {
 });
 router.post('/auction/:id/cancel', (req, res) => { cancelAuction(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- بتل‌پس فصلی ---------- */
+/* ---------- Seasonal battle pass ---------- */
 router.get('/season/config', (req, res) => res.json(getSeasonConfig()));
 router.post('/season/config', (req, res) => {
   const b = req.body;
@@ -519,7 +519,7 @@ router.post('/season/start-new', (req, res) => { startNewSeason(); res.json({ ok
 router.get('/season/tiers', (req, res) => res.json(listSeasonTiers()));
 router.post('/season/tiers', (req, res) => {
   const b = req.body;
-  if (!b.tier_number) return res.status(400).json({ error: 'شماره تایر لازمه' });
+  if (!b.tier_number) return res.status(400).json({ error: 'Tier number is required' });
   upsertSeasonTier({
     tier_number: Number(b.tier_number),
     free_reward_type: b.free_reward_type, free_reward_value: b.free_reward_value,
@@ -529,7 +529,7 @@ router.post('/season/tiers', (req, res) => {
 });
 router.delete('/season/tiers/:n', (req, res) => { deleteSeasonTier(Number(req.params.n)); res.json({ ok: true }); });
 
-/* ---------- سیستم کلن ---------- */
+/* ---------- Clan system ---------- */
 router.get('/clan/config', (req, res) => res.json(getClanConfig()));
 router.post('/clan/config', (req, res) => {
   const b = req.body;
@@ -554,30 +554,30 @@ router.post('/clan/:id/adjust-bank', (req, res) => {
 });
 router.post('/clan/reset-season', (req, res) => {
   resetClanSeason((tgId, clan, reward) => {
-    sendMessage(tgId, `🏆 کلن «${clan.name}» تو جدول برترین‌ها بود و ${reward.toLocaleString()} تومان جایزه گرفتی!`).catch(() => {});
+    sendMessage(tgId, `🏆 Your clan "${clan.name}" was on the top leaderboard and got a ${reward.toLocaleString()} LNDC prize!`).catch(() => {});
   });
   res.json({ ok: true });
 });
 
-/* ---------- جنگ کلن به کلن ---------- */
+/* ---------- Clan vs clan war ---------- */
 router.get('/clanwar/config', (req, res) => res.json(getClanWarConfig()));
 router.post('/clanwar/config', (req, res) => {
   setClanWarConfig(req.body);
   res.json({ ok: true });
 });
 
-/* ---------- لیگ هفتگی ---------- */
+/* ---------- Weekly league ---------- */
 router.get('/league/config', (req, res) => res.json(getLeagueConfig()));
 router.post('/league/config', (req, res) => {
   setLeagueConfig(req.body);
   res.json({ ok: true });
 });
 
-/* ---------- گردونهٔ بزرگ (قرعه‌کشی) ---------- */
+/* ---------- Big wheel (raffle) ---------- */
 router.get('/raffles', (req, res) => res.json(listRafflesAdmin()));
 router.post('/raffles', (req, res) => {
   try {
-    if (!req.body.title) return res.status(400).json({ error: 'عنوان لازمه' });
+    if (!req.body.title) return res.status(400).json({ error: 'Title is required' });
     const id = req.body.id ? (updateRaffle(Number(req.body.id), req.body), Number(req.body.id)) : createRaffle(req.body);
     res.json({ ok: true, id });
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -590,7 +590,7 @@ router.post('/raffles/:id/finish', (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-/* ---------- رنکینگ، لقب، آواتار ---------- */
+/* ---------- Ranking, title, avatar ---------- */
 router.get('/rank/config', (req, res) => res.json(getRankConfig()));
 router.post('/rank/config', (req, res) => {
   const b = req.body;
@@ -611,13 +611,13 @@ router.delete('/rank/titles/:t', (req, res) => { deleteRankTitle(Number(req.para
 router.get('/avatars', (req, res) => res.json(listAvatars(false)));
 router.post('/avatars', (req, res) => {
   const { id, name, image_url, price_toman, quantity, source, active } = req.body;
-  if (!name) return res.status(400).json({ error: 'اسم آواتار لازمه' });
+  if (!name) return res.status(400).json({ error: 'Avatar name is required' });
   const savedId = upsertAvatar({ id: id ? Number(id) : null, name, image_url, price_toman: Number(price_toman) || 0, quantity: quantity ? Number(quantity) : null, source, active: active !== false });
   res.json({ ok: true, id: savedId });
 });
 router.delete('/avatars/:id', (req, res) => { deleteAvatar(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- ماموریت‌های روزانه ---------- */
+/* ---------- Daily quests ---------- */
 router.get('/quests/config', (req, res) => res.json(getQuestConfig()));
 router.post('/quests/config', (req, res) => {
   setQuestConfig({ enabled: !!req.body.enabled, quest_count: Number(req.body.quest_count) || 3 });
@@ -626,34 +626,34 @@ router.post('/quests/config', (req, res) => {
 router.get('/quests/templates', (req, res) => res.json(listQuestTemplates(false)));
 router.post('/quests/templates', (req, res) => {
   const { id, title, type, target_count, reward_type, reward_value, active } = req.body;
-  if (!title) return res.status(400).json({ error: 'عنوان لازمه' });
+  if (!title) return res.status(400).json({ error: 'Title is required' });
   const savedId = upsertQuestTemplate({ id: id ? Number(id) : null, title, type, target_count: Number(target_count) || 1, reward_type, reward_value, active: active !== false });
   res.json({ ok: true, id: savedId });
 });
 router.delete('/quests/templates/:id', (req, res) => { deleteQuestTemplate(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- کد هدیه ---------- */
+/* ---------- Gift code ---------- */
 router.get('/promo', (req, res) => res.json(listPromoCodes()));
 router.post('/promo', (req, res) => {
   const { code, reward_type, reward_value, max_uses, expires_at, active } = req.body;
-  if (!code || !reward_type) return res.status(400).json({ error: 'کد و نوع جایزه لازمه' });
+  if (!code || !reward_type) return res.status(400).json({ error: 'Code and prize type are required' });
   createPromoCode({ code, reward_type, reward_value, max_uses: max_uses ? Number(max_uses) : null, expires_at, active });
   res.json({ ok: true });
 });
 router.delete('/promo/:code', (req, res) => { deletePromoCode(req.params.code.toUpperCase()); res.json({ ok: true }); });
 router.get('/promo/:code/redemptions', (req, res) => res.json(listRedemptions(req.params.code.toUpperCase())));
 
-/* ---------- آلبوم کلکسیون ---------- */
+/* ---------- Collection album ---------- */
 router.get('/albums', (req, res) => res.json(listAlbums(false).map(a => ({ ...a, requirements: getAlbumRequirements(a.id) }))));
 router.post('/albums', (req, res) => {
   const { id, name, reward_type, reward_value, is_seasonal, starts_at, ends_at, active, category_ids } = req.body;
-  if (!name) return res.status(400).json({ error: 'اسم آلبوم لازمه' });
+  if (!name) return res.status(400).json({ error: 'Album name is required' });
   const savedId = upsertAlbum({ id: id ? Number(id) : null, name, reward_type, reward_value, is_seasonal, starts_at, ends_at, active, category_ids });
   res.json({ ok: true, id: savedId });
 });
 router.delete('/albums/:id', (req, res) => { deleteAlbum(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- هدیه به دوست ---------- */
+/* ---------- Gift to a friend ---------- */
 router.get('/gift/config', (req, res) => res.json(getGiftConfig()));
 router.post('/gift/config', (req, res) => {
   const b = req.body;
@@ -665,11 +665,11 @@ router.post('/gift/config', (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------- کارت‌های فصلی ---------- */
+/* ---------- Seasonal cards ---------- */
 router.get('/seasons', (req, res) => res.json(listSeasons()));
 router.post('/seasons', (req, res) => {
   const { name, theme, starts_at, ends_at, active } = req.body;
-  if (!name || !starts_at || !ends_at) return res.status(400).json({ error: 'اسم و تاریخ شروع/پایان لازمه' });
+  if (!name || !starts_at || !ends_at) return res.status(400).json({ error: 'Name and start/end date are required' });
   const id = createSeason({ name, theme, starts_at, ends_at, active });
   res.json({ ok: true, id });
 });
@@ -679,7 +679,7 @@ router.post('/seasons/assign-card', (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------- تبادل کارت ---------- */
+/* ---------- Card trade ---------- */
 router.get('/trade/config', (req, res) => res.json(getTradeConfig()));
 router.post('/trade/config', (req, res) => {
   const b = req.body;

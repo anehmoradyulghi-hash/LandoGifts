@@ -64,24 +64,24 @@ function findUserCard(tgId, userCardId) {
   `).get(userCardId, tgId);
 }
 
-// بازارچهٔ تبادل: به‌جای اینکه بخوای آیدی طرف مقابل رو بدونی، کارتت رو می‌ذاری رو تابلو
-// و بقیه با یکی از کارت‌های خودشون پیشنهاد می‌دن
+// Trade board: instead of needing to know the other party's ID, you list your card on the board
+// and others make offers with one of their own cards
 export function createTradeListing(tgId, userCardId, note) {
   const cfg = getTradeConfig();
-  if (!cfg.enabled) throw new Error('سیستم تبادل فعلا غیرفعاله');
+  if (!cfg.enabled) throw new Error('The trade system is currently disabled');
   const info = getUserRankInfo(tgId);
-  if (info.level < cfg.min_user_level) throw new Error(`باید حداقل لول ${cfg.min_user_level} باشی`);
+  if (info.level < cfg.min_user_level) throw new Error(`You must be at least level ${cfg.min_user_level}`);
   const card = findUserCard(tgId, userCardId);
-  if (!card) throw new Error('این کارت پیدا نشد');
-  if (card.level > cfg.max_tradable_level) throw new Error(`فقط کارت‌های سطح ۱ تا ${cfg.max_tradable_level} قابل تبادلن`);
+  if (!card) throw new Error('This card was not found');
+  if (card.level > cfg.max_tradable_level) throw new Error(`Only level 1 to ${cfg.max_tradable_level} cards are tradeable`);
   const already = db.prepare(`SELECT 1 FROM trade_listings WHERE user_card_id = ? AND status = 'open'`).get(userCardId);
-  if (already) throw new Error('این کارت همین الان تو تابلو هست');
+  if (already) throw new Error('This card is already on the board right now');
   return db.prepare('INSERT INTO trade_listings (tg_id, user_card_id, note) VALUES (?,?,?)').run(tgId, userCardId, note || null).lastInsertRowid;
 }
 export function cancelTradeListing(tgId, id) {
   const listing = db.prepare('SELECT * FROM trade_listings WHERE id = ?').get(id);
-  if (!listing || listing.status !== 'open') throw new Error('این آگهی دیگه معتبر نیست');
-  if (listing.tg_id !== tgId) throw new Error('این آگهی مال تو نیست');
+  if (!listing || listing.status !== 'open') throw new Error('This listing is no longer valid');
+  if (listing.tg_id !== tgId) throw new Error('This listing does not belong to you');
   db.prepare(`UPDATE trade_listings SET status = 'cancelled' WHERE id = ?`).run(id);
   db.prepare(`UPDATE trade_offers SET status='cancelled', resolved_at=datetime('now') WHERE listing_id=? AND status='pending'`).run(id);
 }
@@ -106,32 +106,32 @@ export function getMyTradeListings(tgId) {
 }
 export function getTradeListing(id) { return db.prepare('SELECT * FROM trade_listings WHERE id = ?').get(id); }
 
-// کسی از رو تابلو یه آگهی رو انتخاب می‌کنه و با یکی از کارت‌های خودش پیشنهاد میده
+// Someone picks a listing from the board and offers one of their own cards
 export function createTradeOfferFromListing(fromTgId, listingId, fromUserCardId) {
   const listing = getTradeListing(listingId);
-  if (!listing || listing.status !== 'open') throw new Error('این آگهی دیگه در دسترس نیست');
-  if (listing.tg_id === fromTgId) throw new Error('نمی‌تونی رو آگهی خودت پیشنهاد بدی');
+  if (!listing || listing.status !== 'open') throw new Error('This listing is no longer available');
+  if (listing.tg_id === fromTgId) throw new Error('You cannot make an offer on your own listing');
   return createTradeOffer(fromTgId, listing.tg_id, fromUserCardId, listing.user_card_id, listingId);
 }
 
 export function createTradeOffer(fromTgId, toTgId, fromUserCardId, toUserCardId, listingId = null) {
   const cfg = getTradeConfig();
-  if (!cfg.enabled) throw new Error('سیستم تبادل فعلا غیرفعاله');
-  if (fromTgId === toTgId) throw new Error('نمی‌تونی با خودت تبادل کنی');
+  if (!cfg.enabled) throw new Error('The trade system is currently disabled');
+  if (fromTgId === toTgId) throw new Error('You cannot trade with yourself');
 
   const fromInfo = getUserRankInfo(fromTgId), toInfo = getUserRankInfo(toTgId);
-  if (fromInfo.level < cfg.min_user_level) throw new Error(`باید حداقل لول ${cfg.min_user_level} باشی`);
-  if (toInfo.level < cfg.min_user_level) throw new Error('طرف مقابل هنوز لولش کافی نیست');
-  if (monthlyAcceptedCount(fromTgId) >= cfg.max_trades_per_month) throw new Error('سهمیه تبادل این ماهت تموم شده');
+  if (fromInfo.level < cfg.min_user_level) throw new Error(`You must be at least level ${cfg.min_user_level}`);
+  if (toInfo.level < cfg.min_user_level) throw new Error('The other party level is not high enough yet');
+  if (monthlyAcceptedCount(fromTgId) >= cfg.max_trades_per_month) throw new Error('You have used up your trade quota for this month');
 
   const fromCard = findUserCard(fromTgId, fromUserCardId);
   const toCard = findUserCard(toTgId, toUserCardId);
-  if (!fromCard || !toCard) throw new Error('یکی از کارت‌ها پیدا نشد');
+  if (!fromCard || !toCard) throw new Error('One of the cards was not found');
   if (fromCard.level > cfg.max_tradable_level || toCard.level > cfg.max_tradable_level) {
-    throw new Error(`فقط کارت‌های سطح ۱ تا ${cfg.max_tradable_level} قابل تبادلن`);
+    throw new Error(`Only level 1 to ${cfg.max_tradable_level} cards are tradeable`);
   }
   const user = getUser(fromTgId);
-  if (!user || user.balance_toman < cfg.trade_fee_toman) throw new Error(`برای پیشنهاد تبادل ${cfg.trade_fee_toman.toLocaleString()} تومان کارمزد لازمه`);
+  if (!user || user.balance_toman < cfg.trade_fee_toman) throw new Error(`A ${cfg.trade_fee_toman.toLocaleString()} LNDC fee is required to make a trade offer`);
 
   return db.prepare(`
     INSERT INTO trade_offers (from_tg_id, to_tg_id, from_user_card_id, to_user_card_id, listing_id) VALUES (?,?,?,?,?)
@@ -140,8 +140,8 @@ export function createTradeOffer(fromTgId, toTgId, fromUserCardId, toUserCardId,
 
 export function respondTradeOffer(tgId, offerId, accept) {
   const offer = db.prepare('SELECT * FROM trade_offers WHERE id = ?').get(offerId);
-  if (!offer || offer.status !== 'pending') throw new Error('این پیشنهاد دیگه معتبر نیست');
-  if (offer.to_tg_id !== tgId) throw new Error('این پیشنهاد برای تو نیست');
+  if (!offer || offer.status !== 'pending') throw new Error('This offer is no longer valid');
+  if (offer.to_tg_id !== tgId) throw new Error('This offer is not for you');
 
   if (!accept) {
     db.prepare(`UPDATE trade_offers SET status = 'declined', resolved_at = datetime('now') WHERE id = ?`).run(offerId);
@@ -151,21 +151,21 @@ export function respondTradeOffer(tgId, offerId, accept) {
   const cfg = getTradeConfig();
   const fromCard = findUserCard(offer.from_tg_id, offer.from_user_card_id);
   const toCard = findUserCard(offer.to_tg_id, offer.to_user_card_id);
-  if (!fromCard || !toCard) throw new Error('یکی از کارت‌ها دیگه در دسترس نیست');
+  if (!fromCard || !toCard) throw new Error('One of the cards is no longer available');
   const fromUser = getUser(offer.from_tg_id), toUser = getUser(offer.to_tg_id);
   if (fromUser.balance_toman < cfg.trade_fee_toman || toUser.balance_toman < cfg.trade_fee_toman) {
-    throw new Error('یکی از طرفین موجودی کافی برای کارمزد نداره');
+    throw new Error('One of the parties does not have enough balance for the fee');
   }
 
   const tx = db.transaction(() => {
-    adjustToman(offer.from_tg_id, -cfg.trade_fee_toman, 'کارمزد تبادل کارت');
-    adjustToman(offer.to_tg_id, -cfg.trade_fee_toman, 'کارمزد تبادل کارت');
+    adjustToman(offer.from_tg_id, -cfg.trade_fee_toman, 'Card trade fee');
+    adjustToman(offer.to_tg_id, -cfg.trade_fee_toman, 'Card trade fee');
     db.prepare('UPDATE user_cards SET tg_id = ? WHERE id = ?').run(offer.to_tg_id, offer.from_user_card_id);
     db.prepare('UPDATE user_cards SET tg_id = ? WHERE id = ?').run(offer.from_tg_id, offer.to_user_card_id);
     db.prepare(`UPDATE trade_offers SET status = 'accepted', resolved_at = datetime('now') WHERE id = ?`).run(offerId);
     if (offer.listing_id) {
       db.prepare(`UPDATE trade_listings SET status = 'completed' WHERE id = ?`).run(offer.listing_id);
-      // اگه چند نفر رو همین آگهی پیشنهاد داده بودن، بقیه‌شون دیگه بی‌معنی‌ان چون کارت رفت
+      // if several people had made offers on this listing, the rest become meaningless since the card is gone
       db.prepare(`UPDATE trade_offers SET status='declined', resolved_at=datetime('now') WHERE listing_id=? AND status='pending' AND id != ?`).run(offer.listing_id, offerId);
     }
   });
@@ -175,8 +175,8 @@ export function respondTradeOffer(tgId, offerId, accept) {
 
 export function cancelTradeOffer(tgId, offerId) {
   const offer = db.prepare('SELECT * FROM trade_offers WHERE id = ?').get(offerId);
-  if (!offer || offer.status !== 'pending') throw new Error('این پیشنهاد دیگه معتبر نیست');
-  if (offer.from_tg_id !== tgId) throw new Error('این پیشنهاد مال تو نیست');
+  if (!offer || offer.status !== 'pending') throw new Error('This offer is no longer valid');
+  if (offer.from_tg_id !== tgId) throw new Error('This offer does not belong to you');
   db.prepare(`UPDATE trade_offers SET status = 'cancelled', resolved_at = datetime('now') WHERE id = ?`).run(offerId);
 }
 
