@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>پنل ادمین - Lando Gifts</title>
+<title>Admin Panel - Lando Gifts</title>
 <style>
   * { box-sizing: border-box; }
   body { margin:0; font-family: Tahoma, sans-serif; background:#0f1115; color:#eee; }
@@ -31,138 +31,138 @@
 <body>
 
 <div id="loginBox" class="card">
-  <h2>ورود ادمین</h2>
-  <label>رمز عبور</label>
+  <h2>Admin login</h2>
+  <label>Password</label>
   <input type="password" id="pw">
-  <button class="btn" onclick="login()">ورود</button>
+  <button class="btn" onclick="login()">Log in</button>
   <p class="muted" id="loginErr"></p>
 </div>
 
 <div id="app" style="display:none;">
   <header>
-    <h2>🎁 پنل ادمین Lando Gifts</h2>
-    <button class="btn secondary" onclick="logout()">خروج</button>
+    <h2>🎁 Admin Panel Lando Gifts</h2>
+    <button class="btn secondary" onclick="logout()">Log out</button>
   </header>
   <nav>
-    <button class="active" data-tab="dash" onclick="showTab('dash')">داشبورد</button>
-    <button data-tab="currencies" onclick="showTab('currencies')">ارزها</button>
-    <button data-tab="payment" onclick="showTab('payment')">پرداخت</button>
-    <button data-tab="messages" onclick="showTab('messages')">پیام‌ها</button>
-    <button data-tab="topups" onclick="showTab('topups')">شارژ کارت‌به‌کارت</button>
-    <button data-tab="withdrawals" onclick="showTab('withdrawals')">برداشت تومانی</button>
-    <button data-tab="creqs" onclick="showTab('creqs')">واریز/برداشت ارزی</button>
-    <button data-tab="products" onclick="showTab('products')">محصولات</button>
-    <button data-tab="orders" onclick="showTab('orders')">سفارش‌ها</button>
-    <button data-tab="gifts" onclick="showTab('gifts')">بازار گیفت</button>
-    <button data-tab="tasks" onclick="showTab('tasks')">تسک‌ها</button>
-    <button data-tab="gamecards" onclick="showTab('gamecards')">کارت‌های بازی</button>
-    <button data-tab="specialcards" onclick="showTab('specialcards')">کارت‌های سطح ثابت</button>
-    <button data-tab="cardcategories" onclick="showTab('cardcategories')">دسته‌بندی‌ها</button>
-    <button data-tab="mergecosts" onclick="showTab('mergecosts')">هزینه جهش</button>
-    <button data-tab="gameconfig" onclick="showTab('gameconfig')">تنظیمات بازی</button>
-    <button data-tab="leaderboard" onclick="showTab('leaderboard')">جدول امتیازات</button>
-    <button data-tab="raffles" onclick="showTab('raffles')">🎟 گردونهٔ بزرگ</button>
-    <button data-tab="wheel" onclick="showTab('wheel')">چرخ شانس</button>
-    <button data-tab="auction" onclick="showTab('auction')">مزایده</button>
-    <button data-tab="season" onclick="showTab('season')">بتل‌پس</button>
-    <button data-tab="clan" onclick="showTab('clan')">کلن</button>
-    <button data-tab="rank" onclick="showTab('rank')">رنک/آواتار</button>
-    <button data-tab="quests" onclick="showTab('quests')">ماموریت روزانه</button>
-    <button data-tab="promo" onclick="showTab('promo')">کد هدیه</button>
-    <button data-tab="albums" onclick="showTab('albums')">آلبوم</button>
-    <button data-tab="giftcfg" onclick="showTab('giftcfg')">هدیه</button>
-    <button data-tab="seasons" onclick="showTab('seasons')">کارت فصلی</button>
-    <button data-tab="trade" onclick="showTab('trade')">تبادل</button>
-    <button data-tab="cardtasks" onclick="showTab('cardtasks')">تسک‌های کارتی</button>
-    <button data-tab="users" onclick="showTab('users')">کاربران</button>
+    <button class="active" data-tab="dash" onclick="showTab('dash')">Dashboard</button>
+    <button data-tab="currencies" onclick="showTab('currencies')">Currencies</button>
+    <button data-tab="payment" onclick="showTab('payment')">Payment</button>
+    <button data-tab="messages" onclick="showTab('messages')">Messages</button>
+    <button data-tab="topups" onclick="showTab('topups')">Card-to-card top-up</button>
+    <button data-tab="withdrawals" onclick="showTab('withdrawals')">LNDC withdrawal</button>
+    <button data-tab="creqs" onclick="showTab('creqs')">Currency deposit/withdrawal</button>
+    <button data-tab="products" onclick="showTab('products')">Products</button>
+    <button data-tab="orders" onclick="showTab('orders')">Orders</button>
+    <button data-tab="gifts" onclick="showTab('gifts')">Gift market</button>
+    <button data-tab="tasks" onclick="showTab('tasks')">Tasks</button>
+    <button data-tab="gamecards" onclick="showTab('gamecards')">Game cards</button>
+    <button data-tab="specialcards" onclick="showTab('specialcards')">Fixed-level cards</button>
+    <button data-tab="cardcategories" onclick="showTab('cardcategories')">Categories</button>
+    <button data-tab="mergecosts" onclick="showTab('mergecosts')">Mutation cost</button>
+    <button data-tab="gameconfig" onclick="showTab('gameconfig')">Game settings</button>
+    <button data-tab="leaderboard" onclick="showTab('leaderboard')">Leaderboard</button>
+    <button data-tab="raffles" onclick="showTab('raffles')">🎟 Big wheel</button>
+    <button data-tab="wheel" onclick="showTab('wheel')">Wheel of fortune</button>
+    <button data-tab="auction" onclick="showTab('auction')">Auction</button>
+    <button data-tab="season" onclick="showTab('season')">Battle pass</button>
+    <button data-tab="clan" onclick="showTab('clan')">Clan</button>
+    <button data-tab="rank" onclick="showTab('rank')">Rank/Avatar</button>
+    <button data-tab="quests" onclick="showTab('quests')">Daily quest</button>
+    <button data-tab="promo" onclick="showTab('promo')">Gift code</button>
+    <button data-tab="albums" onclick="showTab('albums')">Album</button>
+    <button data-tab="giftcfg" onclick="showTab('giftcfg')">Gift</button>
+    <button data-tab="seasons" onclick="showTab('seasons')">Seasonal card</button>
+    <button data-tab="trade" onclick="showTab('trade')">Trade</button>
+    <button data-tab="cardtasks" onclick="showTab('cardtasks')">Card tasks</button>
+    <button data-tab="users" onclick="showTab('users')">Users</button>
   </nav>
   <main>
-    <section class="tab active" id="tab-dash"><div class="card" id="statsCard">در حال بارگذاری...</div></section>
+    <section class="tab active" id="tab-dash"><div class="card" id="statsCard">Loading...</div></section>
 
     <section class="tab" id="tab-currencies">
       <div class="card">
-        <h3>افزودن / ویرایش ارز</h3>
+        <h3>Add / edit currency</h3>
         <div class="row2">
-          <div><label>کد (مثلا USDT)</label><input id="curCode"></div>
-          <div><label>نام</label><input id="curName"></div>
+          <div><label>Code (e.g. USDT)</label><input id="curCode"></div>
+          <div><label>Name</label><input id="curName"></div>
         </div>
         <div class="row2">
-          <div><label>نرخ به تومان</label><input type="number" id="curRate"></div>
-          <div><label>فعال؟</label><select id="curActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
+          <div><label>Rate in LNDC</label><input type="number" id="curRate"></div>
+          <div><label>active?</label><select id="curActive"><option value="1">Yes</option><option value="0">No</option></select></div>
         </div>
         <div class="row2">
-          <div><label>حداقل واریز</label><input type="number" id="curMinDep"></div>
-          <div><label>حداقل برداشت</label><input type="number" id="curMinWd"></div>
+          <div><label>Minimum deposit</label><input type="number" id="curMinDep"></div>
+          <div><label>Minimum withdrawal</label><input type="number" id="curMinWd"></div>
         </div>
-        <label>آدرس/شمارهٔ واریز (چیزی که کاربر باید واریز کنه)</label>
-        <input id="curDepositAddress" placeholder="مثلا آدرس کیف‌پول یا شمارهٔ حساب">
-        <button class="btn" onclick="saveCurrency()">ذخیره</button>
+        <label>Deposit address/number (what the user should deposit to)</label>
+        <input id="curDepositAddress" placeholder="e.g. wallet address or account number">
+        <button class="btn" onclick="saveCurrency()">Save</button>
       </div>
       <div id="currenciesTable"></div>
     </section>
 
     <section class="tab" id="tab-payment">
       <div class="card">
-        <h3>شماره کارت واریزی (کارت‌به‌کارت)</h3>
-        <p class="muted">این شماره همونیه که تو مینی‌اپ به کاربر نشون داده می‌شه تا کارت‌به‌کارت واریز کنه. هروقت عوضش کنی، فوری تو اپ همه کاربرا آپدیت می‌شه.</p>
-        <label>شماره کارت</label>
+        <h3>Deposit card number (card-to-card)</h3>
+        <p class="muted">This is the number shown to the user in the mini app for card-to-card deposits. Whenever you change it, it updates instantly for all users in the app.</p>
+        <label>Card number</label>
         <input id="payCardNumber" placeholder="6037-xxxx-xxxx-xxxx">
-        <label>نام صاحب کارت</label>
-        <input id="payCardOwner" placeholder="مثلا: علی محمدی">
-        <h3>درگاه زرین‌پال (پرداخت آنلاین)</h3>
-        <label>مرچنت کد زرین‌پال</label>
+        <label>Cardholder name</label>
+        <input id="payCardOwner" placeholder="e.g. Ali Mohammadi">
+        <h3>Zarinpal gateway (online payment)</h3>
+        <label>Zarinpal merchant code</label>
         <input id="payZarinpal" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-        <p class="muted">اگه این رو خالی بذاری، دکمه پرداخت آنلاین تو مینی‌اپ نشون داده نمی‌شه و فقط کارت‌به‌کارت فعاله.</p>
-        <button class="btn" onclick="savePaymentSettings()">ذخیره</button>
-        <p class="muted" id="paymentSavedMsg" style="display:none;color:#7ee787;">ذخیره شد ✅</p>
+        <p class="muted">If you leave this empty, the online payment button will not show in the mini app and only card-to-card stays active.</p>
+        <button class="btn" onclick="savePaymentSettings()">Save</button>
+        <p class="muted" id="paymentSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
       <div class="card">
-        <h3>پشتیبانی</h3>
-        <p class="muted">دکمهٔ «پشتیبانی» تو مینی‌اپ کاربر رو مستقیم به همین آیدی تلگرام می‌بره (بدون یوزرنیم @).</p>
-        <label>یوزرنیم تلگرام پشتیبانی</label>
-        <input id="supportUsername" placeholder="مثلا: LandoSupport">
-        <button class="btn" onclick="saveSupportContact()">ذخیره</button>
+        <h3>Support</h3>
+        <p class="muted">The "Support" button in the mini app takes the user directly to this Telegram ID (without a username @).</p>
+        <label>Support Telegram username</label>
+        <input id="supportUsername" placeholder="e.g.: LandoSupport">
+        <button class="btn" onclick="saveSupportContact()">Save</button>
       </div>
       <div class="card">
-        <h3>🤝 پاداش رفرال (دعوت دوستان)</h3>
-        <p class="muted">هر کاربر یه لینک دعوت اختصاصی داره. اینجا مشخص کن دعوت‌کننده چقدر پاداش بگیره.</p>
+        <h3>🤝 Referral reward (invite friends)</h3>
+        <p class="muted">Each user has a unique invite link. Set how much reward the inviter gets here.</p>
         <div class="row2">
-          <div><label>درصد پورسانت از هر خرید زیرمجموعه</label><input type="number" id="refPercent" min="0" max="100"></div>
-          <div><label>پاداش ثابت به‌ازای هر عضو جدید (تومان)</label><input type="number" id="refSignupBonus" min="0"></div>
+          <div><label>Commission percent from each referral's purchase</label><input type="number" id="refPercent" min="0" max="100"></div>
+          <div><label>Flat reward per new member (LNDC)</label><input type="number" id="refSignupBonus" min="0"></div>
         </div>
-        <p class="muted">پورسانت از هر خریدی که زیرمجموعه انجام بده به دعوت‌کننده تعلق می‌گیره. پاداش ثابت هم یه‌بار، همون لحظه‌ای که یه کاربر جدید از لینک دعوت وارد مینی‌اپ بشه، به دعوت‌کننده داده می‌شه (خالی/صفر = غیرفعال).</p>
-        <button class="btn" onclick="saveReferralSettings()">ذخیره</button>
-        <p class="muted" id="referralSavedMsg" style="display:none;color:#7ee787;">ذخیره شد ✅</p>
+        <p class="muted">The inviter gets a commission from every purchase their referral makes. The flat reward is given once, the moment a new user opens the mini app via the invite link (empty/zero = disabled).</p>
+        <button class="btn" onclick="saveReferralSettings()">Save</button>
+        <p class="muted" id="referralSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
       <div class="card">
-        <h3>📖 صفحات اطلاعاتی مینی‌اپ</h3>
-        <p class="muted">متن این سه صفحه از تب «بیشتر ‹ اطلاعات» تو مینی‌اپ به کاربر نشون داده می‌شه.</p>
-        <label>راهنمای استفاده</label>
-        <textarea id="infoGuide" rows="5" placeholder="متن راهنما..."></textarea>
-        <label>سوالات متداول</label>
-        <textarea id="infoFaq" rows="5" placeholder="متن سوالات متداول..."></textarea>
-        <label>قوانین و مقررات</label>
-        <textarea id="infoRules" rows="5" placeholder="متن قوانین..."></textarea>
-        <button class="btn" onclick="saveInfoPages()">ذخیره صفحات اطلاعاتی</button>
+        <h3>📖 Mini app info pages</h3>
+        <p class="muted">The text of these three pages is shown to the user in the "More > Info" tab of the mini app.</p>
+        <label>User guide</label>
+        <textarea id="infoGuide" rows="5" placeholder="Guide text..."></textarea>
+        <label>FAQ</label>
+        <textarea id="infoFaq" rows="5" placeholder="FAQ text..."></textarea>
+        <label>Rules & terms</label>
+        <textarea id="infoRules" rows="5" placeholder="Rules text..."></textarea>
+        <button class="btn" onclick="saveInfoPages()">Save info pages</button>
       </div>
     </section>
 
     <section class="tab" id="tab-messages">
       <div class="card">
-        <h3>پیام خوش‌آمدگویی (استارت ربات)</h3>
+        <h3>Welcome message (bot start)</h3>
         <textarea id="msgWelcome" rows="4"></textarea>
-        <h3>پیام درخواست عضویت در کانال</h3>
+        <h3>Channel membership request message</h3>
         <textarea id="msgJoinPrompt" rows="3"></textarea>
-        <button class="btn" onclick="saveMessageSettings()">ذخیره پیام‌ها</button>
-        <p class="muted" id="msgSavedMsg" style="display:none;color:#7ee787;">ذخیره شد ✅</p>
+        <button class="btn" onclick="saveMessageSettings()">Save messages</button>
+        <p class="muted" id="msgSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
       <div class="card">
-        <h3>ارسال پیام به کاربران</h3>
-        <label>آیدی عددی یک کاربر خاص (خالی = ارسال به همه)</label>
-        <input id="broadcastTarget" placeholder="مثلا 123456789">
-        <label>متن پیام</label>
+        <h3>Send message to users</h3>
+        <label>Numeric ID of a specific user (empty = send to everyone)</label>
+        <input id="broadcastTarget" placeholder="e.g. 123456789">
+        <label>Message text</label>
         <textarea id="broadcastText" rows="4"></textarea>
-        <button class="btn" onclick="sendBroadcast()">ارسال</button>
+        <button class="btn" onclick="sendBroadcast()">Send</button>
         <p class="muted" id="broadcastResult"></p>
       </div>
     </section>
@@ -173,19 +173,19 @@
 
     <section class="tab" id="tab-products">
       <div class="card">
-        <h3>افزودن / ویرایش محصول</h3>
+        <h3>Add / edit product</h3>
         <input type="hidden" id="prodId">
-        <label>عنوان</label><input id="prodTitle">
-        <label>توضیحات</label><textarea id="prodDesc" rows="2"></textarea>
-        <label>عکس محصول</label>
+        <label>Title</label><input id="prodTitle">
+        <label>Description</label><textarea id="prodDesc" rows="2"></textarea>
+        <label>Product image</label>
         <input type="file" id="prodImageFile" accept="image/*" onchange="uploadImageTo('prodImageFile','prodImage','prodImagePreview')">
         <input type="hidden" id="prodImage">
         <img id="prodImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
-          <div><label>قیمت (تومان)</label><input type="number" id="prodPrice"></div>
-          <div><label>فعال؟</label><select id="prodActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
+          <div><label>Price (LNDC)</label><input type="number" id="prodPrice"></div>
+          <div><label>active?</label><select id="prodActive"><option value="1">Yes</option><option value="0">No</option></select></div>
         </div>
-        <button class="btn" onclick="saveProduct()">ذخیره</button>
+        <button class="btn" onclick="saveProduct()">Save</button>
       </div>
       <div id="productsTable"></div>
     </section>
@@ -193,215 +193,215 @@
     <section class="tab" id="tab-orders"><div id="ordersTable"></div></section>
     <section class="tab" id="tab-gifts">
       <div class="card">
-        <h3>دسته‌بندی‌های بازار گیفت</h3>
-        <p class="muted">فروشنده‌ها موقع ثبت آگهی فقط از بین همین دسته‌ها انتخاب می‌کنن (نه متن آزاد).</p>
+        <h3>Gift market categories</h3>
+        <p class="muted">Sellers can only pick from these categories when posting a listing (not free text).</p>
         <input type="hidden" id="gcatId">
-        <label>اسم دسته</label><input id="gcatName" placeholder="مثلا Lunar Snake">
-        <label>عکس پیش‌فرض (اختیاری)</label>
+        <label>Category name</label><input id="gcatName" placeholder="e.g. Lunar Snake">
+        <label>Default image (optional)</label>
         <input type="file" id="gcatImageFile" accept="image/*" onchange="uploadImageTo('gcatImageFile','gcatImage','gcatImagePreview')">
         <input type="hidden" id="gcatImage">
         <img id="gcatImagePreview" style="max-width:100px;border-radius:8px;display:none;margin-bottom:8px;">
-        <select id="gcatActive"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
-        <button class="btn" onclick="saveGiftCategory()">ذخیره دسته</button>
+        <select id="gcatActive"><option value="1">Active</option><option value="0">Inactive</option></select>
+        <button class="btn" onclick="saveGiftCategory()">Save category</button>
       </div>
       <div id="giftCategoriesTable"></div>
       <div class="card">
-        <h3>⏳ آگهی‌های در انتظار تایید</h3>
+        <h3>⏳ Listings pending approval</h3>
         <div id="pendingGiftsTable"></div>
       </div>
-      <h3>همهٔ آگهی‌ها</h3>
+      <h3>All listings</h3>
       <div id="giftsTable"></div>
     </section>
 
     <section class="tab" id="tab-tasks">
       <div class="card">
-        <h3>افزودن / ویرایش تسک</h3>
+        <h3>Add / edit task</h3>
         <input type="hidden" id="taskId">
-        <label>عنوان</label><input id="taskTitle">
+        <label>Title</label><input id="taskTitle">
         <div class="row2">
-          <div><label>نوع</label>
-            <select id="taskKind"><option value="join_channel">عضویت در کانال</option><option value="custom">سفارشی</option></select>
+          <div><label>Type</label>
+            <select id="taskKind"><option value="join_channel">Channel membership</option><option value="custom">Custom</option></select>
           </div>
-          <div><label>یوزرنیم کانال (بدون @)</label><input id="taskChannel"></div>
+          <div><label>Channel username (without @)</label><input id="taskChannel"></div>
         </div>
         <div class="row2">
-          <div><label>پاداش (تومان)</label><input type="number" id="taskReward"></div>
-          <div><label>فعال؟</label><select id="taskActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
+          <div><label>Reward (LNDC)</label><input type="number" id="taskReward"></div>
+          <div><label>active?</label><select id="taskActive"><option value="1">Yes</option><option value="0">No</option></select></div>
         </div>
-        <button class="btn" onclick="saveTask()">ذخیره</button>
+        <button class="btn" onclick="saveTask()">Save</button>
       </div>
       <div id="tasksTable"></div>
     </section>
 
     <section class="tab" id="tab-gamecards">
       <div class="card">
-        <h3>حداکثر قدرت قابل ارتقا هر سطح (۱ تا ۷)</h3>
-        <p class="muted">هر سطح یه سقف قدرت مشخص داره (نه بازه). وقتی کارتی ساخته می‌شه، جهش پیدا می‌کنه یا با ارتقا تقویت می‌شه، قدرتش هیچ‌وقت از سقف همون سطح رد نمی‌شه.</p>
+        <h3>Max upgradable power per level (1 to 7)</h3>
+        <p class="muted">Each level has one fixed power cap (not a range). When a card is created, mutated, or boosted via upgrade, its power never exceeds that level's cap.</p>
         <div id="levelPowerTable"></div>
       </div>
       <div class="card">
-        <h3>افزودن / ویرایش کارت بازی</h3>
+        <h3>Add / edit game card</h3>
         <input type="hidden" id="gcId">
-        <label>اسم کارت</label><input id="gcName">
-        <label>دسته‌بندی</label>
-        <select id="gcCategory"><option value="">بدون دسته</option></select>
-        <label>عکس پیش‌فرض (اگه عکس مخصوص هر سطح نذاری، از همین استفاده می‌شه)</label>
+        <label>Card name</label><input id="gcName">
+        <label>Category</label>
+        <select id="gcCategory"><option value="">No category</option></select>
+        <label>Default image (used if you do not set a level-specific image)</label>
         <input type="file" id="gcImageFile" accept="image/*" onchange="uploadImageTo('gcImageFile','gcImage','gcImagePreview')">
         <input type="hidden" id="gcImage">
         <img id="gcImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
-          <div class="muted" style="align-self:end;padding-bottom:8px;">🎚 ریرتی دیگه دستی نیست — خودکار از سطح کارت میاد (سطح ۱=معمولی ... سطح ۷=الهی)</div>
-          <div><label>ادیشن</label>
+          <div class="muted" style="align-self:end;padding-bottom:8px;">🎚 Rarity is no longer manual — it's derived automatically from the card level (level 1 = Common ... level 7 = Divine)</div>
+          <div><label>Edition</label>
             <select id="gcEdition">
-              <option value="standard">معمولی</option>
-              <option value="shiny">✨ درخشان</option>
-              <option value="gold">🟡 طلایی</option>
+              <option value="standard">Common</option>
+              <option value="shiny">✨ Radiant</option>
+              <option value="gold">🟡 Golden</option>
             </select>
           </div>
         </div>
         <div class="row2">
-          <div><label>قدرت پایه</label><input type="number" id="gcPower"></div>
-          <div><label>قیمت خرید سطح ۱ (تومان)</label><input type="number" id="gcPrice"></div>
+          <div><label>Base power</label><input type="number" id="gcPower"></div>
+          <div><label>Level-1 purchase price (LNDC)</label><input type="number" id="gcPrice"></div>
         </div>
         <div class="row2">
-          <div><label>محدودیت تعداد (خالی = نامحدود)</label><input type="number" id="gcMaxSupply"></div>
-          <div><label>فعال؟</label><select id="gcActive"><option value="1">بله</option><option value="0">خیر</option></select></div>
+          <div><label>Quantity limit (empty = unlimited)</label><input type="number" id="gcMaxSupply"></div>
+          <div><label>active?</label><select id="gcActive"><option value="1">Yes</option><option value="0">No</option></select></div>
         </div>
         <div class="row2">
-          <div><label>حداقل قدرت اختصاصی (خالی = بازهٔ کلی سطح)</label><input type="number" id="gcMinPower"></div>
-          <div><label>حداکثر قدرت اختصاصی (سقف مطلق، با تقویت هم رد نمی‌شه)</label><input type="number" id="gcMaxPower"></div>
+          <div><label>Minimum custom power (empty = the level's general range)</label><input type="number" id="gcMinPower"></div>
+          <div><label>Max custom power (absolute cap, not exceeded even with upgrades)</label><input type="number" id="gcMaxPower"></div>
         </div>
-        <h3 style="margin-top:16px;">عکس مخصوص هر سطح (اختیاری)</h3>
-        <p class="muted">اگه هرکدوم رو خالی بذاری، همون عکس پیش‌فرض بالا نشون داده می‌شه.</p>
+        <h3 style="margin-top:16px;">Level-specific image (optional)</h3>
+        <p class="muted">If you leave any of them empty, the default image above will be shown.</p>
         <div id="levelImagesGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
-        <button class="btn" onclick="saveGameCard()">ذخیره</button>
+        <button class="btn" onclick="saveGameCard()">Save</button>
       </div>
       <div id="gameCardsTable"></div>
     </section>
 
     <section class="tab" id="tab-specialcards">
       <div class="card">
-        <h3>ساخت کارت با سطح ثابت (۲ تا ۷)</h3>
-        <p class="muted">این کارت‌ها از همون لحظهٔ ساخته‌شدن رو سطح انتخابی می‌مونن، بدون نیاز به جهش. با عکس و قدرت اختصاصیِ همون سطح. می‌تونی تو فروشگاه کارت بذاریشون، یا مستقیم به یه کاربر هدیه بدی، یا از همینجا تو بتل‌پس/مزایده/تسک/چرخ‌شانس/آلبوم به‌عنوان جایزه انتخابشون کنی (چون تو همون لیست کارت‌های عادی هم هستن).</p>
+        <h3>Create a card with a fixed level (2 to 7)</h3>
+        <p class="muted">These cards stay at their chosen level from the moment they're created, no mutation needed — with the image and power specific to that level. You can list them in the shop, gift them directly to a user, or pick them as a prize in the battle pass/auction/task/wheel/album (since they're also in the regular card list).</p>
         <input type="hidden" id="scId">
-        <label>اسم کارت</label><input id="scName">
-        <label>دسته‌بندی</label>
-        <select id="scCategory"><option value="">بدون دسته</option></select>
-        <label>عکس اختصاصی همین سطح</label>
+        <label>Card name</label><input id="scName">
+        <label>Category</label>
+        <select id="scCategory"><option value="">No category</option></select>
+        <label>Custom image for this level</label>
         <input type="file" id="scImageFile" accept="image/*" onchange="uploadImageTo('scImageFile','scImage','scImagePreview')">
         <input type="hidden" id="scImage">
         <img id="scImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
-          <div><label>سطح ثابت</label><select id="scLevel" onchange="onScLevelChange()"><option value="2">۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option><option value="6">۶</option><option value="7">۷ (الهی)</option></select></div>
-          <div><label>قدرت اختصاصی (ثابت)</label><input type="number" id="scPower" oninput="checkScPowerRange()"></div>
+          <div><label>Fixed level</label><select id="scLevel" onchange="onScLevelChange()"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7 (Divine)</option></select></div>
+          <div><label>Custom power (fixed)</label><input type="number" id="scPower" oninput="checkScPowerRange()"></div>
         </div>
         <p class="muted" id="scPowerRangeHint"></p>
         <div class="row2">
-          <div><label>قیمت فروشگاهی (تومان)</label><input type="number" id="scPrice"></div>
-          <div><label>محدودیت تعداد (خالی = نامحدود)</label><input type="number" id="scMaxSupply"></div>
+          <div><label>Shop price (LNDC)</label><input type="number" id="scPrice"></div>
+          <div><label>Quantity limit (empty = unlimited)</label><input type="number" id="scMaxSupply"></div>
         </div>
-        <label>تو فروشگاه کارت فعال باشه؟</label><select id="scActive"><option value="1">بله</option><option value="0">خیر</option></select>
-        <button class="btn" onclick="saveSpecialCard()">ذخیره</button>
+        <label>Active in the card shop?</label><select id="scActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" onclick="saveSpecialCard()">Save</button>
       </div>
       <div id="specialCardsTable"></div>
     </section>
 
     <section class="tab" id="tab-cardcategories">
       <div class="card">
-        <h3>افزودن / ویرایش دسته‌بندی</h3>
+        <h3>Add / edit category</h3>
         <input type="hidden" id="catId">
-        <label>اسم دسته</label><input id="catName" placeholder="مثلا: اژدها">
-        <label>ایموجی/آیکون</label><input id="catIcon" placeholder="🐉">
-        <label>رنگ</label><input type="color" id="catColor" value="#8b5cf6">
-        <label>توضیحات</label><textarea id="catDesc" rows="2"></textarea>
-        <label>فعال؟</label>
-        <select id="catActive"><option value="1">بله</option><option value="0">خیر</option></select>
-        <button class="btn" onclick="saveCategory()">ذخیره</button>
+        <label>Category name</label><input id="catName" placeholder="e.g. Dragon">
+        <label>Emoji/icon</label><input id="catIcon" placeholder="🐉">
+        <label>Color</label><input type="color" id="catColor" value="#8b5cf6">
+        <label>Description</label><textarea id="catDesc" rows="2"></textarea>
+        <label>active?</label>
+        <select id="catActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" onclick="saveCategory()">Save</button>
       </div>
       <div id="categoriesTable"></div>
     </section>
 
     <section class="tab" id="tab-mergecosts">
       <div class="card">
-        <h3>هزینه جهش (ادغام) به ازای هر پله سطح</h3>
-        <p class="muted">برای هر پله، ادمین هزینه رو به تومان تعیین می‌کنه — کاربر برای جهش باید هم دو کارت یکسان داشته باشه هم این مبلغ رو بپردازه.</p>
+        <h3>Mutation (merge) cost per level step</h3>
+        <p class="muted">For each step, the admin sets the cost in LNDC — to mutate, the user must have two identical cards AND pay this amount.</p>
         <div id="mergeCostsForm"></div>
-        <button class="btn" onclick="saveMergeCosts()">ذخیره همه</button>
+        <button class="btn" onclick="saveMergeCosts()">Save all</button>
       </div>
     </section>
 
     <section class="tab" id="tab-gameconfig">
       <div class="card">
-        <h3>تنظیمات کلی بازی</h3>
+        <h3>General game settings</h3>
         <div class="row2">
-          <div><label>حداقل سایز دسته</label><input type="number" id="cfgMinDeck"></div>
-          <div><label>حداکثر سایز دسته</label><input type="number" id="cfgMaxDeck"></div>
+          <div><label>Minimum deck size</label><input type="number" id="cfgMinDeck"></div>
+          <div><label>Max deck size</label><input type="number" id="cfgMaxDeck"></div>
         </div>
         <div class="row2">
-          <div><label>تعداد بازی رایگان روزانه</label><input type="number" id="cfgDailyLimit"></div>
-          <div><label>هزینه بازی اضافه (تومان)</label><input type="number" id="cfgExtraPrice"></div>
+          <div><label>Daily free games count</label><input type="number" id="cfgDailyLimit"></div>
+          <div><label>Extra game cost (LNDC)</label><input type="number" id="cfgExtraPrice"></div>
         </div>
         <div class="row2">
-          <div><label>تعداد بازی اضافه به‌ازای هر خرید</label><input type="number" id="cfgExtraCount"></div>
-          <div><label>دوره ریست جدول امتیازات (روز)</label><input type="number" id="cfgResetDays"></div>
+          <div><label>Extra games per purchase</label><input type="number" id="cfgExtraCount"></div>
+          <div><label>Leaderboard reset period (days)</label><input type="number" id="cfgResetDays"></div>
         </div>
-        <h3 style="margin-top:16px;">روش دوم ارتقا: تقویت (قربانی کردن)</h3>
+        <h3 style="margin-top:16px;">Second upgrade method: boost (sacrificing)</h3>
         <div class="row2">
-          <div><label>هزینه هر تقویت (تومان)</label><input type="number" id="cfgSacFee"></div>
-          <div><label>درصد انتقال قدرت از قربانی</label><input type="number" id="cfgSacPercent"></div>
+          <div><label>Cost per upgrade (LNDC)</label><input type="number" id="cfgSacFee"></div>
+          <div><label>Power transfer percent from sacrifice</label><input type="number" id="cfgSacPercent"></div>
         </div>
-        <button class="btn" onclick="saveGameConfig()">ذخیره تنظیمات</button>
+        <button class="btn" onclick="saveGameConfig()">Save settings</button>
       </div>
     </section>
 
     <section class="tab" id="tab-leaderboard">
       <div class="card">
-        <h3>افزودن / ویرایش جایزه رتبه</h3>
+        <h3>Add / edit rank reward</h3>
         <input type="hidden" id="prizeId">
         <div class="row2">
-          <div><label>از رتبه</label><input type="number" id="prizeFrom"></div>
-          <div><label>تا رتبه</label><input type="number" id="prizeTo"></div>
+          <div><label>From rank</label><input type="number" id="prizeFrom"></div>
+          <div><label>To rank</label><input type="number" id="prizeTo"></div>
         </div>
-        <label>جایزه (تومان)</label><input type="number" id="prizeReward">
-        <button class="btn" onclick="saveLeaderboardPrize()">ذخیره</button>
+        <label>Prize (LNDC)</label><input type="number" id="prizeReward">
+        <button class="btn" onclick="saveLeaderboardPrize()">Save</button>
       </div>
       <div id="leaderboardPrizesTable"></div>
       <div class="card">
-        <button class="btn danger" onclick="resetLeaderboardNow()">پخش جوایز و ریست دستی جدول امتیازات</button>
-        <p class="muted">این کار جوایز رو بین برترین‌های فعلی پخش می‌کنه و امتیازها رو صفر می‌کنه — دوره خودکار هم طبق تنظیمات بازی هست.</p>
+        <button class="btn danger" onclick="resetLeaderboardNow()">Distribute prizes & manually reset the leaderboard</button>
+        <p class="muted">This distributes rewards among the current top performers and resets scores — the automatic cycle also follows the game settings.</p>
       </div>
-      <h3>جدول فعلی</h3>
+      <h3>Current table</h3>
       <div id="leaderboardTable"></div>
       <div class="card">
-        <h3>⚔️ لیگ هفتگی (برنز/نقره/طلا)</h3>
-        <p class="muted">جدا از امتیاز بازی — فقط بر اساس برد/باخت همین هفته تو نبردهای کارتی. همه از برنز شروع می‌کنن.</p>
-        <select id="lgEnabled"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <h3>⚔️ Weekly league (Bronze/Silver/Gold)</h3>
+        <p class="muted">Separate from the game score — based only on this week's wins/losses in card battles. Everyone starts from Bronze.</p>
+        <select id="lgEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>تعداد صعودکننده هر لیگ</label><input type="number" id="lgPromote"></div>
-          <div><label>تعداد سقوط‌کننده هر لیگ</label><input type="number" id="lgRelegate"></div>
+          <div><label>Number of promotions per league</label><input type="number" id="lgPromote"></div>
+          <div><label>Number of demotions per league</label><input type="number" id="lgRelegate"></div>
         </div>
-        <label>دورهٔ صعود/سقوط (روز)</label><input type="number" id="lgResetDays">
-        <button class="btn" onclick="saveLeagueConfig()">ذخیره تنظیمات لیگ</button>
+        <label>Promotion/demotion period (days)</label><input type="number" id="lgResetDays">
+        <button class="btn" onclick="saveLeagueConfig()">Save league settings</button>
       </div>
     </section>
 
     <section class="tab" id="tab-raffles">
       <div class="card">
-        <h3>ساخت / ویرایش گردونهٔ بزرگ</h3>
+        <h3>Create / edit big wheel</h3>
         <input type="hidden" id="rfId">
-        <label>عنوان گردونه</label><input id="rfTitle" placeholder="مثلا: قرعه‌کشی هفتگی گیفت">
-        <label>توضیح جایزه</label><textarea id="rfPrize" rows="2" placeholder="مثلا: هر برنده ۵۰ هزار تومان می‌گیره"></textarea>
+        <label>Wheel title</label><input id="rfTitle" placeholder="e.g. weekly gift raffle">
+        <label>Prize description</label><textarea id="rfPrize" rows="2" placeholder="e.g. every winner gets 50,000 LNDC"></textarea>
         <div class="row2">
-          <div><label>ظرفیت کل (نفر)</label><input type="number" id="rfCapacity" value="100"></div>
-          <div><label>تعداد برنده</label><input type="number" id="rfWinners" value="10"></div>
+          <div><label>Total capacity (people)</label><input type="number" id="rfCapacity" value="100"></div>
+          <div><label>Number of winners</label><input type="number" id="rfWinners" value="10"></div>
         </div>
-        <label>تسک لازم برای ورود (اختیاری)</label>
-        <select id="rfTaskId"><option value="">بدون نیاز به تسک</option></select>
+        <label>Required task to enter (optional)</label>
+        <select id="rfTaskId"><option value="">No task required</option></select>
         <div class="row2">
-          <div><label>قیمت هر بلیط اضافه (تومان) — صفر یعنی غیرفعال</label><input type="number" id="rfTicketPrice" value="0"></div>
-          <div><label>سقف بلیط هر نفر</label><input type="number" id="rfMaxTickets" value="1"></div>
+          <div><label>Price per extra ticket (LNDC) — zero means disabled</label><input type="number" id="rfTicketPrice" value="0"></div>
+          <div><label>Ticket cap per person</label><input type="number" id="rfMaxTickets" value="1"></div>
         </div>
-        <button class="btn" onclick="saveRaffle()">ذخیره</button>
+        <button class="btn" onclick="saveRaffle()">Save</button>
       </div>
       <div id="rafflesTable"></div>
       <div class="card" id="raffleEntriesBox" style="display:none;">
@@ -412,57 +412,57 @@
 
     <section class="tab" id="tab-wheel">
       <div class="card">
-        <h3>تنظیمات چرخ شانس</h3>
-        <label>فعال؟</label>
-        <select id="wheelEnabled"><option value="1">بله</option><option value="0">خیر</option></select>
-        <label>فاصله بین دو اسپین (ساعت)</label>
+        <h3>Wheel of fortune settings</h3>
+        <label>active?</label>
+        <select id="wheelEnabled"><option value="1">Yes</option><option value="0">No</option></select>
+        <label>Interval between spins (hours)</label>
         <input type="number" id="wheelCooldown" value="24">
-        <label>حتما باید قبلش خرید کرده باشه؟</label>
-        <select id="wheelRequirePurchase"><option value="0">نه</option><option value="1">بله</option></select>
-        <button class="btn" onclick="saveWheelConfig()">ذخیره تنظیمات</button>
+        <label>Must they have made a purchase first?</label>
+        <select id="wheelRequirePurchase"><option value="0">No</option><option value="1">Yes</option></select>
+        <button class="btn" onclick="saveWheelConfig()">Save settings</button>
       </div>
       <div class="card">
-        <h3>افزودن / ویرایش جایزه گردونه</h3>
+        <h3>Add / edit wheel prize</h3>
         <input type="hidden" id="wsId">
-        <label>عنوان (روی گردونه نشون داده می‌شه)</label><input id="wsLabel" placeholder="مثلا: 10,000 تومان">
+        <label>Title (shown on the wheel)</label><input id="wsLabel" placeholder="e.g. 10,000 LNDC">
         <div class="row2">
-          <div><label>نوع جایزه</label>
+          <div><label>Prize type</label>
             <select id="wsType" onchange="toggleWheelSlotFields()">
-              <option value="toman">تومان</option>
-              <option value="card">کارت</option>
-              <option value="extra_games">بازی اضافه</option>
+              <option value="toman">LNDC</option>
+              <option value="card">Card</option>
+              <option value="extra_games">Extra game</option>
             </select>
           </div>
-          <div><label>رنگ</label><input type="color" id="wsColor" value="#8b5cf6"></div>
+          <div><label>Color</label><input type="color" id="wsColor" value="#8b5cf6"></div>
         </div>
-        <div id="wsTomanField"><label>مبلغ (تومان)</label><input type="number" id="wsAmount"></div>
-        <div id="wsCardField" style="display:none;"><label>کارت جایزه</label><select id="wsCardId"></select></div>
-        <div id="wsExtraField" style="display:none;"><label>تعداد بازی اضافه</label><input type="number" id="wsExtraCount"></div>
-        <label>احتمال برد (٪) — مجموع همه اسلات‌ها باید ۱۰۰ بشه</label>
+        <div id="wsTomanField"><label>Amount (LNDC)</label><input type="number" id="wsAmount"></div>
+        <div id="wsCardField" style="display:none;"><label>Bonus card</label><select id="wsCardId"></select></div>
+        <div id="wsExtraField" style="display:none;"><label>Extra games count</label><input type="number" id="wsExtraCount"></div>
+        <label>Win chance (%) — the sum of all slots must total 100</label>
         <input type="number" id="wsProbability" step="0.1">
-        <label>فعال؟</label>
-        <select id="wsActive"><option value="1">بله</option><option value="0">خیر</option></select>
-        <button class="btn" onclick="saveWheelSlot()">ذخیره</button>
+        <label>active?</label>
+        <select id="wsActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" onclick="saveWheelSlot()">Save</button>
       </div>
       <div id="wheelSlotsTable"></div>
     </section>
 
     <section class="tab" id="tab-cardtasks">
       <div class="card">
-        <h3>افزودن / ویرایش تسک کارتی</h3>
+        <h3>Add / edit card task</h3>
         <input type="hidden" id="ctId">
-        <label>عنوان</label><input id="ctTitle">
+        <label>Title</label><input id="ctTitle">
         <div class="row2">
-          <div><label>نوع</label>
-            <select id="ctKind"><option value="join_channel">عضویت در کانال</option><option value="custom">سفارشی</option></select>
+          <div><label>Type</label>
+            <select id="ctKind"><option value="join_channel">Channel membership</option><option value="custom">Custom</option></select>
           </div>
-          <div><label>یوزرنیم کانال (بدون @)</label><input id="ctChannel"></div>
+          <div><label>Channel username (without @)</label><input id="ctChannel"></div>
         </div>
-        <label>کارت جایزه</label>
+        <label>Bonus card</label>
         <select id="ctRewardCard"></select>
-        <label>فعال؟</label>
-        <select id="ctActive"><option value="1">بله</option><option value="0">خیر</option></select>
-        <button class="btn" onclick="saveCardTask()">ذخیره</button>
+        <label>active?</label>
+        <select id="ctActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" onclick="saveCardTask()">Save</button>
       </div>
       <div id="cardTasksTable"></div>
     </section>
@@ -470,302 +470,302 @@
 
     <section class="tab" id="tab-auction">
       <div class="card">
-        <h3>تنظیمات مزایده فلش</h3>
-        <select id="aucEnabled"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <h3>Flash auction settings</h3>
+        <select id="aucEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>درصد تخفیف شروع</label><input type="number" id="aucDiscount"></div>
-          <div><label>مدت (دقیقه)</label><input type="number" id="aucDuration"></div>
+          <div><label>Starting discount percent</label><input type="number" id="aucDiscount"></div>
+          <div><label>Duration (minutes)</label><input type="number" id="aucDuration"></div>
         </div>
         <div class="row2">
-          <div><label>پله هر پیشنهاد (تومان)</label><input type="number" id="aucStep"></div>
-          <div><label>حداقل موجودی شرکت (تومان)</label><input type="number" id="aucMinBalance"></div>
+          <div><label>Bid step (LNDC)</label><input type="number" id="aucStep"></div>
+          <div><label>Minimum balance to participate (LNDC)</label><input type="number" id="aucMinBalance"></div>
         </div>
-        <label>Anti-Snipe (تمدید ۳۰ ثانیه‌ای)</label>
-        <select id="aucAntiSnipe"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
-        <button class="btn" onclick="saveAuctionConfig()">ذخیره تنظیمات</button>
+        <label>Anti-Snipe (30-second extension)</label>
+        <select id="aucAntiSnipe"><option value="1">Active</option><option value="0">Inactive</option></select>
+        <button class="btn" onclick="saveAuctionConfig()">Save settings</button>
       </div>
       <div class="card">
-        <h3>ساخت مزایده جدید</h3>
-        <label>نوع کالای مزایده</label>
+        <h3>Create new auction</h3>
+        <label>Auction item type</label>
         <select id="aucItemType" onchange="document.getElementById('aucProductWrap').style.display=this.value==='product'?'block':'none';document.getElementById('aucCardWrap').style.display=this.value==='card'?'block':'none';">
-          <option value="product">محصول فروشگاه</option>
-          <option value="card">کارت بازی</option>
+          <option value="product">Shop product</option>
+          <option value="card">Game card</option>
         </select>
-        <div id="aucProductWrap"><label>محصول</label><select id="aucProductId"></select></div>
-        <div id="aucCardWrap" style="display:none;"><label>کارت</label><select id="aucCardId"></select></div>
-        <button class="btn" onclick="createAuctionUI()">بساز</button>
+        <div id="aucProductWrap"><label>Product</label><select id="aucProductId"></select></div>
+        <div id="aucCardWrap" style="display:none;"><label>Card</label><select id="aucCardId"></select></div>
+        <button class="btn" onclick="createAuctionUI()">Create</button>
       </div>
       <div id="auctionsTable"></div>
     </section>
 
     <section class="tab" id="tab-season">
       <div class="card">
-        <h3>تنظیمات بتل‌پس فصلی</h3>
-        <select id="seaEnabled"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <h3>Seasonal battle pass settings</h3>
+        <select id="seaEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>قیمت پرمیوم (تومان)</label><input type="number" id="seaPrice"></div>
-          <div><label>مدت فصل (روز)</label><input type="number" id="seaDuration"></div>
+          <div><label>Premium price (LNDC)</label><input type="number" id="seaPrice"></div>
+          <div><label>Season duration (days)</label><input type="number" id="seaDuration"></div>
         </div>
         <div class="row2">
-          <div><label>تعداد تایر</label><input type="number" id="seaTierCount"></div>
-          <div><label>XP لازم برای هر تایر</label><input type="number" id="seaXpPerTier"></div>
+          <div><label>Number of tiers</label><input type="number" id="seaTierCount"></div>
+          <div><label>XP Required per tier</label><input type="number" id="seaXpPerTier"></div>
         </div>
         <div class="row2">
-          <div><label>XP هر برد</label><input type="number" id="seaXpWin"></div>
-          <div><label>XP هر خرید</label><input type="number" id="seaXpPurchase"></div>
+          <div><label>XP Per win</label><input type="number" id="seaXpWin"></div>
+          <div><label>XP Per purchase</label><input type="number" id="seaXpPurchase"></div>
         </div>
-        <label>XP هر اهدا به کلن</label><input type="number" id="seaXpDonation">
-        <label>قیمت خرید هر تایر (تومان) — صفر یعنی خرید تایر غیرفعال</label><input type="number" id="seaTierSkipPrice">
-        <button class="btn" onclick="saveSeasonConfig()">ذخیره تنظیمات</button>
-        <button class="btn danger" onclick="startNewSeasonUI()">شروع فصل جدید (ریست کامل)</button>
+        <label>XP Per clan donation</label><input type="number" id="seaXpDonation">
+        <label>Price per tier purchase (LNDC) — zero means tier purchase is disabled</label><input type="number" id="seaTierSkipPrice">
+        <button class="btn" onclick="saveSeasonConfig()">Save settings</button>
+        <button class="btn danger" onclick="startNewSeasonUI()">Start new season (full reset)</button>
       </div>
       <div class="card">
-        <h3>افزودن / ویرایش جایزه تایر</h3>
-        <label>شماره تایر</label><input type="number" id="tierNumber">
+        <h3>Add / edit tier reward</h3>
+        <label>Tier number</label><input type="number" id="tierNumber">
         <div class="row2">
-          <div><label>نوع جایزه رایگان</label>
-            <select id="tierFreeType" onchange="onBpValueTypeChange('tierFree')"><option value="none">هیچی</option><option value="toman">تومان</option><option value="card">کارت</option><option value="avatar">آواتار</option><option value="product">محصول</option><option value="extra_games">بازی اضافه</option></select>
+          <div><label>Free prize type</label>
+            <select id="tierFreeType" onchange="onBpValueTypeChange('tierFree')"><option value="none">Nothing</option><option value="toman">LNDC</option><option value="card">Card</option><option value="avatar">Avatar</option><option value="product">Product</option><option value="extra_games">Extra game</option></select>
           </div>
-          <div id="tierFreeValueWrap"><label>مقدار رایگان</label><input id="tierFreeValue"></div>
+          <div id="tierFreeValueWrap"><label>Free amount</label><input id="tierFreeValue"></div>
         </div>
         <div class="row2">
-          <div><label>نوع جایزه پرمیوم</label>
-            <select id="tierPremType" onchange="onBpValueTypeChange('tierPrem')"><option value="none">هیچی</option><option value="toman">تومان</option><option value="card">کارت</option><option value="avatar">آواتار</option><option value="product">محصول</option><option value="extra_games">بازی اضافه</option></select>
+          <div><label>Premium prize type</label>
+            <select id="tierPremType" onchange="onBpValueTypeChange('tierPrem')"><option value="none">Nothing</option><option value="toman">LNDC</option><option value="card">Card</option><option value="avatar">Avatar</option><option value="product">Product</option><option value="extra_games">Extra game</option></select>
           </div>
-          <div id="tierPremValueWrap"><label>مقدار پرمیوم</label><input id="tierPremValue"></div>
+          <div id="tierPremValueWrap"><label>Premium amount</label><input id="tierPremValue"></div>
         </div>
-        <button class="btn" onclick="saveSeasonTier()">ذخیره تایر</button>
+        <button class="btn" onclick="saveSeasonTier()">Save tier</button>
       </div>
       <div id="seasonTiersTable"></div>
     </section>
 
     <section class="tab" id="tab-clan">
       <div class="card">
-        <h3>تنظیمات سیستم کلن</h3>
-        <select id="clnEnabled"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <h3>Clan system settings</h3>
+        <select id="clnEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>هزینه ساخت کلن</label><input type="number" id="clnCreateCost"></div>
-          <div><label>حداکثر عضو</label><input type="number" id="clnMaxMembers"></div>
+          <div><label>Clan creation cost</label><input type="number" id="clnCreateCost"></div>
+          <div><label>Max members</label><input type="number" id="clnMaxMembers"></div>
         </div>
         <div class="row2">
-          <div><label>امتیاز هر ۱۰۰۰ت خرید</label><input type="number" id="clnScorePurchase"></div>
-          <div><label>امتیاز هر برد بازی</label><input type="number" id="clnScoreWin"></div>
+          <div><label>Score per 1,000 LNDC purchased</label><input type="number" id="clnScorePurchase"></div>
+          <div><label>Score per game win</label><input type="number" id="clnScoreWin"></div>
         </div>
         <div class="row2">
-          <div><label>امتیاز هر ۱۰۰۰ت اهدا</label><input type="number" id="clnScoreDonation"></div>
-          <div><label>جایزه کلن برتر (تومان)</label><input type="number" id="clnReward"></div>
+          <div><label>Score per 1,000 LNDC donated</label><input type="number" id="clnScoreDonation"></div>
+          <div><label>Top clan prize (LNDC)</label><input type="number" id="clnReward"></div>
         </div>
         <div class="row2">
-          <div><label>تعداد کلن برنده</label><select id="clnWinnersCount"><option value="1">۱</option><option value="3">۳</option></select></div>
-          <div><label>روش پخش جایزه</label><select id="clnDistMethod"><option value="equal">مساوی</option><option value="donation_share">بر اساس اهدا</option></select></div>
+          <div><label>Number of winning clans</label><select id="clnWinnersCount"><option value="1">1</option><option value="3">3</option></select></div>
+          <div><label>Prize distribution method</label><select id="clnDistMethod"><option value="equal">Equal</option><option value="donation_share">Based on donation</option></select></div>
         </div>
         <div class="row2">
-          <div><label>حداقل امتیاز لازم</label><input type="number" id="clnMinScore"></div>
-          <div><label>دوره ریست (روز)</label><input type="number" id="clnResetDays"></div>
+          <div><label>Minimum score required</label><input type="number" id="clnMinScore"></div>
+          <div><label>Reset period (days)</label><input type="number" id="clnResetDays"></div>
         </div>
-        <label>کارمزد برداشت/هدیه از بانک کلن (٪)</label><input type="number" id="clnWithdrawFee">
-        <button class="btn" onclick="saveClanConfig()">ذخیره تنظیمات</button>
-        <button class="btn danger" onclick="resetClanSeasonUI()">پخش جایزه و ریست دستی</button>
+        <label>Clan bank withdrawal/gift fee (%)</label><input type="number" id="clnWithdrawFee">
+        <button class="btn" onclick="saveClanConfig()">Save settings</button>
+        <button class="btn danger" onclick="resetClanSeasonUI()">Distribute prize & manual reset</button>
       </div>
       <div class="card">
-        <h3>⚔️ تنظیمات جنگ کلن به کلن</h3>
-        <select id="cwEnabled"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <h3>⚔️ Clan war settings</h3>
+        <select id="cwEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>حداقل ورودی (تومان)</label><input type="number" id="cwMinEntry"></div>
-          <div><label>کارمزد برد (٪)</label><input type="number" id="cwFeePercent"></div>
+          <div><label>Minimum entry (LNDC)</label><input type="number" id="cwMinEntry"></div>
+          <div><label>Win fee (%)</label><input type="number" id="cwFeePercent"></div>
         </div>
-        <label>تعداد نفرات هر تیم</label><input type="number" id="cwTeamSize">
-        <button class="btn" onclick="saveClanWarConfig()">ذخیره تنظیمات جنگ</button>
+        <label>Members per team</label><input type="number" id="cwTeamSize">
+        <button class="btn" onclick="saveClanWarConfig()">Save war settings</button>
       </div>
       <div id="clanLeaderboardTable"></div>
     </section>
 
     <section class="tab" id="tab-rank">
       <div class="card">
-        <h3>تنظیمات XP</h3>
-        <select id="rkEnabled"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <h3>Settings XP</h3>
+        <select id="rkEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>XP لازم برای هر لول</label><input type="number" id="rkXpPerLevel"></div>
-          <div><label>XP هر ۱۰۰۰ت خرید</label><input type="number" id="rkXpPurchase"></div>
+          <div><label>XP Required per level</label><input type="number" id="rkXpPerLevel"></div>
+          <div><label>XP Per 1,000 LNDC purchased</label><input type="number" id="rkXpPurchase"></div>
         </div>
         <div class="row2">
-          <div><label>XP هر برد</label><input type="number" id="rkXpWin"></div>
-          <div><label>XP هر ماموریت</label><input type="number" id="rkXpQuest"></div>
+          <div><label>XP Per win</label><input type="number" id="rkXpWin"></div>
+          <div><label>XP Per quest</label><input type="number" id="rkXpQuest"></div>
         </div>
         <div class="row2">
-          <div><label>XP هر رفرال</label><input type="number" id="rkXpReferral"></div>
-          <div><label>XP چک‌این روزانه</label><input type="number" id="rkXpCheckin"></div>
+          <div><label>XP Per referral</label><input type="number" id="rkXpReferral"></div>
+          <div><label>XP Daily check-in</label><input type="number" id="rkXpCheckin"></div>
         </div>
-        <button class="btn" onclick="saveRankConfig()">ذخیره</button>
+        <button class="btn" onclick="saveRankConfig()">Save</button>
       </div>
       <div class="card">
-        <h3>افزودن / ویرایش آواتار</h3>
+        <h3>Add / edit avatar</h3>
         <input type="hidden" id="avId">
-        <label>اسم</label><input id="avName">
-        <label>عکس</label>
+        <label>Name</label><input id="avName">
+        <label>Image</label>
         <input type="file" id="avImageFile" accept="image/*" onchange="uploadImageTo('avImageFile','avImage','avImagePreview')">
         <input type="hidden" id="avImage">
         <img id="avImagePreview" style="max-width:100px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
-          <div><label>قیمت (تومان)</label><input type="number" id="avPrice"></div>
-          <div><label>تعداد (خالی=نامحدود)</label><input type="number" id="avQuantity"></div>
+          <div><label>Price (LNDC)</label><input type="number" id="avPrice"></div>
+          <div><label>Quantity (empty = unlimited)</label><input type="number" id="avQuantity"></div>
         </div>
-        <label>منبع</label>
-        <select id="avSource"><option value="shop">فروشگاه</option><option value="battlepass">بتل‌پس</option><option value="event">ایونت</option></select>
-        <label>فعال؟</label><select id="avActive"><option value="1">بله</option><option value="0">خیر</option></select>
-        <button class="btn" onclick="saveAvatar()">ذخیره</button>
+        <label>Source</label>
+        <select id="avSource"><option value="shop">Shop</option><option value="battlepass">Battle pass</option><option value="event">Event</option></select>
+        <label>active?</label><select id="avActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" onclick="saveAvatar()">Save</button>
       </div>
       <div id="avatarsTable"></div>
       <div class="card">
-        <h3>افزودن / ویرایش عنوان رنک</h3>
-        <p class="muted">هر عنوان از یه «سطح» به بعد فعال می‌شه. مثلا اگه لول شروع رو ۱۰ بذاری، از لول ۱۰ به بعد (تا قبل از عنوان بعدی) همین عنوان نشون داده می‌شه.</p>
+        <h3>Add / edit rank title</h3>
+        <p class="muted">Each title becomes active from a given level onward. For example, if you set the start level to 10, this title shows from level 10 onward (until the next title).</p>
         <input type="hidden" id="rtOldThreshold">
         <div class="row2">
-          <div><label>از لول</label><input type="number" id="rtThreshold" min="1"></div>
-          <div><label>ایموجی</label><input id="rtIcon" placeholder="مثلا 🔥"></div>
+          <div><label>From level</label><input type="number" id="rtThreshold" min="1"></div>
+          <div><label>Emoji</label><input id="rtIcon" placeholder="e.g. 🔥"></div>
         </div>
-        <label>عنوان</label><input id="rtTitle" placeholder="مثلا جنگجو">
-        <button class="btn" onclick="saveRankTitle()">ذخیره</button>
-        <button class="btn secondary" onclick="resetRankTitleForm()">فرم جدید</button>
+        <label>Title</label><input id="rtTitle" placeholder="e.g. Warrior">
+        <button class="btn" onclick="saveRankTitle()">Save</button>
+        <button class="btn secondary" onclick="resetRankTitleForm()">New form</button>
       </div>
       <div id="rankTitlesTable"></div>
     </section>
 
     <section class="tab" id="tab-quests">
       <div class="card">
-        <h3>تنظیمات ماموریت روزانه</h3>
-        <select id="qcEnabled"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
-        <label>تعداد ماموریت هر روز</label><input type="number" id="qcCount" value="3">
-        <button class="btn" onclick="saveQuestConfig()">ذخیره</button>
+        <h3>Daily quest settings</h3>
+        <select id="qcEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
+        <label>Quests per day</label><input type="number" id="qcCount" value="3">
+        <button class="btn" onclick="saveQuestConfig()">Save</button>
       </div>
       <div class="card">
-        <h3>افزودن / ویرایش قالب ماموریت</h3>
+        <h3>Add / edit quest template</h3>
         <input type="hidden" id="qtId">
-        <label>عنوان</label><input id="qtTitle">
+        <label>Title</label><input id="qtTitle">
         <div class="row2">
-          <div><label>نوع</label>
+          <div><label>Type</label>
             <select id="qtType">
-              <option value="win_battles">برد در نبرد</option>
-              <option value="play_battles">شرکت در نبرد (برد یا باخت)</option>
-              <option value="buy_card">خرید کارت</option>
-              <option value="upgrade_cards">ارتقای کارت (جهش)</option>
-              <option value="deposit_toman">واریز تومان</option>
-              <option value="donate_clan">اهدا به کلن</option>
-              <option value="checkin">چک‌این روزانه</option>
-              <option value="custom">سفارشی</option>
+              <option value="win_battles">Win in battle</option>
+              <option value="play_battles">Participate in battle (win or loss)</option>
+              <option value="buy_card">Buy card</option>
+              <option value="upgrade_cards">Card upgrade (mutation)</option>
+              <option value="deposit_toman">LNDC deposit</option>
+              <option value="donate_clan">Donate to clan</option>
+              <option value="checkin">Daily check-in</option>
+              <option value="custom">Custom</option>
             </select>
           </div>
-          <div><label>تعداد هدف</label><input type="number" id="qtTarget" value="1"></div>
+          <div><label>Target count</label><input type="number" id="qtTarget" value="1"></div>
         </div>
         <div class="row2">
-          <div><label>نوع جایزه</label>
-            <select id="qtRewardType" onchange="onBpValueTypeChange('qtReward')"><option value="toman">تومان</option><option value="xp">XP</option><option value="card">کارت</option><option value="extra_games">بازی اضافه</option></select>
+          <div><label>Prize type</label>
+            <select id="qtRewardType" onchange="onBpValueTypeChange('qtReward')"><option value="toman">LNDC</option><option value="xp">XP</option><option value="card">Card</option><option value="extra_games">Extra game</option></select>
           </div>
-          <div id="qtRewardValueWrap"><label>مقدار جایزه</label><input id="qtRewardValue"></div>
+          <div id="qtRewardValueWrap"><label>Prize amount</label><input id="qtRewardValue"></div>
         </div>
-        <label>فعال؟</label><select id="qtActive"><option value="1">بله</option><option value="0">خیر</option></select>
-        <button class="btn" onclick="saveQuestTemplate()">ذخیره</button>
+        <label>active?</label><select id="qtActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" onclick="saveQuestTemplate()">Save</button>
       </div>
       <div id="questsTable"></div>
     </section>
 
     <section class="tab" id="tab-promo">
       <div class="card">
-        <h3>ساخت کد هدیه</h3>
-        <label>کد (مثلا SPRING1404)</label><input id="pcCode" style="text-transform:uppercase;">
+        <h3>Create gift code</h3>
+        <label>Code (e.g. SPRING1404)</label><input id="pcCode" style="text-transform:uppercase;">
         <div class="row2">
-          <div><label>نوع جایزه</label><select id="pcRewardType"><option value="toman">تومان</option><option value="card">کارت</option></select></div>
-          <div><label>مقدار</label><input id="pcRewardValue"></div>
+          <div><label>Prize type</label><select id="pcRewardType"><option value="toman">LNDC</option><option value="card">Card</option></select></div>
+          <div><label>Amount</label><input id="pcRewardValue"></div>
         </div>
         <div class="row2">
-          <div><label>حداکثر استفاده (خالی=نامحدود)</label><input type="number" id="pcMaxUses"></div>
-          <div><label>تاریخ انقضا (خالی=بدون انقضا)</label><input type="datetime-local" id="pcExpires"></div>
+          <div><label>Max uses (empty = unlimited)</label><input type="number" id="pcMaxUses"></div>
+          <div><label>Expiry date (empty = no expiry)</label><input type="datetime-local" id="pcExpires"></div>
         </div>
-        <button class="btn" onclick="savePromoCode()">ذخیره</button>
+        <button class="btn" onclick="savePromoCode()">Save</button>
       </div>
       <div id="promoTable"></div>
     </section>
 
     <section class="tab" id="tab-albums">
       <div class="card">
-        <h3>افزودن / ویرایش آلبوم</h3>
+        <h3>Add / edit album</h3>
         <input type="hidden" id="albId">
-        <label>اسم آلبوم</label><input id="albName">
+        <label>Album name</label><input id="albName">
         <div class="row2">
-          <div><label>نوع جایزه</label><select id="albRewardType"><option value="toman">تومان</option><option value="avatar">آواتار</option><option value="card">کارت</option></select></div>
-          <div><label>مقدار جایزه</label><input id="albRewardValue"></div>
+          <div><label>Prize type</label><select id="albRewardType"><option value="toman">LNDC</option><option value="avatar">Avatar</option><option value="card">Card</option></select></div>
+          <div><label>Prize amount</label><input id="albRewardValue"></div>
         </div>
-        <label>فصلیه؟ (با تاریخ انقضا)</label>
-        <select id="albSeasonal" onchange="document.getElementById('albDates').style.display=this.value==='1'?'block':'none'"><option value="0">نه</option><option value="1">بله</option></select>
+        <label>Is it seasonal? (with an expiry date)</label>
+        <select id="albSeasonal" onchange="document.getElementById('albDates').style.display=this.value==='1'?'block':'none'"><option value="0">No</option><option value="1">Yes</option></select>
         <div id="albDates" style="display:none;">
           <div class="row2">
-            <div><label>شروع</label><input type="datetime-local" id="albStart"></div>
-            <div><label>پایان</label><input type="datetime-local" id="albEnd"></div>
+            <div><label>Start</label><input type="datetime-local" id="albStart"></div>
+            <div><label>End</label><input type="datetime-local" id="albEnd"></div>
           </div>
         </div>
-        <label>دسته‌بندی‌های لازم (هرکدوم رو می‌خوای تیک بزن)</label>
+        <label>Required categories (check whichever you want)</label>
         <div id="albCategoriesCheckboxes"></div>
-        <label>فعال؟</label><select id="albActive"><option value="1">بله</option><option value="0">خیر</option></select>
-        <button class="btn" onclick="saveAlbum()">ذخیره</button>
+        <label>active?</label><select id="albActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" onclick="saveAlbum()">Save</button>
       </div>
       <div id="albumsTable"></div>
     </section>
 
     <section class="tab" id="tab-giftcfg">
       <div class="card">
-        <h3>تنظیمات سیستم هدیه</h3>
-        <select id="gcEnabled2"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <h3>Gift system settings</h3>
+        <select id="gcEnabled2"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>حداقل رفرال برای هدیه کارت</label><input type="number" id="gcMinReferrals"></div>
-          <div><label>حداکثر هدیه کارت در ماه</label><input type="number" id="gcMaxPerMonth"></div>
+          <div><label>Minimum referrals for card gift</label><input type="number" id="gcMinReferrals"></div>
+          <div><label>Max card gifts per month</label><input type="number" id="gcMaxPerMonth"></div>
         </div>
         <div class="row2">
-          <div><label>حداکثر سطح کارت قابل هدیه</label><input type="number" id="gcMaxLevel2"></div>
-          <div><label>کارمزد هدیه تومان (٪)</label><input type="number" id="gcFeePercent"></div>
+          <div><label>Max giftable card level</label><input type="number" id="gcMaxLevel2"></div>
+          <div><label>LNDC gift fee (%)</label><input type="number" id="gcFeePercent"></div>
         </div>
-        <button class="btn" onclick="saveGiftConfig()">ذخیره</button>
+        <button class="btn" onclick="saveGiftConfig()">Save</button>
       </div>
     </section>
 
     <section class="tab" id="tab-seasons">
       <div class="card">
-        <h3>ساخت فصل جدید</h3>
-        <label>اسم فصل</label><input id="snName" placeholder="مثلا: عید ۱۴۰۴">
-        <label>تم</label><input id="snTheme">
+        <h3>Create new season</h3>
+        <label>Season name</label><input id="snName" placeholder="e.g. New Year sale">
+        <label>Theme</label><input id="snTheme">
         <div class="row2">
-          <div><label>شروع</label><input type="datetime-local" id="snStart"></div>
-          <div><label>پایان</label><input type="datetime-local" id="snEnd"></div>
+          <div><label>Start</label><input type="datetime-local" id="snStart"></div>
+          <div><label>End</label><input type="datetime-local" id="snEnd"></div>
         </div>
-        <button class="btn" onclick="saveSeason()">بساز</button>
+        <button class="btn" onclick="saveSeason()">Create</button>
       </div>
       <div class="card">
-        <h3>اختصاص کارت به فصل</h3>
+        <h3>Assign card to season</h3>
         <select id="snCardSelect"></select>
         <select id="snSeasonSelect"></select>
-        <button class="btn secondary" onclick="assignCardToSeason()">اختصاص بده</button>
+        <button class="btn secondary" onclick="assignCardToSeason()">Assign</button>
       </div>
       <div id="seasonsTable"></div>
     </section>
 
     <section class="tab" id="tab-trade">
       <div class="card">
-        <h3>تنظیمات تبادل کارت</h3>
-        <select id="trEnabled"><option value="1">فعال</option><option value="0">غیرفعال</option></select>
+        <h3>Card trade settings</h3>
+        <select id="trEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>حداکثر سطح قابل تبادل</label><input type="number" id="trMaxLevel"></div>
-          <div><label>حداکثر تبادل در ماه</label><input type="number" id="trMaxPerMonth"></div>
+          <div><label>Max tradeable level</label><input type="number" id="trMaxLevel"></div>
+          <div><label>Max trades per month</label><input type="number" id="trMaxPerMonth"></div>
         </div>
         <div class="row2">
-          <div><label>حداقل لول کاربر</label><input type="number" id="trMinLevel"></div>
-          <div><label>کارمزد هر تبادل (تومان)</label><input type="number" id="trFee"></div>
+          <div><label>Minimum user level</label><input type="number" id="trMinLevel"></div>
+          <div><label>Fee per trade (LNDC)</label><input type="number" id="trFee"></div>
         </div>
-        <button class="btn" onclick="saveTradeConfig()">ذخیره</button>
+        <button class="btn" onclick="saveTradeConfig()">Save</button>
       </div>
     </section>
 
     <section class="tab" id="tab-users">
       <div class="card">
-        <input placeholder="جستجو با آیدی عددی، یوزرنیم یا نام" id="userSearch" oninput="loadUsers()">
+        <input placeholder="Search by numeric ID, username, or name" id="userSearch" oninput="loadUsers()">
       </div>
       <div id="usersTable"></div>
     </section>
@@ -781,16 +781,16 @@ async function api(path, opts = {}) {
   try {
     res = await fetch('/admin/api' + path, { ...opts, headers, signal: AbortSignal.timeout(15000) });
   } catch (e) {
-    alert('اتصال به سرور برقرار نشد، دوباره امتحان کن');
+    alert('Could not connect to the server, try again');
     throw e;
   }
   if (res.status === 401) { logout(); throw new Error('unauthorized'); }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) { alert(data.error || 'خطا'); throw new Error(data.error); }
+  if (!res.ok) { alert(data.error || 'Error'); throw new Error(data.error); }
   return data;
 }
 
-// آپلود عکس: فایل انتخاب‌شده رو می‌فرسته، لینک برگشتی رو تو فیلد مخفی می‌ذاره و پیش‌نمایش نشون می‌ده
+// Image upload: sends the selected file, puts the returned link in the hidden field, and shows a preview
 async function uploadImageTo(fileInputId, hiddenInputId, previewId) {
   const file = document.getElementById(fileInputId).files[0];
   if (!file) return;
@@ -801,12 +801,12 @@ async function uploadImageTo(fileInputId, hiddenInputId, previewId) {
       method: 'POST', headers: { Authorization: 'Bearer ' + TOKEN }, body: fd, signal: AbortSignal.timeout(20000),
     });
     const data = await res.json();
-    if (!res.ok) { alert(data.error || 'آپلود ناموفق بود'); return; }
+    if (!res.ok) { alert(data.error || 'Upload failed'); return; }
     document.getElementById(hiddenInputId).value = data.url;
     const preview = document.getElementById(previewId);
     preview.src = data.url; preview.style.display = 'block';
   } catch (e) {
-    alert('آپلود عکس ناموفق بود، دوباره امتحان کن');
+    alert('Image upload failed, try again');
   }
 }
 
@@ -819,7 +819,7 @@ async function login() {
     TOKEN = data.token;
     localStorage.setItem('lando_admin_token', TOKEN);
     boot();
-  } catch (e) { document.getElementById('loginErr').textContent = 'خطای اتصال، دوباره امتحان کن'; }
+  } catch (e) { document.getElementById('loginErr').textContent = 'Connection error, try again'; }
 }
 function logout() { TOKEN = ''; localStorage.removeItem('lando_admin_token'); document.getElementById('app').style.display = 'none'; document.getElementById('loginBox').style.display = 'block'; }
 
@@ -842,21 +842,21 @@ function showTab(name) {
 async function loadDash() {
   const s = await api('/stats');
   document.getElementById('statsCard').innerHTML = `
-    <p>کاربران: <b>${s.users}</b></p>
-    <p>سفارش‌ها: <b>${s.orders}</b></p>
-    <p>مجموع واریزی تومانی: <b>${s.totalToman.toLocaleString()}</b></p>
-    <p>شارژهای در انتظار: <b>${s.pendingTopups}</b></p>
-    <p>درخواست‌های ارزی در انتظار: <b>${s.pendingCurrency}</b></p>
+    <p>Users: <b>${s.users}</b></p>
+    <p>Orders: <b>${s.orders}</b></p>
+    <p>Total LNDC deposited: <b>${s.totalToman.toLocaleString()}</b></p>
+    <p>Pending top-ups: <b>${s.pendingTopups}</b></p>
+    <p>Pending currency requests: <b>${s.pendingCurrency}</b></p>
   `;
 }
 
-/* ---------- ارزها ---------- */
+/* ---------- Currencies ---------- */
 async function loadCurrencies() {
   const rows = await api('/currencies');
   document.getElementById('currenciesTable').innerHTML = `
-    <table><tr><th>کد</th><th>نام</th><th>نرخ (تومان)</th><th>آدرس واریز</th><th>فعال</th><th></th></tr>
+    <table><tr><th>Code</th><th>Name</th><th>Rate (LNDC)</th><th>Deposit address</th><th>Active</th><th></th></tr>
     ${rows.map(c => `<tr><td>${c.code}</td><td>${c.name}</td><td>${c.rate_toman.toLocaleString()}</td><td>${c.deposit_address || '—'}</td><td>${c.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editCurrency(${JSON.stringify(c)})'>ویرایش</button></td></tr>`).join('')}
+      <td><button class="btn secondary" onclick='editCurrency(${JSON.stringify(c)})'>Edit</button></td></tr>`).join('')}
     </table>`;
 }
 function editCurrency(c) {
@@ -881,7 +881,7 @@ async function saveCurrency() {
   loadCurrencies();
 }
 
-/* ---------- تنظیمات پرداخت (شماره کارت) ---------- */
+/* ---------- Payment settings (card number) ---------- */
 async function loadPaymentSettings() {
   const s = await api('/payment-settings');
   document.getElementById('payCardNumber').value = s.cardNumber || '';
@@ -908,7 +908,7 @@ async function saveReferralSettings() {
 }
 async function saveSupportContact() {
   await api('/support-contact', { method: 'POST', body: JSON.stringify({ username: document.getElementById('supportUsername').value }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
 async function saveInfoPages() {
   await api('/info-pages', { method: 'POST', body: JSON.stringify({
@@ -916,7 +916,7 @@ async function saveInfoPages() {
     faq: document.getElementById('infoFaq').value,
     rules: document.getElementById('infoRules').value,
   }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
 async function savePaymentSettings() {
   await api('/payment-settings', { method: 'POST', body: JSON.stringify({
@@ -929,7 +929,7 @@ async function savePaymentSettings() {
   setTimeout(() => msg.style.display = 'none', 2500);
 }
 
-/* ---------- پیام‌های ربات + پیام‌رسانی ---------- */
+/* ---------- Bot messages + messaging ---------- */
 async function loadMessageSettings() {
   const s = await api('/message-settings');
   document.getElementById('msgWelcome').value = s.welcomeMessage || '';
@@ -950,8 +950,8 @@ async function sendBroadcast() {
   if (!message) return;
   const r = await api('/broadcast', { method: 'POST', body: JSON.stringify({ targetTgId: targetTgId || null, message }) });
   document.getElementById('broadcastResult').textContent = targetTgId
-    ? 'پیام ارسال شد ✅'
-    : `ارسال برای ${r.queued} کاربر شروع شد ✅ (تو پس‌زمینه ادامه پیدا می‌کنه)`;
+    ? 'Message sent ✅'
+    : `Sending to ${r.queued} user(s) started ✅ (continues in the background)`;
 }
 function messageUser(tgId) {
   showTab('messages');
@@ -959,50 +959,50 @@ function messageUser(tgId) {
   document.getElementById('broadcastText').focus();
 }
 
-/* ---------- شارژ کارت‌به‌کارت ---------- */
+/* ---------- Card-to-card top-up ---------- */
 async function loadTopups() {
   const rows = await api('/toman-topups');
   document.getElementById('topupsTable').innerHTML = rows.length ? `
-    <table><tr><th>کاربر</th><th>مبلغ</th><th>کد رهگیری</th><th>عملیات</th></tr>
+    <table><tr><th>User</th><th>Amount</th><th>Tracking code</th><th>Actions</th></tr>
     ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString()}</td><td>${r.tracking_code}</td>
-      <td><button class="btn" onclick="decideTopup(${r.id},true)">تایید</button>
-      <button class="btn danger" onclick="decideTopup(${r.id},false)">رد</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">درخواستی نیست.</p>';
+      <td><button class="btn" onclick="decideTopup(${r.id},true)">Approve</button>
+      <button class="btn danger" onclick="decideTopup(${r.id},false)">Reject</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No requests.</p>';
 }
 async function decideTopup(id, approve) { await api(`/toman-topups/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }); loadTopups(); }
 
-/* ---------- برداشت تومانی ---------- */
+/* ---------- LNDC withdrawal ---------- */
 async function loadWithdrawals() {
   const rows = await api('/toman-withdrawals');
   document.getElementById('withdrawalsTable').innerHTML = rows.length ? `
-    <table><tr><th>کاربر</th><th>مبلغ</th><th>شماره کارت</th><th>عملیات</th></tr>
+    <table><tr><th>User</th><th>Amount</th><th>Card number</th><th>Actions</th></tr>
     ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString()}</td><td>${r.card_number}</td>
-      <td><button class="btn" onclick="decideWithdrawal(${r.id},true)">ارسال شد</button>
-      <button class="btn danger" onclick="decideWithdrawal(${r.id},false)">رد</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">درخواستی نیست.</p>';
+      <td><button class="btn" onclick="decideWithdrawal(${r.id},true)">Sent</button>
+      <button class="btn danger" onclick="decideWithdrawal(${r.id},false)">Reject</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No requests.</p>';
 }
 async function decideWithdrawal(id, approve) { await api(`/toman-withdrawals/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }); loadWithdrawals(); }
 
-/* ---------- واریز/برداشت ارزی ---------- */
+/* ---------- Currency deposit/withdrawal ---------- */
 async function loadCreqs() {
   const rows = await api('/currency-requests');
   document.getElementById('creqsTable').innerHTML = rows.length ? `
-    <table><tr><th>کاربر</th><th>نوع</th><th>ارز</th><th>مقدار</th><th>هش/آدرس</th><th>عملیات</th></tr>
-    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.kind === 'deposit' ? 'واریز' : 'برداشت'}</td><td>${r.currency_code}</td><td>${r.amount}</td><td>${r.tx_hash || r.address || '-'}</td>
-      <td><button class="btn" onclick="decideCreq(${r.id},true)">تایید</button>
-      <button class="btn danger" onclick="decideCreq(${r.id},false)">رد</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">درخواستی نیست.</p>';
+    <table><tr><th>User</th><th>Type</th><th>Currency</th><th>Amount</th><th>Hash/address</th><th>Actions</th></tr>
+    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.kind === 'deposit' ? 'Deposit' : 'Withdraw'}</td><td>${r.currency_code}</td><td>${r.amount}</td><td>${r.tx_hash || r.address || '-'}</td>
+      <td><button class="btn" onclick="decideCreq(${r.id},true)">Approve</button>
+      <button class="btn danger" onclick="decideCreq(${r.id},false)">Reject</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No requests.</p>';
 }
 async function decideCreq(id, approve) { await api(`/currency-requests/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }); loadCreqs(); }
 
-/* ---------- محصولات ---------- */
+/* ---------- Products ---------- */
 async function loadProducts() {
   const rows = await api('/products');
   document.getElementById('productsTable').innerHTML = `
-    <table><tr><th>عنوان</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
+    <table><tr><th>Title</th><th>Price</th><th>Active</th><th>Actions</th></tr>
     ${rows.map(p => `<tr><td>${p.title}</td><td>${p.price_toman.toLocaleString()}</td><td>${p.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editProduct(${JSON.stringify(p)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteProduct(${p.id})">حذف</button></td></tr>`).join('')}
+      <td><button class="btn secondary" onclick='editProduct(${JSON.stringify(p)})'>Edit</button>
+      <button class="btn danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join('')}
     </table>`;
 }
 function editProduct(p) {
@@ -1028,50 +1028,50 @@ async function saveProduct() {
   ['prodTitle','prodDesc','prodImage','prodPrice'].forEach(id => document.getElementById(id).value = '');
   loadProducts();
 }
-async function deleteProduct(id) { if (confirm('حذف بشه؟')) { await api(`/products/${id}`, { method: 'DELETE' }); loadProducts(); } }
+async function deleteProduct(id) { if (confirm('be deleted?')) { await api(`/products/${id}`, { method: 'DELETE' }); loadProducts(); } }
 
-/* ---------- سفارش‌ها ---------- */
+/* ---------- Orders ---------- */
 async function loadOrders() {
   const rows = await api('/orders');
   document.getElementById('ordersTable').innerHTML = `
-    <table><tr><th>کاربر</th><th>محصول</th><th>تعداد</th><th>مبلغ</th><th>وضعیت</th><th>عملیات</th></tr>
+    <table><tr><th>User</th><th>Product</th><th>Count</th><th>Amount</th><th>Status</th><th>Actions</th></tr>
     ${rows.map(o => `<tr><td>${o.tg_id}</td><td>${o.product_title}</td><td>${o.qty}</td><td>${o.total_toman.toLocaleString()}</td><td>${o.status}</td>
-      <td>${o.status !== 'delivered' ? `<button class="btn" onclick="setOrderStatus(${o.id},'delivered')">تحویل شد</button>` : ''}</td></tr>`).join('')}
+      <td>${o.status !== 'delivered' ? `<button class="btn" onclick="setOrderStatus(${o.id},'delivered')">Delivered</button>` : ''}</td></tr>`).join('')}
     </table>`;
 }
 async function setOrderStatus(id, status) { await api(`/orders/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }); loadOrders(); }
 
-/* ---------- بازار گیفت ---------- */
+/* ---------- Gift market ---------- */
 async function loadGifts() {
   await loadGiftCategories();
   const pending = await api('/gift-offers/pending');
   document.getElementById('pendingGiftsTable').innerHTML = pending.length ? `
-    <table><tr><th>فروشنده</th><th>عنوان</th><th>قیمت</th><th>سریال</th><th>لینک</th><th>عملیات</th></tr>
-    ${pending.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString()}</td><td>${g.serial_number || '-'}</td><td>${g.link ? `<a href="${g.link}" target="_blank">لینک</a>` : '-'}</td>
-      <td><button class="btn" onclick="approveGift(${g.id})">✅ تایید</button> <button class="btn danger" onclick="rejectGift(${g.id})">❌ رد</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">آگهی در انتظار تایید نیست.</p>';
+    <table><tr><th>Seller</th><th>Title</th><th>Price</th><th>Serial</th><th>Link</th><th>Actions</th></tr>
+    ${pending.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString()}</td><td>${g.serial_number || '-'}</td><td>${g.link ? `<a href="${g.link}" target="_blank">Link</a>` : '-'}</td>
+      <td><button class="btn" onclick="approveGift(${g.id})">✅ Approve</button> <button class="btn danger" onclick="rejectGift(${g.id})">❌ Reject</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">Listing is not pending approval.</p>';
 
   const rows = await api('/gift-offers');
   document.getElementById('giftsTable').innerHTML = `
-    <table><tr><th>فروشنده</th><th>خریدار</th><th>عنوان</th><th>قیمت</th><th>وضعیت</th><th>عملیات</th></tr>
+    <table><tr><th>Seller</th><th>Buyer</th><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr>
     ${rows.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.buyer_tg_id || '-'}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString()}</td><td>${g.status}</td>
-      <td>${g.status === 'reserved' ? `<button class="btn danger" onclick="refundGift(${g.id})">بازگشت وجه</button>` : ''}
-        <button class="btn danger" onclick="deleteGiftOfferUI(${g.id})">حذف</button></td></tr>`).join('')}
+      <td>${g.status === 'reserved' ? `<button class="btn danger" onclick="refundGift(${g.id})">Refund</button>` : ''}
+        <button class="btn danger" onclick="deleteGiftOfferUI(${g.id})">Delete</button></td></tr>`).join('')}
     </table>`;
 }
-async function refundGift(id) { if (confirm('مبلغ به خریدار برگرده؟')) { await api(`/gift-offers/${id}/refund`, { method: 'POST' }); loadGifts(); } }
+async function refundGift(id) { if (confirm('Refund the amount to the buyer?')) { await api(`/gift-offers/${id}/refund`, { method: 'POST' }); loadGifts(); } }
 async function approveGift(id) { await api(`/gift-offers/${id}/approve`, { method: 'POST' }); loadGifts(); }
-async function rejectGift(id) { const reason = prompt('دلیل رد (اختیاری):') || ''; await api(`/gift-offers/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }); loadGifts(); }
-async function deleteGiftOfferUI(id) { if (confirm('این آگهی کامل حذف بشه؟ (اگه رزرو بود پول به خریدار برمی‌گرده)')) { await api(`/gift-offers/${id}`, { method: 'DELETE' }); loadGifts(); } }
+async function rejectGift(id) { const reason = prompt('Rejection reason (optional):') || ''; await api(`/gift-offers/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }); loadGifts(); }
+async function deleteGiftOfferUI(id) { if (confirm('Delete this listing completely? (if it was reserved, the money goes back to the buyer)')) { await api(`/gift-offers/${id}`, { method: 'DELETE' }); loadGifts(); } }
 
 async function loadGiftCategories() {
   const rows = await api('/gift-categories');
   document.getElementById('giftCategoriesTable').innerHTML = rows.length ? `
-    <table><tr><th>اسم</th><th>فعال</th><th>عملیات</th></tr>
+    <table><tr><th>Name</th><th>Active</th><th>Actions</th></tr>
     ${rows.map(c => `<tr><td>${c.name}</td><td>${c.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editGiftCategory(${JSON.stringify(c)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteGiftCategoryUI(${c.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز دسته‌ای نساختی — تا وقتی نسازی، فروشنده‌ها می‌تونن هر عنوانی تایپ کنن.</p>';
+      <td><button class="btn secondary" onclick='editGiftCategory(${JSON.stringify(c)})'>Edit</button>
+      <button class="btn danger" onclick="deleteGiftCategoryUI(${c.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">You have not created any category yet — until you do, sellers can type any title.</p>';
 }
 function editGiftCategory(c) {
   document.getElementById('gcatId').value = c.id;
@@ -1094,16 +1094,16 @@ async function saveGiftCategory() {
   document.getElementById('gcatImagePreview').style.display = 'none';
   loadGiftCategories();
 }
-async function deleteGiftCategoryUI(id) { if (confirm('این دسته حذف بشه؟')) { await api(`/gift-categories/${id}`, { method: 'DELETE' }); loadGiftCategories(); } }
+async function deleteGiftCategoryUI(id) { if (confirm('Delete this category?')) { await api(`/gift-categories/${id}`, { method: 'DELETE' }); loadGiftCategories(); } }
 
-/* ---------- تسک‌ها ---------- */
+/* ---------- Tasks ---------- */
 async function loadTasks() {
   const rows = await api('/tasks');
   document.getElementById('tasksTable').innerHTML = `
-    <table><tr><th>عنوان</th><th>نوع</th><th>پاداش</th><th>فعال</th><th>عملیات</th></tr>
+    <table><tr><th>Title</th><th>Type</th><th>Reward</th><th>Active</th><th>Actions</th></tr>
     ${rows.map(t => `<tr><td>${t.title}</td><td>${t.kind}</td><td>${t.reward_toman.toLocaleString()}</td><td>${t.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editTask(${JSON.stringify(t)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteTask(${t.id})">حذف</button></td></tr>`).join('')}
+      <td><button class="btn secondary" onclick='editTask(${JSON.stringify(t)})'>Edit</button>
+      <button class="btn danger" onclick="deleteTask(${t.id})">Delete</button></td></tr>`).join('')}
     </table>`;
 }
 function editTask(t) {
@@ -1126,24 +1126,24 @@ async function saveTask() {
   document.getElementById('taskId').value = '';
   loadTasks();
 }
-async function deleteTask(id) { if (confirm('حذف بشه؟')) { await api(`/tasks/${id}`, { method: 'DELETE' }); loadTasks(); } }
+async function deleteTask(id) { if (confirm('be deleted?')) { await api(`/tasks/${id}`, { method: 'DELETE' }); loadTasks(); } }
 
-/* ---------- گردونهٔ بزرگ (قرعه‌کشی) ---------- */
+/* ---------- Big wheel (raffle) ---------- */
 async function loadRafflesAdmin() {
   const tasks = await api('/tasks');
-  document.getElementById('rfTaskId').innerHTML = '<option value="">بدون نیاز به تسک</option>' + tasks.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+  document.getElementById('rfTaskId').innerHTML = '<option value="">No task required</option>' + tasks.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
   const rows = await api('/raffles');
   document.getElementById('rafflesTable').innerHTML = rows.length ? `
-    <table><tr><th>عنوان</th><th>ظرفیت</th><th>برنده</th><th>وضعیت</th><th>عملیات</th></tr>
-    ${rows.map(r => `<tr><td>${r.title}</td><td>${r.capacity}</td><td>${r.winners_count}</td><td>${r.status === 'open' ? '🟢 باز' : r.status === 'finished' ? '🏁 تموم‌شده' : '❌ لغوشده'}</td>
+    <table><tr><th>Title</th><th>Capacity</th><th>Winner</th><th>Status</th><th>Actions</th></tr>
+    ${rows.map(r => `<tr><td>${r.title}</td><td>${r.capacity}</td><td>${r.winners_count}</td><td>${r.status === 'open' ? '🟢 Open' : r.status === 'finished' ? '🏁 Finished' : '❌ Cancelled'}</td>
       <td>
-        <button class="btn secondary" onclick="viewRaffleEntries(${r.id}, '${r.title.replace(/'/g, "\\'")}')">شرکت‌کننده‌ها</button>
-        ${r.status === 'open' ? `<button class="btn secondary" onclick='editRaffleUI(${JSON.stringify(r)})'>ویرایش</button>
-        <button class="btn gold" onclick="finishRaffleUI(${r.id})">🏁 اتمام قرعه</button>
-        <button class="btn danger" onclick="cancelRaffleUI(${r.id})">لغو</button>` : ''}
-        <button class="btn danger" onclick="deleteRaffleUI(${r.id})">حذف</button>
+        <button class="btn secondary" onclick="viewRaffleEntries(${r.id}, '${r.title.replace(/'/g, "\\'")}')">Participants</button>
+        ${r.status === 'open' ? `<button class="btn secondary" onclick='editRaffleUI(${JSON.stringify(r)})'>Edit</button>
+        <button class="btn gold" onclick="finishRaffleUI(${r.id})">🏁 End raffle</button>
+        <button class="btn danger" onclick="cancelRaffleUI(${r.id})">Cancel</button>` : ''}
+        <button class="btn danger" onclick="deleteRaffleUI(${r.id})">Delete</button>
       </td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز گردونه‌ای نساختی.</p>';
+    </table>` : '<p class="muted">You have not created any wheel yet.</p>';
 }
 function editRaffleUI(r) {
   document.getElementById('rfId').value = r.id;
@@ -1171,32 +1171,32 @@ async function saveRaffle() {
   document.getElementById('rfPrize').value = '';
   loadRafflesAdmin();
 }
-async function deleteRaffleUI(id) { if (confirm('این گردونه کامل حذف بشه؟')) { await api(`/raffles/${id}`, { method: 'DELETE' }); loadRafflesAdmin(); } }
-async function cancelRaffleUI(id) { if (confirm('این گردونه لغو بشه؟')) { await api(`/raffles/${id}/cancel`, { method: 'POST' }); loadRafflesAdmin(); } }
+async function deleteRaffleUI(id) { if (confirm('Delete this wheel completely?')) { await api(`/raffles/${id}`, { method: 'DELETE' }); loadRafflesAdmin(); } }
+async function cancelRaffleUI(id) { if (confirm('Cancel this wheel?')) { await api(`/raffles/${id}/cancel`, { method: 'POST' }); loadRafflesAdmin(); } }
 async function viewRaffleEntries(id, title) {
   const rows = await api(`/raffles/${id}/entries`);
   document.getElementById('raffleEntriesBox').style.display = 'block';
-  document.getElementById('raffleEntriesTitle').textContent = `شرکت‌کننده‌های «${title}» (${rows.length} نفر)`;
+  document.getElementById('raffleEntriesTitle').textContent = `Participants of "${title}" (${rows.length} people)`;
   document.getElementById('raffleEntriesTable').innerHTML = rows.length ? `
-    <table><tr><th>آیدی</th><th>نام</th><th>بلیط</th><th>برنده؟</th></tr>
+    <table><tr><th>ID</th><th>Name</th><th>Ticket</th><th>winner?</th></tr>
     ${rows.map(e => `<tr><td>${e.tg_id}</td><td>${e.first_name || ''} ${e.username ? '@'+e.username : ''}</td><td>${e.tickets}</td><td>${e.is_winner ? '🏆' : '-'}</td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز کسی ثبت‌نام نکرده.</p>';
+    </table>` : '<p class="muted">No one has registered yet.</p>';
   document.getElementById('raffleEntriesBox').scrollIntoView({ behavior: 'smooth' });
 }
 async function finishRaffleUI(id) {
-  if (!confirm('قرعه‌کشی نهایی انجام بشه؟ این عمل برگشت‌ناپذیره.')) return;
+  if (!confirm('Run the final raffle draw? This action is irreversible.')) return;
   const r = await api(`/raffles/${id}/finish`, { method: 'POST' });
-  alert('برنده‌ها:\n' + r.winners.map(w => `${w.first_name || ''} (${w.tg_id}) — ${w.tickets} بلیط`).join('\n'));
+  alert('Winners:\n' + r.winners.map(w => `${w.first_name || ''} (${w.tg_id}) — ${w.tickets} Ticket`).join('\n'));
   loadRafflesAdmin();
 }
 
-/* ---------- عکس هر سطح کارت (۷ تا) ---------- */
+/* ---------- Image per card level (7 total) ---------- */
 let LEVEL_IMAGES = ['', '', '', '', '', '', ''];
 function renderLevelImageGrid() {
   const grid = document.getElementById('levelImagesGrid');
   grid.innerHTML = LEVEL_IMAGES.map((url, i) => `
     <div>
-      <label>سطح ${i + 1}</label>
+      <label>Level ${i + 1}</label>
       <input type="file" accept="image/*" onchange="uploadLevelImage(${i}, this)">
       ${url ? `<img src="${url}" style="max-width:60px;border-radius:6px;display:block;margin-top:4px;">` : ''}
     </div>`).join('');
@@ -1209,16 +1209,16 @@ async function uploadLevelImage(index, input) {
   try {
     const res = await fetch('/admin/api/upload-image', { method: 'POST', headers: { Authorization: 'Bearer ' + TOKEN }, body: fd, signal: AbortSignal.timeout(20000) });
     const data = await res.json();
-    if (!res.ok) { alert(data.error || 'آپلود ناموفق بود'); return; }
+    if (!res.ok) { alert(data.error || 'Upload failed'); return; }
     LEVEL_IMAGES[index] = data.url;
     renderLevelImageGrid();
-  } catch (e) { alert('آپلود عکس ناموفق بود'); }
+  } catch (e) { alert('Image upload failed'); }
 }
 
-/* ---------- کارت‌های بازی ---------- */
+/* ---------- Game cards ---------- */
 async function loadCategoryOptions(selectId) {
   const cats = await api('/card-categories');
-  document.getElementById(selectId).innerHTML = '<option value="">بدون دسته</option>' + cats.map(c => `<option value="${c.id}">${c.icon || ''} ${c.name}</option>`).join('');
+  document.getElementById(selectId).innerHTML = '<option value="">No category</option>' + cats.map(c => `<option value="${c.id}">${c.icon || ''} ${c.name}</option>`).join('');
 }
 async function loadGameCards() {
   await loadCategoryOptions('gcCategory');
@@ -1226,11 +1226,11 @@ async function loadGameCards() {
   await loadLevelPowerTable();
   const rows = (await api('/game/cards')).filter(c => !c.instant_level);
   document.getElementById('gameCardsTable').innerHTML = rows.length ? `
-    <table><tr><th>اسم</th><th>قدرت پایه</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
+    <table><tr><th>Name</th><th>Base power</th><th>Price</th><th>Active</th><th>Actions</th></tr>
     ${rows.map(c => `<tr><td>${c.name}</td><td>${c.base_power}</td><td>${c.price_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editGameCard(${JSON.stringify(c)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteGameCard(${c.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز کارتی ثبت نشده.</p>';
+      <td><button class="btn secondary" onclick='editGameCard(${JSON.stringify(c)})'>Edit</button>
+      <button class="btn danger" onclick="deleteGameCard(${c.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No card registered yet.</p>';
 }
 function editGameCard(c) {
   document.getElementById('gcId').value = c.id;
@@ -1271,18 +1271,18 @@ async function saveGameCard() {
   renderLevelImageGrid();
   loadGameCards();
 }
-async function deleteGameCard(id) { if (confirm('حذف بشه؟')) { await api(`/game/cards/${id}`, { method: 'DELETE' }); loadGameCards(); } }
+async function deleteGameCard(id) { if (confirm('be deleted?')) { await api(`/game/cards/${id}`, { method: 'DELETE' }); loadGameCards(); } }
 
-/* ---------- حداکثر قدرت هر سطح ---------- */
+/* ---------- Max power per level ---------- */
 async function loadLevelPowerTable() {
   const rows = await api('/game/level-power');
   document.getElementById('levelPowerTable').innerHTML = rows.map(r => `
     <div class="row2" style="align-items:center;">
-      <div><label>سطح ${r.level}</label></div>
+      <div><label>Level ${r.level}</label></div>
       <div style="display:flex;gap:6px;">
-        <input type="number" id="lp-max-${r.level}" value="${r.max_power}" placeholder="حداکثر قدرت">
+        <input type="number" id="lp-max-${r.level}" value="${r.max_power}" placeholder="Max power">
       </div>
-    </div>`).join('') + `<button class="btn secondary" onclick="saveLevelPowerTable()">ذخیرهٔ سقف‌ها</button>`;
+    </div>`).join('') + `<button class="btn secondary" onclick="saveLevelPowerTable()">Save caps</button>`;
 }
 async function saveLevelPowerTable() {
   for (let level = 1; level <= 7; level++) {
@@ -1290,10 +1290,10 @@ async function saveLevelPowerTable() {
     if (!maxEl) continue;
     await api('/game/level-power', { method: 'POST', body: JSON.stringify({ level, max_power: maxEl.value }) });
   }
-  alert('ذخیره شد');
+  alert('Saved');
 }
 
-/* ---------- کارت‌های سطح ثابت (۲ تا ۷) ---------- */
+/* ---------- Fixed-level cards (2 to 7) ---------- */
 let SC_LEVEL_POWER = [];
 async function loadSpecialCards() {
   await loadCategoryOptions('scCategory');
@@ -1301,14 +1301,14 @@ async function loadSpecialCards() {
   onScLevelChange();
   const rows = (await api('/game/cards')).filter(c => c.instant_level >= 2);
   document.getElementById('specialCardsTable').innerHTML = rows.length ? `
-    <table><tr><th>اسم</th><th>سطح</th><th>قدرت اختصاصی</th><th>قیمت</th><th>فعال</th><th>عملیات</th></tr>
+    <table><tr><th>Name</th><th>Level</th><th>Custom power</th><th>Price</th><th>Active</th><th>Actions</th></tr>
     ${rows.map(c => `<tr><td>${c.name}</td><td>${c.instant_level}</td><td>${c.fixed_power}</td><td>${c.price_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td>
       <td>
-        <button class="btn secondary" onclick='editSpecialCard(${JSON.stringify(c)})'>ویرایش</button>
-        <button class="btn gold" onclick="grantSpecialCardUI(${c.id})">🎁 هدیه به کاربر</button>
-        <button class="btn danger" onclick="deleteGameCard(${c.id}).then(loadSpecialCards)">حذف</button>
+        <button class="btn secondary" onclick='editSpecialCard(${JSON.stringify(c)})'>Edit</button>
+        <button class="btn gold" onclick="grantSpecialCardUI(${c.id})">🎁 Gift to user</button>
+        <button class="btn danger" onclick="deleteGameCard(${c.id}).then(loadSpecialCards)">Delete</button>
       </td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز کارتی با سطح ثابت نساختی.</p>';
+    </table>` : '<p class="muted">You have not created any fixed-level card yet.</p>';
 }
 function onScLevelChange() {
   checkScPowerRange();
@@ -1319,7 +1319,7 @@ function checkScPowerRange() {
   const hint = document.getElementById('scPowerRangeHint');
   if (!range) { hint.textContent = ''; return; }
   const power = Number(document.getElementById('scPower').value);
-  hint.textContent = `سقف مجاز سطح ${level}: حداکثر ${range.max_power}`;
+  hint.textContent = `Allowed cap for level ${level}: max ${range.max_power}`;
   hint.style.color = (power && power > range.max_power) ? 'var(--danger)' : 'var(--muted)';
 }
 function editSpecialCard(c) {
@@ -1341,14 +1341,14 @@ async function saveSpecialCard() {
   const power = Number(document.getElementById('scPower').value);
   const range = SC_LEVEL_POWER.find(r => r.level === level);
   if (range && power > range.max_power) {
-    alert(`قدرت نباید از ${range.max_power} بیشتر باشه (سقف مجاز سطح ${level})`);
+    alert(`Power must not exceed ${range.max_power} (the allowed cap for level ${level})`);
     return;
   }
   await api('/game/cards', { method: 'POST', body: JSON.stringify({
     id: document.getElementById('scId').value || null,
     name: document.getElementById('scName').value,
     image_url: document.getElementById('scImage').value,
-    base_power: power, // فرمول سطح روش اعمال نمی‌شه، fixed_power جایگزینش می‌شه
+    base_power: power, // The level formula is not applied, fixed_power replaces it
     fixed_power: power,
     price_toman: document.getElementById('scPrice').value,
     max_supply: document.getElementById('scMaxSupply').value || null,
@@ -1363,21 +1363,21 @@ async function saveSpecialCard() {
   loadSpecialCards();
 }
 async function grantSpecialCardUI(cardId) {
-  const tgId = prompt('آیدی عددی تلگرام کاربر رو وارد کن:');
+  const tgId = prompt('Enter the user numeric Telegram ID:');
   if (!tgId) return;
   await api(`/game/cards/${cardId}/grant`, { method: 'POST', body: JSON.stringify({ tgId }) });
-  alert('کارت به کاربر هدیه داده شد ✅');
+  alert('Card gifted to user ✅');
 }
 
-/* ---------- دسته‌بندی‌های کارت ---------- */
+/* ---------- Card categories ---------- */
 async function loadCategories() {
   const rows = await api('/card-categories');
   document.getElementById('categoriesTable').innerHTML = rows.length ? `
-    <table><tr><th>آیکون</th><th>اسم</th><th>فعال</th><th>عملیات</th></tr>
+    <table><tr><th>Icon</th><th>Name</th><th>Active</th><th>Actions</th></tr>
     ${rows.map(c => `<tr><td>${c.icon || ''}</td><td style="color:${c.color};font-weight:700;">${c.name}</td><td>${c.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editCategory(${JSON.stringify(c)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteCategory(${c.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز دسته‌ای ثبت نشده.</p>';
+      <td><button class="btn secondary" onclick='editCategory(${JSON.stringify(c)})'>Edit</button>
+      <button class="btn danger" onclick="deleteCategory(${c.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No category registered yet.</p>';
 }
 function editCategory(c) {
   document.getElementById('catId').value = c.id;
@@ -1399,14 +1399,14 @@ async function saveCategory() {
   document.getElementById('catId').value = '';
   loadCategories();
 }
-async function deleteCategory(id) { if (confirm('حذف بشه؟')) { await api(`/card-categories/${id}`, { method: 'DELETE' }); loadCategories(); } }
+async function deleteCategory(id) { if (confirm('be deleted?')) { await api(`/card-categories/${id}`, { method: 'DELETE' }); loadCategories(); } }
 
-/* ---------- هزینه جهش ---------- */
+/* ---------- Mutation cost ---------- */
 async function loadMergeCosts() {
   const rows = await api('/merge-costs');
   document.getElementById('mergeCostsForm').innerHTML = rows.map(r => `
     <div class="row2" style="align-items:center;">
-      <div><label>سطح ${r.from_level} → ${r.from_level + 1}</label></div>
+      <div><label>Level ${r.from_level} → ${r.from_level + 1}</label></div>
       <div><input type="number" id="mc-${r.from_level}" value="${r.cost_toman}"></div>
     </div>`).join('');
 }
@@ -1416,10 +1416,10 @@ async function saveMergeCosts() {
     const val = Number(document.getElementById('mc-' + r.from_level).value) || 0;
     await api('/merge-costs', { method: 'POST', body: JSON.stringify({ from_level: r.from_level, cost_toman: val }) });
   }
-  alert('ذخیره شد');
+  alert('Saved');
 }
 
-/* ---------- چرخ شانس ---------- */
+/* ---------- Wheel of fortune ---------- */
 function toggleWheelSlotFields() {
   const type = document.getElementById('wsType').value;
   document.getElementById('wsTomanField').style.display = type === 'toman' ? 'block' : 'none';
@@ -1437,11 +1437,11 @@ async function loadWheelAdmin() {
 
   const slots = await api('/wheel/slots');
   document.getElementById('wheelSlotsTable').innerHTML = slots.length ? `
-    <table><tr><th>عنوان</th><th>نوع</th><th>احتمال٪</th><th>فعال</th><th>عملیات</th></tr>
+    <table><tr><th>Title</th><th>Type</th><th>Chance %</th><th>Active</th><th>Actions</th></tr>
     ${slots.map(s => `<tr><td style="color:${s.color};">${s.label}</td><td>${s.type}</td><td>${s.probability_percent}</td><td>${s.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editWheelSlot(${JSON.stringify(s)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteWheelSlot(${s.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز جایزه‌ای ثبت نشده.</p>';
+      <td><button class="btn secondary" onclick='editWheelSlot(${JSON.stringify(s)})'>Edit</button>
+      <button class="btn danger" onclick="deleteWheelSlot(${s.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No prize registered yet.</p>';
 }
 function editWheelSlot(s) {
   document.getElementById('wsId').value = s.id;
@@ -1461,7 +1461,7 @@ async function saveWheelConfig() {
     cooldown_hours: document.getElementById('wheelCooldown').value,
     require_purchase: document.getElementById('wheelRequirePurchase').value === '1',
   }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
 async function saveWheelSlot() {
   await api('/wheel/slots', { method: 'POST', body: JSON.stringify({
@@ -1478,9 +1478,9 @@ async function saveWheelSlot() {
   document.getElementById('wsId').value = '';
   loadWheelAdmin();
 }
-async function deleteWheelSlot(id) { if (confirm('حذف بشه؟')) { await api(`/wheel/slots/${id}`, { method: 'DELETE' }); loadWheelAdmin(); } }
+async function deleteWheelSlot(id) { if (confirm('be deleted?')) { await api(`/wheel/slots/${id}`, { method: 'DELETE' }); loadWheelAdmin(); } }
 
-/* ---------- تنظیمات بازی ---------- */
+/* ---------- Game settings ---------- */
 async function loadGameConfig() {
   const cfg = await api('/game/config');
   document.getElementById('cfgMinDeck').value = cfg.min_deck_size;
@@ -1503,22 +1503,22 @@ async function saveGameConfig() {
     sacrifice_fee_toman: document.getElementById('cfgSacFee').value,
     sacrifice_transfer_percent: document.getElementById('cfgSacPercent').value,
   }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
 
-/* ---------- جدول امتیازات و جوایز ---------- */
+/* ---------- Leaderboard & prizes ---------- */
 async function loadLeaderboardTab() {
   const prizes = await api('/game/leaderboard-prizes');
   document.getElementById('leaderboardPrizesTable').innerHTML = prizes.length ? `
-    <table><tr><th>از رتبه</th><th>تا رتبه</th><th>جایزه</th><th>عملیات</th></tr>
+    <table><tr><th>From rank</th><th>To rank</th><th>Prize</th><th>Actions</th></tr>
     ${prizes.map(p => `<tr><td>${p.rank_from}</td><td>${p.rank_to}</td><td>${p.reward_toman.toLocaleString()}</td>
-      <td><button class="btn danger" onclick="deleteLeaderboardPrize(${p.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">جایزه‌ای ثبت نشده.</p>';
+      <td><button class="btn danger" onclick="deleteLeaderboardPrize(${p.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No prize registered.</p>';
 
   const { leaderboard, state } = await api('/game/leaderboard');
   document.getElementById('leaderboardTable').innerHTML = `
-    <p class="muted">شروع دوره فعلی: ${state.period_started_at}</p>
-    <table><tr><th>رتبه</th><th>کاربر</th><th>امتیاز</th><th>برد/باخت</th></tr>
+    <p class="muted">Current period start: ${state.period_started_at}</p>
+    <table><tr><th>Rank</th><th>User</th><th>Score</th><th>Win/Loss</th></tr>
     ${leaderboard.map((p, i) => `<tr><td>${i + 1}</td><td>${p.first_name || ''} (${p.tg_id})</td><td>${p.score}</td><td>${p.wins}/${p.losses}</td></tr>`).join('')}
     </table>`;
 
@@ -1535,7 +1535,7 @@ async function saveLeagueConfig() {
     relegate_count: document.getElementById('lgRelegate').value,
     reset_days: document.getElementById('lgResetDays').value,
   }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
 async function saveLeaderboardPrize() {
   await api('/game/leaderboard-prizes', { method: 'POST', body: JSON.stringify({
@@ -1547,24 +1547,24 @@ async function saveLeaderboardPrize() {
   document.getElementById('prizeId').value = '';
   loadLeaderboardTab();
 }
-async function deleteLeaderboardPrize(id) { if (confirm('حذف بشه؟')) { await api(`/game/leaderboard-prizes/${id}`, { method: 'DELETE' }); loadLeaderboardTab(); } }
+async function deleteLeaderboardPrize(id) { if (confirm('be deleted?')) { await api(`/game/leaderboard-prizes/${id}`, { method: 'DELETE' }); loadLeaderboardTab(); } }
 async function resetLeaderboardNow() {
-  if (!confirm('جوایز پخش و جدول صفر بشه؟')) return;
+  if (!confirm('Distribute prizes and reset the table?')) return;
   await api('/game/leaderboard-reset', { method: 'POST' });
   loadLeaderboardTab();
 }
 
-/* ---------- تسک‌های کارتی ---------- */
+/* ---------- Card tasks ---------- */
 async function loadCardTasksTab() {
   const cards = await api('/game/cards');
   document.getElementById('ctRewardCard').innerHTML = cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   const rows = await api('/card-tasks');
   document.getElementById('cardTasksTable').innerHTML = rows.length ? `
-    <table><tr><th>عنوان</th><th>نوع</th><th>کارت جایزه</th><th>فعال</th><th>عملیات</th></tr>
+    <table><tr><th>Title</th><th>Type</th><th>Bonus card</th><th>Active</th><th>Actions</th></tr>
     ${rows.map(t => `<tr><td>${t.title}</td><td>${t.kind}</td><td>${t.reward_card_id}</td><td>${t.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editCardTask(${JSON.stringify(t)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteCardTask(${t.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">تسک کارتی ثبت نشده.</p>';
+      <td><button class="btn secondary" onclick='editCardTask(${JSON.stringify(t)})'>Edit</button>
+      <button class="btn danger" onclick="deleteCardTask(${t.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No card task registered.</p>';
 }
 function editCardTask(t) {
   document.getElementById('ctId').value = t.id;
@@ -1586,46 +1586,46 @@ async function saveCardTask() {
   document.getElementById('ctId').value = '';
   loadCardTasksTab();
 }
-async function deleteCardTask(id) { if (confirm('حذف بشه؟')) { await api(`/card-tasks/${id}`, { method: 'DELETE' }); loadCardTasksTab(); } }
+async function deleteCardTask(id) { if (confirm('be deleted?')) { await api(`/card-tasks/${id}`, { method: 'DELETE' }); loadCardTasksTab(); } }
 
-/* ---------- کاربران ---------- */
+/* ---------- Users ---------- */
 async function loadUsers() {
   const q = document.getElementById('userSearch').value;
   const rows = await api('/users?q=' + encodeURIComponent(q));
   document.getElementById('usersTable').innerHTML = `
-    <table><tr><th>آیدی</th><th>نام</th><th>موجودی</th><th>بتل‌پس؟</th><th>مسدود؟</th><th>عملیات</th></tr>
-    ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString()}</td><td>${u.has_battlepass ? '👑 داره' : '-'}</td><td>${u.is_banned ? '🚫' : '-'}</td>
+    <table><tr><th>ID</th><th>Name</th><th>Balance</th><th>battle pass?</th><th>banned?</th><th>Actions</th></tr>
+    ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString()}</td><td>${u.has_battlepass ? '👑 has' : '-'}</td><td>${u.is_banned ? '🚫' : '-'}</td>
       <td>
-        <button class="btn secondary" onclick="adjustBalance(${u.tg_id})">اصلاح موجودی تومان</button>
-        <button class="btn secondary" onclick="adjustCurrencyBalanceUI(${u.tg_id})">اصلاح موجودی ارزی</button>
-        <button class="btn secondary" onclick="messageUser(${u.tg_id})">پیام</button>
-        ${u.is_banned ? `<button class="btn" onclick="unbanUser(${u.tg_id})">رفع مسدودی</button>` : `<button class="btn danger" onclick="banUser(${u.tg_id})">مسدود کن</button>`}
+        <button class="btn secondary" onclick="adjustBalance(${u.tg_id})">Adjust LNDC balance</button>
+        <button class="btn secondary" onclick="adjustCurrencyBalanceUI(${u.tg_id})">Adjust currency balance</button>
+        <button class="btn secondary" onclick="messageUser(${u.tg_id})">Message</button>
+        ${u.is_banned ? `<button class="btn" onclick="unbanUser(${u.tg_id})">Unban</button>` : `<button class="btn danger" onclick="banUser(${u.tg_id})">Ban</button>`}
       </td></tr>`).join('')}
     </table>`;
 }
 async function adjustBalance(tgId) {
-  const amount = prompt('مبلغ (منفی برای کسر):');
+  const amount = prompt('Amount (negative to deduct):');
   if (!amount) return;
   await api(`/users/${tgId}/adjust-balance`, { method: 'POST', body: JSON.stringify({ amount: Number(amount) }) });
   loadUsers();
 }
 async function adjustCurrencyBalanceUI(tgId) {
   const currencies = await api('/currencies');
-  const code = prompt('کد ارز (' + currencies.map(c => c.code).join('، ') + '):');
+  const code = prompt('Currency code (' + currencies.map(c => c.code).join(', ') + '):');
   if (!code) return;
-  const amount = prompt('مقدار (منفی برای کسر):');
+  const amount = prompt('Amount (negative to deduct):');
   if (!amount) return;
   await api(`/users/${tgId}/adjust-currency`, { method: 'POST', body: JSON.stringify({ code, amount: Number(amount) }) });
-  alert('انجام شد');
+  alert('Done');
 }
 async function banUser(tgId) {
-  const reason = prompt('دلیل مسدودی (اختیاری):') || '';
+  const reason = prompt('Ban reason (optional):') || '';
   await api(`/users/${tgId}/ban`, { method: 'POST', body: JSON.stringify({ reason }) });
   loadUsers();
 }
 async function unbanUser(tgId) { await api(`/users/${tgId}/unban`, { method: 'POST' }); loadUsers(); }
 
-/* ---------- مزایده فلش ---------- */
+/* ---------- Flash auction ---------- */
 async function loadAuctionAdmin() {
   const cfg = await api('/auction/config');
   document.getElementById('aucEnabled').value = cfg.enabled ? '1' : '0';
@@ -1636,16 +1636,16 @@ async function loadAuctionAdmin() {
   document.getElementById('aucAntiSnipe').value = cfg.anti_snipe_enabled ? '1' : '0';
 
   const products = await api('/products');
-  document.getElementById('aucProductId').innerHTML = products.map(p => `<option value="${p.id}">${p.title} (${p.price_toman.toLocaleString()} ت)</option>`).join('');
+  document.getElementById('aucProductId').innerHTML = products.map(p => `<option value="${p.id}">${p.title} (${p.price_toman.toLocaleString()} LNDC)</option>`).join('');
   const cards = await api('/game/cards');
-  document.getElementById('aucCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (${c.price_toman.toLocaleString()} ت)</option>`).join('');
+  document.getElementById('aucCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (${c.price_toman.toLocaleString()} LNDC)</option>`).join('');
 
   const rows = await api('/auction/list');
   document.getElementById('auctionsTable').innerHTML = rows.length ? `
-    <table><tr><th>عنوان</th><th>نوع</th><th>قیمت فعلی</th><th>برنده</th><th>وضعیت</th><th>عملیات</th></tr>
-    ${rows.map(a => `<tr><td>${a.title}</td><td>${a.item_type === 'card' ? '🎴 کارت' : '🛍 محصول'}</td><td>${a.current_price.toLocaleString()}</td><td>${a.winner_tg_id || '-'}</td><td>${a.status}</td>
-      <td>${a.status === 'active' ? `<button class="btn danger" onclick="cancelAuctionUI(${a.id})">لغو</button>` : ''}</td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز مزایده‌ای نساختی.</p>';
+    <table><tr><th>Title</th><th>Type</th><th>Current price</th><th>Winner</th><th>Status</th><th>Actions</th></tr>
+    ${rows.map(a => `<tr><td>${a.title}</td><td>${a.item_type === 'card' ? '🎴 Card' : '🛍 Product'}</td><td>${a.current_price.toLocaleString()}</td><td>${a.winner_tg_id || '-'}</td><td>${a.status}</td>
+      <td>${a.status === 'active' ? `<button class="btn danger" onclick="cancelAuctionUI(${a.id})">Cancel</button>` : ''}</td></tr>`).join('')}
+    </table>` : '<p class="muted">You have not created any auction yet.</p>';
 }
 async function saveAuctionConfig() {
   await api('/auction/config', { method: 'POST', body: JSON.stringify({
@@ -1656,7 +1656,7 @@ async function saveAuctionConfig() {
     min_wallet_balance: document.getElementById('aucMinBalance').value,
     anti_snipe_enabled: document.getElementById('aucAntiSnipe').value === '1',
   }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
 async function createAuctionUI() {
   const itemType = document.getElementById('aucItemType').value;
@@ -1665,13 +1665,13 @@ async function createAuctionUI() {
   ) });
   loadAuctionAdmin();
 }
-async function cancelAuctionUI(id) { if (confirm('لغو بشه؟')) { await api(`/auction/${id}/cancel`, { method: 'POST' }); loadAuctionAdmin(); } }
+async function cancelAuctionUI(id) { if (confirm('be cancelled?')) { await api(`/auction/${id}/cancel`, { method: 'POST' }); loadAuctionAdmin(); } }
 
-/* ---------- بتل‌پس فصلی ---------- */
+/* ---------- Seasonal battle pass ---------- */
 async function onBpValueTypeChange(prefix) {
   const type = document.getElementById(prefix + 'Type').value;
   const wrap = document.getElementById(prefix + 'ValueWrap');
-  const label = prefix === 'tierFree' ? 'مقدار رایگان' : 'مقدار پرمیوم';
+  const label = prefix === 'tierFree' ? 'Free amount' : 'Premium amount';
   if (type === 'card' || type === 'avatar' || type === 'product') {
     const endpoint = type === 'card' ? '/game/cards' : type === 'avatar' ? '/avatars' : '/products';
     const items = await api(endpoint);
@@ -1694,10 +1694,10 @@ async function loadSeasonAdmin() {
 
   const tiers = await api('/season/tiers');
   document.getElementById('seasonTiersTable').innerHTML = tiers.length ? `
-    <table><tr><th>تایر</th><th>رایگان</th><th>پرمیوم</th><th>عملیات</th></tr>
+    <table><tr><th>Tier</th><th>Free</th><th>Premium</th><th>Actions</th></tr>
     ${tiers.map(t => `<tr><td>${t.tier_number}</td><td>${t.free_reward_type}: ${t.free_reward_value || '-'}</td><td>${t.premium_reward_type}: ${t.premium_reward_value || '-'}</td>
-      <td><button class="btn danger" onclick="deleteSeasonTierUI(${t.tier_number})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز تایری تعریف نشده.</p>';
+      <td><button class="btn danger" onclick="deleteSeasonTierUI(${t.tier_number})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No tier defined yet.</p>';
 }
 async function saveSeasonConfig() {
   await api('/season/config', { method: 'POST', body: JSON.stringify({
@@ -1711,9 +1711,9 @@ async function saveSeasonConfig() {
     xp_per_donation: document.getElementById('seaXpDonation').value,
     tier_skip_price_toman: document.getElementById('seaTierSkipPrice').value,
   }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
-async function startNewSeasonUI() { if (confirm('فصل فعلی کامل ریست می‌شه، مطمئنی؟')) { await api('/season/start-new', { method: 'POST' }); alert('فصل جدید شروع شد'); loadSeasonAdmin(); } }
+async function startNewSeasonUI() { if (confirm('The current season will be fully reset, are you sure?')) { await api('/season/start-new', { method: 'POST' }); alert('New season started'); loadSeasonAdmin(); } }
 async function saveSeasonTier() {
   await api('/season/tiers', { method: 'POST', body: JSON.stringify({
     tier_number: document.getElementById('tierNumber').value,
@@ -1724,9 +1724,9 @@ async function saveSeasonTier() {
   }) });
   loadSeasonAdmin();
 }
-async function deleteSeasonTierUI(n) { if (confirm('حذف بشه؟')) { await api(`/season/tiers/${n}`, { method: 'DELETE' }); loadSeasonAdmin(); } }
+async function deleteSeasonTierUI(n) { if (confirm('be deleted?')) { await api(`/season/tiers/${n}`, { method: 'DELETE' }); loadSeasonAdmin(); } }
 
-/* ---------- کلن ---------- */
+/* ---------- Clan ---------- */
 async function loadClanAdmin() {
   const cfg = await api('/clan/config');
   document.getElementById('clnEnabled').value = cfg.enabled ? '1' : '0';
@@ -1750,18 +1750,18 @@ async function loadClanAdmin() {
 
   const lb = await api('/clan/all');
   document.getElementById('clanLeaderboardTable').innerHTML = lb.length ? `
-    <table><tr><th>اسم</th><th>تگ</th><th>امتیاز</th><th>بانک</th><th>عملیات</th></tr>
+    <table><tr><th>Name</th><th>Tag</th><th>Score</th><th>Bank</th><th>Actions</th></tr>
     ${lb.map(c => `<tr><td>${c.name}</td><td>#${c.tag}</td><td>${c.score}</td><td>${c.bank_balance.toLocaleString()}</td>
-      <td><button class="btn secondary" onclick="adjustClanBankUI(${c.id})">اصلاح بانک</button> <button class="btn danger" onclick="deleteClanUI(${c.id})">حذف کلن</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز کلنی ساخته نشده.</p>';
+      <td><button class="btn secondary" onclick="adjustClanBankUI(${c.id})">Adjust bank</button> <button class="btn danger" onclick="deleteClanUI(${c.id})">Delete clan</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No clan created yet.</p>';
 }
 async function deleteClanUI(id) {
-  if (!confirm('این کلن کامل حذف بشه؟ همهٔ اعضا از کلن خارج می‌شن. این عمل برگشت‌ناپذیره.')) return;
+  if (!confirm('Delete this clan completely? All members will be removed from the clan. This action is irreversible.')) return;
   await api(`/clan/${id}`, { method: 'DELETE' });
   loadClanAdmin();
 }
 async function adjustClanBankUI(id) {
-  const amount = prompt('مبلغ (منفی برای کسر):');
+  const amount = prompt('Amount (negative to deduct):');
   if (!amount) return;
   await api(`/clan/${id}/adjust-bank`, { method: 'POST', body: JSON.stringify({ amount: Number(amount) }) });
   loadClanAdmin();
@@ -1781,9 +1781,9 @@ async function saveClanConfig() {
     reset_days: document.getElementById('clnResetDays').value,
     withdraw_fee_percent: document.getElementById('clnWithdrawFee').value,
   }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
-async function resetClanSeasonUI() { if (confirm('جوایز پخش و امتیازها صفر بشه؟')) { await api('/clan/reset-season', { method: 'POST' }); alert('انجام شد'); loadClanAdmin(); } }
+async function resetClanSeasonUI() { if (confirm('Distribute prizes and reset scores?')) { await api('/clan/reset-season', { method: 'POST' }); alert('Done'); loadClanAdmin(); } }
 async function saveClanWarConfig() {
   await api('/clanwar/config', { method: 'POST', body: JSON.stringify({
     enabled: document.getElementById('cwEnabled').value === '1',
@@ -1791,10 +1791,10 @@ async function saveClanWarConfig() {
     fee_percent: document.getElementById('cwFeePercent').value,
     team_size: document.getElementById('cwTeamSize').value,
   }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
 
-/* ---------- رنک/آواتار ---------- */
+/* ---------- Rank/Avatar ---------- */
 async function loadRankAdmin() {
   const cfg = await api('/rank/config');
   document.getElementById('rkEnabled').value = cfg.enabled ? '1' : '0';
@@ -1807,23 +1807,23 @@ async function loadRankAdmin() {
 
   const rows = await api('/avatars');
   document.getElementById('avatarsTable').innerHTML = rows.length ? `
-    <table><tr><th>اسم</th><th>قیمت</th><th>موجودی</th><th>فعال</th><th>عملیات</th></tr>
-    ${rows.map(a => `<tr><td>${a.name}</td><td>${a.price_toman.toLocaleString()}</td><td>${a.quantity != null ? (a.quantity - a.sold_count) : 'نامحدود'}</td><td>${a.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editAvatar(${JSON.stringify(a)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteAvatarUI(${a.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز آواتاری ثبت نشده.</p>';
+    <table><tr><th>Name</th><th>Price</th><th>Balance</th><th>Active</th><th>Actions</th></tr>
+    ${rows.map(a => `<tr><td>${a.name}</td><td>${a.price_toman.toLocaleString()}</td><td>${a.quantity != null ? (a.quantity - a.sold_count) : 'Unlimited'}</td><td>${a.active ? '✅' : '❌'}</td>
+      <td><button class="btn secondary" onclick='editAvatar(${JSON.stringify(a)})'>Edit</button>
+      <button class="btn danger" onclick="deleteAvatarUI(${a.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No avatar registered yet.</p>';
 
   await loadRankTitles();
 }
-/* ---------- عنوان‌های رنک ---------- */
+/* ---------- Rank titles ---------- */
 async function loadRankTitles() {
   const rows = await api('/rank/titles');
   document.getElementById('rankTitlesTable').innerHTML = rows.length ? `
-    <table><tr><th>از لول</th><th>ایموجی</th><th>عنوان</th><th>عملیات</th></tr>
+    <table><tr><th>From level</th><th>Emoji</th><th>Title</th><th>Actions</th></tr>
     ${rows.map(t => `<tr><td>${t.level_threshold}</td><td>${t.icon || ''}</td><td>${t.title}</td>
-      <td><button class="btn secondary" onclick='editRankTitle(${JSON.stringify(t)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteRankTitleUI(${t.level_threshold})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز عنوانی ثبت نشده.</p>';
+      <td><button class="btn secondary" onclick='editRankTitle(${JSON.stringify(t)})'>Edit</button>
+      <button class="btn danger" onclick="deleteRankTitleUI(${t.level_threshold})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No title registered yet.</p>';
 }
 function editRankTitle(t) {
   document.getElementById('rtOldThreshold').value = t.level_threshold;
@@ -1840,10 +1840,10 @@ function resetRankTitleForm() {
 async function saveRankTitle() {
   const threshold = Number(document.getElementById('rtThreshold').value);
   const title = document.getElementById('rtTitle').value.trim();
-  if (!threshold || threshold < 1) return alert('لول شروع رو درست وارد کن');
-  if (!title) return alert('عنوان رو وارد کن');
+  if (!threshold || threshold < 1) return alert('Enter a valid start level');
+  if (!title) return alert('Enter the title');
   const oldThreshold = Number(document.getElementById('rtOldThreshold').value) || null;
-  // اگه لول شروع عوض شده، اول عنوان قدیمی رو حذف کن تا رکورد تکراری نمونه
+  // If the start level changed, delete the old title first so there's no duplicate record
   if (oldThreshold && oldThreshold !== threshold) {
     await api(`/rank/titles/${oldThreshold}`, { method: 'DELETE' });
   }
@@ -1856,7 +1856,7 @@ async function saveRankTitle() {
   loadRankTitles();
 }
 async function deleteRankTitleUI(threshold) {
-  if (!confirm('این عنوان حذف بشه؟')) return;
+  if (!confirm('Delete this title?')) return;
   await api(`/rank/titles/${threshold}`, { method: 'DELETE' });
   loadRankTitles();
 }
@@ -1870,7 +1870,7 @@ async function saveRankConfig() {
     xp_per_referral: document.getElementById('rkXpReferral').value,
     xp_per_checkin: document.getElementById('rkXpCheckin').value,
   }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
 function editAvatar(a) {
   document.getElementById('avId').value = a.id;
@@ -1896,9 +1896,9 @@ async function saveAvatar() {
   document.getElementById('avId').value = '';
   loadRankAdmin();
 }
-async function deleteAvatarUI(id) { if (confirm('حذف بشه؟')) { await api(`/avatars/${id}`, { method: 'DELETE' }); loadRankAdmin(); } }
+async function deleteAvatarUI(id) { if (confirm('be deleted?')) { await api(`/avatars/${id}`, { method: 'DELETE' }); loadRankAdmin(); } }
 
-/* ---------- ماموریت روزانه ---------- */
+/* ---------- Daily quest ---------- */
 async function loadQuestsAdmin() {
   const cfg = await api('/quests/config');
   document.getElementById('qcEnabled').value = cfg.enabled ? '1' : '0';
@@ -1906,15 +1906,15 @@ async function loadQuestsAdmin() {
 
   const rows = await api('/quests/templates');
   document.getElementById('questsTable').innerHTML = rows.length ? `
-    <table><tr><th>عنوان</th><th>نوع</th><th>هدف</th><th>جایزه</th><th>فعال</th><th>عملیات</th></tr>
+    <table><tr><th>Title</th><th>Type</th><th>Target</th><th>Prize</th><th>Active</th><th>Actions</th></tr>
     ${rows.map(q => `<tr><td>${q.title}</td><td>${q.type}</td><td>${q.target_count}</td><td>${q.reward_type}: ${q.reward_value}</td><td>${q.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editQuestTemplate(${JSON.stringify(q)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteQuestTemplateUI(${q.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز قالبی ثبت نشده.</p>';
+      <td><button class="btn secondary" onclick='editQuestTemplate(${JSON.stringify(q)})'>Edit</button>
+      <button class="btn danger" onclick="deleteQuestTemplateUI(${q.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No template registered yet.</p>';
 }
 async function saveQuestConfig() {
   await api('/quests/config', { method: 'POST', body: JSON.stringify({ enabled: document.getElementById('qcEnabled').value === '1', quest_count: document.getElementById('qcCount').value }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
 async function editQuestTemplate(q) {
   document.getElementById('qtId').value = q.id;
@@ -1939,16 +1939,16 @@ async function saveQuestTemplate() {
   document.getElementById('qtId').value = '';
   loadQuestsAdmin();
 }
-async function deleteQuestTemplateUI(id) { if (confirm('حذف بشه؟')) { await api(`/quests/templates/${id}`, { method: 'DELETE' }); loadQuestsAdmin(); } }
+async function deleteQuestTemplateUI(id) { if (confirm('be deleted?')) { await api(`/quests/templates/${id}`, { method: 'DELETE' }); loadQuestsAdmin(); } }
 
-/* ---------- کد هدیه ---------- */
+/* ---------- Gift code ---------- */
 async function loadPromoAdmin() {
   const rows = await api('/promo');
   document.getElementById('promoTable').innerHTML = rows.length ? `
-    <table><tr><th>کد</th><th>جایزه</th><th>استفاده</th><th>عملیات</th></tr>
+    <table><tr><th>Code</th><th>Prize</th><th>Use</th><th>Actions</th></tr>
     ${rows.map(p => `<tr><td>${p.code}</td><td>${p.reward_type}: ${p.reward_value}</td><td>${p.used_count}${p.max_uses ? '/' + p.max_uses : ''}</td>
-      <td><button class="btn danger" onclick="deletePromoUI('${p.code}')">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز کدی ثبت نشده.</p>';
+      <td><button class="btn danger" onclick="deletePromoUI('${p.code}')">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No code registered yet.</p>';
 }
 async function savePromoCode() {
   await api('/promo', { method: 'POST', body: JSON.stringify({
@@ -1960,9 +1960,9 @@ async function savePromoCode() {
   }) });
   loadPromoAdmin();
 }
-async function deletePromoUI(code) { if (confirm('حذف بشه؟')) { await api(`/promo/${code}`, { method: 'DELETE' }); loadPromoAdmin(); } }
+async function deletePromoUI(code) { if (confirm('be deleted?')) { await api(`/promo/${code}`, { method: 'DELETE' }); loadPromoAdmin(); } }
 
-/* ---------- آلبوم ---------- */
+/* ---------- Album ---------- */
 async function loadAlbumsAdmin() {
   const cats = await api('/card-categories');
   document.getElementById('albCategoriesCheckboxes').innerHTML = cats.map(c => `
@@ -1970,11 +1970,11 @@ async function loadAlbumsAdmin() {
 
   const rows = await api('/albums');
   document.getElementById('albumsTable').innerHTML = rows.length ? `
-    <table><tr><th>اسم</th><th>فصلی</th><th>جایزه</th><th>عملیات</th></tr>
+    <table><tr><th>Name</th><th>Seasonal</th><th>Prize</th><th>Actions</th></tr>
     ${rows.map(a => `<tr><td>${a.name}</td><td>${a.is_seasonal ? '✅' : '❌'}</td><td>${a.reward_type}: ${a.reward_value}</td>
-      <td><button class="btn secondary" onclick='editAlbum(${JSON.stringify(a)})'>ویرایش</button>
-      <button class="btn danger" onclick="deleteAlbumUI(${a.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز آلبومی ثبت نشده.</p>';
+      <td><button class="btn secondary" onclick='editAlbum(${JSON.stringify(a)})'>Edit</button>
+      <button class="btn danger" onclick="deleteAlbumUI(${a.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No album registered yet.</p>';
 }
 function editAlbum(a) {
   document.getElementById('albId').value = a.id;
@@ -2005,9 +2005,9 @@ async function saveAlbum() {
   document.getElementById('albId').value = '';
   loadAlbumsAdmin();
 }
-async function deleteAlbumUI(id) { if (confirm('حذف بشه؟')) { await api(`/albums/${id}`, { method: 'DELETE' }); loadAlbumsAdmin(); } }
+async function deleteAlbumUI(id) { if (confirm('be deleted?')) { await api(`/albums/${id}`, { method: 'DELETE' }); loadAlbumsAdmin(); } }
 
-/* ---------- تنظیمات هدیه ---------- */
+/* ---------- Gift settings ---------- */
 async function loadGiftConfigAdmin() {
   const cfg = await api('/gift/config');
   document.getElementById('gcEnabled2').value = cfg.enabled ? '1' : '0';
@@ -2024,20 +2024,20 @@ async function saveGiftConfig() {
     card_gift_max_level: document.getElementById('gcMaxLevel2').value,
     toman_gift_fee_percent: document.getElementById('gcFeePercent').value,
   }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
 
-/* ---------- کارت‌های فصلی ---------- */
+/* ---------- Seasonal cards ---------- */
 async function loadSeasonsAdmin() {
   const cards = await api('/game/cards');
   document.getElementById('snCardSelect').innerHTML = cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   const rows = await api('/seasons');
-  document.getElementById('snSeasonSelect').innerHTML = `<option value="">بدون فصل</option>` + rows.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  document.getElementById('snSeasonSelect').innerHTML = `<option value="">No season</option>` + rows.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
   document.getElementById('seasonsTable').innerHTML = rows.length ? `
-    <table><tr><th>اسم</th><th>شروع</th><th>پایان</th><th>فعال</th><th>عملیات</th></tr>
+    <table><tr><th>Name</th><th>Start</th><th>End</th><th>Active</th><th>Actions</th></tr>
     ${rows.map(s => `<tr><td>${s.name}</td><td>${s.starts_at}</td><td>${s.ends_at}</td><td>${s.active ? '✅' : '❌'}</td>
-      <td><button class="btn danger" onclick="deleteSeasonUI(${s.id})">حذف</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">هنوز فصلی ثبت نشده.</p>';
+      <td><button class="btn danger" onclick="deleteSeasonUI(${s.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No season registered yet.</p>';
 }
 async function saveSeason() {
   await api('/seasons', { method: 'POST', body: JSON.stringify({
@@ -2048,16 +2048,16 @@ async function saveSeason() {
   }) });
   loadSeasonsAdmin();
 }
-async function deleteSeasonUI(id) { if (confirm('حذف بشه؟')) { await api(`/seasons/${id}`, { method: 'DELETE' }); loadSeasonsAdmin(); } }
+async function deleteSeasonUI(id) { if (confirm('be deleted?')) { await api(`/seasons/${id}`, { method: 'DELETE' }); loadSeasonsAdmin(); } }
 async function assignCardToSeason() {
   await api('/seasons/assign-card', { method: 'POST', body: JSON.stringify({
     cardId: document.getElementById('snCardSelect').value,
     seasonId: document.getElementById('snSeasonSelect').value || null,
   }) });
-  alert('انجام شد');
+  alert('Done');
 }
 
-/* ---------- تبادل کارت ---------- */
+/* ---------- Card trade ---------- */
 async function loadTradeConfigAdmin() {
   const cfg = await api('/trade/config');
   document.getElementById('trEnabled').value = cfg.enabled ? '1' : '0';
@@ -2074,10 +2074,10 @@ async function saveTradeConfig() {
     min_user_level: document.getElementById('trMinLevel').value,
     trade_fee_toman: document.getElementById('trFee').value,
   }) });
-  alert('ذخیره شد');
+  alert('Saved');
 }
 
-/* ---------- شروع ---------- */
+/* ---------- Start ---------- */
 function boot() {
   document.getElementById('loginBox').style.display = 'none';
   document.getElementById('app').style.display = 'block';
