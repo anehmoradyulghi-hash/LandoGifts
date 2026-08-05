@@ -441,15 +441,24 @@
       <div id="gameShop" class="muted">در حال بارگذاری...</div>
     </div>
     <div class="view" id="gsub-mycards">
-      <p class="muted">برای «تقویت»، یه کارت رو هدف و یه کارت دیگه رو قربانی انتخاب کن — قربانی نابود می‌شه و بخشی از قدرتش به هدف اضافه می‌شه (سطح هدف عوض نمی‌شه).</p>
+      <p class="muted">برای «ارتقا»، رو دکمهٔ ارتقای کارت هدف بزن و بعد هر تعداد کارتی که می‌خوای قربانی کنی رو انتخاب کن — قربانی‌ها نابود می‌شن و بخشی از قدرتشون به هدف اضافه می‌شه (سطح هدف عوض نمی‌شه).</p>
       <div id="gameMyCards" class="muted">در حال بارگذاری...</div>
-      <div id="sacrificeBar" class="card" style="display:none;position:sticky;bottom:78px;border-color:var(--gold);">
-        <button class="btn gold" onclick="doSacrifice()">💪 تقویت کن (قربانی نابود می‌شه)</button>
-      </div>
       <div id="mutationsWrap" style="display:none;">
         <h3 class="sec">🧬 جهش‌های ممکن</h3>
         <p class="muted">دو تا کارت کاملا یکسان (اسم و سطح) داری؟ می‌تونی جهششون بدی تا سطح (و ریرتی) بره بالا.</p>
         <div id="mutationsList"></div>
+      </div>
+    </div>
+    <div id="upgradePanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;padding:16px;overflow-y:auto;">
+      <div class="card" style="max-width:480px;margin:40px auto 24px;">
+        <div class="row" style="margin-bottom:8px;">
+          <h3 style="margin:0;">💪 ارتقای کارت</h3>
+          <button class="btn secondary" style="padding:6px 14px;" onclick="closeUpgradePanel()">‹ بازگشت</button>
+        </div>
+        <div id="upgradeTargetInfo" class="muted" style="margin-bottom:10px;"></div>
+        <p class="muted">هر تعداد کارتی که می‌خوای قربانی کنی رو انتخاب کن:</p>
+        <div id="upgradeSacrificeList" class="game-card-grid"></div>
+        <button class="btn gold" style="margin-top:12px;width:100%;" onclick="confirmUpgrade()">💪 ارتقا کن</button>
       </div>
     </div>
     <div class="view" id="gsub-battle">
@@ -825,6 +834,7 @@ tg?.ready(); tg?.expand();
 const initData = tg?.initData || '';
 let CONFIG = {};
 let CURRENT_PAGE = 'games';
+let PAGE_BEFORE_SUBPAGE = 'more'; // صفحه‌ای که قبل از رفتن به تسک‌ها/صفحهٔ اطلاعات توش بودیم — دکمه بازگشت به همونجا برمی‌گرده
 
 const RARITY_INFO_FALLBACK = { common:'#9ca3af', uncommon:'#34d399', rare:'#60a5fa', epic:'#a78bfa', legendary:'#fbbf24', mythic:'#fb7185', god:'#f472b6' };
 function rarityBadge(label, color) {
@@ -853,6 +863,26 @@ async function api(path, opts = {}) {
   if (!res.ok) { toast(data.error || 'خطا رخ داد'); throw new Error(data.error || 'error'); }
   return data;
 }
+
+/* ================= جلوگیری از دوبار زدن سریع دکمه‌ها =================
+   قبلا اگه رو یه دکمه (خرید، تایید، ارتقا و...) پشت‌سرهم دوبار می‌زدی، دو تا
+   درخواست هم‌زمان می‌رفت سمت سرور و بعضی‌وقتا نتیجه‌ش قفل‌شدن/خطا رو خود دکمه بود.
+   این گارد سراسری، تپ دوم رو تا مدت کوتاهی نادیده می‌گیره — بدون اینکه دکمه رو
+   واقعا disable کنه (پس منطق‌های دیگه‌ای که خودشون disabled رو کنترل می‌کنن خراب نمی‌شن). */
+const CLICK_GUARD_MS = 900;
+let clickGuardEl = null, clickGuardTime = 0;
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[onclick]');
+  if (!el) return;
+  const now = Date.now();
+  if (el === clickGuardEl && (now - clickGuardTime) < CLICK_GUARD_MS) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return;
+  }
+  clickGuardEl = el;
+  clickGuardTime = now;
+}, true);
 async function uploadImage(file) {
   const fd = new FormData();
   fd.append('image', file);
@@ -870,6 +900,8 @@ function showPage(name) {
   document.querySelectorAll('.navitem').forEach(b => b.classList.toggle('active', b.dataset.page === name));
   document.getElementById('headerTitle').textContent = PAGE_TITLES[name] || 'Lando Gifts';
   document.getElementById('headerBackBtn').style.display = (name === 'tasks' || name === 'info') ? 'flex' : 'none';
+  // اگه داریم می‌ریم رو یه صفحهٔ اصلی (نه تسک‌ها/اطلاعات که خودشون زیرصفحه‌ن)، همینجا رو به‌عنوان «قبل از زیرصفحه» ذخیره کن
+  if (name !== 'tasks' && name !== 'info') PAGE_BEFORE_SUBPAGE = name;
   CURRENT_PAGE = name;
   window.scrollTo(0, 0);
   if (name === 'shop') loadShop();
@@ -917,7 +949,7 @@ function showMView(name) {
 function headerBack() {
   if (CURRENT_PAGE === 'games') showGView('hub');
   else if (CURRENT_PAGE === 'more') showMView('hub');
-  else if (CURRENT_PAGE === 'tasks' || CURRENT_PAGE === 'info') showPage('more');
+  else if (CURRENT_PAGE === 'tasks' || CURRENT_PAGE === 'info') showPage(PAGE_BEFORE_SUBPAGE || 'more');
   else showPage('games');
 }
 
@@ -1342,14 +1374,12 @@ async function loadGame() {
   await loadMyCards(); await loadMutationGroups(); await loadGameLeaderboard(); await loadCardTasks(); await loadGameHistory();
 }
 async function buyGameCard(id) { await api('/api/game/buy-card', { method: 'POST', body: JSON.stringify({ cardId: id }) }); toast('کارت خریداری شد ✅'); loadMe(); loadMyCards(); loadMutationGroups(); }
-let SAC_TARGET = null, SAC_SACRIFICE = null;
 let MY_CARDS_CACHE = [];
 async function loadMyCards() {
   const mine = await api('/api/game/my-cards');
   MY_CARDS_CACHE = mine;
   SELECTED_DECK = SELECTED_DECK.filter(id => mine.some(c => c.id === id));
-  if (SAC_TARGET && !mine.some(c => c.id === SAC_TARGET)) SAC_TARGET = null;
-  if (SAC_SACRIFICE && !mine.some(c => c.id === SAC_SACRIFICE)) SAC_SACRIFICE = null;
+  if (UPGRADE_TARGET && !mine.some(c => c.id === UPGRADE_TARGET)) closeUpgradePanel();
   document.getElementById('gameMyCards').innerHTML = mine.length ? `<div class="game-card-grid">${mine.map((c, i) => `
     <div class="game-card" style="--rc:${c.rarity_color || 'var(--border)'};" ${staggerStyle(i)}>
       <div class="gcimgwrap">${c.image ? `<img src="${c.image}">` : ''}</div>
@@ -1357,14 +1387,11 @@ async function loadMyCards() {
         <div class="row"><b style="font-size:12.5px;">${c.name}</b></div>
         <div class="row" style="margin-top:2px;">${rarityBadge(c.rarity_label, c.rarity_color)}<span class="tag">${c.power}⚡</span></div>
         <div class="muted" style="font-size:11px;margin-top:2px;">سطح ${c.level}</div>
-        <div style="display:flex;gap:5px;margin-top:8px;">
-          <button class="btn ${SAC_TARGET === c.id ? 'gold' : 'secondary'}" style="font-size:11px;padding:8px 4px;" onclick="pickSacTarget(${c.id})">${SAC_TARGET === c.id ? '✓ هدف' : 'هدف تقویت'}</button>
-          <button class="btn ${SAC_SACRIFICE === c.id ? 'danger' : 'secondary'}" style="font-size:11px;padding:8px 4px;" onclick="pickSacSacrifice(${c.id})">${SAC_SACRIFICE === c.id ? '✓ قربانی' : 'قربانی کن'}</button>
-        </div>
+        <button class="btn secondary" style="font-size:11px;padding:8px 4px;margin-top:8px;width:100%;" onclick="openUpgradePanel(${c.id})">💪 ارتقاء</button>
       </div>
     </div>`).join('')}</div>` : 'هنوز کارتی نداری، از فروشگاه بخر.';
-  renderSacrificeBar();
   renderBattleDeckPicker(mine);
+  if (UPGRADE_TARGET) renderUpgradePanel();
 }
 function renderBattleDeckPicker(mine) {
   const el = document.getElementById('battleDeckPicker');
@@ -1384,17 +1411,40 @@ function toggleDeck(id, checked) {
   if (checked) SELECTED_DECK.push(id); else SELECTED_DECK = SELECTED_DECK.filter(x => x !== id);
   renderBattleDeckPicker(MY_CARDS_CACHE);
 }
-function pickSacTarget(id) { SAC_TARGET = SAC_TARGET === id ? null : id; loadMyCards(); }
-function pickSacSacrifice(id) { SAC_SACRIFICE = SAC_SACRIFICE === id ? null : id; loadMyCards(); }
-function renderSacrificeBar() {
-  const bar = document.getElementById('sacrificeBar');
-  bar.style.display = (SAC_TARGET && SAC_SACRIFICE) ? 'block' : 'none';
+let UPGRADE_TARGET = null, UPGRADE_SELECTED = [];
+function openUpgradePanel(id) {
+  UPGRADE_TARGET = id;
+  UPGRADE_SELECTED = [];
+  renderUpgradePanel();
+  document.getElementById('upgradePanel').style.display = 'block';
 }
-async function doSacrifice() {
-  if (!SAC_TARGET || !SAC_SACRIFICE) return;
-  const r = await api('/api/game/sacrifice', { method: 'POST', body: JSON.stringify({ targetUserCardId: SAC_TARGET, sacrificeUserCardId: SAC_SACRIFICE }) });
-  toast(`تقویت شد! +${r.transferAmount} قدرت 💪`);
-  SAC_TARGET = null; SAC_SACRIFICE = null;
+function closeUpgradePanel() {
+  document.getElementById('upgradePanel').style.display = 'none';
+  UPGRADE_TARGET = null;
+  UPGRADE_SELECTED = [];
+}
+function toggleUpgradeSelect(id) {
+  UPGRADE_SELECTED = UPGRADE_SELECTED.includes(id) ? UPGRADE_SELECTED.filter(x => x !== id) : [...UPGRADE_SELECTED, id];
+  renderUpgradePanel();
+}
+function renderUpgradePanel() {
+  const target = MY_CARDS_CACHE.find(c => c.id === UPGRADE_TARGET);
+  if (!target) { closeUpgradePanel(); return; }
+  document.getElementById('upgradeTargetInfo').innerHTML = `کارت هدف: <b>${target.name}</b> — سطح ${target.level} — قدرت فعلی <b>${target.power}⚡</b>`;
+  const others = MY_CARDS_CACHE.filter(c => c.id !== UPGRADE_TARGET);
+  document.getElementById('upgradeSacrificeList').innerHTML = others.length ? others.map(c => `
+    <div class="mini-card ${UPGRADE_SELECTED.includes(c.id) ? 'gold' : ''}" style="cursor:pointer;${UPGRADE_SELECTED.includes(c.id) ? 'border:2px solid var(--gold);' : ''}" onclick="toggleUpgradeSelect(${c.id})">
+      <div class="ic">${UPGRADE_SELECTED.includes(c.id) ? '✅' : '🎴'}</div>
+      <div class="t">${c.name}</div>
+      <div class="s">Lv${c.level} · ${c.power}⚡</div>
+    </div>`).join('') : '<p class="muted">کارت دیگه‌ای برای قربانی‌کردن نداری.</p>';
+}
+async function confirmUpgrade() {
+  if (!UPGRADE_TARGET || !UPGRADE_SELECTED.length) return toast('حداقل یه کارت برای قربانی انتخاب کن');
+  const targetId = UPGRADE_TARGET;
+  const r = await api('/api/game/sacrifice', { method: 'POST', body: JSON.stringify({ targetUserCardId: targetId, sacrificeUserCardIds: UPGRADE_SELECTED }) });
+  toast(`ارتقا موفق! +${r.transferAmount} قدرت 💪${r.skippedCount ? ` (${r.skippedCount} کارت به سقف قدرت خورد و مصرف نشد)` : ''}`);
+  closeUpgradePanel();
   loadMe(); loadMyCards(); loadMutationGroups();
 }
 async function loadMutationGroups() {
