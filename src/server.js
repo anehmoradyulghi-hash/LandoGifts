@@ -9,7 +9,7 @@ import {
   createStarsInvoiceLink, answerPreCheckoutQuery,
 } from './telegram.js';
 import db, {
-  getOrCreateUser, getUser, adjustToman, isBanned, getLedger, payReferralBonus, getReferralInfo,
+  getOrCreateUser, getUser, adjustToman, isBanned, getLedger, payReferralBonus, getReferralInfo, getReferralSettings,
   listCurrencies, getCurrency, getWalletBalances, getCurrencyBalance, adjustCurrencyBalance,
   createTomanTopup, createTomanWithdrawal,
   createCurrencyRequest,
@@ -23,7 +23,7 @@ import db, {
   createZarinpalPayment, getZarinpalPayment, markZarinpalPaymentStatus,
 } from './db.js';
 import {
-  listGameCards, getUserCards, buyGameCard, sacrificeCard, getMutationGroups, mutateCards, getGameCard,
+  listGameCards, getUserCards, buyGameCard, sacrificeCards, getMutationGroups, mutateCards, getGameCard,
   getGameConfig, getPlaysRemaining, getExtraPlays, buyExtraPlays,
   joinQueue, getQueueStatus, cancelQueue, getMatchHistory,
   getLeaderboard, getMyRank, getUserLeaderboardRow, listLeaderboardPrizes, checkAndAutoResetLeaderboard,
@@ -110,7 +110,7 @@ app.get('/api/config', ah(async (req, res) => {
     cardNumber: payment.cardNumber || null,
     cardOwner: payment.cardOwner || null,
     zarinpalEnabled: !!payment.zarinpalMerchantId,
-    referralPercent: Number(process.env.REFERRAL_PERCENT || 5),
+    referralPercent: getReferralSettings().percent,
     giftMarketFeePercent: Number(process.env.GIFT_MARKET_FEE_PERCENT || 5),
     swapFeePercent: Number(process.env.SWAP_FEE_PERCENT || 1),
     supportUsername: getSupportContact(),
@@ -394,7 +394,7 @@ app.post('/api/checkout', requireTelegramAuth, (req, res) => {
 
   adjustToman(user.tg_id, -total, `خرید «${product.title}»`);
   createOrder(user.tg_id, product.id, q, total, note || null);
-  payReferralBonus(user.tg_id, total, Number(process.env.REFERRAL_PERCENT || 5));
+  payReferralBonus(user.tg_id, total, getReferralSettings().percent);
   addClanPurchaseScore(user.tg_id, total);
   addSeasonXp(user.tg_id, getSeasonConfig().xp_per_purchase);
   addUserXp(user.tg_id, Math.floor(total / 1000) * getRankConfig().xp_per_1k_purchase);
@@ -821,7 +821,11 @@ app.post('/api/game/buy-card', requireTelegramAuth, (req, res) => {
 
 app.post('/api/game/sacrifice', requireTelegramAuth, (req, res) => {
   try {
-    const result = sacrificeCard(req.dbUser.tg_id, Number(req.body.targetUserCardId), Number(req.body.sacrificeUserCardId));
+    // برای سازگاری با کلاینت‌های قدیمی، هم sacrificeUserCardIds (آرایه) و هم sacrificeUserCardId (تکی) رو قبول می‌کنیم
+    const ids = Array.isArray(req.body.sacrificeUserCardIds)
+      ? req.body.sacrificeUserCardIds
+      : (req.body.sacrificeUserCardId != null ? [req.body.sacrificeUserCardId] : []);
+    const result = sacrificeCards(req.dbUser.tg_id, Number(req.body.targetUserCardId), ids);
     res.json({ ok: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

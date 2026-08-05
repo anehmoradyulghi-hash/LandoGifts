@@ -78,13 +78,15 @@ const seedLevelPower = db.prepare('INSERT OR IGNORE INTO card_level_power (level
 export function getCardLevelPowerConfig() {
   return db.prepare('SELECT * FROM card_level_power ORDER BY level ASC').all();
 }
-export function setCardLevelPower(level, minPower, maxPower) {
-  const mn = Number(minPower), mx = Number(maxPower);
-  if (mn > mx) throw new Error('حداقل نمی‌تونه از حداکثر بیشتر باشه');
+// دیگه بازه‌ای نیست — فقط یه عدد «حداکثر قدرت قابل ارتقا» برای هر سطح تنظیم می‌شه.
+// (min_power هم تو دیتابیس برابر همون مقدار ذخیره می‌شه، صرفا برای سازگاری با کدهای قدیمی/کارت‌های اختصاصی)
+export function setCardLevelPower(level, maxPower) {
+  const mx = Number(maxPower);
+  if (!Number.isFinite(mx) || mx <= 0) throw new Error('عدد حداکثر قدرت نامعتبره');
   db.prepare(`
     INSERT INTO card_level_power (level, min_power, max_power) VALUES (?,?,?)
     ON CONFLICT(level) DO UPDATE SET min_power = excluded.min_power, max_power = excluded.max_power
-  `).run(level, mn, mx);
+  `).run(level, mx, mx);
 }
 function rollPowerForLevel(level) {
   const range = db.prepare('SELECT * FROM card_level_power WHERE level = ?').get(level);
@@ -304,7 +306,12 @@ export function upsertGameCard(c) {
 }
 export function deleteGameCard(id) { db.prepare('DELETE FROM game_cards WHERE id = ?').run(id); }
 
+// قدرت «نمایشی» یه سطح — همیشه از تنظیمات پنل ادمین (card_level_power) میاد.
+// فقط اگه ادمین هنوز برای این سطح چیزی ثبت نکرده باشه (مثلا سطح‌های فراتر از ۷ که تازه اضافه شدن)،
+// به‌عنوان آخرین راه‌حل از فرمول قدیمی استفاده می‌شه تا حداقل عدد منطقی‌ای نشون داده بشه.
 export function computeCardPower(basePower, level) {
+  const range = db.prepare('SELECT * FROM card_level_power WHERE level = ?').get(level);
+  if (range) return range.max_power;
   return Math.round(basePower * (1 + 0.15 * (level - 1)));
 }
 function computeTotalPower(row) {
@@ -360,36 +367,54 @@ export function buyGameCard(tgId, cardId) {
   return id;
 }
 
-// روش دوم ارتقا — «تقویت»: یه کارت (هر کارتی، فرقی نداره اسم/سطحش چیه) رو کامل نابود می‌کنی
-// تا بخشی از قدرتش (پیش‌فرض ۲۰٪) به یه کارت هدف اضافه بشه. سطح و عکس کارت هدف عوض نمی‌شه،
-// فقط عدد قدرتش بالا می‌ره. این کاملا از «جهش» جداست.
-export function sacrificeCard(tgId, targetUserCardId, sacrificeUserCardId) {
-  if (targetUserCardId === sacrificeUserCardId) throw new Error('نمی‌تونی یه کارت رو با خودش تقویت کنی');
+// روش دوم ارتقا — «ارتقا»: یک یا چند کارت (هر کارتی، فرقی نداره اسم/سطحش چیه) رو کامل نابود می‌کنی
+// تا بخشی از قدرت هرکدوم (پیش‌فرض ۲۰٪) به یه کارت هدف اضافه بشه. سطح و عکس کارت هدف عوض نمی‌شه،
+// فقط عدد قدرتش بالا می‌ره. این کاملا از «جهش» جداست. هزینهٔ ثابت فقط یه‌بار برای کل عملیات گرفته می‌شه،
+// فارغ از اینکه چندتا کارت قربانی می‌شن.
+export function sacrificeCards(tgId, targetUserCardId, sacrificeUserCardIds) {
+  const ids = [...new Set((sacrificeUserCardIds || []).map(Number))].filter(id => id && id !== Number(targetUserCardId));
+  if (!ids.length) throw new Error('حداقل یه کارت برای قربانی‌کردن انتخاب کن');
+
   const target = getUserCard(tgId, targetUserCardId);
-  const sac = getUserCard(tgId, sacrificeUserCardId);
-  if (!target || !sac) throw new Error('کارت پیدا نشد');
+  if (!target) throw new Error('کارت هدف پیدا نشد');
 
   const cfg = getGameConfig();
   const fee = cfg.sacrifice_fee_toman || 0;
   const user = getUser(tgId);
-  if (fee > 0 && (!user || user.balance_toman < fee)) throw new Error(`برای تقویت ${fee.toLocaleString()} تومان لازمه`);
+  if (fee > 0 && (!user || user.balance_toman < fee)) throw new Error(`برای ارتقا ${fee.toLocaleString()} تومان لازمه`);
 
-  let transferAmount = Math.round(sac.power * ((cfg.sacrifice_transfer_percent || 20) / 100));
   const targetCard = getGameCard(target.card_id);
   const powerCap = getPowerCapForCard(targetCard, target.level);
-  if (powerCap != null) {
-    const room = powerCap - target.power;
-    if (room <= 0) throw new Error('این کارت به حداکثر قدرت ممکنش رسیده، دیگه قابل تقویت نیست');
-    transferAmount = Math.min(transferAmount, room);
+  let room = powerCap != null ? powerCap - target.power : Infinity;
+  if (room <= 0) throw new Error('این کارت به حداکثر قدرت ممکنش رسیده، دیگه قابل ارتقا نیست');
+
+  const sacs = ids.map(id => getUserCard(tgId, id)).filter(Boolean);
+  if (!sacs.length) throw new Error('کارت‌های انتخابی پیدا نشدن');
+
+  const percent = cfg.sacrifice_transfer_percent || 20;
+  let transferAmount = 0;
+  const usedIds = [];
+  for (const sac of sacs) {
+    if (room <= 0) break;
+    const amount = Math.min(Math.round(sac.power * (percent / 100)), room);
+    if (amount <= 0) continue;
+    transferAmount += amount;
+    room -= amount;
+    usedIds.push(sac.id);
   }
+  if (!usedIds.length) throw new Error('این کارت به حداکثر قدرت ممکنش رسیده، دیگه قابل ارتقا نیست');
 
   const tx = db.transaction(() => {
-    if (fee > 0) adjustToman(tgId, -fee, `هزینه تقویت کارت «${target.name}»`);
+    if (fee > 0) adjustToman(tgId, -fee, `هزینه ارتقای کارت «${target.name}»`);
     db.prepare('UPDATE user_cards SET bonus_power = bonus_power + ? WHERE id = ?').run(transferAmount, targetUserCardId);
-    db.prepare('DELETE FROM user_cards WHERE id = ?').run(sacrificeUserCardId);
+    const delOne = db.prepare('DELETE FROM user_cards WHERE id = ?');
+    for (const id of usedIds) delOne.run(id);
   });
   tx();
-  return { transferAmount, newPower: target.power + transferAmount, fee };
+  return {
+    transferAmount, newPower: target.power + transferAmount, fee,
+    usedCount: usedIds.length, skippedCount: sacs.length - usedIds.length,
+  };
 }
 
 // گروه‌بندی کارت‌های کاملا یکسان (همون کارت، همون سطح) که حداقل دوتاشون هست —

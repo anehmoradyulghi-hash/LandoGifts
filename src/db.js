@@ -280,6 +280,7 @@ export function getOrCreateUser(tgUser, startParam) {
     if (existing) return existing;
     throw e;
   }
+  if (referredBy) payReferralSignupBonus(referredBy, tgUser.id);
   return getUser(tgUser.id);
 }
 
@@ -336,6 +337,24 @@ export function payReferralBonus(tgId, purchaseAmountToman, percent) {
   const bonus = Math.floor((purchaseAmountToman * percent) / 100);
   if (bonus <= 0) return;
   adjustToman(user.referred_by, bonus, `پورسانت رفرال از خرید کاربر ${tgId}`);
+}
+
+// تنظیمات رفرال — کاملا از پنل ادمین قابل تغییره (دیگه فقط .env نیست)
+export function getReferralSettings() {
+  return {
+    percent: Number(getSetting('referral_percent', process.env.REFERRAL_PERCENT || '5')),
+    signupBonus: Number(getSetting('referral_signup_bonus', '0')),
+  };
+}
+export function setReferralSettings({ percent, signupBonus }) {
+  setSetting('referral_percent', String(Number(percent) || 0));
+  setSetting('referral_signup_bonus', String(Number(signupBonus) || 0));
+}
+// پاداش ثابت یه‌بارهٔ رفرال — همون لحظه‌ای که کاربر جدید از لینک دعوت وارد می‌شه، به دعوت‌کننده تعلق می‌گیره
+export function payReferralSignupBonus(referrerTgId, newUserTgId) {
+  const bonus = getReferralSettings().signupBonus;
+  if (!bonus || bonus <= 0) return;
+  adjustToman(referrerTgId, bonus, `پاداش دعوت کاربر جدید (${newUserTgId})`);
 }
 
 export function getReferralInfo(tgId) {

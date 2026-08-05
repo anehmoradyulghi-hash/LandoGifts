@@ -17,6 +17,7 @@ import {
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
   getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact, getInfoPage, setInfoPage,
+  getReferralSettings, setReferralSettings,
   listGiftCategories, upsertGiftCategory, deleteGiftCategory,
   getMessageSettings, setMessageSettings, getAllUserIds,
 } from './db.js';
@@ -151,6 +152,13 @@ router.post('/payment-settings', (req, res) => {
 /* ---------- آیدی پشتیبانی (به‌جای تیکت داخلی) ---------- */
 router.get('/support-contact', (req, res) => res.json({ username: getSupportContact() }));
 router.post('/support-contact', (req, res) => { setSupportContact(req.body.username); res.json({ ok: true }); });
+
+/* ---------- پاداش رفرال (درصد پورسانت خرید + پاداش ثابت عضویت) ---------- */
+router.get('/referral-settings', (req, res) => res.json(getReferralSettings()));
+router.post('/referral-settings', (req, res) => {
+  setReferralSettings({ percent: req.body.percent, signupBonus: req.body.signupBonus });
+  res.json({ ok: true });
+});
 
 /* ---------- صفحات اطلاعاتی (راهنما/سوالات متداول/قوانین) ---------- */
 router.get('/info-pages', (req, res) => res.json({
@@ -358,10 +366,11 @@ router.post('/game/cards', (req, res) => {
   const { id, name, image_url, base_power, price_toman, active, category_id, level_images, edition, max_supply, instant_level, fixed_power, min_power, max_power } = req.body;
   if (!name) return res.status(400).json({ error: 'اسم کارت لازمه' });
   if (instant_level) {
+    // این کارت اختصاصیه، پس فقط سقف همون سطح رو رعایت می‌کنه (نه اینکه دقیقا برابرش باشه)
     const range = getCardLevelPowerConfig().find(r => r.level === Number(instant_level));
     const fp = Number(fixed_power);
-    if (range && (fp < range.min_power || fp > range.max_power)) {
-      return res.status(400).json({ error: `قدرت باید بین ${range.min_power} تا ${range.max_power} باشه (بازهٔ مجاز سطح ${instant_level})` });
+    if (range && fp > range.max_power) {
+      return res.status(400).json({ error: `قدرت نباید از ${range.max_power} بیشتر باشه (سقف مجاز سطح ${instant_level})` });
     }
   }
   const savedId = upsertGameCard({
@@ -389,10 +398,12 @@ router.post('/game/cards/:id/grant', (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-/* ---------- بازهٔ قدرت هر سطح (۱ تا ۷) ---------- */
+/* ---------- حداکثر قدرت قابل ارتقا هر سطح (۱ تا ۷) ---------- */
 router.get('/game/level-power', (req, res) => res.json(getCardLevelPowerConfig()));
 router.post('/game/level-power', (req, res) => {
-  try { setCardLevelPower(Number(req.body.level), req.body.min_power, req.body.max_power); res.json({ ok: true }); }
+  // max_power اسم اصلیه؛ power هم برای سادگی کلاینت قبول می‌شه
+  const maxPower = req.body.max_power !== undefined ? req.body.max_power : req.body.power;
+  try { setCardLevelPower(Number(req.body.level), maxPower); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
