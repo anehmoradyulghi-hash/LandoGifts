@@ -124,6 +124,17 @@
         <button class="btn" onclick="saveSupportContact()">ذخیره</button>
       </div>
       <div class="card">
+        <h3>🤝 پاداش رفرال (دعوت دوستان)</h3>
+        <p class="muted">هر کاربر یه لینک دعوت اختصاصی داره. اینجا مشخص کن دعوت‌کننده چقدر پاداش بگیره.</p>
+        <div class="row2">
+          <div><label>درصد پورسانت از هر خرید زیرمجموعه</label><input type="number" id="refPercent" min="0" max="100"></div>
+          <div><label>پاداش ثابت به‌ازای هر عضو جدید (تومان)</label><input type="number" id="refSignupBonus" min="0"></div>
+        </div>
+        <p class="muted">پورسانت از هر خریدی که زیرمجموعه انجام بده به دعوت‌کننده تعلق می‌گیره. پاداش ثابت هم یه‌بار، همون لحظه‌ای که یه کاربر جدید از لینک دعوت وارد مینی‌اپ بشه، به دعوت‌کننده داده می‌شه (خالی/صفر = غیرفعال).</p>
+        <button class="btn" onclick="saveReferralSettings()">ذخیره</button>
+        <p class="muted" id="referralSavedMsg" style="display:none;color:#7ee787;">ذخیره شد ✅</p>
+      </div>
+      <div class="card">
         <h3>📖 صفحات اطلاعاتی مینی‌اپ</h3>
         <p class="muted">متن این سه صفحه از تب «بیشتر ‹ اطلاعات» تو مینی‌اپ به کاربر نشون داده می‌شه.</p>
         <label>راهنمای استفاده</label>
@@ -224,8 +235,8 @@
 
     <section class="tab" id="tab-gamecards">
       <div class="card">
-        <h3>بازهٔ قدرت هر سطح (۱ تا ۷)</h3>
-        <p class="muted">وقتی کارتی ساخته می‌شه یا جهش پیدا می‌کنه، قدرتش تصادفی از همین بازه انتخاب می‌شه (به‌جای فرمول ثابت).</p>
+        <h3>حداکثر قدرت قابل ارتقا هر سطح (۱ تا ۷)</h3>
+        <p class="muted">هر سطح یه سقف قدرت مشخص داره (نه بازه). وقتی کارتی ساخته می‌شه، جهش پیدا می‌کنه یا با ارتقا تقویت می‌شه، قدرتش هیچ‌وقت از سقف همون سطح رد نمی‌شه.</p>
         <div id="levelPowerTable"></div>
       </div>
       <div class="card">
@@ -605,6 +616,19 @@
         <button class="btn" onclick="saveAvatar()">ذخیره</button>
       </div>
       <div id="avatarsTable"></div>
+      <div class="card">
+        <h3>افزودن / ویرایش عنوان رنک</h3>
+        <p class="muted">هر عنوان از یه «سطح» به بعد فعال می‌شه. مثلا اگه لول شروع رو ۱۰ بذاری، از لول ۱۰ به بعد (تا قبل از عنوان بعدی) همین عنوان نشون داده می‌شه.</p>
+        <input type="hidden" id="rtOldThreshold">
+        <div class="row2">
+          <div><label>از لول</label><input type="number" id="rtThreshold" min="1"></div>
+          <div><label>ایموجی</label><input id="rtIcon" placeholder="مثلا 🔥"></div>
+        </div>
+        <label>عنوان</label><input id="rtTitle" placeholder="مثلا جنگجو">
+        <button class="btn" onclick="saveRankTitle()">ذخیره</button>
+        <button class="btn secondary" onclick="resetRankTitleForm()">فرم جدید</button>
+      </div>
+      <div id="rankTitlesTable"></div>
     </section>
 
     <section class="tab" id="tab-quests">
@@ -869,6 +893,18 @@ async function loadPaymentSettings() {
   document.getElementById('infoGuide').value = info.guide || '';
   document.getElementById('infoFaq').value = info.faq || '';
   document.getElementById('infoRules').value = info.rules || '';
+  const ref = await api('/referral-settings');
+  document.getElementById('refPercent').value = ref.percent;
+  document.getElementById('refSignupBonus').value = ref.signupBonus;
+}
+async function saveReferralSettings() {
+  await api('/referral-settings', { method: 'POST', body: JSON.stringify({
+    percent: document.getElementById('refPercent').value,
+    signupBonus: document.getElementById('refSignupBonus').value,
+  }) });
+  const msg = document.getElementById('referralSavedMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
 }
 async function saveSupportContact() {
   await api('/support-contact', { method: 'POST', body: JSON.stringify({ username: document.getElementById('supportUsername').value }) });
@@ -1237,23 +1273,22 @@ async function saveGameCard() {
 }
 async function deleteGameCard(id) { if (confirm('حذف بشه؟')) { await api(`/game/cards/${id}`, { method: 'DELETE' }); loadGameCards(); } }
 
-/* ---------- بازهٔ قدرت هر سطح ---------- */
+/* ---------- حداکثر قدرت هر سطح ---------- */
 async function loadLevelPowerTable() {
   const rows = await api('/game/level-power');
   document.getElementById('levelPowerTable').innerHTML = rows.map(r => `
     <div class="row2" style="align-items:center;">
       <div><label>سطح ${r.level}</label></div>
       <div style="display:flex;gap:6px;">
-        <input type="number" id="lp-min-${r.level}" value="${r.min_power}" placeholder="حداقل">
-        <input type="number" id="lp-max-${r.level}" value="${r.max_power}" placeholder="حداکثر">
+        <input type="number" id="lp-max-${r.level}" value="${r.max_power}" placeholder="حداکثر قدرت">
       </div>
-    </div>`).join('') + `<button class="btn secondary" onclick="saveLevelPowerTable()">ذخیرهٔ بازه‌ها</button>`;
+    </div>`).join('') + `<button class="btn secondary" onclick="saveLevelPowerTable()">ذخیرهٔ سقف‌ها</button>`;
 }
 async function saveLevelPowerTable() {
   for (let level = 1; level <= 7; level++) {
-    const minEl = document.getElementById(`lp-min-${level}`), maxEl = document.getElementById(`lp-max-${level}`);
-    if (!minEl) continue;
-    await api('/game/level-power', { method: 'POST', body: JSON.stringify({ level, min_power: minEl.value, max_power: maxEl.value }) });
+    const maxEl = document.getElementById(`lp-max-${level}`);
+    if (!maxEl) continue;
+    await api('/game/level-power', { method: 'POST', body: JSON.stringify({ level, max_power: maxEl.value }) });
   }
   alert('ذخیره شد');
 }
@@ -1284,8 +1319,8 @@ function checkScPowerRange() {
   const hint = document.getElementById('scPowerRangeHint');
   if (!range) { hint.textContent = ''; return; }
   const power = Number(document.getElementById('scPower').value);
-  hint.textContent = `بازهٔ مجاز سطح ${level}: ${range.min_power} تا ${range.max_power}`;
-  hint.style.color = (power && (power < range.min_power || power > range.max_power)) ? 'var(--danger)' : 'var(--muted)';
+  hint.textContent = `سقف مجاز سطح ${level}: حداکثر ${range.max_power}`;
+  hint.style.color = (power && power > range.max_power) ? 'var(--danger)' : 'var(--muted)';
 }
 function editSpecialCard(c) {
   document.getElementById('scId').value = c.id;
@@ -1305,8 +1340,8 @@ async function saveSpecialCard() {
   const level = Number(document.getElementById('scLevel').value);
   const power = Number(document.getElementById('scPower').value);
   const range = SC_LEVEL_POWER.find(r => r.level === level);
-  if (range && (power < range.min_power || power > range.max_power)) {
-    alert(`قدرت باید بین ${range.min_power} تا ${range.max_power} باشه (بازهٔ مجاز سطح ${level})`);
+  if (range && power > range.max_power) {
+    alert(`قدرت نباید از ${range.max_power} بیشتر باشه (سقف مجاز سطح ${level})`);
     return;
   }
   await api('/game/cards', { method: 'POST', body: JSON.stringify({
@@ -1777,6 +1812,53 @@ async function loadRankAdmin() {
       <td><button class="btn secondary" onclick='editAvatar(${JSON.stringify(a)})'>ویرایش</button>
       <button class="btn danger" onclick="deleteAvatarUI(${a.id})">حذف</button></td></tr>`).join('')}
     </table>` : '<p class="muted">هنوز آواتاری ثبت نشده.</p>';
+
+  await loadRankTitles();
+}
+/* ---------- عنوان‌های رنک ---------- */
+async function loadRankTitles() {
+  const rows = await api('/rank/titles');
+  document.getElementById('rankTitlesTable').innerHTML = rows.length ? `
+    <table><tr><th>از لول</th><th>ایموجی</th><th>عنوان</th><th>عملیات</th></tr>
+    ${rows.map(t => `<tr><td>${t.level_threshold}</td><td>${t.icon || ''}</td><td>${t.title}</td>
+      <td><button class="btn secondary" onclick='editRankTitle(${JSON.stringify(t)})'>ویرایش</button>
+      <button class="btn danger" onclick="deleteRankTitleUI(${t.level_threshold})">حذف</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">هنوز عنوانی ثبت نشده.</p>';
+}
+function editRankTitle(t) {
+  document.getElementById('rtOldThreshold').value = t.level_threshold;
+  document.getElementById('rtThreshold').value = t.level_threshold;
+  document.getElementById('rtIcon').value = t.icon || '';
+  document.getElementById('rtTitle').value = t.title;
+}
+function resetRankTitleForm() {
+  document.getElementById('rtOldThreshold').value = '';
+  document.getElementById('rtThreshold').value = '';
+  document.getElementById('rtIcon').value = '';
+  document.getElementById('rtTitle').value = '';
+}
+async function saveRankTitle() {
+  const threshold = Number(document.getElementById('rtThreshold').value);
+  const title = document.getElementById('rtTitle').value.trim();
+  if (!threshold || threshold < 1) return alert('لول شروع رو درست وارد کن');
+  if (!title) return alert('عنوان رو وارد کن');
+  const oldThreshold = Number(document.getElementById('rtOldThreshold').value) || null;
+  // اگه لول شروع عوض شده، اول عنوان قدیمی رو حذف کن تا رکورد تکراری نمونه
+  if (oldThreshold && oldThreshold !== threshold) {
+    await api(`/rank/titles/${oldThreshold}`, { method: 'DELETE' });
+  }
+  await api('/rank/titles', { method: 'POST', body: JSON.stringify({
+    level_threshold: threshold,
+    title,
+    icon: document.getElementById('rtIcon').value.trim(),
+  }) });
+  resetRankTitleForm();
+  loadRankTitles();
+}
+async function deleteRankTitleUI(threshold) {
+  if (!confirm('این عنوان حذف بشه؟')) return;
+  await api(`/rank/titles/${threshold}`, { method: 'DELETE' });
+  loadRankTitles();
 }
 async function saveRankConfig() {
   await api('/rank/config', { method: 'POST', body: JSON.stringify({
