@@ -1,83 +1,72 @@
 # 🎁 Lando Gifts
 
-A Telegram mini app for a gift shop and marketplace, with a Lando Coin (LNDC) wallet plus a multi-currency wallet. **Everything is manual and admin-controlled** —
-no automatic payment gateway and no external pricing API is connected:
+مینی‌اپ تلگرامی فروشگاه و بازار گیفت، با کیف‌پول تومانی و ارزی. **همه‌چیز دستی و توسط ادمین کنترل می‌شه** —
+هیچ درگاه پرداخت خودکار و هیچ API قیمت بیرونی وصل نیست:
 
-- Wallet top-ups only via card-to-card transfer + manual admin approval
-- Withdrawals only with manual admin approval
-- Digital currency rates (USDT / TON / anything else you add) are entered manually by the admin from the panel
-- Digital currency deposits and withdrawals also go through manual admin approval (the user submits a transaction hash/address, the admin checks and approves it)
+- شارژ کیف‌پول فقط با کارت‌به‌کارت + تایید دستی ادمین
+- برداشت وجه فقط با تایید دستی ادمین
+- نرخ ارزهای دیجیتال (USDT / TON / هرچی اضافه کنی) رو ادمین از پنل دستی وارد می‌کنه
+- واریز و برداشت ارز دیجیتال هم با تایید دستی ادمین انجام می‌شه (کاربر هش تراکنش/آدرس می‌ده، ادمین چک و تایید می‌کنه)
 
-## Features
+## قابلیت‌ها
 
-- 🛍 Product/gift shop with payment from the LNDC wallet
-- 💳 LNDC wallet + transaction history
-- 💱 Multi-currency wallet (manual) + LNDC⇄currency conversion at admin-set rates
-- 🎁 Consignment gift market between users (the seller posts a listing, the buyer's payment is held in escrow, the funds are released once gift receipt is confirmed)
-- 🎮 **Card game**: buy cards from the shop, paid upgrades or free merging (sacrificing a similar card), build a deck and enter the match queue (instant, fully automatic matchmaking), a leaderboard with configurable prizes and periodic resets, a daily play limit + extra game purchases, and card tasks (rewarded with a specific card)
-- 👥 Referral system with automatic commission from a referral's purchases
-- ✅ Manageable tasks (e.g. channel membership) with LNDC rewards
-- 🆘 In-app support tickets (chat with the admin)
-- 🔐 A simple admin panel (no framework, plain HTML/JS) for managing every section
+- 🛍 فروشگاه محصول/گیفت با پرداخت از کیف‌پول تومانی
+- 💳 کیف‌پول تومانی + تاریخچه تراکنش‌ها
+- 💱 کیف‌پول چند ارزی (دستی) + تبدیل تومان⇄ارز با نرخ ادمین
+- 🎁 بازار گیفت امانی بین کاربران (فروشنده آگهی می‌ده، خریدار پول رو امانت می‌ذاره، بعد از تایید دریافت گیفت پول آزاد میشه)
+- 🎮 **بازی کارتی**: خرید کارت از فروشگاه، ارتقای پولی یا ادغام رایگان (قربانی‌کردن یه کارت مشابه)، ساخت دسته و ورود به صف مسابقه (مچ‌سازی آنی و کاملا خودکار)، جدول امتیازات با جایزه‌های قابل‌تنظیم و ریست دوره‌ای، محدودیت بازی روزانه + خرید بازی اضافه، و تسک‌های کارتی (پاداششون یه کارت مشخصه)
+- 👥 سیستم رفرال با پورسانت خودکار از خرید زیرمجموعه
+- ✅ تسک‌های قابل مدیریت (مثلا عضویت در کانال) با پاداش تومانی
+- 🆘 تیکت پشتیبانی داخل مینی‌اپ (چت با ادمین)
+- 🔐 پنل ادمین ساده (بدون فریم‌ورک، فقط HTML/JS ساده) برای مدیریت همه بخش‌ها
 
-## Installation
+## نصب
 
 ```bash
 npm install
 cp .env.example .env
-# fill in .env (especially BOT_TOKEN, PUBLIC_URL, ADMIN_IDS, ADMIN_PANEL_PASSWORD, WEBHOOK_SECRET, DATABASE_URL, REDIS_URL)
-npm run migrate
+# مقادیر .env رو پر کن (خصوصا BOT_TOKEN, PUBLIC_URL, ADMIN_IDS, ADMIN_PANEL_PASSWORD, WEBHOOK_SECRET)
 npm start
 ```
 
-Migrating an existing deployment from the old SQLite database? See **[MIGRATION.md](./MIGRATION.md)**.
+می‌خوای رو گوشی خودت (Termux) با دامنه‌ی خودت و به‌صورت همیشه-روشن اجرا کنی؟
+راهنمای کامل قدم‌به‌قدم رو تو **[DEPLOY.md](./DEPLOY.md)** بخون (شامل pm2 برای ری‌استارت خودکار و Cloudflare Tunnel برای وصل کردن دامنه بدون نیاز به IP عمومی).
 
-Want to run it on your own phone (Termux) with your own domain, always on?
-Read the full step-by-step guide in **[DEPLOY.md](./DEPLOY.md)** (covers pm2 for auto-restart and Cloudflare Tunnel to connect a domain without needing a public IP).
+بعد از بالا اومدن سرور:
+- مینی‌اپ روی `PUBLIC_URL/miniapp`
+- پنل ادمین روی `PUBLIC_URL/admin`
 
-Once the server is up:
-- Mini app at `PUBLIC_URL/miniapp`
-- Admin panel at `PUBLIC_URL/admin`
+آدرس مینی‌اپ (`PUBLIC_URL/miniapp`) رو تو تنظیمات دکمه Menu Button ربات در BotFather هم ثبت کن.
 
-Also register the mini app URL (`PUBLIC_URL/miniapp`) as the bot's Menu Button in BotFather.
-
-## Project structure
+## ساختار پروژه
 
 ```
 src/
-  server.js      # mini app API routes + Telegram webhook
-  db.js          # core database layer (users, wallet, shop, gifts, tasks, tickets)
-  db-core.js     # PostgreSQL connection layer (async db.prepare().get/all/run shim)
-  redis.js       # Redis client (admin panel sessions)
-  game-db.js     # card game database layer (cards, queue/matches, leaderboard)
-  telegram.js    # Bot API helper + initData validation
-  admin-api.js   # admin panel API routes (password + session token)
+  server.js      # روت‌های API مینی‌اپ + وبهوک تلگرام
+  db.js          # لایه دیتابیس اصلی (SQLite / better-sqlite3)
+  game-db.js     # لایه دیتابیس بازی کارتی (کارت‌ها، صف/مچ، جدول امتیازات)
+  telegram.js    # هلپر تماس با Bot API + اعتبارسنجی initData
+  admin-api.js   # روت‌های API پنل ادمین (پسورد + توکن نشست)
 public/
-  index.html     # mini app frontend (vanilla JS, no framework)
+  index.html     # فرانت مینی‌اپ (وانیلا جی‌اس، بدون فریم‌ورک)
 admin/
-  index.html     # admin panel frontend (vanilla JS)
-migrations/      # PostgreSQL schema, one file per feature area
-scripts/
-  migrate.js                     # applies pending migrations
-  migrate-data-from-sqlite.js    # one-time data copy from an old SQLite deployment
-ecosystem.config.cjs  # pm2 config for auto-restart
-DEPLOY.md        # full deployment guide for Termux + a personal domain
-MIGRATION.md     # guide for migrating an existing SQLite deployment to PostgreSQL
+  index.html     # فرانت پنل ادمین (وانیلا جی‌اس)
+ecosystem.config.cjs  # تنظیمات pm2 برای ری‌استارت خودکار
+DEPLOY.md        # راهنمای کامل دیپلوی روی Termux + دامنه شخصی
 ```
 
-## About the database
+## نکته درباره دیتابیس
 
-This project uses PostgreSQL (via `pg`) for data and Redis for admin panel sessions. See [MIGRATION.md](./MIGRATION.md) for setup and for migrating data from an older SQLite-based deployment.
+از SQLite با `better-sqlite3` استفاده شده که فایلش تو پوشه `data/` ساخته میشه (تو gitignore هست).
+برای دیپلوی روی سرویس‌هایی مثل Railway/Render حتما یه volume دائمی برای پوشه `data/` و `uploads/` تنظیم کن، وگرنه با هر ریستارت خالی می‌شن.
 
-When deploying to a host like Railway/Render, make sure your PostgreSQL and Redis instances are persistent (managed services, not local containers that reset), and that the `uploads/` folder has a persistent volume — otherwise uploaded images are lost on every restart.
-
-## Pushing to GitHub
+## آپلود در گیت‌هاب
 
 ```bash
 git init
 git add .
 git commit -m "Lando Gifts - initial commit"
 git branch -M main
-git remote add origin <your GitHub repo URL>
+git remote add origin <آدرس ریپوی گیت‌هابت>
 git push -u origin main
 ```

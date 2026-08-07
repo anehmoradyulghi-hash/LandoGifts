@@ -1,67 +1,41 @@
-# 🚀 Deploying on Termux (phone) with your own domain
+# 🚀 راه‌اندازی روی Termux (گوشی) با دامنه‌ی خودت
 
-This guide assumes you want to run Lando Gifts directly on your Android phone, inside
-Termux, and have it reachable at your own domain (not a temporary link) — so it keeps
-working through phone restarts or brief internet drops.
+این راهنما فرض می‌کنه می‌خوای Lando Gifts رو مستقیم روی گوشی اندرویدت، داخل Termux،
+اجرا کنی و با دامنه خودت (نه یه لینک موقت) در دسترس باشه — طوری که با ریستارت گوشی
+یا قطعی لحظه‌ای اینترنت هم از کار نیفته.
 
-Important note: a phone usually doesn't have a public IP, so it can't be reached
-directly from outside. The standard free solution is to connect your domain to the
-server on your phone with **Cloudflare Tunnel**; no router port-forwarding needed.
+نکته مهم: گوشی معمولا IP عمومی نداره، پس نمی‌شه مستقیم از بیرون بهش وصل شد. راه‌حل
+استاندارد و رایگان همینه که با **Cloudflare Tunnel** دامنه‌ت رو به سرور روی گوشی
+وصل کنی؛ نیازی به باز کردن پورت روی روتر نیست.
 
-You'll also need a PostgreSQL database and a Redis instance — see step 2a below for the
-easiest way to get both without self-hosting them on the phone.
-
-## 1) Install prerequisites in Termux
+## ۱) نصب پیش‌نیازها در Termux
 
 ```bash
 pkg update && pkg upgrade -y
-pkg install -y nodejs-lts git postgresql-client redis
+pkg install -y nodejs-lts git python make clang pkg-config sqlite
 ```
 
-> `better-sqlite3` (used only by the one-time SQLite→Postgres data migration script, if
-> you're migrating an existing deployment) is a native module that needs compiling. If
-> you need it, also run `pkg install -y python make clang pkg-config` first, and if the
-> build fails, try `pkg install -y binutils-is-llvm` too. If you're starting fresh
-> (no old SQLite data to migrate), you can skip this entirely.
+> `better-sqlite3` یه ماژول نیتیوعه و موقع `npm install` کامپایل می‌شه؛ به همین خاطر
+> python/make/clang لازمه. اگه کامپایلش خطا داد، `pkg install -y binutils-is-llvm` رو هم امتحان کن.
 
-Keep Termux from being killed in the background:
+اجازه بده Termux پس‌زمینه نخوابه:
 
 ```bash
 termux-wake-lock
 ```
 
-## 2) Get the project and install dependencies
+## ۲) گرفتن پروژه و نصب دیپندنسی‌ها
 
 ```bash
 cd ~
-git clone <your GitHub repo URL>
+git clone <آدرس ریپوی گیت‌هابت>
 cd lando-gifts
 npm install
 cp .env.example .env
-nano .env   # fill in the values (explained below)
+nano .env   # مقادیر رو پر کن (پایین توضیح داده شده)
 ```
 
-## 2a) PostgreSQL and Redis
-
-The easiest option is a free/low-cost managed instance (Railway, Supabase, Neon, or
-similar for Postgres; Upstash or Railway for Redis) — copy the connection strings they
-give you into `DATABASE_URL` and `REDIS_URL` in `.env`. Managed hosting means you don't
-have to keep a database process alive on the phone itself, which is more reliable.
-
-If you'd rather self-host Redis on the phone:
-```bash
-redis-server --daemonize yes
-```
-
-Once `DATABASE_URL` is set, create the schema:
-```bash
-npm run migrate
-```
-
-Migrating data from an older SQLite-based deployment of this project? See
-[MIGRATION.md](./MIGRATION.md) for `npm run migrate:data`.
-
-## 3) Install pm2 (to keep the app running and auto-restart it if it crashes)
+## ۳) نصب pm2 (برای بالا موندن دائمی و ریستارت خودکار در صورت کرش)
 
 ```bash
 npm install -g pm2
@@ -69,108 +43,102 @@ npm run pm2:start
 pm2 save
 ```
 
-Use `pm2 logs lando-gifts` to watch live logs, and `pm2 restart lando-gifts` to restart it.
+با `pm2 logs lando-gifts` می‌تونی لاگ زنده رو ببینی، و با `pm2 restart lando-gifts` ریستارتش کنی.
 
-## 4) Connecting your domain with Cloudflare Tunnel
+## ۴) وصل کردن دامنه‌ی خودت با Cloudflare Tunnel
 
-First add your domain to Cloudflare (if it isn't already — it's free) and point its DNS
-to Cloudflare.
+اول دامنه‌ت رو (اگه قبلا نیست) به Cloudflare اضافه کن (رایگانه) و DNS‌ش رو به Cloudflare بسپار.
 
 ```bash
 pkg install -y cloudflared
-cloudflared tunnel login          # gives you a link — open it in your phone's browser and confirm the domain
+cloudflared tunnel login          # یه لینک میده، تو مرورگر گوشی بازش کن و دامنه رو تایید کن
 cloudflared tunnel create lando-gifts
 cloudflared tunnel route dns lando-gifts bot.yourdomain.com
 ```
 
-Create the tunnel config file:
+فایل تنظیمات تانل رو بساز:
 
 ```bash
 mkdir -p ~/.cloudflared
-cat > ~/.cloudflared/config.yml << 'CFG_EOF'
+cat > ~/.cloudflared/config.yml << 'EOF'
 tunnel: lando-gifts
 credentials-file: /data/data/com.termux/files/home/.cloudflared/<TUNNEL-ID>.json
 ingress:
   - hostname: bot.yourdomain.com
     service: http://localhost:3000
   - service: http_status:404
-CFG_EOF
+EOF
 ```
 
-(Copy `<TUNNEL-ID>` from the output of the `create` command above.)
+(`<TUNNEL-ID>` رو از خروجی دستور `create` بالا کپی کن.)
 
-Run the tunnel:
+تانل رو اجرا کن:
 
 ```bash
 cloudflared tunnel run lando-gifts
 ```
 
-It's best to also manage this with pm2, so it reconnects automatically if it drops:
+بهتره این هم با pm2 مدیریت بشه تا اگه قطع شد خودش وصل بشه:
 
 ```bash
 pm2 start "cloudflared tunnel run lando-gifts" --name cf-tunnel
 pm2 save
 ```
 
-## 5) Configuring `.env`
+## ۵) تنظیم `.env`
 
 ```
-BOT_TOKEN=...                      # from BotFather
+BOT_TOKEN=...                      # از BotFather
 PUBLIC_URL=https://bot.yourdomain.com
-WEBHOOK_SECRET=a-long-random-string
+WEBHOOK_SECRET=یه-رشته-رندوم-طولانی
 PORT=3000
-DATABASE_URL=postgres://user:password@host:5432/lando_gifts
-REDIS_URL=redis://127.0.0.1:6379
 ADMIN_IDS=123456789
-ADMIN_PANEL_PASSWORD=a-strong-password
+ADMIN_PANEL_PASSWORD=یه-رمز-قوی
 ```
 
-After filling it in, restart the server:
+بعد از پر کردن، سرور رو ریستارت کن:
 
 ```bash
 pm2 restart lando-gifts
 ```
 
-On startup, the server registers its own webhook at `PUBLIC_URL/telegram-webhook`. If
-the domain or tunnel isn't ready yet, it automatically retries every 30 seconds — you
-don't need to do anything.
+سرور موقع بالا اومدن خودش وبهوک رو روی `PUBLIC_URL/telegram-webhook` ثبت می‌کنه. اگه
+دامنه یا تانل هنوز آماده نبود، هر ۳۰ ثانیه خودش دوباره تلاش می‌کنه — نیازی نیست کاری بکنی.
 
-Mini app: `https://bot.yourdomain.com/miniapp`
-Admin panel: `https://bot.yourdomain.com/admin`
+مینی‌اپ: `https://bot.yourdomain.com/miniapp`
+پنل ادمین: `https://bot.yourdomain.com/admin`
 
-Also register the mini app URL in BotFather (`/mybots` → your bot → Bot Settings → Menu
-Button) so it opens from the bot's menu.
+آدرس مینی‌اپ رو تو BotFather (دستور `/mybots` → ربات → Bot Settings → Menu Button)
+هم ثبت کن تا از منوی ربات باز بشه.
 
-## 6) Staying on after a phone restart
+## ۶) روشن ماندن بعد از ریستارت گوشی
 
-With the **Termux:Boot** app (install it from F-Droid — it's been removed from the Play
-Store) you can have all of this start automatically when the phone boots:
+با اپ **Termux:Boot** (از F-Droid نصبش کن، از پلی‌استور حذف شده) می‌تونی موقع
+روشن شدن گوشی این‌ها خودکار اجرا بشن:
 
 ```bash
 mkdir -p ~/.termux/boot
-cat > ~/.termux/boot/start-lando-gifts.sh << 'BOOT_EOF'
+cat > ~/.termux/boot/start-lando-gifts.sh << 'EOF'
 #!/data/data/com.termux/files/usr/bin/sh
 termux-wake-lock
 pm2 resurrect
-BOOT_EOF
+EOF
 chmod +x ~/.termux/boot/start-lando-gifts.sh
 ```
 
-(Since you already ran `pm2 save` earlier, `pm2 resurrect` brings back the same apps you had running.)
+(چون قبلش `pm2 save` زدی، `pm2 resurrect` همون اپ‌هایی که داشتی رو برمی‌گردونه.)
 
-## 7) If you later want to move from Termux to a real VPS (Ubuntu)
+## ۷) اگه بعدا خواستی از Termux به یه VPS واقعی (Ubuntu) کوچ کنی
 
-The process is similar, except instead of Cloudflare Tunnel you can go directly:
+روند مشابهه فقط به‌جای Cloudflare Tunnel می‌تونی مستقیم:
 1. `npm install -g pm2 && npm run pm2:start && pm2 save && pm2 startup`
-2. Nginx as a reverse proxy in front of port 3000 + a free SSL certificate via `certbot --nginx -d bot.yourdomain.com`
-3. Set `PUBLIC_URL=https://bot.yourdomain.com` in `.env` as before.
-4. Use a proper managed PostgreSQL/Redis instance rather than anything running on the same box, for reliability.
+2. Nginx به‌عنوان ریورس‌پروکسی جلوی پورت ۳۰۰۰ + گواهی SSL رایگان با `certbot --nginx -d bot.yourdomain.com`
+3. باز هم `PUBLIC_URL=https://bot.yourdomain.com` رو تو `.env` بذار.
 
-## Why this version doesn't hang or crash anymore
+## چرا این نسخه دیگه هنگ/متوقف نمی‌شه
 
-- An unexpected error in one request doesn't take down the whole server — it's logged and an error response is returned, not a crash.
-- Telegram webhook processing runs in its own function wrapped in `try/catch`; one bad update can't put the rest of the bot to sleep.
-- If webhook registration fails on first try (e.g. while the tunnel is still coming up), it automatically retries every 30 seconds.
-- `pm2` with `autorestart` brings the process back up within seconds of any sudden crash.
-- The game match queue is written to avoid overlapping/interleaved writes, so two players never get mismatched or a result never gets lost.
-- Every database call goes through a connection pool (`pg`), so many requests can be handled concurrently without one slow query blocking everything else.
+- هر خطای پیش‌بینی‌نشده تو یه درخواست، جلوی کل سرور رو نمی‌گیره — لاگ می‌شه و پاسخ خطا برمی‌گرده، نه کرش.
+- پردازش وبهوک تلگرام تو یه تابع جدا و توی `try/catch` هست؛ یه آپدیت بد نمی‌تونه بقیه ربات رو بخوابونه.
+- ثبت وبهوک اگه اول بار (مثلا موقع بالا اومدن تانل) شکست بخوره، هر ۳۰ ثانیه دوباره تلاش می‌کنه.
+- `pm2` با `autorestart` هر کرش ناگهانی پروسه رو در کمتر از چند ثانیه دوباره بالا میاره.
+- صف مسابقه بازی کاملا سینکرون (بدون await وسطش) پیاده شده تا هیچ‌وقت دو نفر با هم قاطی نشن یا نتیجه گم بشه.
