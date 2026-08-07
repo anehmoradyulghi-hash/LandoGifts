@@ -1,196 +1,142 @@
 import db from './db.js';
 import { adjustToman, getUser } from './db.js';
 
-db.exec(`
-CREATE TABLE IF NOT EXISTS rank_config (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  enabled INTEGER NOT NULL DEFAULT 1,
-  xp_per_level INTEGER NOT NULL DEFAULT 100,
-  xp_per_1k_purchase INTEGER NOT NULL DEFAULT 10,
-  xp_per_win INTEGER NOT NULL DEFAULT 50,
-  xp_per_quest INTEGER NOT NULL DEFAULT 30,
-  xp_per_referral INTEGER NOT NULL DEFAULT 100,
-  xp_per_checkin INTEGER NOT NULL DEFAULT 5
-);
-INSERT OR IGNORE INTO rank_config (id) VALUES (1);
-
-CREATE TABLE IF NOT EXISTS rank_titles (
-  level_threshold INTEGER PRIMARY KEY,
-  title TEXT NOT NULL,
-  icon TEXT
-);
-INSERT OR IGNORE INTO rank_titles (level_threshold, title, icon) VALUES
-  (1,'Newcomer','🌱'), (10,'Player','⭐'), (25,'Warrior','⚔️'),
-  (50,'Hero','🏆'), (75,'Legendary','🔥'), (100,'Game God','👑');
-
-CREATE TABLE IF NOT EXISTS avatars (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  image_url TEXT,
-  price_toman INTEGER NOT NULL DEFAULT 0,
-  quantity INTEGER,          -- empty = unlimited
-  sold_count INTEGER NOT NULL DEFAULT 0,
-  source TEXT NOT NULL DEFAULT 'shop', -- shop | battlepass | event
-  active INTEGER NOT NULL DEFAULT 1,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS user_rank (
-  tg_id INTEGER PRIMARY KEY,
-  xp INTEGER NOT NULL DEFAULT 0,
-  equipped_avatar_id INTEGER
-);
-
-CREATE TABLE IF NOT EXISTS user_avatars (
-  tg_id INTEGER NOT NULL,
-  avatar_id INTEGER NOT NULL,
-  obtained_at TEXT NOT NULL DEFAULT (datetime('now')),
-  PRIMARY KEY (tg_id, avatar_id)
-);
-
-CREATE TABLE IF NOT EXISTS daily_checkins (
-  tg_id INTEGER NOT NULL,
-  checkin_date TEXT NOT NULL DEFAULT (date('now')),
-  PRIMARY KEY (tg_id, checkin_date)
-);
-`);
-
-export function getRankConfig() { return db.prepare('SELECT * FROM rank_config WHERE id = 1').get(); }
-export function setRankConfig(c) {
-  db.prepare(`
+export async function getRankConfig() { return await db.prepare('SELECT * FROM rank_config WHERE id = 1').get(); }
+export async function setRankConfig(c) {
+  await db.prepare(`
     UPDATE rank_config SET enabled=?, xp_per_level=?, xp_per_1k_purchase=?, xp_per_win=?, xp_per_quest=?, xp_per_referral=?, xp_per_checkin=?
     WHERE id = 1
   `).run(c.enabled ? 1 : 0, c.xp_per_level, c.xp_per_1k_purchase, c.xp_per_win, c.xp_per_quest, c.xp_per_referral, c.xp_per_checkin);
 }
 
-export function listRankTitles() { return db.prepare('SELECT * FROM rank_titles ORDER BY level_threshold ASC').all(); }
-export function upsertRankTitle(t) {
-  db.prepare(`
+export async function listRankTitles() { return await db.prepare('SELECT * FROM rank_titles ORDER BY level_threshold ASC').all(); }
+export async function upsertRankTitle(t) {
+  await db.prepare(`
     INSERT INTO rank_titles (level_threshold, title, icon) VALUES (?,?,?)
     ON CONFLICT(level_threshold) DO UPDATE SET title=excluded.title, icon=excluded.icon
   `).run(t.level_threshold, t.title, t.icon || '');
 }
-export function deleteRankTitle(threshold) { db.prepare('DELETE FROM rank_titles WHERE level_threshold = ?').run(threshold); }
-function getTitleForLevel(level) {
-  const titles = listRankTitles();
+export async function deleteRankTitle(threshold) { await db.prepare('DELETE FROM rank_titles WHERE level_threshold = ?').run(threshold); }
+async function getTitleForLevel(level) {
+  const titles = await listRankTitles();
   let best = titles[0] || { title: '', icon: '' };
   for (const t of titles) if (level >= t.level_threshold) best = t;
   return best;
 }
 
-function getOrCreateUserRank(tgId) {
-  db.prepare('INSERT OR IGNORE INTO user_rank (tg_id) VALUES (?)').run(tgId);
-  return db.prepare('SELECT * FROM user_rank WHERE tg_id = ?').get(tgId);
+async function getOrCreateUserRank(tgId) {
+  await db.prepare('INSERT INTO user_rank (tg_id) VALUES (?) ON CONFLICT (tg_id) DO NOTHING').run(tgId);
+  return await db.prepare('SELECT * FROM user_rank WHERE tg_id = ?').get(tgId);
 }
-export function addUserXp(tgId, amount) {
-  const cfg = getRankConfig();
+export async function addUserXp(tgId, amount) {
+  const cfg = await getRankConfig();
   if (!cfg.enabled || !amount) return;
-  getOrCreateUserRank(tgId);
-  db.prepare('UPDATE user_rank SET xp = xp + ? WHERE tg_id = ?').run(amount, tgId);
+  await getOrCreateUserRank(tgId);
+  await db.prepare('UPDATE user_rank SET xp = xp + ? WHERE tg_id = ?').run(amount, tgId);
 }
-export function getUserRankInfo(tgId) {
-  const cfg = getRankConfig();
-  const ur = getOrCreateUserRank(tgId);
+export async function getUserRankInfo(tgId) {
+  const cfg = await getRankConfig();
+  const ur = await getOrCreateUserRank(tgId);
   const level = Math.max(1, Math.floor(ur.xp / cfg.xp_per_level) + 1);
-  const titleInfo = getTitleForLevel(level);
+  const titleInfo = await getTitleForLevel(level);
   const xpIntoLevel = ur.xp % cfg.xp_per_level;
-  const avatarImage = ur.equipped_avatar_id ? (getAvatar(ur.equipped_avatar_id)?.image_url || null) : null;
+  const avatarImage = ur.equipped_avatar_id ? ((await getAvatar(ur.equipped_avatar_id))?.image_url || null) : null;
   return { xp: ur.xp, level, title: titleInfo.title, icon: titleInfo.icon, xpIntoLevel, xpPerLevel: cfg.xp_per_level, equippedAvatarId: ur.equipped_avatar_id, avatarImage };
 }
 
 // Level leaderboard: based on highest XP (which directly equals the highest level)
-export function getLevelLeaderboard(limit = 10) {
-  const cfg = getRankConfig();
-  const rows = db.prepare(`
+export async function getLevelLeaderboard(limit = 10) {
+  const cfg = await getRankConfig();
+  const rows = await db.prepare(`
     SELECT ur.tg_id, ur.xp, ur.equipped_avatar_id, u.first_name, u.username, av.image_url AS avatar_image
     FROM user_rank ur JOIN users u ON u.tg_id = ur.tg_id
     LEFT JOIN avatars av ON av.id = ur.equipped_avatar_id
     ORDER BY ur.xp DESC LIMIT ?
   `).all(limit);
-  return rows.map(r => {
+  return Promise.all(rows.map(async r => {
     const level = Math.max(1, Math.floor(r.xp / cfg.xp_per_level) + 1);
-    const titleInfo = getTitleForLevel(level);
+    const titleInfo = await getTitleForLevel(level);
     return { tg_id: r.tg_id, xp: r.xp, level, title: titleInfo.title, icon: titleInfo.icon, first_name: r.first_name, username: r.username, avatarImage: r.avatar_image || null };
-  });
+  }));
 }
-export function getUserLevelRank(tgId) {
-  const row = db.prepare(`
+export async function getUserLevelRank(tgId) {
+  const row = await db.prepare(`
     SELECT COUNT(*) + 1 AS rank FROM user_rank
     WHERE xp > (SELECT COALESCE(xp,0) FROM user_rank WHERE tg_id = ?)
   `).get(tgId);
   return row.rank;
 }
 // The user's own row in the level leaderboard (even if not in the top 10)
-export function getUserLevelRow(tgId) {
-  const info = getUserRankInfo(tgId);
-  const user = getUser(tgId);
+export async function getUserLevelRow(tgId) {
+  const info = await getUserRankInfo(tgId);
+  const user = await getUser(tgId);
   return { tg_id: tgId, xp: info.xp, level: info.level, title: info.title, icon: info.icon, first_name: user?.first_name, username: user?.username, avatarImage: info.avatarImage };
 }
 
-export function canCheckinToday(tgId) {
-  return !db.prepare(`SELECT 1 FROM daily_checkins WHERE tg_id = ? AND checkin_date = date('now')`).get(tgId);
+export async function canCheckinToday(tgId) {
+  return !await db.prepare(`SELECT 1 FROM daily_checkins WHERE tg_id = ? AND checkin_date = today_text()`).get(tgId);
 }
-export function doCheckin(tgId) {
-  if (!canCheckinToday(tgId)) throw new Error('You have already checked in today');
-  const cfg = getRankConfig();
-  const tx = db.transaction(() => {
-    db.prepare('INSERT INTO daily_checkins (tg_id) VALUES (?)').run(tgId);
-    addUserXp(tgId, cfg.xp_per_checkin);
+export async function doCheckin(tgId) {
+  if (!await canCheckinToday(tgId)) throw new Error('You have already checked in today');
+  const cfg = await getRankConfig();
+  const tx = db.transaction(async () => {
+    await db.prepare('INSERT INTO daily_checkins (tg_id) VALUES (?)').run(tgId);
+    await addUserXp(tgId, cfg.xp_per_checkin);
   });
-  tx();
+  await tx();
   return { xpGained: cfg.xp_per_checkin };
 }
 
 /* ---------- Avatars ---------- */
-export function listAvatars(onlyActive = false) {
+export async function listAvatars(onlyActive = false) {
   return onlyActive
-    ? db.prepare('SELECT * FROM avatars WHERE active = 1 ORDER BY price_toman ASC').all()
-    : db.prepare('SELECT * FROM avatars ORDER BY id DESC').all();
+    ? await db.prepare('SELECT * FROM avatars WHERE active = 1 ORDER BY price_toman ASC').all()
+    : await db.prepare('SELECT * FROM avatars ORDER BY id DESC').all();
 }
-export function getAvatar(id) { return db.prepare('SELECT * FROM avatars WHERE id = ?').get(id); }
-export function upsertAvatar(a) {
+export async function getAvatar(id) { return await db.prepare('SELECT * FROM avatars WHERE id = ?').get(id); }
+export async function upsertAvatar(a) {
   if (a.id) {
-    db.prepare(`UPDATE avatars SET name=?, image_url=?, price_toman=?, quantity=?, source=?, active=? WHERE id=?`)
+    await db.prepare(`UPDATE avatars SET name=?, image_url=?, price_toman=?, quantity=?, source=?, active=? WHERE id=?`)
       .run(a.name, a.image_url || null, a.price_toman, a.quantity, a.source || 'shop', a.active ? 1 : 0, a.id);
     return a.id;
   }
-  return db.prepare(`INSERT INTO avatars (name, image_url, price_toman, quantity, source, active) VALUES (?,?,?,?,?,?)`)
-    .run(a.name, a.image_url || null, a.price_toman, a.quantity, a.source || 'shop', a.active ? 1 : 0).lastInsertRowid;
+  return (await db.prepare(`INSERT INTO avatars (name, image_url, price_toman, quantity, source, active) VALUES (?,?,?,?,?,?)`)
+    .run(a.name, a.image_url || null, a.price_toman, a.quantity, a.source || 'shop', a.active ? 1 : 0)).lastInsertRowid;
 }
-export function deleteAvatar(id) { db.prepare('DELETE FROM avatars WHERE id = ?').run(id); }
+export async function deleteAvatar(id) { await db.prepare('DELETE FROM avatars WHERE id = ?').run(id); }
 
-export function getMyAvatars(tgId) {
-  return db.prepare(`
+export async function getMyAvatars(tgId) {
+  return await db.prepare(`
     SELECT ua.*, av.name, av.image_url, av.source FROM user_avatars ua JOIN avatars av ON av.id = ua.avatar_id
     WHERE ua.tg_id = ? ORDER BY ua.obtained_at DESC
   `).all(tgId);
 }
-export function buyAvatar(tgId, avatarId) {
-  const avatar = getAvatar(avatarId);
+export async function buyAvatar(tgId, avatarId) {
+  const avatar = await getAvatar(avatarId);
   if (!avatar || !avatar.active) throw new Error('This avatar is not available');
-  const already = db.prepare('SELECT 1 FROM user_avatars WHERE tg_id = ? AND avatar_id = ?').get(tgId, avatarId);
+  const already = await db.prepare('SELECT 1 FROM user_avatars WHERE tg_id = ? AND avatar_id = ?').get(tgId, avatarId);
   if (already) throw new Error('You already have this avatar');
   if (avatar.quantity != null && avatar.sold_count >= avatar.quantity) throw new Error('This avatar is out of stock');
-  const user = getUser(tgId);
+  const user = await getUser(tgId);
   if (!user || user.balance_toman < avatar.price_toman) throw new Error('Insufficient wallet balance');
 
-  const tx = db.transaction(() => {
-    if (avatar.price_toman > 0) adjustToman(tgId, -avatar.price_toman, `Avatar purchase «${avatar.name}»`);
-    db.prepare('INSERT INTO user_avatars (tg_id, avatar_id) VALUES (?,?)').run(tgId, avatarId);
-    db.prepare('UPDATE avatars SET sold_count = sold_count + 1 WHERE id = ?').run(avatarId);
+  const tx = db.transaction(async () => {
+    if (avatar.price_toman > 0) await adjustToman(tgId, -avatar.price_toman, `Avatar purchase «${avatar.name}»`);
+    await db.prepare('INSERT INTO user_avatars (tg_id, avatar_id) VALUES (?,?)').run(tgId, avatarId);
+    await db.prepare('UPDATE avatars SET sold_count = sold_count + 1 WHERE id = ?').run(avatarId);
   });
-  tx();
+  await tx();
 }
 // For giving a free avatar from other sources (battle pass, event) — without payment
-export function grantAvatar(tgId, avatarId) {
-  const already = db.prepare('SELECT 1 FROM user_avatars WHERE tg_id = ? AND avatar_id = ?').get(tgId, avatarId);
+export async function grantAvatar(tgId, avatarId) {
+  const already = await db.prepare('SELECT 1 FROM user_avatars WHERE tg_id = ? AND avatar_id = ?').get(tgId, avatarId);
   if (already) return;
-  db.prepare('INSERT INTO user_avatars (tg_id, avatar_id) VALUES (?,?)').run(tgId, avatarId);
-  db.prepare('UPDATE avatars SET sold_count = sold_count + 1 WHERE id = ?').run(avatarId);
+  await db.prepare('INSERT INTO user_avatars (tg_id, avatar_id) VALUES (?,?)').run(tgId, avatarId);
+  await db.prepare('UPDATE avatars SET sold_count = sold_count + 1 WHERE id = ?').run(avatarId);
 }
-export function equipAvatar(tgId, avatarId) {
-  const owned = db.prepare('SELECT 1 FROM user_avatars WHERE tg_id = ? AND avatar_id = ?').get(tgId, avatarId);
+export async function equipAvatar(tgId, avatarId) {
+  const owned = await db.prepare('SELECT 1 FROM user_avatars WHERE tg_id = ? AND avatar_id = ?').get(tgId, avatarId);
   if (!owned) throw new Error('You do not have this avatar');
-  getOrCreateUserRank(tgId);
-  db.prepare('UPDATE user_rank SET equipped_avatar_id = ? WHERE tg_id = ?').run(avatarId, tgId);
+  await getOrCreateUserRank(tgId);
+  await db.prepare('UPDATE user_rank SET equipped_avatar_id = ? WHERE tg_id = ?').run(avatarId, tgId);
 }

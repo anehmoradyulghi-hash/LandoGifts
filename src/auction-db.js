@@ -2,110 +2,66 @@ import db from './db.js';
 import { adjustToman, getUser, getProduct } from './db.js';
 import { getGameCard, grantCardInstance } from './game-db.js';
 
-db.exec(`
-CREATE TABLE IF NOT EXISTS auction_config (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  enabled INTEGER NOT NULL DEFAULT 0,
-  discount_percent INTEGER NOT NULL DEFAULT 50,
-  duration_minutes INTEGER NOT NULL DEFAULT 5,
-  bid_step INTEGER NOT NULL DEFAULT 1000,
-  anti_snipe_enabled INTEGER NOT NULL DEFAULT 1,
-  min_wallet_balance INTEGER NOT NULL DEFAULT 0
-);
-INSERT OR IGNORE INTO auction_config (id) VALUES (1);
-
-CREATE TABLE IF NOT EXISTS auctions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  product_id INTEGER NOT NULL,
-  title TEXT NOT NULL,
-  image_url TEXT,
-  start_price INTEGER NOT NULL,
-  current_price INTEGER NOT NULL,
-  bid_step INTEGER NOT NULL,
-  winner_tg_id INTEGER,
-  anti_snipe INTEGER NOT NULL DEFAULT 1,
-  min_wallet_balance INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'active', -- active | ended | cancelled | unpaid
-  ends_at TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS auction_bids (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  auction_id INTEGER NOT NULL,
-  tg_id INTEGER NOT NULL,
-  amount INTEGER NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-`);
-
-function safeAddColumn(table, columnDef) {
-  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
-  catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
-}
-safeAddColumn('auctions', `item_type TEXT NOT NULL DEFAULT 'product'`);
-safeAddColumn('auctions', 'card_id INTEGER');
-
-export function getAuctionConfig() { return db.prepare('SELECT * FROM auction_config WHERE id = 1').get(); }
-export function setAuctionConfig(c) {
-  db.prepare(`
+export async function getAuctionConfig() { return await db.prepare('SELECT * FROM auction_config WHERE id = 1').get(); }
+export async function setAuctionConfig(c) {
+  await db.prepare(`
     UPDATE auction_config SET enabled=?, discount_percent=?, duration_minutes=?, bid_step=?, anti_snipe_enabled=?, min_wallet_balance=?
     WHERE id = 1
   `).run(c.enabled ? 1 : 0, c.discount_percent, c.duration_minutes, c.bid_step, c.anti_snipe_enabled ? 1 : 0, c.min_wallet_balance);
 }
 
-export function listActiveAuctions() {
-  return db.prepare(`
+export async function listActiveAuctions() {
+  return await db.prepare(`
     SELECT a.*, u.first_name AS bidder_first_name, u.username AS bidder_username
     FROM auctions a LEFT JOIN users u ON u.tg_id = a.winner_tg_id
     WHERE a.status = 'active' ORDER BY a.ends_at ASC
   `).all();
 }
-export function listAllAuctionsAdmin() {
-  return db.prepare(`SELECT * FROM auctions ORDER BY created_at DESC LIMIT 100`).all();
+export async function listAllAuctionsAdmin() {
+  return await db.prepare(`SELECT * FROM auctions ORDER BY created_at DESC LIMIT 100`).all();
 }
-export function getAuction(id) { return db.prepare('SELECT * FROM auctions WHERE id = ?').get(id); }
+export async function getAuction(id) { return await db.prepare('SELECT * FROM auctions WHERE id = ?').get(id); }
 
 // The admin picks a shop product and creates an auction with it
-export function createAuctionFromProduct(productId) {
-  const product = getProduct(productId);
+export async function createAuctionFromProduct(productId) {
+  const product = await getProduct(productId);
   if (!product) throw new Error('Product not found');
-  const cfg = getAuctionConfig();
+  const cfg = await getAuctionConfig();
   const startPrice = Math.round(product.price_toman * (1 - cfg.discount_percent / 100));
   const endsAt = new Date(Date.now() + cfg.duration_minutes * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
-  return db.prepare(`
+  return (await db.prepare(`
     INSERT INTO auctions (product_id, item_type, title, image_url, start_price, current_price, bid_step, anti_snipe, min_wallet_balance, ends_at)
     VALUES (?,'product',?,?,?,?,?,?,?,?)
-  `).run(productId, product.title, product.image_url, startPrice, startPrice, cfg.bid_step, cfg.anti_snipe_enabled, cfg.min_wallet_balance, endsAt).lastInsertRowid;
+  `).run(productId, product.title, product.image_url, startPrice, startPrice, cfg.bid_step, cfg.anti_snipe_enabled, cfg.min_wallet_balance, endsAt)).lastInsertRowid;
 }
 // The admin puts a game card up for auction; once it ends it's added directly to the winner's cards
-export function createAuctionFromCard(cardId) {
-  const card = getGameCard(cardId);
+export async function createAuctionFromCard(cardId) {
+  const card = await getGameCard(cardId);
   if (!card) throw new Error('Card not found');
-  const cfg = getAuctionConfig();
+  const cfg = await getAuctionConfig();
   const startPrice = Math.round(card.price_toman * (1 - cfg.discount_percent / 100));
   const endsAt = new Date(Date.now() + cfg.duration_minutes * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
-  return db.prepare(`
+  return (await db.prepare(`
     INSERT INTO auctions (product_id, item_type, card_id, title, image_url, start_price, current_price, bid_step, anti_snipe, min_wallet_balance, ends_at)
     VALUES (0,'card',?,?,?,?,?,?,?,?,?)
-  `).run(cardId, card.name, card.image_url, startPrice, startPrice, cfg.bid_step, cfg.anti_snipe_enabled, cfg.min_wallet_balance, endsAt).lastInsertRowid;
+  `).run(cardId, card.name, card.image_url, startPrice, startPrice, cfg.bid_step, cfg.anti_snipe_enabled, cfg.min_wallet_balance, endsAt)).lastInsertRowid;
 }
-export function cancelAuction(id) {
-  db.prepare(`UPDATE auctions SET status = 'cancelled' WHERE id = ? AND status = 'active'`).run(id);
+export async function cancelAuction(id) {
+  await db.prepare(`UPDATE auctions SET status = 'cancelled' WHERE id = ? AND status = 'active'`).run(id);
 }
 
-export function listAuctionBids(auctionId, limit = 20) {
-  return db.prepare('SELECT * FROM auction_bids WHERE auction_id = ? ORDER BY created_at DESC LIMIT ?').all(auctionId, limit);
+export async function listAuctionBids(auctionId, limit = 20) {
+  return await db.prepare('SELECT * FROM auction_bids WHERE auction_id = ? ORDER BY created_at DESC LIMIT ?').all(auctionId, limit);
 }
 
 // Placing a bid: the price automatically goes up by one step (bid_step); if within the last 10 seconds and anti-snipe is enabled, 30 seconds are added to the timer
-export function placeBid(tgId, auctionId) {
-  const auction = getAuction(auctionId);
+export async function placeBid(tgId, auctionId) {
+  const auction = await getAuction(auctionId);
   if (!auction || auction.status !== 'active') throw new Error('This auction is not active');
   const endsAtMs = new Date(auction.ends_at.replace(' ', 'T') + 'Z').getTime();
   if (Date.now() >= endsAtMs) throw new Error('This auction time has ended');
 
-  const user = getUser(tgId);
+  const user = await getUser(tgId);
   if (!user || user.balance_toman < auction.min_wallet_balance) {
     throw new Error(`You need at least ${auction.min_wallet_balance.toLocaleString()} LNDC balance to participate`);
   }
@@ -116,42 +72,42 @@ export function placeBid(tgId, auctionId) {
   if (auction.anti_snipe && endsAtMs - Date.now() <= 10000) newEndsAtMs = Date.now() + 30000;
   const newEndsAt = new Date(newEndsAtMs).toISOString().replace('T', ' ').slice(0, 19);
 
-  const tx = db.transaction(() => {
-    db.prepare('UPDATE auctions SET current_price = ?, winner_tg_id = ?, ends_at = ? WHERE id = ?').run(newPrice, tgId, newEndsAt, auctionId);
-    db.prepare('INSERT INTO auction_bids (auction_id, tg_id, amount) VALUES (?,?,?)').run(auctionId, tgId, newPrice);
+  const tx = db.transaction(async () => {
+    await db.prepare('UPDATE auctions SET current_price = ?, winner_tg_id = ?, ends_at = ? WHERE id = ?').run(newPrice, tgId, newEndsAt, auctionId);
+    await db.prepare('INSERT INTO auction_bids (auction_id, tg_id, amount) VALUES (?,?,?)').run(auctionId, tgId, newPrice);
   });
-  tx();
+  await tx();
   return { newPrice, newEndsAt, extended: newEndsAtMs !== endsAtMs };
 }
 
 // Closes finished auctions: if there's a winner with enough funds, payment and order are recorded automatically;
 // otherwise it stays with status "unpaid" until the admin handles it manually
-export function finalizeExpiredAuctions(notifyFn) {
-  const expired = db.prepare(`SELECT * FROM auctions WHERE status = 'active' AND ends_at <= datetime('now')`).all();
+export async function finalizeExpiredAuctions(notifyFn) {
+  const expired = await db.prepare(`SELECT * FROM auctions WHERE status = 'active' AND ends_at <= now_text()`).all();
   for (const a of expired) {
     if (!a.winner_tg_id) {
-      db.prepare(`UPDATE auctions SET status = 'ended' WHERE id = ?`).run(a.id);
+      await db.prepare(`UPDATE auctions SET status = 'ended' WHERE id = ?`).run(a.id);
       continue;
     }
-    const user = getUser(a.winner_tg_id);
+    const user = await getUser(a.winner_tg_id);
     if (user && user.balance_toman >= a.current_price) {
-      adjustToman(a.winner_tg_id, -a.current_price, `Auction win «${a.title}»`);
+      await adjustToman(a.winner_tg_id, -a.current_price, `Auction win «${a.title}»`);
       if (a.item_type === 'card') {
-        grantCardInstance(a.winner_tg_id, a.card_id);
+        await grantCardInstance(a.winner_tg_id, a.card_id);
       } else {
-        db.prepare(`INSERT INTO orders (tg_id, product_id, qty, total_toman, note) VALUES (?,?,1,?, 'Auction win')`).run(a.winner_tg_id, a.product_id, a.current_price);
+        await db.prepare(`INSERT INTO orders (tg_id, product_id, qty, total_toman, note) VALUES (?,?,1,?, 'Auction win')`).run(a.winner_tg_id, a.product_id, a.current_price);
       }
-      db.prepare(`UPDATE auctions SET status = 'ended' WHERE id = ?`).run(a.id);
+      await db.prepare(`UPDATE auctions SET status = 'ended' WHERE id = ?`).run(a.id);
       if (notifyFn) notifyFn(a.winner_tg_id, a, 'won');
     } else {
-      db.prepare(`UPDATE auctions SET status = 'unpaid' WHERE id = ?`).run(a.id);
+      await db.prepare(`UPDATE auctions SET status = 'unpaid' WHERE id = ?`).run(a.id);
       if (notifyFn) notifyFn(a.winner_tg_id, a, 'unpaid');
     }
   }
 }
 
-export function getMyAuctionHistory(tgId, limit = 20) {
-  return db.prepare(`
+export async function getMyAuctionHistory(tgId, limit = 20) {
+  return await db.prepare(`
     SELECT DISTINCT a.* FROM auctions a JOIN auction_bids b ON b.auction_id = a.id
     WHERE b.tg_id = ? ORDER BY a.created_at DESC LIMIT ?
   `).all(tgId, limit);
