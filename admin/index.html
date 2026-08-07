@@ -99,6 +99,15 @@
         <button class="btn" onclick="saveCurrency()">Save</button>
       </div>
       <div id="currenciesTable"></div>
+      <div class="card">
+        <h3>💰 Lando Coin (default currency) deposit/withdraw</h3>
+        <p class="muted">Lando Coin always stays the bot's main currency — this only controls whether users can deposit or withdraw it. When a toggle is off, the matching buttons are hidden in the mini app and the request is rejected on the server too.</p>
+        <div class="row2">
+          <div><label><input type="checkbox" id="lndcDepositEnabled"> Deposit enabled</label></div>
+          <div><label><input type="checkbox" id="lndcWithdrawEnabled"> Withdrawal enabled</label></div>
+        </div>
+        <button class="btn" onclick="saveLndcWalletSettings()">Save</button>
+      </div>
     </section>
 
     <section class="tab" id="tab-payment">
@@ -128,9 +137,11 @@
         <p class="muted">Each user has a unique invite link. Set how much reward the inviter gets here.</p>
         <div class="row2">
           <div><label>Commission percent from each referral's purchase</label><input type="number" id="refPercent" min="0" max="100"></div>
-          <div><label>Flat reward per new member (LNDC)</label><input type="number" id="refSignupBonus" min="0"></div>
+          <div><label>Flat reward per new member</label><input type="number" id="refSignupBonus" min="0"></div>
         </div>
-        <p class="muted">The inviter gets a commission from every purchase their referral makes. The flat reward is given once, the moment a new user opens the mini app via the invite link (empty/zero = disabled).</p>
+        <label>Reward currency (type)</label>
+        <select id="refSignupBonusCurrency"><option value="LNDC">Lando Coin (LNDC)</option></select>
+        <p class="muted">The inviter gets a commission from every purchase their referral makes (always paid in LNDC). The flat reward is given once, the moment a new user opens the mini app via the invite link — pick its amount and currency here (empty/zero amount = disabled).</p>
         <button class="btn" onclick="saveReferralSettings()">Save</button>
         <p class="muted" id="referralSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
@@ -773,6 +784,25 @@
 </div>
 
 <script>
+/* ================= Force English (Latin) digits everywhere =================
+   Same rule applies to the admin panel: numbers must always be plain English
+   digits, never Persian/Arabic-Indic numerals. Any Persian/Arabic-Indic digit
+   typed or pasted into a field is converted to its English equivalent instantly. */
+const FA_AR_DIGIT_MAP = { '۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9',
+  '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9' };
+function toEnglishDigits(str) { return String(str).replace(/[۰-۹٠-٩]/g, d => FA_AR_DIGIT_MAP[d] || d); }
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  if (!el || !('value' in el)) return;
+  if (!(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+  const converted = toEnglishDigits(el.value);
+  if (converted !== el.value) {
+    const pos = el.selectionStart;
+    el.value = converted;
+    if (pos != null) { try { el.setSelectionRange(pos, pos); } catch (e2) {} }
+  }
+}, true);
+
 let TOKEN = localStorage.getItem('lando_admin_token') || '';
 
 async function api(path, opts = {}) {
@@ -827,7 +857,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  const loaders = { dash: loadDash, currencies: loadCurrencies, payment: loadPaymentSettings, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
+  const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
     cardcategories: loadCategories, mergecosts: loadMergeCosts, wheel: loadWheelAdmin,
     auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
@@ -844,7 +874,7 @@ async function loadDash() {
   document.getElementById('statsCard').innerHTML = `
     <p>Users: <b>${s.users}</b></p>
     <p>Orders: <b>${s.orders}</b></p>
-    <p>Total LNDC deposited: <b>${s.totalToman.toLocaleString()}</b></p>
+    <p>Total LNDC deposited: <b>${s.totalToman.toLocaleString('en-US')}</b></p>
     <p>Pending top-ups: <b>${s.pendingTopups}</b></p>
     <p>Pending currency requests: <b>${s.pendingCurrency}</b></p>
   `;
@@ -855,9 +885,30 @@ async function loadCurrencies() {
   const rows = await api('/currencies');
   document.getElementById('currenciesTable').innerHTML = `
     <table><tr><th>Code</th><th>Name</th><th>Rate (LNDC)</th><th>Deposit address</th><th>Active</th><th></th></tr>
-    ${rows.map(c => `<tr><td>${c.code}</td><td>${c.name}</td><td>${c.rate_toman.toLocaleString()}</td><td>${c.deposit_address || '—'}</td><td>${c.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editCurrency(${JSON.stringify(c)})'>Edit</button></td></tr>`).join('')}
-    </table>`;
+    ${rows.map(c => `<tr><td>${c.code}</td><td>${c.name}</td><td>${c.rate_toman.toLocaleString('en-US')}</td><td>${c.deposit_address || '—'}</td><td>${c.active ? '✅' : '❌'}</td>
+      <td><button class="btn secondary" onclick='editCurrency(${JSON.stringify(c)})'>Edit</button>
+      <button class="btn danger" onclick="deleteCurrencyUI('${c.code}')">Delete</button></td></tr>`).join('')}
+    </table>
+    <p class="muted" style="margin-top:10px;">Lando Coin (LNDC), the bot's main currency, is built-in and isn't listed here — it can't be deleted. Use the toggle below to control its deposit/withdraw instead.</p>`;
+}
+async function deleteCurrencyUI(code) {
+  if (!confirm(`Delete currency ${code}? Users' balances in this currency will also be removed.`)) return;
+  try { await api(`/currencies/${code}`, { method: 'DELETE' }); loadCurrencies(); }
+  catch (e) { alert(e.message || 'Could not delete currency'); }
+}
+
+/* ---------- Lando Coin (default currency) deposit/withdraw toggle ---------- */
+async function loadLndcWalletSettings() {
+  const s = await api('/lndc-wallet-settings');
+  document.getElementById('lndcDepositEnabled').checked = !!s.depositEnabled;
+  document.getElementById('lndcWithdrawEnabled').checked = !!s.withdrawEnabled;
+}
+async function saveLndcWalletSettings() {
+  await api('/lndc-wallet-settings', { method: 'POST', body: JSON.stringify({
+    depositEnabled: document.getElementById('lndcDepositEnabled').checked,
+    withdrawEnabled: document.getElementById('lndcWithdrawEnabled').checked,
+  }) });
+  alert('Saved');
 }
 function editCurrency(c) {
   document.getElementById('curCode').value = c.code;
@@ -896,11 +947,16 @@ async function loadPaymentSettings() {
   const ref = await api('/referral-settings');
   document.getElementById('refPercent').value = ref.percent;
   document.getElementById('refSignupBonus').value = ref.signupBonus;
+  const curSel = document.getElementById('refSignupBonusCurrency');
+  const currencies = await api('/currencies');
+  curSel.innerHTML = '<option value="LNDC">Lando Coin (LNDC)</option>' + currencies.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
+  curSel.value = ref.signupBonusCurrency || 'LNDC';
 }
 async function saveReferralSettings() {
   await api('/referral-settings', { method: 'POST', body: JSON.stringify({
     percent: document.getElementById('refPercent').value,
     signupBonus: document.getElementById('refSignupBonus').value,
+    signupBonusCurrency: document.getElementById('refSignupBonusCurrency').value,
   }) });
   const msg = document.getElementById('referralSavedMsg');
   msg.style.display = 'block';
@@ -964,7 +1020,7 @@ async function loadTopups() {
   const rows = await api('/toman-topups');
   document.getElementById('topupsTable').innerHTML = rows.length ? `
     <table><tr><th>User</th><th>Amount</th><th>Tracking code</th><th>Actions</th></tr>
-    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString()}</td><td>${r.tracking_code}</td>
+    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString('en-US')}</td><td>${r.tracking_code}</td>
       <td><button class="btn" onclick="decideTopup(${r.id},true)">Approve</button>
       <button class="btn danger" onclick="decideTopup(${r.id},false)">Reject</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No requests.</p>';
@@ -976,7 +1032,7 @@ async function loadWithdrawals() {
   const rows = await api('/toman-withdrawals');
   document.getElementById('withdrawalsTable').innerHTML = rows.length ? `
     <table><tr><th>User</th><th>Amount</th><th>Card number</th><th>Actions</th></tr>
-    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString()}</td><td>${r.card_number}</td>
+    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString('en-US')}</td><td>${r.card_number}</td>
       <td><button class="btn" onclick="decideWithdrawal(${r.id},true)">Sent</button>
       <button class="btn danger" onclick="decideWithdrawal(${r.id},false)">Reject</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No requests.</p>';
@@ -1000,7 +1056,7 @@ async function loadProducts() {
   const rows = await api('/products');
   document.getElementById('productsTable').innerHTML = `
     <table><tr><th>Title</th><th>Price</th><th>Active</th><th>Actions</th></tr>
-    ${rows.map(p => `<tr><td>${p.title}</td><td>${p.price_toman.toLocaleString()}</td><td>${p.active ? '✅' : '❌'}</td>
+    ${rows.map(p => `<tr><td>${p.title}</td><td>${p.price_toman.toLocaleString('en-US')}</td><td>${p.active ? '✅' : '❌'}</td>
       <td><button class="btn secondary" onclick='editProduct(${JSON.stringify(p)})'>Edit</button>
       <button class="btn danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join('')}
     </table>`;
@@ -1035,7 +1091,7 @@ async function loadOrders() {
   const rows = await api('/orders');
   document.getElementById('ordersTable').innerHTML = `
     <table><tr><th>User</th><th>Product</th><th>Count</th><th>Amount</th><th>Status</th><th>Actions</th></tr>
-    ${rows.map(o => `<tr><td>${o.tg_id}</td><td>${o.product_title}</td><td>${o.qty}</td><td>${o.total_toman.toLocaleString()}</td><td>${o.status}</td>
+    ${rows.map(o => `<tr><td>${o.tg_id}</td><td>${o.product_title}</td><td>${o.qty}</td><td>${o.total_toman.toLocaleString('en-US')}</td><td>${o.status}</td>
       <td>${o.status !== 'delivered' ? `<button class="btn" onclick="setOrderStatus(${o.id},'delivered')">Delivered</button>` : ''}</td></tr>`).join('')}
     </table>`;
 }
@@ -1047,14 +1103,14 @@ async function loadGifts() {
   const pending = await api('/gift-offers/pending');
   document.getElementById('pendingGiftsTable').innerHTML = pending.length ? `
     <table><tr><th>Seller</th><th>Title</th><th>Price</th><th>Serial</th><th>Link</th><th>Actions</th></tr>
-    ${pending.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString()}</td><td>${g.serial_number || '-'}</td><td>${g.link ? `<a href="${g.link}" target="_blank">Link</a>` : '-'}</td>
+    ${pending.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString('en-US')}</td><td>${g.serial_number || '-'}</td><td>${g.link ? `<a href="${g.link}" target="_blank">Link</a>` : '-'}</td>
       <td><button class="btn" onclick="approveGift(${g.id})">✅ Approve</button> <button class="btn danger" onclick="rejectGift(${g.id})">❌ Reject</button></td></tr>`).join('')}
     </table>` : '<p class="muted">Listing is not pending approval.</p>';
 
   const rows = await api('/gift-offers');
   document.getElementById('giftsTable').innerHTML = `
     <table><tr><th>Seller</th><th>Buyer</th><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr>
-    ${rows.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.buyer_tg_id || '-'}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString()}</td><td>${g.status}</td>
+    ${rows.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.buyer_tg_id || '-'}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString('en-US')}</td><td>${g.status}</td>
       <td>${g.status === 'reserved' ? `<button class="btn danger" onclick="refundGift(${g.id})">Refund</button>` : ''}
         <button class="btn danger" onclick="deleteGiftOfferUI(${g.id})">Delete</button></td></tr>`).join('')}
     </table>`;
@@ -1101,7 +1157,7 @@ async function loadTasks() {
   const rows = await api('/tasks');
   document.getElementById('tasksTable').innerHTML = `
     <table><tr><th>Title</th><th>Type</th><th>Reward</th><th>Active</th><th>Actions</th></tr>
-    ${rows.map(t => `<tr><td>${t.title}</td><td>${t.kind}</td><td>${t.reward_toman.toLocaleString()}</td><td>${t.active ? '✅' : '❌'}</td>
+    ${rows.map(t => `<tr><td>${t.title}</td><td>${t.kind}</td><td>${t.reward_toman.toLocaleString('en-US')}</td><td>${t.active ? '✅' : '❌'}</td>
       <td><button class="btn secondary" onclick='editTask(${JSON.stringify(t)})'>Edit</button>
       <button class="btn danger" onclick="deleteTask(${t.id})">Delete</button></td></tr>`).join('')}
     </table>`;
@@ -1227,7 +1283,7 @@ async function loadGameCards() {
   const rows = (await api('/game/cards')).filter(c => !c.instant_level);
   document.getElementById('gameCardsTable').innerHTML = rows.length ? `
     <table><tr><th>Name</th><th>Base power</th><th>Price</th><th>Active</th><th>Actions</th></tr>
-    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.base_power}</td><td>${c.price_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td>
+    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.base_power}</td><td>${c.price_toman.toLocaleString('en-US')}</td><td>${c.active ? '✅' : '❌'}</td>
       <td><button class="btn secondary" onclick='editGameCard(${JSON.stringify(c)})'>Edit</button>
       <button class="btn danger" onclick="deleteGameCard(${c.id})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No card registered yet.</p>';
@@ -1273,22 +1329,25 @@ async function saveGameCard() {
 }
 async function deleteGameCard(id) { if (confirm('be deleted?')) { await api(`/game/cards/${id}`, { method: 'DELETE' }); loadGameCards(); } }
 
-/* ---------- Max power per level ---------- */
+/* ---------- Min/Max power per level ---------- */
 async function loadLevelPowerTable() {
   const rows = await api('/game/level-power');
   document.getElementById('levelPowerTable').innerHTML = rows.map(r => `
     <div class="row2" style="align-items:center;">
       <div><label>Level ${r.level}</label></div>
       <div style="display:flex;gap:6px;">
-        <input type="number" id="lp-max-${r.level}" value="${r.max_power}" placeholder="Max power">
+        <input type="number" inputmode="numeric" id="lp-min-${r.level}" value="${r.min_power}" placeholder="Min power">
+        <input type="number" inputmode="numeric" id="lp-max-${r.level}" value="${r.max_power}" placeholder="Max power">
       </div>
     </div>`).join('') + `<button class="btn secondary" onclick="saveLevelPowerTable()">Save caps</button>`;
 }
 async function saveLevelPowerTable() {
   for (let level = 1; level <= 7; level++) {
     const maxEl = document.getElementById(`lp-max-${level}`);
+    const minEl = document.getElementById(`lp-min-${level}`);
     if (!maxEl) continue;
-    await api('/game/level-power', { method: 'POST', body: JSON.stringify({ level, max_power: maxEl.value }) });
+    if (Number(minEl.value) > Number(maxEl.value)) { alert(`Level ${level}: min power cannot be greater than max power`); return; }
+    await api('/game/level-power', { method: 'POST', body: JSON.stringify({ level, max_power: maxEl.value, min_power: minEl.value }) });
   }
   alert('Saved');
 }
@@ -1302,7 +1361,7 @@ async function loadSpecialCards() {
   const rows = (await api('/game/cards')).filter(c => c.instant_level >= 2);
   document.getElementById('specialCardsTable').innerHTML = rows.length ? `
     <table><tr><th>Name</th><th>Level</th><th>Custom power</th><th>Price</th><th>Active</th><th>Actions</th></tr>
-    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.instant_level}</td><td>${c.fixed_power}</td><td>${c.price_toman.toLocaleString()}</td><td>${c.active ? '✅' : '❌'}</td>
+    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.instant_level}</td><td>${c.fixed_power}</td><td>${c.price_toman.toLocaleString('en-US')}</td><td>${c.active ? '✅' : '❌'}</td>
       <td>
         <button class="btn secondary" onclick='editSpecialCard(${JSON.stringify(c)})'>Edit</button>
         <button class="btn gold" onclick="grantSpecialCardUI(${c.id})">🎁 Gift to user</button>
@@ -1511,7 +1570,7 @@ async function loadLeaderboardTab() {
   const prizes = await api('/game/leaderboard-prizes');
   document.getElementById('leaderboardPrizesTable').innerHTML = prizes.length ? `
     <table><tr><th>From rank</th><th>To rank</th><th>Prize</th><th>Actions</th></tr>
-    ${prizes.map(p => `<tr><td>${p.rank_from}</td><td>${p.rank_to}</td><td>${p.reward_toman.toLocaleString()}</td>
+    ${prizes.map(p => `<tr><td>${p.rank_from}</td><td>${p.rank_to}</td><td>${p.reward_toman.toLocaleString('en-US')}</td>
       <td><button class="btn danger" onclick="deleteLeaderboardPrize(${p.id})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No prize registered.</p>';
 
@@ -1594,7 +1653,7 @@ async function loadUsers() {
   const rows = await api('/users?q=' + encodeURIComponent(q));
   document.getElementById('usersTable').innerHTML = `
     <table><tr><th>ID</th><th>Name</th><th>Balance</th><th>battle pass?</th><th>banned?</th><th>Actions</th></tr>
-    ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString()}</td><td>${u.has_battlepass ? '👑 has' : '-'}</td><td>${u.is_banned ? '🚫' : '-'}</td>
+    ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString('en-US')}</td><td>${u.has_battlepass ? '👑 has' : '-'}</td><td>${u.is_banned ? '🚫' : '-'}</td>
       <td>
         <button class="btn secondary" onclick="adjustBalance(${u.tg_id})">Adjust LNDC balance</button>
         <button class="btn secondary" onclick="adjustCurrencyBalanceUI(${u.tg_id})">Adjust currency balance</button>
@@ -1636,14 +1695,14 @@ async function loadAuctionAdmin() {
   document.getElementById('aucAntiSnipe').value = cfg.anti_snipe_enabled ? '1' : '0';
 
   const products = await api('/products');
-  document.getElementById('aucProductId').innerHTML = products.map(p => `<option value="${p.id}">${p.title} (${p.price_toman.toLocaleString()} LNDC)</option>`).join('');
+  document.getElementById('aucProductId').innerHTML = products.map(p => `<option value="${p.id}">${p.title} (${p.price_toman.toLocaleString('en-US')} LNDC)</option>`).join('');
   const cards = await api('/game/cards');
-  document.getElementById('aucCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (${c.price_toman.toLocaleString()} LNDC)</option>`).join('');
+  document.getElementById('aucCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (${c.price_toman.toLocaleString('en-US')} LNDC)</option>`).join('');
 
   const rows = await api('/auction/list');
   document.getElementById('auctionsTable').innerHTML = rows.length ? `
     <table><tr><th>Title</th><th>Type</th><th>Current price</th><th>Winner</th><th>Status</th><th>Actions</th></tr>
-    ${rows.map(a => `<tr><td>${a.title}</td><td>${a.item_type === 'card' ? '🎴 Card' : '🛍 Product'}</td><td>${a.current_price.toLocaleString()}</td><td>${a.winner_tg_id || '-'}</td><td>${a.status}</td>
+    ${rows.map(a => `<tr><td>${a.title}</td><td>${a.item_type === 'card' ? '🎴 Card' : '🛍 Product'}</td><td>${a.current_price.toLocaleString('en-US')}</td><td>${a.winner_tg_id || '-'}</td><td>${a.status}</td>
       <td>${a.status === 'active' ? `<button class="btn danger" onclick="cancelAuctionUI(${a.id})">Cancel</button>` : ''}</td></tr>`).join('')}
     </table>` : '<p class="muted">You have not created any auction yet.</p>';
 }
@@ -1751,7 +1810,7 @@ async function loadClanAdmin() {
   const lb = await api('/clan/all');
   document.getElementById('clanLeaderboardTable').innerHTML = lb.length ? `
     <table><tr><th>Name</th><th>Tag</th><th>Score</th><th>Bank</th><th>Actions</th></tr>
-    ${lb.map(c => `<tr><td>${c.name}</td><td>#${c.tag}</td><td>${c.score}</td><td>${c.bank_balance.toLocaleString()}</td>
+    ${lb.map(c => `<tr><td>${c.name}</td><td>#${c.tag}</td><td>${c.score}</td><td>${c.bank_balance.toLocaleString('en-US')}</td>
       <td><button class="btn secondary" onclick="adjustClanBankUI(${c.id})">Adjust bank</button> <button class="btn danger" onclick="deleteClanUI(${c.id})">Delete clan</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No clan created yet.</p>';
 }
@@ -1808,7 +1867,7 @@ async function loadRankAdmin() {
   const rows = await api('/avatars');
   document.getElementById('avatarsTable').innerHTML = rows.length ? `
     <table><tr><th>Name</th><th>Price</th><th>Balance</th><th>Active</th><th>Actions</th></tr>
-    ${rows.map(a => `<tr><td>${a.name}</td><td>${a.price_toman.toLocaleString()}</td><td>${a.quantity != null ? (a.quantity - a.sold_count) : 'Unlimited'}</td><td>${a.active ? '✅' : '❌'}</td>
+    ${rows.map(a => `<tr><td>${a.name}</td><td>${a.price_toman.toLocaleString('en-US')}</td><td>${a.quantity != null ? (a.quantity - a.sold_count) : 'Unlimited'}</td><td>${a.active ? '✅' : '❌'}</td>
       <td><button class="btn secondary" onclick='editAvatar(${JSON.stringify(a)})'>Edit</button>
       <button class="btn danger" onclick="deleteAvatarUI(${a.id})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No avatar registered yet.</p>';
