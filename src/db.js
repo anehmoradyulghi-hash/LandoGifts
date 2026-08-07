@@ -344,17 +344,23 @@ export function getReferralSettings() {
   return {
     percent: Number(getSetting('referral_percent', process.env.REFERRAL_PERCENT || '5')),
     signupBonus: Number(getSetting('referral_signup_bonus', '0')),
+    // "Type" of the flat invite reward — which currency it is paid in (defaults to Lando Coin)
+    signupBonusCurrency: getSetting('referral_signup_bonus_currency', 'LNDC'),
   };
 }
-export function setReferralSettings({ percent, signupBonus }) {
+export function setReferralSettings({ percent, signupBonus, signupBonusCurrency }) {
   setSetting('referral_percent', String(Number(percent) || 0));
   setSetting('referral_signup_bonus', String(Number(signupBonus) || 0));
+  setSetting('referral_signup_bonus_currency', (signupBonusCurrency || 'LNDC').toUpperCase());
 }
-// One-time flat referral reward — given to the inviter the moment a new user opens the app via the invite link
+// One-time flat referral reward — given to the inviter the moment a new user opens the app via the invite link.
+// Paid in whichever currency the admin picked (LNDC by default, or any other active currency).
 export function payReferralSignupBonus(referrerTgId, newUserTgId) {
-  const bonus = getReferralSettings().signupBonus;
+  const { signupBonus: bonus, signupBonusCurrency: currency } = getReferralSettings();
   if (!bonus || bonus <= 0) return;
-  adjustToman(referrerTgId, bonus, `New member invite reward (${newUserTgId})`);
+  const reason = `New member invite reward (${newUserTgId})`;
+  if (!currency || currency === 'LNDC') adjustToman(referrerTgId, bonus, reason);
+  else adjustCurrencyBalance(referrerTgId, currency, bonus, reason);
 }
 
 export function getReferralInfo(tgId) {
@@ -375,25 +381,40 @@ export function getCurrency(code) {
   return db.prepare('SELECT * FROM currencies WHERE code = ?').get(code);
 }
 export function upsertCurrency({ code, name, rate_toman, min_deposit, min_withdraw, active, deposit_address }) {
+  // Whole numbers only everywhere in the wallet system — including the admin-set rate and limits.
+  const rate = Math.round(Number(rate_toman) || 0);
+  const minDep = Math.round(Number(min_deposit) || 0);
+  const minWd = Math.round(Number(min_withdraw) || 0);
   db.prepare(`
     INSERT INTO currencies (code, name, rate_toman, min_deposit, min_withdraw, active, deposit_address, updated_at)
     VALUES (@code, @name, @rate_toman, @min_deposit, @min_withdraw, @active, @deposit_address, datetime('now'))
     ON CONFLICT(code) DO UPDATE SET
       name = @name, rate_toman = @rate_toman, min_deposit = @min_deposit,
       min_withdraw = @min_withdraw, active = @active, deposit_address = @deposit_address, updated_at = datetime('now')
-  `).run({ code, name, rate_toman, min_deposit, min_withdraw, active: active ? 1 : 0, deposit_address: deposit_address || null });
+  `).run({ code, name, rate_toman: rate, min_deposit: minDep, min_withdraw: minWd, active: active ? 1 : 0, deposit_address: deposit_address || null });
+}
+// LNDC (Lando Coin) is the bot's built-in main currency — it isn't a row in this table at all
+// (it lives on users.balance_toman), so it can never be reached/deleted through this function.
+export function deleteCurrency(code) {
+  const up = String(code || '').toUpperCase();
+  if (up === 'LNDC') throw new Error('Lando Coin is the main currency and cannot be deleted');
+  db.prepare('DELETE FROM currencies WHERE code = ?').run(up);
+  db.prepare('DELETE FROM wallet_balances WHERE currency_code = ?').run(up);
 }
 
 export function getCurrencyBalance(tgId, code) {
   const row = db.prepare('SELECT amount FROM wallet_balances WHERE tg_id = ? AND currency_code = ?').get(tgId, code);
   return row?.amount || 0;
 }
+// Wallet amounts are always whole numbers — no currency in this bot supports decimals, so every
+// credit/debit is rounded to the nearest integer before it's stored.
 export function adjustCurrencyBalance(tgId, code, amount, reason) {
+  const whole = Math.round(amount);
   db.prepare(`
     INSERT INTO wallet_balances (tg_id, currency_code, amount) VALUES (?,?,?)
     ON CONFLICT(tg_id, currency_code) DO UPDATE SET amount = amount + excluded.amount
-  `).run(tgId, code, amount);
-  logLedger(tgId, code, amount >= 0 ? 'in' : 'out', Math.abs(amount), reason);
+  `).run(tgId, code, whole);
+  logLedger(tgId, code, whole >= 0 ? 'in' : 'out', Math.abs(whole), reason);
 }
 export function getWalletBalances(tgId) {
   const rows = db.prepare('SELECT currency_code, amount FROM wallet_balances WHERE tg_id = ?').all(tgId);
@@ -440,9 +461,10 @@ export function listPendingTomanWithdrawals() {
 
 /* ---- manual currency deposit / withdraw ---- */
 export function createCurrencyRequest(tgId, code, kind, amount, opts = {}) {
+  const whole = Math.round(amount); // whole numbers only, no decimals in the wallet
   const info = db.prepare(`
     INSERT INTO currency_requests (tg_id, currency_code, kind, amount, tx_hash, address) VALUES (?,?,?,?,?,?)
-  `).run(tgId, code, kind, amount, opts.txHash || null, opts.address || null);
+  `).run(tgId, code, kind, whole, opts.txHash || null, opts.address || null);
   return info.lastInsertRowid;
 }
 export function getCurrencyRequest(id) { return db.prepare('SELECT * FROM currency_requests WHERE id = ?').get(id); }
@@ -667,6 +689,20 @@ export function setPaymentSettings({ cardNumber, cardOwner, zarinpalMerchantId }
   setSetting('card_number', cardNumber || '');
   setSetting('card_owner', cardOwner || '');
   setSetting('zarinpal_merchant_id', zarinpalMerchantId || '');
+}
+
+// Enable/disable deposit and withdrawal of the bot's default/main currency (Lando Coin / LNDC).
+// LNDC itself always stays the main currency — this only toggles whether users can top up or
+// cash out, independently of each other. Defaults to both enabled.
+export function getLndcWalletSettings() {
+  return {
+    depositEnabled: getSetting('lndc_deposit_enabled', '1') === '1',
+    withdrawEnabled: getSetting('lndc_withdraw_enabled', '1') === '1',
+  };
+}
+export function setLndcWalletSettings({ depositEnabled, withdrawEnabled }) {
+  setSetting('lndc_deposit_enabled', depositEnabled ? '1' : '0');
+  setSetting('lndc_withdraw_enabled', withdrawEnabled ? '1' : '0');
 }
 
 // The Telegram ID/username the user's support button links directly to (instead of an internal ticket)

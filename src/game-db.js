@@ -78,15 +78,18 @@ const seedLevelPower = db.prepare('INSERT OR IGNORE INTO card_level_power (level
 export function getCardLevelPowerConfig() {
   return db.prepare('SELECT * FROM card_level_power ORDER BY level ASC').all();
 }
-// No longer a range — just one "max upgradable power" number is set per level.
-// (min_power is also stored equal to that same value in the database, purely for compatibility with legacy code/custom cards)
-export function setCardLevelPower(level, maxPower) {
+// A full min/max power range is set per level from the admin panel.
+// If only maxPower is provided (legacy call), minPower falls back to the same value.
+export function setCardLevelPower(level, maxPower, minPower) {
   const mx = Number(maxPower);
+  const mn = minPower !== undefined && minPower !== null && minPower !== '' ? Number(minPower) : mx;
   if (!Number.isFinite(mx) || mx <= 0) throw new Error('Invalid max power number');
+  if (!Number.isFinite(mn) || mn <= 0) throw new Error('Invalid min power number');
+  if (mn > mx) throw new Error('Min power cannot be greater than max power');
   db.prepare(`
     INSERT INTO card_level_power (level, min_power, max_power) VALUES (?,?,?)
     ON CONFLICT(level) DO UPDATE SET min_power = excluded.min_power, max_power = excluded.max_power
-  `).run(level, mx, mx);
+  `).run(level, mn, mx);
 }
 function rollPowerForLevel(level) {
   const range = db.prepare('SELECT * FROM card_level_power WHERE level = ?').get(level);
@@ -340,7 +343,7 @@ export function getUserCards(tgId) {
   `).all(tgId).map(row => {
     const rarity = getRarityForLevel(row.level);
     return { ...row, power: computeTotalPower(row), image: getCardImageForLevel(row, row.level), rarity_key: rarity.key, rarity_label: rarity.label, rarity_color: rarity.color };
-  });
+  }).sort((a, b) => b.power - a.power); // player's own card collection: strongest cards first
 }
 export function getUserCard(tgId, userCardId) {
   const row = db.prepare(`

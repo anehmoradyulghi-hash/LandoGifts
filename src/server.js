@@ -18,7 +18,7 @@ import db, {
   createOrder, listOrdersForUser,
   createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer, listGiftCategories, updateGiftOffer,
   listActiveTasks, hasClaimedTask, claimTask, getTask,
-  getPaymentSettings, getMessageSettings, getSupportContact, getInfoPage,
+  getPaymentSettings, getMessageSettings, getSupportContact, getInfoPage, getLndcWalletSettings,
   createStarPaymentRequest, getStarPayment, completeStarPayment,
   createZarinpalPayment, getZarinpalPayment, markZarinpalPaymentStatus,
 } from './db.js';
@@ -73,6 +73,25 @@ dns.setDefaultResultOrder('ipv4first');
 const app = express();
 app.use(express.json());
 
+/* ================= Force English (Latin) digits everywhere =================
+   Backstop for the front-end digit conversion: even if a request reaches the API with
+   Persian (۰-۹) or Arabic-Indic (٠-٩) numerals in it (e.g. a bypassed client, an old cached
+   page), every string in the JSON body is normalized to plain English digits before any
+   route handler runs. This makes it effectively impossible for Persian numbers to end up
+   stored anywhere in the system. */
+const FA_AR_DIGIT_MAP = { '۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9',
+  '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9' };
+function toEnglishDigitsDeep(value) {
+  if (typeof value === 'string') return value.replace(/[۰-۹٠-٩]/g, d => FA_AR_DIGIT_MAP[d] || d);
+  if (Array.isArray(value)) return value.map(toEnglishDigitsDeep);
+  if (value && typeof value === 'object') {
+    for (const key of Object.keys(value)) value[key] = toEnglishDigitsDeep(value[key]);
+    return value;
+  }
+  return value;
+}
+app.use((req, res, next) => { if (req.body) req.body = toEnglishDigitsDeep(req.body); next(); });
+
 // We wrap every async route with this so that if it throws or rejects, it goes straight to
 // error middleware and a proper response is returned — instead of the request hanging or the server crashing.
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -114,6 +133,7 @@ app.get('/api/config', ah(async (req, res) => {
     giftMarketFeePercent: Number(process.env.GIFT_MARKET_FEE_PERCENT || 5),
     swapFeePercent: Number(process.env.SWAP_FEE_PERCENT || 1),
     supportUsername: getSupportContact(),
+    lndcWallet: getLndcWalletSettings(),
   });
 }));
 
@@ -172,6 +192,7 @@ app.get('/api/wallet/ledger', requireTelegramAuth, (req, res) => {
 });
 
 app.post('/api/wallet/toman-topup', requireTelegramAuth, (req, res) => {
+  if (!getLndcWalletSettings().depositEnabled) return res.status(400).json({ error: 'Lando Coin deposit is currently disabled' });
   const amount = Number(req.body.amount);
   const trackingCode = String(req.body.trackingCode || '').trim();
   if (!amount || amount < 1000) return res.status(400).json({ error: 'Minimum top-up amount is 1,000 LNDC' });
@@ -199,6 +220,7 @@ async function zarinpalCall(path, body) {
 }
 
 app.post('/api/wallet/zarinpal-topup', requireTelegramAuth, ah(async (req, res) => {
+  if (!getLndcWalletSettings().depositEnabled) return res.status(400).json({ error: 'Lando Coin deposit is currently disabled' });
   const amount = Number(req.body.amount);
   if (!amount || amount < 1000) return res.status(400).json({ error: 'Minimum top-up amount is 1,000 LNDC' });
   const { zarinpalMerchantId } = getPaymentSettings();
@@ -260,6 +282,7 @@ app.get('/zarinpal-callback', ah(async (req, res) => {
 }));
 
 app.post('/api/wallet/toman-withdraw', requireTelegramAuth, (req, res) => {
+  if (!getLndcWalletSettings().withdrawEnabled) return res.status(400).json({ error: 'Lando Coin withdrawal is currently disabled' });
   const amount = Number(req.body.amount);
   const cardNumber = String(req.body.cardNumber || '').trim();
   if (!amount || amount < 10000) return res.status(400).json({ error: 'Minimum withdrawal amount is 10,000 LNDC' });
@@ -302,7 +325,8 @@ app.post('/api/wallet/swap', requireTelegramAuth, (req, res) => {
   if (from === 'LNDC') {
     if (user.balance_toman < amt) return res.status(400).json({ error: 'Insufficient LNDC balance' });
     const gross = amt / currency.rate_toman;
-    outputAmount = +(gross * (1 - feePercent / 100)).toFixed(6);
+    outputAmount = Math.floor(gross * (1 - feePercent / 100)); // whole numbers only — no decimals anywhere in the wallet
+    if (outputAmount <= 0) return res.status(400).json({ error: 'Amount too small — it rounds down to 0' });
     adjustToman(req.dbUser.tg_id, -amt, `Convert LNDC to ${to}`);
     adjustCurrencyBalance(req.dbUser.tg_id, to, outputAmount, `Convert from LNDC`);
   } else {

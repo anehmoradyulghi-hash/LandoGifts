@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   getStats, listUsers, banUser, unbanUser, getUser, adjustToman, adjustCurrencyBalance,
-  listCurrencies, upsertCurrency,
+  listCurrencies, upsertCurrency, deleteCurrency,
   listPendingTomanTopups, decideTomanTopup,
   listPendingTomanWithdrawals, decideTomanWithdrawal,
   listPendingCurrencyRequests, decideCurrencyRequest, getCurrencyRequest,
@@ -17,7 +17,7 @@ import {
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
   getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact, getInfoPage, setInfoPage,
-  getReferralSettings, setReferralSettings,
+  getReferralSettings, setReferralSettings, getLndcWalletSettings, setLndcWalletSettings,
   listGiftCategories, upsertGiftCategory, deleteGiftCategory,
   getMessageSettings, setMessageSettings, getAllUserIds,
 } from './db.js';
@@ -137,6 +137,10 @@ router.post('/currencies', (req, res) => {
   });
   res.json({ ok: true });
 });
+router.delete('/currencies/:code', (req, res) => {
+  try { deleteCurrency(req.params.code); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 
 /* ---------- Payment settings (deposit card number, manual from the panel) ---------- */
 router.get('/payment-settings', (req, res) => res.json(getPaymentSettings()));
@@ -149,6 +153,13 @@ router.post('/payment-settings', (req, res) => {
   res.json({ ok: true });
 });
 
+/* ---------- Enable/disable deposit & withdraw for the default currency (Lando Coin) ---------- */
+router.get('/lndc-wallet-settings', (req, res) => res.json(getLndcWalletSettings()));
+router.post('/lndc-wallet-settings', (req, res) => {
+  setLndcWalletSettings({ depositEnabled: !!req.body.depositEnabled, withdrawEnabled: !!req.body.withdrawEnabled });
+  res.json({ ok: true });
+});
+
 /* ---------- Support ID (instead of internal ticket) ---------- */
 router.get('/support-contact', (req, res) => res.json({ username: getSupportContact() }));
 router.post('/support-contact', (req, res) => { setSupportContact(req.body.username); res.json({ ok: true }); });
@@ -156,7 +167,7 @@ router.post('/support-contact', (req, res) => { setSupportContact(req.body.usern
 /* ---------- Referral reward (purchase commission percent + flat membership reward) ---------- */
 router.get('/referral-settings', (req, res) => res.json(getReferralSettings()));
 router.post('/referral-settings', (req, res) => {
-  setReferralSettings({ percent: req.body.percent, signupBonus: req.body.signupBonus });
+  setReferralSettings({ percent: req.body.percent, signupBonus: req.body.signupBonus, signupBonusCurrency: req.body.signupBonusCurrency });
   res.json({ ok: true });
 });
 
@@ -398,12 +409,13 @@ router.post('/game/cards/:id/grant', (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-/* ---------- Max upgradable power per level (1 to 7) ---------- */
+/* ---------- Min/Max upgradable power per level (1 to 7) ---------- */
 router.get('/game/level-power', (req, res) => res.json(getCardLevelPowerConfig()));
 router.post('/game/level-power', (req, res) => {
   // max_power is the main name; power is also accepted for client simplicity
   const maxPower = req.body.max_power !== undefined ? req.body.max_power : req.body.power;
-  try { setCardLevelPower(Number(req.body.level), maxPower); res.json({ ok: true }); }
+  const minPower = req.body.min_power;
+  try { setCardLevelPower(Number(req.body.level), maxPower, minPower); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
