@@ -1,9 +1,68 @@
 import db from './db.js';
 import { adjustToman, getUser } from './db.js';
 
-export async function getClanConfig() { return await db.prepare('SELECT * FROM clan_config WHERE id = 1').get(); }
-export async function setClanConfig(c) {
-  await db.prepare(`
+db.exec(`
+CREATE TABLE IF NOT EXISTS clan_config (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  enabled INTEGER NOT NULL DEFAULT 0,
+  creation_cost_toman INTEGER NOT NULL DEFAULT 50000,
+  max_members INTEGER NOT NULL DEFAULT 20,
+  score_per_1k_purchase INTEGER NOT NULL DEFAULT 10,
+  score_per_win INTEGER NOT NULL DEFAULT 5,
+  score_per_1k_donation INTEGER NOT NULL DEFAULT 20,
+  reward_toman INTEGER NOT NULL DEFAULT 0,
+  winners_count INTEGER NOT NULL DEFAULT 1,     -- 1 or 3
+  distribution_method TEXT NOT NULL DEFAULT 'equal', -- equal | donation_share
+  min_score_threshold INTEGER NOT NULL DEFAULT 0,
+  reset_days INTEGER NOT NULL DEFAULT 7
+);
+INSERT OR IGNORE INTO clan_config (id) VALUES (1);
+
+CREATE TABLE IF NOT EXISTS clans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  tag TEXT NOT NULL UNIQUE,
+  avatar_url TEXT,
+  owner_tg_id INTEGER NOT NULL,
+  bank_balance INTEGER NOT NULL DEFAULT 0,
+  score INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS clan_members (
+  tg_id INTEGER PRIMARY KEY,
+  clan_id INTEGER NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member', -- owner | admin | member
+  donated_total INTEGER NOT NULL DEFAULT 0,
+  joined_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS clan_donations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  clan_id INTEGER NOT NULL,
+  tg_id INTEGER NOT NULL,
+  amount INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS clan_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  period_started_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+INSERT OR IGNORE INTO clan_state (id) VALUES (1);
+`);
+
+function safeAddColumn(table, columnDef) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
+  catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+}
+// how much of their own donated share they've withdrawn/gifted so far — so they cannot withdraw more than their own contribution
+safeAddColumn('clan_members', 'withdrawn_total INTEGER NOT NULL DEFAULT 0');
+safeAddColumn('clan_config', 'withdraw_fee_percent INTEGER NOT NULL DEFAULT 0');
+
+export function getClanConfig() { return db.prepare('SELECT * FROM clan_config WHERE id = 1').get(); }
+export function setClanConfig(c) {
+  db.prepare(`
     UPDATE clan_config SET enabled=?, creation_cost_toman=?, max_members=?, score_per_1k_purchase=?, score_per_win=?,
       score_per_1k_donation=?, reward_toman=?, winners_count=?, distribution_method=?, min_score_threshold=?, reset_days=?, withdraw_fee_percent=?
     WHERE id = 1
@@ -11,220 +70,220 @@ export async function setClanConfig(c) {
     c.score_per_1k_donation, c.reward_toman, c.winners_count, c.distribution_method, c.min_score_threshold, c.reset_days, c.withdraw_fee_percent || 0);
 }
 
-export async function getMyClan(tgId) {
-  const member = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
+export function getMyClan(tgId) {
+  const member = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
   if (!member) return null;
-  const clan = await db.prepare('SELECT * FROM clans WHERE id = ?').get(member.clan_id);
+  const clan = db.prepare('SELECT * FROM clans WHERE id = ?').get(member.clan_id);
   return clan ? { ...clan, myRole: member.role, myDonatedTotal: member.donated_total, myWithdrawnTotal: member.withdrawn_total, myWithdrawableRemaining: clan.bank_balance } : null;
 }
-export async function getClanById(id) { return await db.prepare('SELECT * FROM clans WHERE id = ?').get(id); }
-export async function getClanMembers(clanId) {
-  return await db.prepare(`
+export function getClanById(id) { return db.prepare('SELECT * FROM clans WHERE id = ?').get(id); }
+export function getClanMembers(clanId) {
+  return db.prepare(`
     SELECT cm.*, u.first_name, u.username FROM clan_members cm JOIN users u ON u.tg_id = cm.tg_id
     WHERE cm.clan_id = ? ORDER BY cm.donated_total DESC
   `).all(clanId);
 }
-export async function searchClans(query) {
+export function searchClans(query) {
   const like = `%${query || ''}%`;
-  return await db.prepare('SELECT * FROM clans WHERE name LIKE ? OR tag LIKE ? ORDER BY score DESC LIMIT 30').all(like, like);
+  return db.prepare('SELECT * FROM clans WHERE name LIKE ? OR tag LIKE ? ORDER BY score DESC LIMIT 30').all(like, like);
 }
-export async function getClanLeaderboard(limit = 10) {
-  return await db.prepare('SELECT * FROM clans ORDER BY score DESC LIMIT ?').all(limit);
+export function getClanLeaderboard(limit = 10) {
+  return db.prepare('SELECT * FROM clans ORDER BY score DESC LIMIT ?').all(limit);
 }
-export async function getClanRank(clanId) {
-  const row = await db.prepare(`
+export function getClanRank(clanId) {
+  const row = db.prepare(`
     SELECT COUNT(*) + 1 AS rank FROM clans
     WHERE score > (SELECT COALESCE(score,0) FROM clans WHERE id = ?)
   `).get(clanId);
   return row.rank;
 }
 
-export async function createClan(tgId, name, tag, avatarUrl) {
-  const cfg = await getClanConfig();
+export function createClan(tgId, name, tag, avatarUrl) {
+  const cfg = getClanConfig();
   if (!cfg.enabled) throw new Error('The clan system is currently disabled');
-  if (await getMyClan(tgId)) throw new Error('You are already a member of a clan');
+  if (getMyClan(tgId)) throw new Error('You are already a member of a clan');
   if (!name || !tag) throw new Error('Clan name and tag are required');
-  const exists = await db.prepare('SELECT 1 FROM clans WHERE tag = ?').get(tag);
+  const exists = db.prepare('SELECT 1 FROM clans WHERE tag = ?').get(tag);
   if (exists) throw new Error('This tag is already in use');
-  const user = await getUser(tgId);
+  const user = getUser(tgId);
   if (!user || user.balance_toman < cfg.creation_cost_toman) throw new Error(`${cfg.creation_cost_toman.toLocaleString()} LNDC is required to create a clan`);
 
   let clanId;
-  const tx = db.transaction(async () => {
-    await adjustToman(tgId, -cfg.creation_cost_toman, `Create clan «${name}»`);
-    clanId = (await db.prepare('INSERT INTO clans (name, tag, avatar_url, owner_tg_id) VALUES (?,?,?,?)').run(name, tag, avatarUrl || null, tgId)).lastInsertRowid;
-    await db.prepare(`INSERT INTO clan_members (tg_id, clan_id, role) VALUES (?,?,'owner')`).run(tgId, clanId);
+  const tx = db.transaction(() => {
+    adjustToman(tgId, -cfg.creation_cost_toman, `Create clan «${name}»`);
+    clanId = db.prepare('INSERT INTO clans (name, tag, avatar_url, owner_tg_id) VALUES (?,?,?,?)').run(name, tag, avatarUrl || null, tgId).lastInsertRowid;
+    db.prepare(`INSERT INTO clan_members (tg_id, clan_id, role) VALUES (?,?,'owner')`).run(tgId, clanId);
   });
-  await tx();
+  tx();
   return clanId;
 }
 
-export async function joinClan(tgId, clanId) {
-  const cfg = await getClanConfig();
+export function joinClan(tgId, clanId) {
+  const cfg = getClanConfig();
   if (!cfg.enabled) throw new Error('The clan system is currently disabled');
-  if (await getMyClan(tgId)) throw new Error('You are already a member of a clan');
-  const clan = await getClanById(clanId);
+  if (getMyClan(tgId)) throw new Error('You are already a member of a clan');
+  const clan = getClanById(clanId);
   if (!clan) throw new Error('Clan not found');
-  const memberCount = (await db.prepare('SELECT COUNT(*) c FROM clan_members WHERE clan_id = ?').get(clanId)).c;
+  const memberCount = db.prepare('SELECT COUNT(*) c FROM clan_members WHERE clan_id = ?').get(clanId).c;
   if (memberCount >= cfg.max_members) throw new Error('This clan is full');
-  await db.prepare(`INSERT INTO clan_members (tg_id, clan_id, role) VALUES (?,?,'member')`).run(tgId, clanId);
+  db.prepare(`INSERT INTO clan_members (tg_id, clan_id, role) VALUES (?,?,'member')`).run(tgId, clanId);
 }
 
 // If the leader leaves, the clan is fully disbanded; a regular member just leaves
-export async function leaveClan(tgId) {
-  const member = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
+export function leaveClan(tgId) {
+  const member = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
   if (!member) throw new Error('You are not in any clan');
   if (member.role === 'owner') {
-    const tx = db.transaction(async () => {
-      await db.prepare('DELETE FROM clan_members WHERE clan_id = ?').run(member.clan_id);
-      await db.prepare('DELETE FROM clans WHERE id = ?').run(member.clan_id);
+    const tx = db.transaction(() => {
+      db.prepare('DELETE FROM clan_members WHERE clan_id = ?').run(member.clan_id);
+      db.prepare('DELETE FROM clans WHERE id = ?').run(member.clan_id);
     });
-    await tx();
+    tx();
     return { disbanded: true };
   }
-  await db.prepare('DELETE FROM clan_members WHERE tg_id = ?').run(tgId);
+  db.prepare('DELETE FROM clan_members WHERE tg_id = ?').run(tgId);
   return { disbanded: false };
 }
 
-export async function kickMember(ownerTgId, targetTgId) {
-  const owner = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
+export function kickMember(ownerTgId, targetTgId) {
+  const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
   if (!owner || owner.role !== 'owner') throw new Error('Only the clan leader can kick');
-  const target = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(targetTgId);
+  const target = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(targetTgId);
   if (!target || target.clan_id !== owner.clan_id) throw new Error('This user is not in your clan');
   if (target.role === 'owner') throw new Error('You cannot kick yourself');
-  await db.prepare('DELETE FROM clan_members WHERE tg_id = ?').run(targetTgId);
+  db.prepare('DELETE FROM clan_members WHERE tg_id = ?').run(targetTgId);
 }
-export async function setMemberRole(ownerTgId, targetTgId, role) {
-  const owner = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
+export function setMemberRole(ownerTgId, targetTgId, role) {
+  const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
   if (!owner || owner.role !== 'owner') throw new Error('Only the clan leader can assign roles');
-  const target = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(targetTgId);
+  const target = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(targetTgId);
   if (!target || target.clan_id !== owner.clan_id) throw new Error('This user is not in your clan');
-  await db.prepare(`UPDATE clan_members SET role = ? WHERE tg_id = ?`).run(role === 'admin' ? 'admin' : 'member', targetTgId);
+  db.prepare(`UPDATE clan_members SET role = ? WHERE tg_id = ?`).run(role === 'admin' ? 'admin' : 'member', targetTgId);
 }
 
-export async function donateToClan(tgId, amount) {
-  const member = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
+export function donateToClan(tgId, amount) {
+  const member = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
   if (!member) throw new Error('You are not in any clan');
   if (!amount || amount <= 0) throw new Error('Invalid amount');
-  const user = await getUser(tgId);
+  const user = getUser(tgId);
   if (!user || user.balance_toman < amount) throw new Error('Insufficient balance');
-  const cfg = await getClanConfig();
+  const cfg = getClanConfig();
   const scoreGain = Math.floor(amount / 1000) * cfg.score_per_1k_donation;
 
-  const tx = db.transaction(async () => {
-    await adjustToman(tgId, -amount, 'Donation to clan bank');
-    await db.prepare('UPDATE clans SET bank_balance = bank_balance + ?, score = score + ? WHERE id = ?').run(amount, scoreGain, member.clan_id);
-    await db.prepare('UPDATE clan_members SET donated_total = donated_total + ? WHERE tg_id = ?').run(amount, tgId);
-    await db.prepare('INSERT INTO clan_donations (clan_id, tg_id, amount) VALUES (?,?,?)').run(member.clan_id, tgId, amount);
+  const tx = db.transaction(() => {
+    adjustToman(tgId, -amount, 'Donation to clan bank');
+    db.prepare('UPDATE clans SET bank_balance = bank_balance + ?, score = score + ? WHERE id = ?').run(amount, scoreGain, member.clan_id);
+    db.prepare('UPDATE clan_members SET donated_total = donated_total + ? WHERE tg_id = ?').run(amount, tgId);
+    db.prepare('INSERT INTO clan_donations (clan_id, tg_id, amount) VALUES (?,?,?)').run(member.clan_id, tgId, amount);
   });
-  await tx();
+  tx();
 }
 
 // The clan leader can withdraw from the clan bank (funds members donated) to their own wallet
-export async function withdrawFromClanBank(ownerTgId, amount) {
-  const owner = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
+export function withdrawFromClanBank(ownerTgId, amount) {
+  const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
   if (!owner || owner.role !== 'owner') throw new Error('Only the clan leader can withdraw from the clan bank');
   if (!amount || amount <= 0) throw new Error('Invalid amount');
-  const clan = await getClanById(owner.clan_id);
+  const clan = getClanById(owner.clan_id);
   if (!clan || clan.bank_balance < amount) throw new Error('Insufficient clan bank balance');
-  const cfg = await getClanConfig();
+  const cfg = getClanConfig();
   const fee = Math.round(amount * (cfg.withdraw_fee_percent || 0) / 100);
   const net = amount - fee;
-  const tx = db.transaction(async () => {
-    await db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
-    await db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
-    await adjustToman(ownerTgId, net, `Withdrawal from clan bank «${clan.name}»${fee > 0 ? ` (${fee.toLocaleString()} LNDC fee deducted)` : ''}`);
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
+    db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
+    adjustToman(ownerTgId, net, `Withdrawal from clan bank «${clan.name}»${fee > 0 ? ` (${fee.toLocaleString()} LNDC fee deducted)` : ''}`);
   });
-  await tx();
+  tx();
   return { net, fee };
 }
 // The clan leader can gift directly from the clan bank to a member
-export async function giftFromClanBank(ownerTgId, targetTgId, amount) {
-  const owner = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
+export function giftFromClanBank(ownerTgId, targetTgId, amount) {
+  const owner = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(ownerTgId);
   if (!owner || owner.role !== 'owner') throw new Error('Only the clan leader can gift from the clan bank');
   if (!amount || amount <= 0) throw new Error('Invalid amount');
-  const target = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(targetTgId);
+  const target = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(targetTgId);
   if (!target || target.clan_id !== owner.clan_id) throw new Error('This user is not in your clan');
-  const clan = await getClanById(owner.clan_id);
+  const clan = getClanById(owner.clan_id);
   if (!clan || clan.bank_balance < amount) throw new Error('Insufficient clan bank balance');
-  const cfg = await getClanConfig();
+  const cfg = getClanConfig();
   const fee = Math.round(amount * (cfg.withdraw_fee_percent || 0) / 100);
   const net = amount - fee;
-  const tx = db.transaction(async () => {
-    await db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
-    await db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
-    await adjustToman(targetTgId, net, `Gift from clan bank «${clan.name}»${fee > 0 ? ` (${fee.toLocaleString()} LNDC fee deducted)` : ''}`);
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
+    db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
+    adjustToman(targetTgId, net, `Gift from clan bank «${clan.name}»${fee > 0 ? ` (${fee.toLocaleString()} LNDC fee deducted)` : ''}`);
   });
-  await tx();
+  tx();
   return { net, fee };
 }
 
 // Hooks called from other parts of the app (shop purchases, game wins)
-export async function addClanPurchaseScore(tgId, amountToman) {
-  const member = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
+export function addClanPurchaseScore(tgId, amountToman) {
+  const member = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
   if (!member) return;
-  const cfg = await getClanConfig();
+  const cfg = getClanConfig();
   const scoreGain = Math.floor(amountToman / 1000) * cfg.score_per_1k_purchase;
-  if (scoreGain > 0) await db.prepare('UPDATE clans SET score = score + ? WHERE id = ?').run(scoreGain, member.clan_id);
+  if (scoreGain > 0) db.prepare('UPDATE clans SET score = score + ? WHERE id = ?').run(scoreGain, member.clan_id);
 }
-export async function addClanWinScore(tgId) {
-  const member = await db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
+export function addClanWinScore(tgId) {
+  const member = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
   if (!member) return;
-  const cfg = await getClanConfig();
-  if (cfg.score_per_win > 0) await db.prepare('UPDATE clans SET score = score + ? WHERE id = ?').run(cfg.score_per_win, member.clan_id);
+  const cfg = getClanConfig();
+  if (cfg.score_per_win > 0) db.prepare('UPDATE clans SET score = score + ? WHERE id = ?').run(cfg.score_per_win, member.clan_id);
 }
 
-export async function getClanState() { return await db.prepare('SELECT * FROM clan_state WHERE id = 1').get(); }
+export function getClanState() { return db.prepare('SELECT * FROM clan_state WHERE id = 1').get(); }
 
 // Distributes prizes to the top clans and resets scores (the bank remains untouched)
-export async function resetClanSeason(notifyFn) {
-  const cfg = await getClanConfig();
-  const top = await db.prepare('SELECT * FROM clans WHERE score >= ? ORDER BY score DESC LIMIT ?').all(cfg.min_score_threshold, cfg.winners_count);
+export function resetClanSeason(notifyFn) {
+  const cfg = getClanConfig();
+  const top = db.prepare('SELECT * FROM clans WHERE score >= ? ORDER BY score DESC LIMIT ?').all(cfg.min_score_threshold, cfg.winners_count);
   for (const clan of top) {
-    const members = await getClanMembers(clan.id);
+    const members = getClanMembers(clan.id);
     if (!members.length || cfg.reward_toman <= 0) continue;
     if (cfg.distribution_method === 'donation_share') {
       const totalDonated = members.reduce((s, m) => s + m.donated_total, 0);
       for (const m of members) {
         const share = totalDonated > 0 ? Math.floor((cfg.reward_toman * m.donated_total) / totalDonated) : Math.floor(cfg.reward_toman / members.length);
-        if (share > 0) { await adjustToman(m.tg_id, share, `Clan prize "${clan.name}" (based on donation share)`); if (notifyFn) notifyFn(m.tg_id, clan, share); }
+        if (share > 0) { adjustToman(m.tg_id, share, `Clan prize "${clan.name}" (based on donation share)`); if (notifyFn) notifyFn(m.tg_id, clan, share); }
       }
     } else {
       const share = Math.floor(cfg.reward_toman / members.length);
       for (const m of members) {
-        if (share > 0) { await adjustToman(m.tg_id, share, `Clan prize «${clan.name}»`); if (notifyFn) notifyFn(m.tg_id, clan, share); }
+        if (share > 0) { adjustToman(m.tg_id, share, `Clan prize «${clan.name}»`); if (notifyFn) notifyFn(m.tg_id, clan, share); }
       }
     }
   }
-  await db.prepare('UPDATE clans SET score = 0').run();
-  await db.prepare(`UPDATE clan_state SET period_started_at = now_text() WHERE id = 1`).run();
+  db.prepare('UPDATE clans SET score = 0').run();
+  db.prepare(`UPDATE clan_state SET period_started_at = datetime('now') WHERE id = 1`).run();
 }
-export async function checkAutoResetClanSeason(notifyFn) {
-  const cfg = await getClanConfig();
+export function checkAutoResetClanSeason(notifyFn) {
+  const cfg = getClanConfig();
   if (!cfg.enabled) return;
-  const state = await getClanState();
+  const state = getClanState();
   const startedAt = new Date(state.period_started_at.replace(' ', 'T') + 'Z').getTime();
-  if (Date.now() >= startedAt + cfg.reset_days * 24 * 60 * 60 * 1000) await resetClanSeason(notifyFn);
+  if (Date.now() >= startedAt + cfg.reset_days * 24 * 60 * 60 * 1000) resetClanSeason(notifyFn);
 }
 
 /* ---------- Admin operations on any clan ---------- */
-export async function adminDeleteClan(clanId) {
-  const clan = await getClanById(clanId);
+export function adminDeleteClan(clanId) {
+  const clan = getClanById(clanId);
   if (!clan) throw new Error('Clan not found');
-  const tx = db.transaction(async () => {
-    await db.prepare('DELETE FROM clan_members WHERE clan_id = ?').run(clanId);
-    await db.prepare('DELETE FROM clan_donations WHERE clan_id = ?').run(clanId);
-    await db.prepare('DELETE FROM clans WHERE id = ?').run(clanId);
+  const tx = db.transaction(() => {
+    db.prepare('DELETE FROM clan_members WHERE clan_id = ?').run(clanId);
+    db.prepare('DELETE FROM clan_donations WHERE clan_id = ?').run(clanId);
+    db.prepare('DELETE FROM clans WHERE id = ?').run(clanId);
   });
-  await tx();
+  tx();
 }
 // The admin can manually increase/decrease any clan's bank balance without limit (no fee)
-export async function adminAdjustClanBank(clanId, amount) {
-  const clan = await getClanById(clanId);
+export function adminAdjustClanBank(clanId, amount) {
+  const clan = getClanById(clanId);
   if (!clan) throw new Error('Clan not found');
   if (clan.bank_balance + amount < 0) throw new Error('The clan bank balance cannot go negative');
-  await db.prepare('UPDATE clans SET bank_balance = bank_balance + ? WHERE id = ?').run(amount, clanId);
+  db.prepare('UPDATE clans SET bank_balance = bank_balance + ? WHERE id = ?').run(amount, clanId);
 }
-export async function listAllClansAdmin() {
-  return await db.prepare('SELECT * FROM clans ORDER BY score DESC').all();
+export function listAllClansAdmin() {
+  return db.prepare('SELECT * FROM clans ORDER BY score DESC').all();
 }
