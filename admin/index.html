@@ -47,6 +47,7 @@
     <button class="active" data-tab="dash" onclick="showTab('dash')">Dashboard</button>
     <button data-tab="currencies" onclick="showTab('currencies')">Currencies</button>
     <button data-tab="payment" onclick="showTab('payment')">Payment</button>
+    <button data-tab="referral" onclick="showTab('referral')">Referral rewards</button>
     <button data-tab="messages" onclick="showTab('messages')">Messages</button>
     <button data-tab="topups" onclick="showTab('topups')">Card-to-card top-up</button>
     <button data-tab="withdrawals" onclick="showTab('withdrawals')">LNDC withdrawal</button>
@@ -133,19 +134,6 @@
         <button class="btn" onclick="saveSupportContact()">Save</button>
       </div>
       <div class="card">
-        <h3>🤝 Referral reward (invite friends)</h3>
-        <p class="muted">Each user has a unique invite link. Set how much reward the inviter gets here.</p>
-        <div class="row2">
-          <div><label>Commission percent from each referral's purchase</label><input type="number" id="refPercent" min="0" max="100"></div>
-          <div><label>Flat reward per new member</label><input type="number" id="refSignupBonus" min="0"></div>
-        </div>
-        <label>Reward currency (type)</label>
-        <select id="refSignupBonusCurrency"><option value="LNDC">Lando Coin (LNDC)</option></select>
-        <p class="muted">The inviter gets a commission from every purchase their referral makes (always paid in LNDC). The flat reward is given once, the moment a new user opens the mini app via the invite link — pick its amount and currency here (empty/zero amount = disabled).</p>
-        <button class="btn" onclick="saveReferralSettings()">Save</button>
-        <p class="muted" id="referralSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
-      </div>
-      <div class="card">
         <h3>📖 Mini app info pages</h3>
         <p class="muted">The text of these three pages is shown to the user in the "More > Info" tab of the mini app.</p>
         <label>User guide</label>
@@ -155,6 +143,38 @@
         <label>Rules & terms</label>
         <textarea id="infoRules" rows="5" placeholder="Rules text..."></textarea>
         <button class="btn" onclick="saveInfoPages()">Save info pages</button>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-referral">
+      <div class="card">
+        <h3>🤝 Referral reward (invite friends)</h3>
+        <p class="muted">Each user has a unique invite link. Two independent rewards can be configured for the inviter:</p>
+        <h4>1) Commission from purchases</h4>
+        <div class="row2">
+          <div><label>Commission percent from each referral's purchase (always paid in LNDC)</label><input type="number" id="refPercent" min="0" max="100"></div>
+        </div>
+        <h4>2) Flat reward for a new member joining</h4>
+        <p class="muted">Given once, the instant a new user opens the mini app via the invite link. Choose whatever you want to give: an amount in any currency, or a specific game card.</p>
+        <label>Reward type</label>
+        <select id="refRewardType" onchange="onRefRewardTypeChange()">
+          <option value="currency">Currency amount</option>
+          <option value="card">A specific game card</option>
+        </select>
+        <div id="refCurrencyRewardBox">
+          <div class="row2">
+            <div><label>Amount</label><input type="number" id="refSignupBonus" min="0"></div>
+            <div><label>Currency</label><select id="refSignupBonusCurrency"><option value="LNDC">Lando Coin (LNDC)</option></select></div>
+          </div>
+          <p class="muted">Leave the amount empty or 0 to disable the flat reward entirely.</p>
+        </div>
+        <div id="refCardRewardBox" style="display:none;">
+          <label>Card to gift the inviter</label>
+          <select id="refSignupBonusCardId"><option value="">— choose a card —</option></select>
+          <p class="muted">The inviter instantly receives one copy of this exact card (at its base level) the moment their invite brings in a new member.</p>
+        </div>
+        <button class="btn" onclick="saveReferralSettings()">Save</button>
+        <p class="muted" id="referralSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
     </section>
 
@@ -246,8 +266,8 @@
 
     <section class="tab" id="tab-gamecards">
       <div class="card">
-        <h3>Max upgradable power per level (1 to 7)</h3>
-        <p class="muted">Each level has one fixed power cap (not a range). When a card is created, mutated, or boosted via upgrade, its power never exceeds that level's cap.</p>
+        <h3>Power per level (1 to 7)</h3>
+        <p class="muted">Each level has one FIXED power (not a random range) — every card created at, or merged up into, that level gets exactly this power. "Max power" is the separate upgrade cap: boost/sacrifice bonus power can raise a card above its level power, but never past this cap. Max power must always be ≥ the level's power, or the card would already be at its cap and impossible to upgrade.</p>
         <div id="levelPowerTable"></div>
       </div>
       <div class="card">
@@ -279,8 +299,8 @@
           <div><label>active?</label><select id="gcActive"><option value="1">Yes</option><option value="0">No</option></select></div>
         </div>
         <div class="row2">
-          <div><label>Minimum custom power (empty = the level's general range)</label><input type="number" id="gcMinPower"></div>
-          <div><label>Max custom power (absolute cap, not exceeded even with upgrades)</label><input type="number" id="gcMaxPower"></div>
+          <div><label>Custom fixed power for this card (empty = use the level's general power)</label><input type="number" id="gcMinPower"></div>
+          <div><label>Custom max power for this card (empty = use the level's general cap; absolute cap, not exceeded even with upgrades)</label><input type="number" id="gcMaxPower"></div>
         </div>
         <h3 style="margin-top:16px;">Level-specific image (optional)</h3>
         <p class="muted">If you leave any of them empty, the default image above will be shown.</p>
@@ -857,7 +877,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
+  const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: loadReferralSettings, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
     cardcategories: loadCategories, mergecosts: loadMergeCosts, wheel: loadWheelAdmin,
     auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
@@ -944,6 +964,13 @@ async function loadPaymentSettings() {
   document.getElementById('infoGuide').value = info.guide || '';
   document.getElementById('infoFaq').value = info.faq || '';
   document.getElementById('infoRules').value = info.rules || '';
+}
+function onRefRewardTypeChange() {
+  const type = document.getElementById('refRewardType').value;
+  document.getElementById('refCurrencyRewardBox').style.display = type === 'currency' ? '' : 'none';
+  document.getElementById('refCardRewardBox').style.display = type === 'card' ? '' : 'none';
+}
+async function loadReferralSettings() {
   const ref = await api('/referral-settings');
   document.getElementById('refPercent').value = ref.percent;
   document.getElementById('refSignupBonus').value = ref.signupBonus;
@@ -951,12 +978,20 @@ async function loadPaymentSettings() {
   const currencies = await api('/currencies');
   curSel.innerHTML = '<option value="LNDC">Lando Coin (LNDC)</option>' + currencies.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
   curSel.value = ref.signupBonusCurrency || 'LNDC';
+  const cards = await api('/game/cards');
+  const cardSel = document.getElementById('refSignupBonusCardId');
+  cardSel.innerHTML = '<option value="">— choose a card —</option>' + cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  cardSel.value = ref.signupBonusCardId || '';
+  document.getElementById('refRewardType').value = ref.signupBonusType || 'currency';
+  onRefRewardTypeChange();
 }
 async function saveReferralSettings() {
   await api('/referral-settings', { method: 'POST', body: JSON.stringify({
     percent: document.getElementById('refPercent').value,
+    signupBonusType: document.getElementById('refRewardType').value,
     signupBonus: document.getElementById('refSignupBonus').value,
     signupBonusCurrency: document.getElementById('refSignupBonusCurrency').value,
+    signupBonusCardId: document.getElementById('refSignupBonusCardId').value || null,
   }) });
   const msg = document.getElementById('referralSavedMsg');
   msg.style.display = 'block';
@@ -1308,6 +1343,9 @@ function editGameCard(c) {
   renderLevelImageGrid();
 }
 async function saveGameCard() {
+  const gcMin = document.getElementById('gcMinPower').value;
+  const gcMax = document.getElementById('gcMaxPower').value;
+  if (gcMin && gcMax && Number(gcMin) > Number(gcMax)) { alert("This card's fixed power cannot be greater than its max power — it would be impossible to upgrade"); return; }
   await api('/game/cards', { method: 'POST', body: JSON.stringify({
     id: document.getElementById('gcId').value || null,
     name: document.getElementById('gcName').value,
@@ -1329,24 +1367,24 @@ async function saveGameCard() {
 }
 async function deleteGameCard(id) { if (confirm('be deleted?')) { await api(`/game/cards/${id}`, { method: 'DELETE' }); loadGameCards(); } }
 
-/* ---------- Min/Max power per level ---------- */
+/* ---------- Fixed power + max power (upgrade cap) per level ---------- */
 async function loadLevelPowerTable() {
   const rows = await api('/game/level-power');
   document.getElementById('levelPowerTable').innerHTML = rows.map(r => `
     <div class="row2" style="align-items:center;">
       <div><label>Level ${r.level}</label></div>
       <div style="display:flex;gap:6px;">
-        <input type="number" inputmode="numeric" id="lp-min-${r.level}" value="${r.min_power}" placeholder="Min power">
-        <input type="number" inputmode="numeric" id="lp-max-${r.level}" value="${r.max_power}" placeholder="Max power">
+        <input type="number" inputmode="numeric" id="lp-min-${r.level}" value="${r.min_power}" placeholder="Level power (fixed)">
+        <input type="number" inputmode="numeric" id="lp-max-${r.level}" value="${r.max_power}" placeholder="Max power (cap)">
       </div>
-    </div>`).join('') + `<button class="btn secondary" onclick="saveLevelPowerTable()">Save caps</button>`;
+    </div>`).join('') + `<button class="btn secondary" onclick="saveLevelPowerTable()">Save</button>`;
 }
 async function saveLevelPowerTable() {
   for (let level = 1; level <= 7; level++) {
     const maxEl = document.getElementById(`lp-max-${level}`);
     const minEl = document.getElementById(`lp-min-${level}`);
     if (!maxEl) continue;
-    if (Number(minEl.value) > Number(maxEl.value)) { alert(`Level ${level}: min power cannot be greater than max power`); return; }
+    if (Number(minEl.value) > Number(maxEl.value)) { alert(`Level ${level}: this level's power cannot be greater than its max power — the card would be impossible to upgrade`); return; }
     await api('/game/level-power', { method: 'POST', body: JSON.stringify({ level, max_power: maxEl.value, min_power: minEl.value }) });
   }
   alert('Saved');
