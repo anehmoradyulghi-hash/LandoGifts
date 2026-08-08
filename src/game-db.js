@@ -58,10 +58,10 @@ safeAddColumn('game_cards', "level_images TEXT DEFAULT '[]'"); // JSON array wit
 safeAddColumn('game_cards', "edition TEXT DEFAULT 'standard'"); // standard | shiny | gold
 safeAddColumn('game_cards', 'max_supply INTEGER'); // empty = unlimited
 safeAddColumn('user_cards', 'bonus_power INTEGER NOT NULL DEFAULT 0'); // comes from the "boost/sacrifice" method, does not change the level
-safeAddColumn('user_cards', 'rolled_power INTEGER'); // The actual power randomly picked from that level's range at creation/level-up time
+safeAddColumn('user_cards', 'rolled_power INTEGER'); // The fixed power for that level (set by the admin) at the time this card was created/leveled-up
 safeAddColumn('game_cards', 'instant_level INTEGER'); // if set (e.g. 7), every card created from this template starts at that level (special/custom card)
 safeAddColumn('game_cards', 'fixed_power INTEGER'); // if set, this custom power is used instead of the level-based formula
-safeAddColumn('game_cards', 'min_power INTEGER'); // This card's custom power range (if set, used instead of the level's general range)
+safeAddColumn('game_cards', 'min_power INTEGER'); // This card's custom fixed power (if set, used instead of the level's general fixed power) — no longer a range
 safeAddColumn('game_cards', 'max_power INTEGER'); // This card's power cap — should not be exceeded even with boost/sacrifice
 
 db.exec(`
@@ -71,37 +71,43 @@ CREATE TABLE IF NOT EXISTS card_level_power (
   max_power INTEGER NOT NULL
 );
 `);
-// Default power range per level (if the admin has not set anything yet) — fully changeable from the admin panel
+// Default power per level (if the admin has not set anything yet) — fully changeable from the admin panel.
+// min_power = the FIXED power a card gets the moment it reaches this level (at creation, or after merging up
+// a level) — deterministic, never random. max_power = the absolute cap that boost/sacrifice bonus power can
+// never push this level's cards past. max_power must always be >= min_power (enforced in setCardLevelPower)
+// or the card would be created already at/above its own cap and become impossible to upgrade.
 const seedLevelPower = db.prepare('INSERT OR IGNORE INTO card_level_power (level, min_power, max_power) VALUES (?,?,?)');
 [[1,8,14],[2,14,22],[3,22,32],[4,32,45],[5,45,60],[6,60,80],[7,80,110]].forEach(([lvl,mn,mx]) => seedLevelPower.run(lvl,mn,mx));
 
 export function getCardLevelPowerConfig() {
   return db.prepare('SELECT * FROM card_level_power ORDER BY level ASC').all();
 }
-// A full min/max power range is set per level from the admin panel.
-// If only maxPower is provided (legacy call), minPower falls back to the same value.
-export function setCardLevelPower(level, maxPower, minPower) {
+// levelPower is the fixed power a card at this level is created/leveled-up with (deterministic — no randomness).
+// maxPower is the absolute cap that boost/sacrifice can raise it to. maxPower must be >= levelPower, otherwise
+// a freshly created/leveled card would already sit at or above its own cap and could never be upgraded — this
+// used to happen with the old random-range system and is exactly the bug being fixed here.
+export function setCardLevelPower(level, maxPower, levelPower) {
   const mx = Number(maxPower);
-  const mn = minPower !== undefined && minPower !== null && minPower !== '' ? Number(minPower) : mx;
+  const lp = Number(levelPower);
   if (!Number.isFinite(mx) || mx <= 0) throw new Error('Invalid max power number');
-  if (!Number.isFinite(mn) || mn <= 0) throw new Error('Invalid min power number');
-  if (mn > mx) throw new Error('Min power cannot be greater than max power');
+  if (!Number.isFinite(lp) || lp <= 0) throw new Error('Invalid level power number');
+  if (lp > mx) throw new Error('This level\'s power cannot be greater than its max power — the card would be impossible to upgrade');
   db.prepare(`
     INSERT INTO card_level_power (level, min_power, max_power) VALUES (?,?,?)
     ON CONFLICT(level) DO UPDATE SET min_power = excluded.min_power, max_power = excluded.max_power
-  `).run(level, mn, mx);
+  `).run(level, lp, mx);
 }
+// A card's power at a given level is always a FIXED, admin-set number — never random. This used to roll a
+// random value inside a min/max range, which could land at or above the level's max_power cap and leave the
+// card with zero room to be boosted/upgraded further. Fixed values remove that bug entirely.
 function rollPowerForLevel(level) {
   const range = db.prepare('SELECT * FROM card_level_power WHERE level = ?').get(level);
-  if (!range) return null;
-  return Math.round(range.min_power + Math.random() * (range.max_power - range.min_power));
+  return range ? range.min_power : null;
 }
-// if the card itself has a custom power range (set in the admin panel), that is used;
-// otherwise that level's general range is used
+// If the card itself has a custom fixed power set (in the admin panel), that is used instead of the level's
+// general fixed power; otherwise that level's general fixed power is used. Never randomized.
 function rollPowerForCard(card, level) {
-  if (card && card.min_power != null && card.max_power != null) {
-    return Math.round(card.min_power + Math.random() * (card.max_power - card.min_power));
-  }
+  if (card && card.min_power != null) return card.min_power;
   return rollPowerForLevel(level);
 }
 // The absolute power cap this card (at this level) should never exceed, even with boost/sacrifice

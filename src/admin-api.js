@@ -167,7 +167,13 @@ router.post('/support-contact', (req, res) => { setSupportContact(req.body.usern
 /* ---------- Referral reward (purchase commission percent + flat membership reward) ---------- */
 router.get('/referral-settings', (req, res) => res.json(getReferralSettings()));
 router.post('/referral-settings', (req, res) => {
-  setReferralSettings({ percent: req.body.percent, signupBonus: req.body.signupBonus, signupBonusCurrency: req.body.signupBonusCurrency });
+  setReferralSettings({
+    percent: req.body.percent,
+    signupBonusType: req.body.signupBonusType,
+    signupBonus: req.body.signupBonus,
+    signupBonusCurrency: req.body.signupBonusCurrency,
+    signupBonusCardId: req.body.signupBonusCardId,
+  });
   res.json({ ok: true });
 });
 

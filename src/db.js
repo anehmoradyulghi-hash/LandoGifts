@@ -343,24 +343,48 @@ export function payReferralBonus(tgId, purchaseAmountToman, percent) {
 export function getReferralSettings() {
   return {
     percent: Number(getSetting('referral_percent', process.env.REFERRAL_PERCENT || '5')),
+    // "Type" of the flat invite reward: a currency amount, or a specific game card
+    signupBonusType: getSetting('referral_signup_bonus_type', 'currency'),
     signupBonus: Number(getSetting('referral_signup_bonus', '0')),
-    // "Type" of the flat invite reward — which currency it is paid in (defaults to Lando Coin)
     signupBonusCurrency: getSetting('referral_signup_bonus_currency', 'LNDC'),
+    signupBonusCardId: getSetting('referral_signup_bonus_card_id', '') || null,
   };
 }
-export function setReferralSettings({ percent, signupBonus, signupBonusCurrency }) {
+export function setReferralSettings({ percent, signupBonusType, signupBonus, signupBonusCurrency, signupBonusCardId }) {
   setSetting('referral_percent', String(Number(percent) || 0));
+  setSetting('referral_signup_bonus_type', signupBonusType === 'card' ? 'card' : 'currency');
   setSetting('referral_signup_bonus', String(Number(signupBonus) || 0));
   setSetting('referral_signup_bonus_currency', (signupBonusCurrency || 'LNDC').toUpperCase());
+  setSetting('referral_signup_bonus_card_id', signupBonusCardId ? String(Number(signupBonusCardId)) : '');
 }
 // One-time flat referral reward — given to the inviter the moment a new user opens the app via the invite link.
-// Paid in whichever currency the admin picked (LNDC by default, or any other active currency).
+// Whatever the admin picked in the panel: a currency amount (LNDC by default, or any other active currency),
+// or a specific game card gifted straight into the inviter's collection.
 export function payReferralSignupBonus(referrerTgId, newUserTgId) {
-  const { signupBonus: bonus, signupBonusCurrency: currency } = getReferralSettings();
-  if (!bonus || bonus <= 0) return;
+  const { signupBonusType: type, signupBonus: bonus, signupBonusCurrency: currency, signupBonusCardId: cardId } = getReferralSettings();
   const reason = `New member invite reward (${newUserTgId})`;
+  if (type === 'card') {
+    if (!cardId) return;
+    grantReferralCardReward(referrerTgId, Number(cardId));
+    return;
+  }
+  if (!bonus || bonus <= 0) return;
   if (!currency || currency === 'LNDC') adjustToman(referrerTgId, bonus, reason);
   else adjustCurrencyBalance(referrerTgId, currency, bonus, reason);
+}
+// Grants one copy of a game card as the referral reward. Mirrors game-db.js's grantCardInstance logic exactly
+// (card-specific fixed power if set, otherwise that level's general fixed power) via the shared `db` connection,
+// kept local to this file to avoid a circular import between db.js and game-db.js.
+function grantReferralCardReward(tgId, cardId) {
+  const card = db.prepare('SELECT * FROM game_cards WHERE id = ?').get(cardId);
+  if (!card) return;
+  const level = card.instant_level || 1;
+  let power = card.min_power;
+  if (power == null) {
+    const range = db.prepare('SELECT * FROM card_level_power WHERE level = ?').get(level);
+    power = range ? range.min_power : card.base_power;
+  }
+  db.prepare('INSERT INTO user_cards (tg_id, card_id, level, rolled_power) VALUES (?,?,?,?)').run(tgId, cardId, level, power);
 }
 
 export function getReferralInfo(tgId) {
