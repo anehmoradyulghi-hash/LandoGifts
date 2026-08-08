@@ -103,6 +103,45 @@
   .gcard.orange { background:linear-gradient(150deg,var(--o1),var(--o2)); }
   .gcard.blue   { background:linear-gradient(150deg,var(--b1),var(--b2)); }
   .gcard.teal   { background:linear-gradient(150deg,var(--t1),var(--t2)); }
+  /* When the admin sets a custom design image (from the panel) for a hub tile, it replaces the flat
+     gradient with real artwork, cover-fit and centered, plus a bottom-up dark scrim so the title/
+     subtitle text stays legible over any image. */
+  .gcard.has-img { background-size:cover; background-position:center; }
+  .gcard.has-img::after {
+    content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+    background:linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,.55) 78%, rgba(0,0,0,.75) 100%);
+  }
+  .gcard.has-img .ic, .gcard.has-img .t, .gcard.has-img .s { position:relative; z-index:1; }
+
+  /* ---------- Section banner (Clan / Battle pass headers) ---------- */
+  .section-banner {
+    position:relative; border-radius:22px; overflow:hidden; min-height:150px; margin:14px 0 16px;
+    display:flex; flex-direction:column; justify-content:flex-end; padding:16px;
+    background:linear-gradient(150deg, var(--p2), var(--b2));
+    box-shadow:0 14px 32px -10px rgba(0,0,0,.55);
+  }
+  .section-banner.has-img { background-size:cover; background-position:center; }
+  .section-banner::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.6) 85%, rgba(0,0,0,.8) 100%);
+  }
+  .section-banner-ribbon {
+    position:relative; z-index:1; align-self:center; font-weight:900; font-size:16px; letter-spacing:.3px;
+    padding:7px 22px; border-radius:999px; background:linear-gradient(135deg,var(--gold),#d97706); color:#2b1a00;
+    box-shadow:0 8px 20px -6px rgba(217,119,6,.6); margin-bottom:8px;
+  }
+  .section-banner-desc { position:relative; z-index:1; text-align:center; font-size:12.5px; color:#e7e9f2; opacity:.92; line-height:1.6; }
+
+  /* ---------- Icon-grid (Clan feature shortcuts) ---------- */
+  .icon-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin:14px 0; text-align:center; }
+  .icon-grid-item { cursor:pointer; transition:transform .12s ease; }
+  .icon-grid-item:active { transform:scale(.92); }
+  .icon-grid-ic {
+    width:56px; height:56px; margin:0 auto 6px; border-radius:16px; display:flex; align-items:center; justify-content:center;
+    font-size:24px; background:linear-gradient(150deg,var(--p1),var(--b1));
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.2), 0 8px 18px -8px rgba(0,0,0,.5);
+  }
+  .icon-grid-t { font-size:11px; font-weight:700; color:var(--text); line-height:1.3; }
 
   .badge-hot {
     position:absolute; top:12px; left:12px; font-size:10.5px; font-weight:800; padding:4px 10px;
@@ -132,6 +171,13 @@
   .mini-card .ic { font-size:22px; }
   .mini-card .t { font-weight:700; font-size:12.5px; margin-top:6px; }
   .mini-card .s { font-size:10.5px; color:var(--muted); margin-top:2px; }
+  /* Same optional custom-artwork treatment as .gcard, sized for the smaller quick-access tiles. */
+  .mini-card.has-img { background-size:cover; background-position:center; position:relative; overflow:hidden; }
+  .mini-card.has-img::after {
+    content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+    background:linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.55) 80%, rgba(0,0,0,.75) 100%);
+  }
+  .mini-card.has-img .ic, .mini-card.has-img .t, .mini-card.has-img .s { position:relative; z-index:1; }
 
   /* ---------- Regular card ---------- */
   .card {
@@ -398,7 +444,7 @@
 <section class="page active" id="page-games">
 
   <div class="view active" id="gview-hub">
-    <div class="gcard purple featured" onclick="showPage('shop')" style="margin-top:14px;">
+    <div class="gcard purple featured" onclick="showPage('shop')" style="margin-top:14px;" id="hubTile-shop">
       <span class="badge-hot">Best-seller 🔥</span>
       <span class="ic">🛍</span>
       <span class="t">Shop</span>
@@ -406,18 +452,17 @@
     </div>
 
     <div class="grid2">
-      <div class="gcard green" onclick="showPage('wallet')"><span class="ic">💎</span><span class="t">Currency wallet</span><span class="s">Top up & convert currency</span></div>
-      <div class="gcard pink" onclick="showPage('market')"><span class="ic">🎁</span><span class="t">Gift market</span><span class="s">Consignment buy/sell</span></div>
-      <div class="gcard orange" onclick="showGView('cardgame')"><span class="ic">⭐</span><span class="t">My cards</span><span class="s">Collection & mutation</span></div>
-      <div class="gcard blue" onclick="showGView('cardgame')"><span class="ic">⚔️</span><span class="t">Card game</span><span class="s">Compete with others</span></div>
+      <div class="gcard blue" onclick="showGView('cardgame')" id="hubTile-cardgame"><span class="ic">⚔️</span><span class="t">Card game</span><span class="s">Collection, mutation & battles</span></div>
+      <div class="gcard teal" onclick="showGView('battlepass')" id="hubTile-battlepass"><span class="ic">🏅</span><span class="t">Battle pass</span><span class="s">Seasonal rewards track</span></div>
+      <div class="gcard pink" onclick="showPage('market')" id="hubTile-market"><span class="ic">🎁</span><span class="t">Gift market</span><span class="s">Consignment buy/sell</span></div>
+      <div class="gcard green" onclick="showPage('wallet')" id="hubTile-wallet"><span class="ic">💎</span><span class="t">Currency wallet</span><span class="s">Top up & convert currency</span></div>
     </div>
 
     <h3 class="sec">Quick access</h3>
     <div class="hscroll">
       <div class="mini-card" onclick="showGView('events')"><div class="ic">🎯</div><div class="t">Daily tasks</div><div class="s" id="questsQuickStat">...</div></div>
       <div class="mini-card" onclick="showGView('wheel')"><div class="ic">🎰</div><div class="t">Wheel of fortune</div><div class="s" id="wheelQuickStat">...</div></div>
-      <div class="mini-card" onclick="showPage('more');showMView('clan')"><div class="ic">🏰</div><div class="t">Clan</div><div class="s" id="clanQuickStat">...</div></div>
-      <div class="mini-card" onclick="showGView('battlepass')"><div class="ic">🏅</div><div class="t">Battle pass</div><div class="s" id="bpQuickStat">...</div></div>
+      <div class="mini-card" id="hubTile-clan" onclick="showPage('more');showMView('clan')"><div class="ic">🏰</div><div class="t">Clan</div><div class="s" id="clanQuickStat">...</div></div>
     </div>
   </div>
 
@@ -500,6 +545,10 @@
 
   <!-- Battle pass -->
   <div class="view" id="gview-battlepass">
+    <div class="section-banner" id="battlepassBanner">
+      <div class="section-banner-ribbon">🏅 Battle pass</div>
+      <div class="section-banner-desc" id="bpBannerDesc">Complete daily activities, gain XP, and climb the seasonal reward track.</div>
+    </div>
     <div class="gcard teal" id="battlepassHero">Loading...</div>
     <div class="bp-track-wrap"><div class="bp-track" id="seasonTrack"></div></div>
     <div id="seasonTiersList"></div>
@@ -631,7 +680,6 @@
       <div id="manualTopupBox" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
         <label>Amount (LNDC)</label>
         <input type="number" id="topupAmount" placeholder="e.g. 100000" />
-        <button class="btn gold" id="zarinpalBtn" style="display:none;" onclick="doZarinpalTopup()">💳 Online payment (Zarinpal)</button>
         <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
           <p class="muted" style="margin:0 0 6px;">or card-to-card:</p>
           <div class="muted" id="cardInfo"></div>
@@ -754,6 +802,16 @@
   </div>
 
   <div class="view" id="mview-clan">
+    <div class="section-banner" id="clanBanner">
+      <div class="section-banner-ribbon">🏰 Clans</div>
+      <div class="section-banner-desc">Join a clan or build one of your own — team up in clan wars and compete together.</div>
+    </div>
+    <div class="icon-grid">
+      <div class="icon-grid-item" onclick="showMView('clanwar')"><div class="icon-grid-ic">⚔️</div><div class="icon-grid-t">Clan war</div></div>
+      <div class="icon-grid-item" onclick="document.getElementById('clanBankSection')?.scrollIntoView({behavior:'smooth',block:'center'})"><div class="icon-grid-ic">💰</div><div class="icon-grid-t">Bank & donate</div></div>
+      <div class="icon-grid-item" onclick="document.getElementById('clanMembersSection')?.scrollIntoView({behavior:'smooth',block:'center'})"><div class="icon-grid-ic">👥</div><div class="icon-grid-t">Members</div></div>
+      <div class="icon-grid-item" onclick="document.getElementById('clanLeaderboard')?.scrollIntoView({behavior:'smooth',block:'center'})"><div class="icon-grid-ic">🏆</div><div class="icon-grid-t">Leaderboard</div></div>
+    </div>
     <div id="clanContent" class="muted">Loading...</div>
     <h3 class="sec">Top clans leaderboard</h3>
     <div id="clanLeaderboard" class="muted"></div>
@@ -854,6 +912,12 @@ const initData = tg?.initData || '';
 let CONFIG = {};
 let CURRENT_PAGE = 'games';
 let PAGE_BEFORE_SUBPAGE = 'more'; // the page we were on before going to tasks/info — the back button returns there
+// Real navigation history for nested child views (e.g. games > card game > ... , more > clan > clan war).
+// Each entry remembers exactly which view to return to, so the back button always steps back one
+// level at a time instead of always jumping straight to that section's hub — and never leaves a
+// stale/removed step behind that a second click could get stuck on.
+let NAV_STACK = [];
+let NAV_GOING_BACK = false; // true only while headerBack() is replaying a stack step, so that replay doesn't re-push itself
 
 const RARITY_INFO_FALLBACK = { common:'#9ca3af', uncommon:'#34d399', rare:'#60a5fa', epic:'#a78bfa', legendary:'#fbbf24', mythic:'#fb7185', god:'#f472b6' };
 function rarityBadge(label, color) {
@@ -929,7 +993,7 @@ function showPage(name) {
   document.getElementById('headerTitle').textContent = PAGE_TITLES[name] || 'Lando Gifts';
   document.getElementById('headerBackBtn').style.display = (name === 'tasks' || name === 'info') ? 'flex' : 'none';
   // if we are going to a main page (not tasks/info, which are sub-pages themselves), save it here as "page before sub-page"
-  if (name !== 'tasks' && name !== 'info') PAGE_BEFORE_SUBPAGE = name;
+  if (name !== 'tasks' && name !== 'info') { PAGE_BEFORE_SUBPAGE = name; NAV_STACK = []; } // switching top-level tabs starts a fresh nested-navigation history
   CURRENT_PAGE = name;
   window.scrollTo(0, 0);
   if (name === 'shop') loadShop();
@@ -944,6 +1008,12 @@ function showPage(name) {
 
 /* Games: sub-pages */
 function showGView(name) {
+  if (!NAV_GOING_BACK) {
+    const activeEl = document.querySelector('#page-games .view.active');
+    const prevName = activeEl ? activeEl.id.replace('gview-', '') : null;
+    if (prevName && prevName !== name && prevName !== 'hub') NAV_STACK.push({ type: 'gview', name: prevName });
+  }
+  if (name === 'hub') NAV_STACK = []; // back at the section hub — nothing left to step back through
   document.querySelectorAll('#page-games .view').forEach(v => v.classList.remove('active'));
   document.getElementById('gview-' + name).classList.add('active');
   document.getElementById('headerBackBtn').style.display = name === 'hub' ? 'none' : 'flex';
@@ -961,6 +1031,12 @@ function showEventsSub(name) {
 
 /* More: sub-pages */
 function showMView(name) {
+  if (!NAV_GOING_BACK) {
+    const activeEl = document.querySelector('#page-more .view.active');
+    const prevName = activeEl ? activeEl.id.replace('mview-', '') : null;
+    if (prevName && prevName !== name && prevName !== 'hub') NAV_STACK.push({ type: 'mview', name: prevName });
+  }
+  if (name === 'hub') NAV_STACK = []; // back at the section hub — nothing left to step back through
   document.querySelectorAll('#page-more .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mview-' + name).classList.add('active');
   document.getElementById('headerBackBtn').style.display = name === 'hub' ? 'none' : 'flex';
@@ -975,6 +1051,16 @@ function showMView(name) {
   if (name === 'avatars') loadAvatarsShop();
 }
 function headerBack() {
+  // Step back through the nested-navigation history one level at a time (e.g. clan war -> clan,
+  // not straight to the "more" hub) when there's a recorded step to return to.
+  if (NAV_STACK.length) {
+    const step = NAV_STACK.pop();
+    NAV_GOING_BACK = true;
+    if (step.type === 'gview') showGView(step.name);
+    else if (step.type === 'mview') showMView(step.name);
+    NAV_GOING_BACK = false;
+    return;
+  }
   if (CURRENT_PAGE === 'games') showGView('hub');
   else if (CURRENT_PAGE === 'more') showMView('hub');
   else if (CURRENT_PAGE === 'tasks' || CURRENT_PAGE === 'info') showPage(PAGE_BEFORE_SUBPAGE || 'more');
@@ -1044,7 +1130,8 @@ async function loadGamesHub() {
   } catch (e) {}
   try {
     const s = await api('/api/season/status');
-    document.getElementById('bpQuickStat').textContent = s.config.enabled ? `Tier ${s.progress.currentTier}` : 'Inactive';
+    const sub = document.querySelector('#hubTile-battlepass .s');
+    if (sub) sub.textContent = s.config.enabled ? `Tier ${s.progress.currentTier}` : 'Inactive';
   } catch (e) {}
 }
 
@@ -1088,7 +1175,6 @@ let STARS_RATE = 0;
 async function loadWallet() {
   document.getElementById('cardInfo').textContent = CONFIG.cardNumber
     ? `Card number: ${CONFIG.cardNumber} (${CONFIG.cardOwner || ''})` : 'The card number has not been set by the admin yet.';
-  document.getElementById('zarinpalBtn').style.display = CONFIG.zarinpalEnabled ? 'flex' : 'none';
   const lndcWallet = CONFIG.lndcWallet || { depositEnabled: true, withdrawEnabled: true };
   document.getElementById('lndcTopupSection').style.display = lndcWallet.depositEnabled ? '' : 'none';
   document.getElementById('lndcWithdrawSection').style.display = lndcWallet.withdrawEnabled ? '' : 'none';
@@ -1136,12 +1222,6 @@ async function doTopup() {
   const trackingCode = document.getElementById('topupTracking').value;
   await api('/api/wallet/toman-topup', { method: 'POST', body: JSON.stringify({ amount, trackingCode }) });
   toast('Request submitted, wait for admin approval ✅');
-}
-async function doZarinpalTopup() {
-  const amount = Number(document.getElementById('topupAmount').value);
-  if (!amount || amount < 1000) { toast('Minimum amount is 1,000 LNDC'); return; }
-  const r = await api('/api/wallet/zarinpal-topup', { method: 'POST', body: JSON.stringify({ amount }) });
-  if (tg?.openLink) tg.openLink(r.url); else window.open(r.url, '_blank');
 }
 async function doWithdraw() {
   const amount = Number(document.getElementById('withdrawAmount').value);
@@ -1268,8 +1348,13 @@ function renderMarketGrid() {
   document.getElementById('mktFromLabel').textContent = 'From ' + from.toLocaleString('en-US') + ' LNDC';
   document.getElementById('mktToLabel').textContent = 'to ' + to.toLocaleString('en-US') + ' LNDC';
   const fill = document.getElementById('mktRangeFill');
-  fill.style.right = (100 - (from / max) * 100) + '%';
-  fill.style.left = ((to / max) * 100) + '%';
+  // The highlighted fill bar must span from the "from" thumb to the "to" thumb: its LEFT edge is
+  // set by `from`, its RIGHT edge by `to`. These were swapped before — using `from` for `right` and
+  // `to` for `left` means left+right could add up to well over 100%, giving the fill bar a negative
+  // computed width, so it visually collapsed/jumped to the wrong spot depending on the values. This
+  // is the fix for the reported "slider doesn't stay in place" bug.
+  fill.style.left = ((from / max) * 100) + '%';
+  fill.style.right = (100 - (to / max) * 100) + '%';
 
   const category = document.getElementById('mktCategoryFilter').value;
   const filtered = MKT_OFFERS.filter(o => o.price_toman >= from && o.price_toman <= to && (!category || o.title === category));
@@ -1628,9 +1713,23 @@ function bpIcon(type) {
   return { toman: '💰', card: '🎴', extra_games: '🎮', avatar: '🖼️', product: '📦', none: '➖' }[type] || '➖';
 }
 async function loadSeason() {
-  const { config, progress, tiers } = await api('/api/season/status');
+  const { config, progress, tiers, season } = await api('/api/season/status');
   const hero = document.getElementById('battlepassHero');
-  if (!config.enabled) { hero.innerHTML = 'The seasonal battle pass is not active right now.'; document.getElementById('seasonTiersList').innerHTML = ''; document.getElementById('seasonTrack').innerHTML = ''; return; }
+  const bannerDesc = document.getElementById('bpBannerDesc');
+  if (!config.enabled) {
+    hero.innerHTML = 'The seasonal battle pass is not active right now.'; document.getElementById('seasonTiersList').innerHTML = ''; document.getElementById('seasonTrack').innerHTML = '';
+    if (bannerDesc) bannerDesc.textContent = 'The seasonal battle pass is not active right now.';
+    return;
+  }
+  if (bannerDesc && season?.ends_at) {
+    const msLeft = new Date(season.ends_at.replace(' ', 'T') + 'Z').getTime() - Date.now();
+    if (msLeft > 0) {
+      const days = Math.floor(msLeft / 86400000), hours = Math.floor((msLeft % 86400000) / 3600000);
+      bannerDesc.textContent = `Season ends in ${days}d ${hours}h — complete activities, gain XP, and claim rewards along the track.`;
+    } else {
+      bannerDesc.textContent = 'Complete daily activities, gain XP, and climb the seasonal reward track.';
+    }
+  }
   const xpIntoTier = progress.xp % progress.xpPerTier;
   const tierPct = Math.min(100, Math.round((xpIntoTier / progress.xpPerTier) * 100));
   hero.innerHTML = `
@@ -1780,7 +1879,7 @@ async function loadClan() {
       <div class="card">
         <div class="row"><b>${clan.name}</b><span class="tag">#${clan.tag}</span></div>
         <div class="row"><span class="muted">Score</span><b>${clan.score}</b></div>
-        <div class="row"><span class="muted">Clan bank</span><b>${clan.bank_balance.toLocaleString('en-US')} LNDC</b></div>
+        <div class="row" id="clanBankSection"><span class="muted">Clan bank</span><b>${clan.bank_balance.toLocaleString('en-US')} LNDC</b></div>
         <div class="row"><span class="muted">My role</span><b>${clan.myRole === 'owner' ? 'Leader' : clan.myRole === 'admin' ? 'Manager' : 'Member'}</b></div>
         <label>Donate to clan bank</label><input type="number" id="donateAmount">
         <button class="btn gold" onclick="donateClanUI()">Donate</button>
@@ -1795,7 +1894,7 @@ async function loadClan() {
         <button class="btn danger" onclick="leaveClanUI()">${clan.myRole === 'owner' ? 'Disband clan' : 'Leave clan'}</button>
         <button class="btn" style="margin-top:8px;background:linear-gradient(90deg,#ff5f6d,#ffc371);" onclick="showMView('clanwar')">⚔️ Clan vs clan war</button>
       </div>
-      <h3 class="sec">Members</h3>
+      <h3 class="sec" id="clanMembersSection">Members</h3>
       ${members.map(m => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${m.first_name || ''} ${m.username ? '@' + m.username : ''} ${m.role === 'owner' ? '👑' : ''}</span><span class="tag">Donate: ${m.donated_total.toLocaleString('en-US')}</span></div>
         ${clan.myRole === 'owner' && m.tg_id !== clan.owner_tg_id ? `<button class="btn danger" style="margin-top:6px;" onclick="kickMemberUI(${m.tg_id})">Kick</button>` : ''}</div>`).join('')}`;
   }
@@ -2175,10 +2274,30 @@ async function loadLeagueBoard(league) {
 /* ================= More: hub ================= */
 function loadMoreHub() { /* static, no action needed */ }
 
+// Applies admin-set custom design images (hub shortcut tiles + section banners) on top of the
+// default icon/gradient look — purely visual, no behavior changes. A tile/banner with no image set
+// simply keeps its default appearance.
+function applyUiImages() {
+  const images = CONFIG.uiImages || {};
+  const tileMap = { hub_shop: 'hubTile-shop', hub_wallet: 'hubTile-wallet', hub_market: 'hubTile-market', hub_cardgame: 'hubTile-cardgame', hub_battlepass: 'hubTile-battlepass', hub_clan: 'hubTile-clan' };
+  for (const [key, elId] of Object.entries(tileMap)) {
+    const el = document.getElementById(elId);
+    const url = images[key];
+    if (el && url) { el.classList.add('has-img'); el.style.backgroundImage = `url('${url}')`; }
+  }
+  const bannerMap = { banner_clan: 'clanBanner', banner_battlepass: 'battlepassBanner' };
+  for (const [key, elId] of Object.entries(bannerMap)) {
+    const el = document.getElementById(elId);
+    const url = images[key];
+    if (el && url) { el.classList.add('has-img'); el.style.backgroundImage = `url('${url}')`; }
+  }
+}
+
 /* ================= Start ================= */
 async function bootApp() {
   try { CONFIG = await fetch('/api/config', { signal: AbortSignal.timeout(15000) }).then(r => r.json()); }
   catch (e) { console.error('config load failed', e); }
+  applyUiImages();
   loadMe().catch(() => {});
   loadGamesHub().catch(() => {});
 }
