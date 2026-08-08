@@ -372,14 +372,16 @@ export function payReferralSignupBonus(referrerTgId, newUserTgId) {
   if (!currency || currency === 'LNDC') adjustToman(referrerTgId, bonus, reason);
   else adjustCurrencyBalance(referrerTgId, currency, bonus, reason);
 }
-// Grants one copy of a game card as the referral reward. Mirrors game-db.js's grantCardInstance logic exactly
-// (card-specific fixed power if set, otherwise that level's general fixed power) via the shared `db` connection,
-// kept local to this file to avoid a circular import between db.js and game-db.js.
+// Grants one copy of a game card as the referral reward. Mirrors game-db.js's grantCardInstance logic
+// exactly (this card's level general power, or its own fixed_power if it's an instant-level special
+// card) via the shared `db` connection, kept local to this file to avoid a circular import between
+// db.js and game-db.js. Card power is determined only by the general Power-per-level system — no
+// per-card override exists anywhere in the system anymore.
 function grantReferralCardReward(tgId, cardId) {
   const card = db.prepare('SELECT * FROM game_cards WHERE id = ?').get(cardId);
   if (!card) return;
   const level = card.instant_level || 1;
-  let power = card.min_power;
+  let power = card.fixed_power;
   if (power == null) {
     const range = db.prepare('SELECT * FROM card_level_power WHERE level = ?').get(level);
     power = range ? range.min_power : card.base_power;
@@ -769,6 +771,17 @@ export function createZarinpalPayment(authority, tgId, amount) {
 }
 export function getZarinpalPayment(authority) {
   return db.prepare('SELECT * FROM zarinpal_payments WHERE authority = ?').get(authority);
+}
+// Atomically claims this payment for verification: only the caller whose UPDATE actually flips
+// status 'pending' -> 'verifying' (changes === 1) may proceed to call Zarinpal's verify API and
+// credit the wallet. This closes a real double-credit race: the callback URL can be hit more than
+// once for the same authority (browser back/refresh, a duplicate redirect from the gateway, or a
+// replay), and the previous code only checked `status !== 'pending'` — which stays true for the
+// whole duration of the (slow, network-bound) verify call, letting two concurrent hits both pass
+// the check and both credit the user's wallet for a single payment.
+export function claimZarinpalPaymentForVerification(authority) {
+  const result = db.prepare(`UPDATE zarinpal_payments SET status = 'verifying' WHERE authority = ? AND status = 'pending'`).run(authority);
+  return result.changes === 1;
 }
 export function markZarinpalPaymentStatus(authority, status) {
   db.prepare('UPDATE zarinpal_payments SET status = ? WHERE authority = ?').run(status, authority);

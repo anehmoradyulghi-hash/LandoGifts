@@ -20,7 +20,7 @@ import db, {
   listActiveTasks, hasClaimedTask, claimTask, getTask,
   getPaymentSettings, getMessageSettings, getSupportContact, getInfoPage, getLndcWalletSettings,
   createStarPaymentRequest, getStarPayment, completeStarPayment,
-  createZarinpalPayment, getZarinpalPayment, markZarinpalPaymentStatus,
+  createZarinpalPayment, getZarinpalPayment, claimZarinpalPaymentForVerification, markZarinpalPaymentStatus,
 } from './db.js';
 import {
   listGameCards, getUserCards, buyGameCard, sacrificeCards, getMutationGroups, mutateCards, getGameCard,
@@ -64,6 +64,7 @@ import {
   listCardMarketOffers, getMyCardMarketListings, buyCardMarketListing,
 } from './card-market-db.js';
 import adminApi from './admin-api.js';
+import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
 
 // Some servers (like this VPS) have broken/filtered IPv6 but their IPv4 is fine. Without this line,
 // Node sometimes tries IPv6 first, gets stuck, and before reaching a healthy IPv4, the request
@@ -256,7 +257,11 @@ app.get('/zarinpal-callback', ah(async (req, res) => {
 
   const payment = authority && getZarinpalPayment(authority);
   if (!payment) return page('❌ Transaction not found', 'Go back to the bot and try again.');
-  if (payment.status !== 'pending') return page('✅ Already processed', 'You can go back to the bot.');
+  if (payment.status === 'verified') return page('✅ Already processed', 'You can go back to the bot.');
+  // Atomically claim this payment before doing anything else — if this fails, either it was already
+  // resolved (cancelled/failed) or another concurrent hit on this same callback URL is already
+  // mid-verification, so it's not safe to proceed here at all (prevents crediting the wallet twice).
+  if (!claimZarinpalPaymentForVerification(authority)) return page('✅ Already processed', 'You can go back to the bot.');
 
   if (status !== 'OK') {
     markZarinpalPaymentStatus(authority, 'cancelled');
@@ -268,6 +273,9 @@ app.get('/zarinpal-callback', ah(async (req, res) => {
   try {
     verify = await zarinpalCall('verify.json', { merchant_id: zarinpalMerchantId, amount: payment.amount, authority });
   } catch (e) {
+    // Revert the claim so this is retryable (e.g. the user reloads the callback page) instead of
+    // leaving the payment permanently stuck in 'verifying' with no way forward.
+    markZarinpalPaymentStatus(authority, 'pending');
     return page('⚠️ Error confirming payment', 'If an amount was deducted, message support.');
   }
   if (verify?.data?.code === 100 || verify?.data?.code === 101) {

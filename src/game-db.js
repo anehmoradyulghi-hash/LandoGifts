@@ -62,9 +62,17 @@ safeAddColumn('game_cards', 'max_supply INTEGER'); // empty = unlimited
 safeAddColumn('user_cards', 'bonus_power INTEGER NOT NULL DEFAULT 0'); // comes from the "boost/sacrifice" method, does not change the level
 safeAddColumn('user_cards', 'rolled_power INTEGER'); // The fixed power for that level (set by the admin) at the time this card was created/leveled-up
 safeAddColumn('game_cards', 'instant_level INTEGER'); // if set (e.g. 7), every card created from this template starts at that level (special/custom card)
-safeAddColumn('game_cards', 'fixed_power INTEGER'); // if set, this custom power is used instead of the level-based formula
-safeAddColumn('game_cards', 'min_power INTEGER'); // This card's custom fixed power (if set, used instead of the level's general fixed power) — no longer a range
-safeAddColumn('game_cards', 'max_power INTEGER'); // This card's power cap — should not be exceeded even with boost/sacrifice
+safeAddColumn('game_cards', 'fixed_power INTEGER'); // if set, this custom power is used instead of the level-based formula (used only by instant_level special cards)
+
+// The per-card custom "fixed power" / "max power" override system has been fully retired. Card power
+// is now determined exclusively by the general Power-per-level system below — never by anything set
+// on an individual card. Drop the columns entirely (not just stop reading them) so no stale value
+// left over from before this change can ever influence anything again.
+try {
+  const gcCols = db.prepare("PRAGMA table_info(game_cards)").all().map(c => c.name);
+  if (gcCols.includes('min_power')) db.exec('ALTER TABLE game_cards DROP COLUMN min_power');
+  if (gcCols.includes('max_power')) db.exec('ALTER TABLE game_cards DROP COLUMN max_power');
+} catch (e) { /* SQLite too old to support DROP COLUMN — harmless: nothing in this codebase reads these columns anymore */ }
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS card_level_power (
@@ -99,22 +107,14 @@ export function setCardLevelPower(level, maxPower, levelPower) {
     ON CONFLICT(level) DO UPDATE SET min_power = excluded.min_power, max_power = excluded.max_power
   `).run(level, lp, mx);
 }
-// A card's power at a given level is always a FIXED, admin-set number — never random. This used to roll a
-// random value inside a min/max range, which could land at or above the level's max_power cap and leave the
-// card with zero room to be boosted/upgraded further. Fixed values remove that bug entirely.
+// A card's power at a given level is always a FIXED, admin-set number — never random, and never
+// customized per-card. Every card of a given level gets exactly that level's general power.
 function rollPowerForLevel(level) {
   const range = db.prepare('SELECT * FROM card_level_power WHERE level = ?').get(level);
   return range ? range.min_power : null;
 }
-// If the card itself has a custom fixed power set (in the admin panel), that is used instead of the level's
-// general fixed power; otherwise that level's general fixed power is used. Never randomized.
-function rollPowerForCard(card, level) {
-  if (card && card.min_power != null) return card.min_power;
-  return rollPowerForLevel(level);
-}
-// The absolute power cap this card (at this level) should never exceed, even with boost/sacrifice
-function getPowerCapForCard(card, level) {
-  if (card?.max_power != null) return card.max_power;
+// The absolute power cap for a level — from the general Power-per-level system only.
+function getPowerCapForLevel(level) {
   const range = db.prepare('SELECT * FROM card_level_power WHERE level = ?').get(level);
   return range ? range.max_power : null;
 }
@@ -302,18 +302,18 @@ export function upsertGameCard(c) {
   if (c.id) {
     db.prepare(`
       UPDATE game_cards SET name=?, image_url=?, rarity=?, base_power=?, price_toman=?, max_level=?, active=?,
-        category_id=?, level_images=?, edition=?, max_supply=?, instant_level=?, fixed_power=?, min_power=?, max_power=? WHERE id=?
+        category_id=?, level_images=?, edition=?, max_supply=?, instant_level=?, fixed_power=? WHERE id=?
     `).run(c.name, c.image_url || null, c.rarity, c.base_power, c.price_toman, c.max_level, c.active ? 1 : 0,
       c.category_id || null, levelImagesJson, c.edition || 'standard', c.max_supply || null,
-      c.instant_level || null, c.fixed_power || null, c.min_power ?? null, c.max_power ?? null, c.id);
+      c.instant_level || null, c.fixed_power || null, c.id);
     return c.id;
   }
   return db.prepare(`
-    INSERT INTO game_cards (name, image_url, rarity, base_power, price_toman, max_level, active, category_id, level_images, edition, max_supply, instant_level, fixed_power, min_power, max_power)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT INTO game_cards (name, image_url, rarity, base_power, price_toman, max_level, active, category_id, level_images, edition, max_supply, instant_level, fixed_power)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(c.name, c.image_url || null, c.rarity, c.base_power, c.price_toman, c.max_level, c.active ? 1 : 0,
     c.category_id || null, levelImagesJson, c.edition || 'standard', c.max_supply || null,
-    c.instant_level || null, c.fixed_power || null, c.min_power ?? null, c.max_power ?? null).lastInsertRowid;
+    c.instant_level || null, c.fixed_power || null).lastInsertRowid;
 }
 export function deleteGameCard(id) { db.prepare('DELETE FROM game_cards WHERE id = ?').run(id); }
 
@@ -335,7 +335,7 @@ function computeTotalPower(row) {
 export function grantCardInstance(tgId, cardId) {
   const card = getGameCard(cardId);
   const level = card?.instant_level || 1;
-  const rolledPower = rollPowerForCard(card, level);
+  const rolledPower = rollPowerForLevel(level);
   return db.prepare('INSERT INTO user_cards (tg_id, card_id, level, rolled_power) VALUES (?,?,?,?)').run(tgId, cardId, level, rolledPower).lastInsertRowid;
 }
 
@@ -395,8 +395,7 @@ export function sacrificeCards(tgId, targetUserCardId, sacrificeUserCardIds) {
   const user = getUser(tgId);
   if (fee > 0 && (!user || user.balance_toman < fee)) throw new Error(`You need ${fee.toLocaleString()} LNDC to upgrade`);
 
-  const targetCard = getGameCard(target.card_id);
-  const powerCap = getPowerCapForCard(targetCard, target.level);
+  const powerCap = getPowerCapForLevel(target.level);
   let room = powerCap != null ? powerCap - target.power : Infinity;
   if (room <= 0) throw new Error('This card has reached its maximum possible power, it can no longer be upgraded');
 
@@ -472,11 +471,10 @@ export function mutateCards(tgId, cardId, level) {
   const user = getUser(tgId);
   if (cost > 0 && (!user || user.balance_toman < cost)) throw new Error(`You need ${cost.toLocaleString()} LNDC to mutate`);
 
-  const card = getGameCard(cardId);
   const keepId = rows[0].id;
   const removeId = rows[1].id;
   const newLevelNum = level + 1;
-  const newRolledPower = rollPowerForCard(card, newLevelNum);
+  const newRolledPower = rollPowerForLevel(newLevelNum);
   const tx = db.transaction(() => {
     if (cost > 0) adjustToman(tgId, -cost, `Mutation cost from level ${level} to ${level + 1}`);
     const result = db.prepare('UPDATE user_cards SET level = level + 1, rolled_power = ? WHERE id = ?').run(newRolledPower, keepId);
