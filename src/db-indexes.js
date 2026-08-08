@@ -38,7 +38,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_toman_withdrawals_tg_id ON toman_withdrawals(tg_id);
   CREATE INDEX IF NOT EXISTS idx_toman_withdrawals_status ON toman_withdrawals(status);
   CREATE INDEX IF NOT EXISTS idx_star_payments_tg_id ON star_payments(tg_id);
-  CREATE INDEX IF NOT EXISTS idx_zarinpal_payments_tg_id ON zarinpal_payments(tg_id);
 
   -- Shop / gifts
   CREATE INDEX IF NOT EXISTS idx_orders_tg_id ON orders(tg_id);

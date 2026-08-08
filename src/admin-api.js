@@ -17,6 +17,7 @@ import {
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
   getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact, getInfoPage, setInfoPage,
+  getUiImages, setUiImages,
   getReferralSettings, setReferralSettings, getLndcWalletSettings, setLndcWalletSettings,
   listGiftCategories, upsertGiftCategory, deleteGiftCategory,
   getMessageSettings, setMessageSettings, getAllUserIds,
@@ -42,7 +43,7 @@ import {
 } from './season-db.js';
 import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason, adminDeleteClan, adminAdjustClanBank, listAllClansAdmin } from './clan-db.js';
 import { getClanWarConfig, setClanWarConfig } from './clan-war-db.js';
-import { getLeagueConfig, setLeagueConfig } from './league-db.js';
+import { getLeagueConfig, setLeagueConfig, getLeagueTierConfig, setLeagueTierConfig } from './league-db.js';
 import {
   listRafflesAdmin, createRaffle, updateRaffle, deleteRaffle, cancelRaffle, listRaffleEntries, finishRaffle,
 } from './raffle-db.js';
@@ -148,10 +149,13 @@ router.post('/payment-settings', (req, res) => {
   setPaymentSettings({
     cardNumber: req.body.cardNumber,
     cardOwner: req.body.cardOwner,
-    zarinpalMerchantId: req.body.zarinpalMerchantId,
   });
   res.json({ ok: true });
 });
+
+/* ---------- Design images for the mini app's main sections (hub tiles + section banners) ---------- */
+router.get('/ui-images', (req, res) => res.json(getUiImages()));
+router.post('/ui-images', (req, res) => { setUiImages(req.body); res.json({ ok: true }); });
 
 /* ---------- Enable/disable deposit & withdraw for the default currency (Lando Coin) ---------- */
 router.get('/lndc-wallet-settings', (req, res) => res.json(getLndcWalletSettings()));
@@ -587,6 +591,11 @@ router.get('/league/config', (req, res) => res.json(getLeagueConfig()));
 router.post('/league/config', (req, res) => {
   setLeagueConfig(req.body);
   res.json({ ok: true });
+});
+router.get('/league/tiers', (req, res) => res.json(getLeagueTierConfig()));
+router.post('/league/tiers', (req, res) => {
+  try { setLeagueTierConfig(req.body.league, req.body.promote_count, req.body.relegate_count); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 /* ---------- Big wheel (raffle) ---------- */

@@ -704,17 +704,35 @@ export function setSetting(key, value) {
     ON CONFLICT(key) DO UPDATE SET value = excluded.value
   `).run(key, value);
 }
+
+// Custom design images for the mini app's main sections — purely visual branding, set from the admin
+// panel. Each key is optional; when empty, that section falls back to its default icon/gradient look.
+// UI_IMAGE_KEYS covers both hub shortcut cards (small tile background) and full banner images shown
+// at the top of a section's own page (Clan, Battle pass).
+const UI_IMAGE_KEYS = [
+  'hub_shop', 'hub_wallet', 'hub_market', 'hub_cardgame', 'hub_battlepass', 'hub_clan', // hub shortcut tiles
+  'banner_clan', 'banner_battlepass', // full-width banners at the top of those sections
+];
+export function getUiImages() {
+  const out = {};
+  for (const key of UI_IMAGE_KEYS) out[key] = getSetting('ui_image_' + key, '');
+  return out;
+}
+export function setUiImages(images) {
+  for (const key of UI_IMAGE_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(images || {}, key)) setSetting('ui_image_' + key, images[key] || '');
+  }
+}
+
 export function getPaymentSettings() {
   return {
     cardNumber: getSetting('card_number', process.env.ADMIN_CARD_NUMBER || ''),
     cardOwner: getSetting('card_owner', process.env.ADMIN_CARD_OWNER || ''),
-    zarinpalMerchantId: getSetting('zarinpal_merchant_id', process.env.ZARINPAL_MERCHANT_ID || ''),
   };
 }
-export function setPaymentSettings({ cardNumber, cardOwner, zarinpalMerchantId }) {
+export function setPaymentSettings({ cardNumber, cardOwner }) {
   setSetting('card_number', cardNumber || '');
   setSetting('card_owner', cardOwner || '');
-  setSetting('zarinpal_merchant_id', zarinpalMerchantId || '');
 }
 
 // Enable/disable deposit and withdrawal of the bot's default/main currency (Lando Coin / LNDC).
@@ -756,36 +774,9 @@ export function setMessageSettings({ welcomeMessage, joinPromptMessage }) {
   setSetting('join_prompt_message', joinPromptMessage || DEFAULT_JOIN_PROMPT);
 }
 
-/* ---- Zarinpal: record the payment request so it can be tracked at confirmation in the callback ---- */
-db.exec(`
-CREATE TABLE IF NOT EXISTS zarinpal_payments (
-  authority TEXT PRIMARY KEY,
-  tg_id INTEGER NOT NULL,
-  amount INTEGER NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-`);
-export function createZarinpalPayment(authority, tgId, amount) {
-  db.prepare('INSERT INTO zarinpal_payments (authority, tg_id, amount) VALUES (?,?,?)').run(authority, tgId, amount);
-}
-export function getZarinpalPayment(authority) {
-  return db.prepare('SELECT * FROM zarinpal_payments WHERE authority = ?').get(authority);
-}
-// Atomically claims this payment for verification: only the caller whose UPDATE actually flips
-// status 'pending' -> 'verifying' (changes === 1) may proceed to call Zarinpal's verify API and
-// credit the wallet. This closes a real double-credit race: the callback URL can be hit more than
-// once for the same authority (browser back/refresh, a duplicate redirect from the gateway, or a
-// replay), and the previous code only checked `status !== 'pending'` — which stays true for the
-// whole duration of the (slow, network-bound) verify call, letting two concurrent hits both pass
-// the check and both credit the user's wallet for a single payment.
-export function claimZarinpalPaymentForVerification(authority) {
-  const result = db.prepare(`UPDATE zarinpal_payments SET status = 'verifying' WHERE authority = ? AND status = 'pending'`).run(authority);
-  return result.changes === 1;
-}
-export function markZarinpalPaymentStatus(authority, status) {
-  db.prepare('UPDATE zarinpal_payments SET status = ? WHERE authority = ?').run(status, authority);
-}
+// Zarinpal integration has been fully removed. Drop its table so no leftover payment records or
+// settings remain in the database.
+try { db.exec('DROP TABLE IF EXISTS zarinpal_payments'); } catch (e) {}
 
 /* =========================================================================
  * DASHBOARD STATS

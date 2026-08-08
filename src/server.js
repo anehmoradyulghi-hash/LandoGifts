@@ -18,9 +18,8 @@ import db, {
   createOrder, listOrdersForUser,
   createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer, listGiftCategories, updateGiftOffer,
   listActiveTasks, hasClaimedTask, claimTask, getTask,
-  getPaymentSettings, getMessageSettings, getSupportContact, getInfoPage, getLndcWalletSettings,
+  getPaymentSettings, getMessageSettings, getSupportContact, getInfoPage, getLndcWalletSettings, getUiImages,
   createStarPaymentRequest, getStarPayment, completeStarPayment,
-  createZarinpalPayment, getZarinpalPayment, claimZarinpalPaymentForVerification, markZarinpalPaymentStatus,
 } from './db.js';
 import {
   listGameCards, getUserCards, buyGameCard, sacrificeCards, getMutationGroups, mutateCards, getGameCard,
@@ -129,12 +128,12 @@ app.get('/api/config', ah(async (req, res) => {
     channel: process.env.REQUIRED_CHANNEL || null,
     cardNumber: payment.cardNumber || null,
     cardOwner: payment.cardOwner || null,
-    zarinpalEnabled: !!payment.zarinpalMerchantId,
     referralPercent: getReferralSettings().percent,
     giftMarketFeePercent: Number(process.env.GIFT_MARKET_FEE_PERCENT || 5),
     swapFeePercent: Number(process.env.SWAP_FEE_PERCENT || 1),
     supportUsername: getSupportContact(),
     lndcWallet: getLndcWalletSettings(),
+    uiImages: getUiImages(),
   });
 }));
 
@@ -208,86 +207,6 @@ app.post('/api/wallet/toman-topup', requireTelegramAuth, (req, res) => {
   );
   res.json({ ok: true });
 });
-
-/* ---------- Online top-up with Zarinpal ---------- */
-async function zarinpalCall(path, body) {
-  const res = await fetch(`https://api.zarinpal.com/pg/v4/payment/${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(10000),
-  });
-  return res.json();
-}
-
-app.post('/api/wallet/zarinpal-topup', requireTelegramAuth, ah(async (req, res) => {
-  if (!getLndcWalletSettings().depositEnabled) return res.status(400).json({ error: 'Lando Coin deposit is currently disabled' });
-  const amount = Number(req.body.amount);
-  if (!amount || amount < 1000) return res.status(400).json({ error: 'Minimum top-up amount is 1,000 LNDC' });
-  const { zarinpalMerchantId } = getPaymentSettings();
-  if (!zarinpalMerchantId) return res.status(400).json({ error: 'The Zarinpal gateway has not been enabled by the admin yet' });
-  if (!process.env.PUBLIC_URL) return res.status(400).json({ error: 'Server address not configured' });
-
-  let data;
-  try {
-    data = await zarinpalCall('request.json', {
-      merchant_id: zarinpalMerchantId,
-      amount,
-      description: 'Top up wallet Lando Gifts',
-      callback_url: `${process.env.PUBLIC_URL}/zarinpal-callback`,
-    });
-  } catch (e) {
-    return res.status(503).json({ error: 'Could not connect to the payment gateway, try again' });
-  }
-  if (data?.data?.code !== 100 || !data.data.authority) {
-    return res.status(400).json({ error: 'Payment request was not created, check the gateway ID with the admin' });
-  }
-  createZarinpalPayment(data.data.authority, req.dbUser.tg_id, amount);
-  res.json({ ok: true, url: `https://www.zarinpal.com/pg/StartPay/${data.data.authority}` });
-}));
-
-// After payment, Zarinpal redirects the browser to this address (not from inside the mini app itself)
-app.get('/zarinpal-callback', ah(async (req, res) => {
-  const authority = req.query.Authority || req.query.authority;
-  const status = req.query.Status || req.query.status;
-  const page = (title, body) => res.send(`<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>body{background:#0a0c12;color:#edf0f7;font-family:Tahoma,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:20px}
-    .box{background:#141824;border:1px solid #262c3d;border-radius:18px;padding:32px 24px;max-width:340px}
-    h2{margin:0 0 10px}</style></head><body><div class="box"><h2>${title}</h2><p>${body}</p></div></body></html>`);
-
-  const payment = authority && getZarinpalPayment(authority);
-  if (!payment) return page('❌ Transaction not found', 'Go back to the bot and try again.');
-  if (payment.status === 'verified') return page('✅ Already processed', 'You can go back to the bot.');
-  // Atomically claim this payment before doing anything else — if this fails, either it was already
-  // resolved (cancelled/failed) or another concurrent hit on this same callback URL is already
-  // mid-verification, so it's not safe to proceed here at all (prevents crediting the wallet twice).
-  if (!claimZarinpalPaymentForVerification(authority)) return page('✅ Already processed', 'You can go back to the bot.');
-
-  if (status !== 'OK') {
-    markZarinpalPaymentStatus(authority, 'cancelled');
-    return page('❌ Payment cancelled', 'No amount was deducted from your account. Go back to the bot.');
-  }
-
-  const { zarinpalMerchantId } = getPaymentSettings();
-  let verify;
-  try {
-    verify = await zarinpalCall('verify.json', { merchant_id: zarinpalMerchantId, amount: payment.amount, authority });
-  } catch (e) {
-    // Revert the claim so this is retryable (e.g. the user reloads the callback page) instead of
-    // leaving the payment permanently stuck in 'verifying' with no way forward.
-    markZarinpalPaymentStatus(authority, 'pending');
-    return page('⚠️ Error confirming payment', 'If an amount was deducted, message support.');
-  }
-  if (verify?.data?.code === 100 || verify?.data?.code === 101) {
-    markZarinpalPaymentStatus(authority, 'verified');
-    adjustToman(payment.tg_id, payment.amount, 'Zarinpal online top-up');
-    incrementQuestProgress(payment.tg_id, 'deposit_toman', payment.amount);
-    sendMessage(payment.tg_id, `✅ A ${payment.amount.toLocaleString()} LNDC top-up via Zarinpal was confirmed and added to your wallet.`).catch(() => {});
-    return page('✅ Payment successful', `${payment.amount.toLocaleString()} LNDC added to your wallet. Go back to the bot.`);
-  }
-  markZarinpalPaymentStatus(authority, 'failed');
-  return page('❌ Payment not confirmed', 'No amount was deducted. Go back to the bot and try again.');
-}));
 
 app.post('/api/wallet/toman-withdraw', requireTelegramAuth, (req, res) => {
   if (!getLndcWalletSettings().withdrawEnabled) return res.status(400).json({ error: 'Lando Coin withdrawal is currently disabled' });
