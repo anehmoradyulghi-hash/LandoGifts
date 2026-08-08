@@ -298,10 +298,6 @@
           <div><label>Quantity limit (empty = unlimited)</label><input type="number" id="gcMaxSupply"></div>
           <div><label>active?</label><select id="gcActive"><option value="1">Yes</option><option value="0">No</option></select></div>
         </div>
-        <div class="row2">
-          <div><label>Custom fixed power for this card (empty = use the level's general power)</label><input type="number" id="gcMinPower"></div>
-          <div><label>Custom max power for this card (empty = use the level's general cap; absolute cap, not exceeded even with upgrades)</label><input type="number" id="gcMaxPower"></div>
-        </div>
         <h3 style="margin-top:16px;">Level-specific image (optional)</h3>
         <p class="muted">If you leave any of them empty, the default image above will be shown.</p>
         <div id="levelImagesGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
@@ -1334,8 +1330,6 @@ function editGameCard(c) {
   document.getElementById('gcMaxSupply').value = c.max_supply || '';
   document.getElementById('gcActive').value = c.active ? '1' : '0';
   document.getElementById('gcCategory').value = c.category_id || '';
-  document.getElementById('gcMinPower').value = c.min_power ?? '';
-  document.getElementById('gcMaxPower').value = c.max_power ?? '';
   const preview = document.getElementById('gcImagePreview');
   if (c.image_url) { preview.src = c.image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
   let imgs = [];
@@ -1344,9 +1338,6 @@ function editGameCard(c) {
   renderLevelImageGrid();
 }
 async function saveGameCard() {
-  const gcMin = document.getElementById('gcMinPower').value;
-  const gcMax = document.getElementById('gcMaxPower').value;
-  if (gcMin && gcMax && Number(gcMin) > Number(gcMax)) { alert("This card's fixed power cannot be greater than its max power — it would be impossible to upgrade"); return; }
   await api('/game/cards', { method: 'POST', body: JSON.stringify({
     id: document.getElementById('gcId').value || null,
     name: document.getElementById('gcName').value,
@@ -1358,8 +1349,6 @@ async function saveGameCard() {
     active: document.getElementById('gcActive').value === '1',
     category_id: document.getElementById('gcCategory').value || null,
     level_images: LEVEL_IMAGES,
-    min_power: document.getElementById('gcMinPower').value || null,
-    max_power: document.getElementById('gcMaxPower').value || null,
   }) });
   document.getElementById('gcId').value = '';
   LEVEL_IMAGES = ['', '', '', '', '', '', ''];
