@@ -737,7 +737,7 @@
     <div class="menu-row" onclick="showMView('auction')"><span class="mic">⚡</span><div class="mtxt"><div class="mt">Flash auction</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showMView('clan')"><span class="mic">🏰</span><div class="mtxt"><div class="mt">Clan</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showMView('album')"><span class="mic">🎯</span><div class="mtxt"><div class="mt">Collection album</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="showMView('trade')"><span class="mic">🔄</span><div class="mtxt"><div class="mt">Card trade</div></div><span class="arrow">‹</span></div>
+    <div class="menu-row" onclick="showMView('cardmarket')"><span class="mic">🛒</span><div class="mtxt"><div class="mt">Card Marketplace</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showMView('avatars')"><span class="mic">🎨</span><div class="mtxt"><div class="mt">Avatar shop</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showPage('tasks')"><span class="mic">✅</span><div class="mtxt"><div class="mt">Tasks</div><div class="ms">Do it and get a reward</div></div><span class="arrow">‹</span></div>
     <div class="menu-row" onclick="showMView('raffle')"><span class="mic">🎟</span><div class="mtxt"><div class="mt">Big wheel</div><div class="ms">Prize raffle</div></div><span class="arrow">‹</span></div>
@@ -771,23 +771,19 @@
     <div id="albumsList" class="muted">Loading...</div>
   </div>
 
-  <div class="view" id="mview-trade">
+  <div class="view" id="mview-cardmarket">
     <div class="card">
-      <h3 class="sec" style="margin-top:0;">List a card on the trade board</h3>
-      <p class="muted">Pick one of your eligible cards so others can see it and trade with you.</p>
-      <select id="tradeMyCardToList"></select>
-      <label>Note (optional — e.g. what you want in return)</label>
-      <input type="text" id="tradeListNote" placeholder="e.g.: looking for a card of the same level">
-      <button class="btn" onclick="createTradeListingUI()">➕ List on board</button>
+      <h3 class="sec" style="margin-top:0;">List a card for sale</h3>
+      <p class="muted">Pick one of your cards and set a price in LNDC. While it's listed, this card can't be used in battle, upgraded, or gifted.</p>
+      <select id="cmMyCardToList"></select>
+      <label>Price (LNDC)</label>
+      <input type="number" id="cmListPrice" min="1" placeholder="e.g. 50000">
+      <button class="btn" onclick="createCardMarketListingUI()">➕ List for sale</button>
     </div>
     <h3 class="sec">My listings</h3>
-    <div id="myTradeListings" class="muted">Loading...</div>
-    <h3 class="sec">Trade board (other players' cards)</h3>
-    <div id="tradeBoard" class="muted">Loading...</div>
-    <h3 class="sec">Received offers</h3>
-    <div id="tradeIncoming" class="muted">Loading...</div>
-    <h3 class="sec">Sent offers</h3>
-    <div id="tradeOutgoing" class="muted">Loading...</div>
+    <div id="myCardMarketListings" class="muted">Loading...</div>
+    <h3 class="sec">Marketplace (other players' cards)</h3>
+    <div id="cardMarketBoard" class="muted">Loading...</div>
   </div>
 
   <div class="view" id="mview-avatars">
@@ -968,14 +964,14 @@ function showMView(name) {
   document.querySelectorAll('#page-more .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mview-' + name).classList.add('active');
   document.getElementById('headerBackBtn').style.display = name === 'hub' ? 'none' : 'flex';
-  const titles = { auction:'Flash auction', clan:'Clan', clanwar:'⚔️ Clan war', album:'Collection album', trade:'Card trade', avatars:'Avatar shop', raffle:'🎟 Big wheel' };
+  const titles = { auction:'Flash auction', clan:'Clan', clanwar:'⚔️ Clan war', album:'Collection album', cardmarket:'Card Marketplace', avatars:'Avatar shop', raffle:'🎟 Big wheel' };
   document.getElementById('headerTitle').textContent = name === 'hub' ? 'More' : titles[name];
   if (name === 'auction') loadAuctions();
   if (name === 'clan') loadClan();
   if (name === 'clanwar') loadClanWar();
   if (name === 'raffle') loadRaffles();
   if (name === 'album') loadAlbums();
-  if (name === 'trade') loadTrades();
+  if (name === 'cardmarket') loadCardMarket();
   if (name === 'avatars') loadAvatarsShop();
 }
 function headerBack() {
@@ -1605,6 +1601,11 @@ async function doSpinWheel() {
   const disc = document.getElementById('wheelDisc');
   try {
     const r = await api('/api/wheel/spin', { method: 'POST' });
+    // Use the exact slot list the backend used to choose the winner (it may exclude slots whose card was
+    // deleted, or reflect an admin edit that happened after this page was loaded) — re-rendering the disc
+    // with this authoritative list before animating is what guarantees the wheel visually lands on the same
+    // item that was actually awarded, instead of relying on a possibly-stale cached WHEEL_SLOTS.
+    if (Array.isArray(r.slots) && r.slots.length) { WHEEL_SLOTS = r.slots; renderWheelDisc(WHEEL_SLOTS); }
     let idx = WHEEL_SLOTS.findIndex(s => s.id === r.won.id);
     if (idx < 0) idx = 0;
     const segs = computeWheelSegments(WHEEL_SLOTS);
@@ -2006,75 +2007,53 @@ async function loadAlbums() {
 }
 async function claimAlbumUI(id) { await api(`/api/albums/${id}/claim`, { method: 'POST' }); toast('Reward claimed 🎉'); loadMe(); loadAlbums(); }
 
-/* ================= Trade ================= */
-let MY_TRADABLE_CARDS = [];
-async function loadTrades() {
+/* ================= Card Marketplace ================= */
+async function loadCardMarket() {
   const mine = await api('/api/game/my-cards');
-  const cfg = await api('/api/trade/config');
-  MY_TRADABLE_CARDS = mine.filter(c => c.level <= cfg.max_tradable_level);
-  const cardOptions = MY_TRADABLE_CARDS.length
-    ? MY_TRADABLE_CARDS.map(c => `<option value="${c.id}">${c.name} — Level ${c.level} — power ${c.power}</option>`).join('')
+  const cardOptions = mine.length
+    ? mine.map(c => `<option value="${c.id}">${c.name} — Level ${c.level} — power ${c.power}</option>`).join('')
     : '';
-  document.getElementById('tradeMyCardToList').innerHTML = cardOptions || '<option value="">You have no eligible cards</option>';
+  document.getElementById('cmMyCardToList').innerHTML = cardOptions || '<option value="">You have no cards</option>';
 
-  const myListings = await api('/api/trade/my-listings');
-  document.getElementById('myTradeListings').innerHTML = myListings.filter(l => l.status === 'open').length
-    ? myListings.filter(l => l.status === 'open').map(l => `
+  const myListings = await api('/api/card-market/my-listings');
+  const openListings = myListings.filter(l => l.status === 'open');
+  document.getElementById('myCardMarketListings').innerHTML = openListings.length
+    ? openListings.map(l => `
       <div class="card" style="padding:10px 14px;">
-        <div class="row"><span><b>${l.name}</b>${l.note ? ` — <span class="muted">${l.note}</span>` : ''}</span>
-        <button class="btn danger" style="width:auto;" onclick="cancelTradeListingUI(${l.id})">Cancel</button></div>
+        <div class="row"><span><b>${l.name}</b> (Lv${l.level}) — <span class="muted">${l.price_toman.toLocaleString('en-US')} LNDC</span></span>
+        <button class="btn danger" style="width:auto;" onclick="cancelCardMarketListingUI(${l.id})">Cancel</button></div>
       </div>`).join('')
-    : 'You have no active game-card listing.';
+    : 'You have no active listing.';
 
-  const board = await api('/api/trade/board');
-  document.getElementById('tradeBoard').innerHTML = board.length
+  const board = await api('/api/card-market/board');
+  document.getElementById('cardMarketBoard').innerHTML = board.length
     ? board.map(l => `
       <div class="card">
         ${l.image_url ? `<img src="${l.image_url}">` : ''}
         <div class="row"><b>${l.name} (Lv${l.level})</b><span class="muted">${l.first_name || ''}</span></div>
-        ${l.note ? `<p class="muted">${l.note}</p>` : ''}
-        <button class="btn secondary" onclick="toggleOfferPicker(${l.id})">🔄 Place bid</button>
-        <div id="offerPicker-${l.id}" style="display:none;margin-top:8px;">
-          <select id="offerCardSelect-${l.id}">${cardOptions || '<option value="">You have no eligible cards</option>'}</select>
-          <button class="btn gold" onclick="submitOfferOnListing(${l.id})">Send offer</button>
-        </div>
+        <div class="row"><span class="muted">Price</span><b>${l.price_toman.toLocaleString('en-US')} LNDC</b></div>
+        <button class="btn gold" onclick="buyCardMarketListingUI(${l.id})">🛒 Buy</button>
       </div>`).join('')
-    : '<div class="empty"><div class="eic">🔄</div>No card on the board right now.</div>';
-
-  const { incoming, outgoing } = await api('/api/trade/my');
-  document.getElementById('tradeIncoming').innerHTML = incoming.length ? incoming.map(o => `
-    <div class="card" style="padding:10px 14px;">
-      <div class="row"><span>From ${o.fromUserName || 'User ' + o.from_tg_id}</span></div>
-      <p class="muted">Bid: <b>${o.fromCardName}</b> ⇄ Your card: <b>${o.toCardName}</b></p>
-      <div style="display:flex;gap:6px;margin-top:6px;"><button class="btn" onclick="respondTradeUI(${o.id},true)">Accept</button><button class="btn danger" onclick="respondTradeUI(${o.id},false)">Reject</button></div>
-    </div>`).join('') : 'You have no offers.';
-  document.getElementById('tradeOutgoing').innerHTML = outgoing.length ? outgoing.map(o => `
-    <div class="card" style="padding:10px 14px;">
-      <div class="row"><span>To ${o.toUserName || 'User ' + o.to_tg_id}</span><button class="btn danger" style="width:auto;" onclick="cancelTradeUI(${o.id})">Cancel</button></div>
-      <p class="muted">Your offer: <b>${o.fromCardName}</b> ⇄ Their card: <b>${o.toCardName}</b></p>
-    </div>`).join('') : 'You have not sent an offer.';
+    : '<div class="empty"><div class="eic">🛒</div>No card listed for sale right now.</div>';
 }
-function toggleOfferPicker(listingId) {
-  const el = document.getElementById('offerPicker-' + listingId);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+async function createCardMarketListingUI() {
+  const userCardId = document.getElementById('cmMyCardToList').value;
+  if (!userCardId) { toast('You have no cards'); return; }
+  const priceToman = document.getElementById('cmListPrice').value;
+  if (!priceToman || Number(priceToman) <= 0) { toast('Enter a valid price'); return; }
+  try {
+    await api('/api/card-market/list', { method: 'POST', body: JSON.stringify({ userCardId, priceToman }) });
+    document.getElementById('cmListPrice').value = '';
+    toast('Listed for sale ✅'); loadCardMarket();
+  } catch (e) { toast(e.message || 'Could not list this card'); }
 }
-async function submitOfferOnListing(listingId) {
-  const fromUserCardId = document.getElementById('offerCardSelect-' + listingId).value;
-  if (!fromUserCardId) { toast('You have no eligible cards'); return; }
-  await api('/api/trade/offer-on-listing', { method: 'POST', body: JSON.stringify({ listingId, fromUserCardId }) });
-  toast('Your offer was sent ✅'); loadTrades();
+async function cancelCardMarketListingUI(id) { await api(`/api/card-market/listing/${id}/cancel`, { method: 'POST' }); loadCardMarket(); }
+async function buyCardMarketListingUI(id) {
+  try {
+    await api(`/api/card-market/listing/${id}/buy`, { method: 'POST' });
+    toast('Purchased ✅'); loadMe(); loadCardMarket(); loadMyCards();
+  } catch (e) { toast(e.message || 'Could not complete the purchase'); }
 }
-async function createTradeListingUI() {
-  const userCardId = document.getElementById('tradeMyCardToList').value;
-  if (!userCardId) { toast('You have no eligible cards'); return; }
-  const note = document.getElementById('tradeListNote').value;
-  await api('/api/trade/list', { method: 'POST', body: JSON.stringify({ userCardId, note }) });
-  document.getElementById('tradeListNote').value = '';
-  toast('listed on the board ✅'); loadTrades();
-}
-async function cancelTradeListingUI(id) { await api(`/api/trade/listing/${id}/cancel`, { method: 'POST' }); loadTrades(); }
-async function respondTradeUI(id, accept) { await api(`/api/trade/${id}/respond`, { method: 'POST', body: JSON.stringify({ accept }) }); toast(accept ? 'Trade completed ✅' : 'Rejected'); loadMe(); loadTrades(); loadMyCards(); }
-async function cancelTradeUI(id) { await api(`/api/trade/${id}/cancel`, { method: 'POST' }); loadTrades(); }
 
 /* ================= Profile: rank/check-in/avatar ================= */
 async function loadProfile() {
