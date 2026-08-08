@@ -1,5 +1,6 @@
 import db from './db.js';
 import { adjustToman, getUser } from './db.js';
+import { isCardListedForSale } from './card-market-db.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS gift_config (
@@ -76,6 +77,7 @@ export function giftCard(senderTgId, receiverInput, userCardId) {
   `).get(userCardId, senderTgId);
   if (!card) throw new Error('This card was not found');
   if (card.level > cfg.card_gift_max_level) throw new Error(`Only level 1 to ${cfg.card_gift_max_level} cards can be gifted`);
+  if (isCardListedForSale(userCardId)) throw new Error('This card is currently listed on the marketplace — cancel that listing first');
 
   const tx = db.transaction(() => {
     db.prepare('UPDATE user_cards SET tg_id = ? WHERE id = ?').run(receiver.tg_id, userCardId);

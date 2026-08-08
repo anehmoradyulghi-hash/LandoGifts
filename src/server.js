@@ -60,9 +60,9 @@ import { listAlbums, getAlbumProgress, claimAlbumReward } from './album-db.js';
 import { getGiftConfig, giftToman, giftCard, getRemainingCardGifts } from './gift-db.js';
 import { checkExpiredSeasons } from './seasonal-db.js';
 import {
-  getTradeConfig, createTradeOffer, respondTradeOffer, cancelTradeOffer, listMyTradeOffers,
-  createTradeListing, cancelTradeListing, listOpenTradeListings, getMyTradeListings, createTradeOfferFromListing, getTradeListing,
-} from './trade-db.js';
+  getCardMarketConfig, createCardMarketListing, cancelCardMarketListing,
+  listCardMarketOffers, getMyCardMarketListings, buyCardMarketListing,
+} from './card-market-db.js';
 import adminApi from './admin-api.js';
 
 // Some servers (like this VPS) have broken/filtered IPv6 but their IPv4 is fine. Without this line,
@@ -422,7 +422,9 @@ app.post('/api/checkout', requireTelegramAuth, (req, res) => {
   addClanPurchaseScore(user.tg_id, total);
   addSeasonXp(user.tg_id, getSeasonConfig().xp_per_purchase);
   addUserXp(user.tg_id, Math.floor(total / 1000) * getRankConfig().xp_per_1k_purchase);
-  incrementQuestProgress(user.tg_id, 'buy_card', 1);
+  // This is a regular shop/gift product purchase (not a game card) — tracked as its own quest type
+  // ('buy_product') so it can never be confused with, or silently satisfy, a "buy game card" quest.
+  incrementQuestProgress(user.tg_id, 'buy_product', 1);
 
   sendMessage(user.tg_id, `✅ Your order has been placed.\nItem: ${product.title} ×${q}\nAmount: ${total.toLocaleString()} LNDC${note ? `\nDestination: ${note}` : ''}`).catch(() => {});
   notifyAdmins(`🛒 New order\nUser: ${user.first_name || ''} (${user.tg_id})\nItem: ${product.title} ×${q}\nAmount: ${total.toLocaleString()} LNDC${note ? `\nDestination: ${note}` : ''}`);
@@ -527,7 +529,10 @@ app.get('/api/wheel/slots', (req, res) => res.json(listWheelSlots(true)));
 app.post('/api/wheel/spin', requireTelegramAuth, (req, res) => {
   try {
     const result = spinWheel(req.dbUser.tg_id);
-    res.json({ ok: true, won: result.slot });
+    // Also return the exact slot list the backend used to pick the winner (post deleted-card filtering),
+    // so the frontend animation renders/targets that exact same list instead of a possibly stale cached copy —
+    // this is what guarantees the wheel visually lands on the same item the backend actually awarded.
+    res.json({ ok: true, won: result.slot, slots: result.slots });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.get('/api/wheel/history', requireTelegramAuth, (req, res) => res.json(getWheelHistory(req.dbUser.tg_id)));
@@ -764,42 +769,22 @@ app.post('/api/gift/card', requireTelegramAuth, (req, res) => {
 });
 
 /* =========================================================================
- * Card trade
+ * Card Marketplace — list a card you own for LNDC, any other player can buy it.
+ * Replaces the old direct card-to-card Exchange.
  * ========================================================================= */
-app.get('/api/trade/config', (req, res) => res.json(getTradeConfig()));
-app.get('/api/trade/my', requireTelegramAuth, (req, res) => res.json(listMyTradeOffers(req.dbUser.tg_id)));
-app.get('/api/trade/board', requireTelegramAuth, (req, res) => res.json(listOpenTradeListings(req.dbUser.tg_id)));
-app.get('/api/trade/my-listings', requireTelegramAuth, (req, res) => res.json(getMyTradeListings(req.dbUser.tg_id)));
-app.post('/api/trade/list', requireTelegramAuth, (req, res) => {
-  try { const id = createTradeListing(req.dbUser.tg_id, Number(req.body.userCardId), req.body.note); res.json({ ok: true, id }); }
+app.get('/api/card-market/config', (req, res) => res.json(getCardMarketConfig()));
+app.get('/api/card-market/board', requireTelegramAuth, (req, res) => res.json(listCardMarketOffers(req.dbUser.tg_id)));
+app.get('/api/card-market/my-listings', requireTelegramAuth, (req, res) => res.json(getMyCardMarketListings(req.dbUser.tg_id)));
+app.post('/api/card-market/list', requireTelegramAuth, (req, res) => {
+  try { const id = createCardMarketListing(req.dbUser.tg_id, Number(req.body.userCardId), Number(req.body.priceToman)); res.json({ ok: true, id }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
-app.post('/api/trade/listing/:id/cancel', requireTelegramAuth, (req, res) => {
-  try { cancelTradeListing(req.dbUser.tg_id, Number(req.params.id)); res.json({ ok: true }); }
+app.post('/api/card-market/listing/:id/cancel', requireTelegramAuth, (req, res) => {
+  try { cancelCardMarketListing(req.dbUser.tg_id, Number(req.params.id)); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
-app.post('/api/trade/offer-on-listing', requireTelegramAuth, (req, res) => {
-  try {
-    const listingId = Number(req.body.listingId);
-    const listing = getTradeListing(listingId);
-    const id = createTradeOfferFromListing(req.dbUser.tg_id, listingId, Number(req.body.fromUserCardId));
-    if (listing) sendMessage(listing.tg_id, `🔄 ${req.dbUser.first_name || 'A user'} made an offer on one of your card trade listings!`).catch(() => {});
-    res.json({ ok: true, id });
-  } catch (e) { res.status(400).json({ error: e.message }); }
-});
-app.post('/api/trade/create', requireTelegramAuth, (req, res) => {
-  try {
-    const id = createTradeOffer(req.dbUser.tg_id, Number(req.body.toTgId), Number(req.body.fromUserCardId), Number(req.body.toUserCardId));
-    sendMessage(Number(req.body.toTgId), `🔄 ${req.dbUser.first_name || 'A user'} sent you a card trade offer!`).catch(() => {});
-    res.json({ ok: true, id });
-  } catch (e) { res.status(400).json({ error: e.message }); }
-});
-app.post('/api/trade/:id/respond', requireTelegramAuth, (req, res) => {
-  try { res.json({ ok: true, ...respondTradeOffer(req.dbUser.tg_id, Number(req.params.id), !!req.body.accept) }); }
-  catch (e) { res.status(400).json({ error: e.message }); }
-});
-app.post('/api/trade/:id/cancel', requireTelegramAuth, (req, res) => {
-  try { cancelTradeOffer(req.dbUser.tg_id, Number(req.params.id)); res.json({ ok: true }); }
+app.post('/api/card-market/listing/:id/buy', requireTelegramAuth, (req, res) => {
+  try { res.json(buyCardMarketListing(req.dbUser.tg_id, Number(req.params.id))); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 

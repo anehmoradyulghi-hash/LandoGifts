@@ -14,7 +14,7 @@ INSERT OR IGNORE INTO quest_config (id) VALUES (1);
 CREATE TABLE IF NOT EXISTS quest_templates (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
-  type TEXT NOT NULL,           -- win_battles | play_battles | buy_card | upgrade_cards | deposit_toman | donate_clan | checkin | custom
+  type TEXT NOT NULL,           -- win_battles | play_battles | buy_card | buy_product | upgrade_cards | deposit_toman | donate_clan | checkin | custom
   target_count INTEGER NOT NULL DEFAULT 1,
   reward_type TEXT NOT NULL,    -- toman | xp | card | extra_games
   reward_value TEXT,

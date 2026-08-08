@@ -1,6 +1,8 @@
 import db from './db.js';
 import { adjustToman, getUser } from './db.js';
 import { getOrCreateUserLeague, pickQueueOpponentInLeague, recordLeagueResult } from './league-db.js';
+import { getUserRankInfo } from './rank-db.js';
+import { isCardListedForSale } from './card-market-db.js';
 
 /* =========================================================================
  * SCHEMA — Card game. Everything automatic and server-side (no external calls), settings
@@ -386,6 +388,7 @@ export function sacrificeCards(tgId, targetUserCardId, sacrificeUserCardIds) {
 
   const target = getUserCard(tgId, targetUserCardId);
   if (!target) throw new Error('Target card not found');
+  if (isCardListedForSale(targetUserCardId)) throw new Error('This card is currently listed on the marketplace — cancel that listing first');
 
   const cfg = getGameConfig();
   const fee = cfg.sacrifice_fee_toman || 0;
@@ -399,6 +402,7 @@ export function sacrificeCards(tgId, targetUserCardId, sacrificeUserCardIds) {
 
   const sacs = ids.map(id => getUserCard(tgId, id)).filter(Boolean);
   if (!sacs.length) throw new Error('Selected cards not found');
+  if (ids.some(id => isCardListedForSale(id))) throw new Error('One of the selected cards is currently listed on the marketplace — cancel that listing first');
 
   const percent = cfg.sacrifice_transfer_percent || 20;
   let transferAmount = 0;
@@ -453,11 +457,14 @@ export function getMutationGroups(tgId) {
 // Mutation: automatically finds two fully identical cards (same name and level) and merges them for a step-based cost;
 // one is removed and the other goes up one level (level = rarity, so the image and label also change automatically)
 export function mutateCards(tgId, cardId, level) {
-  const rows = db.prepare(`
+  const candidates = db.prepare(`
     SELECT uc.id, uc.level, c.max_level FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id
     WHERE uc.tg_id = ? AND uc.card_id = ? AND uc.level = ?
-    ORDER BY uc.id ASC LIMIT 2
+    ORDER BY uc.id ASC
   `).all(tgId, cardId, level);
+  // Cards currently listed on the marketplace are locked out of mutation — skip them when picking
+  // which two identical cards to merge.
+  const rows = candidates.filter(r => !isCardListedForSale(r.id)).slice(0, 2);
   if (rows.length < 2) throw new Error('You need two fully identical cards (same name and level) to mutate');
   if (rows[0].level >= rows[0].max_level) throw new Error('This card has reached the max level (Divine)');
 
@@ -575,6 +582,7 @@ export function joinQueue(tgId, userCardIds) {
 
   const cards = uniqueIds.map(id => getUserCard(tgId, id));
   if (cards.some(c => !c)) throw new Error('One of the selected cards was not found');
+  if (uniqueIds.some(id => isCardListedForSale(id))) throw new Error('One of the selected cards is currently listed on the marketplace — cancel that listing first if you want to play with it');
   const power = cards.reduce((s, c) => s + c.power, 0);
   const myLeague = getOrCreateUserLeague(tgId).league;
 
@@ -590,10 +598,22 @@ export function joinQueue(tgId, userCardIds) {
     consumePlay(tgId);
     consumePlay(opponent.tg_id);
 
-    // A bit of random chance (up to 15%) is added to each side's power so the match is not purely mathematical
-    const rollA = power * (1 + Math.random() * 0.15);
-    const rollB = opponent.power * (1 + Math.random() * 0.15);
-    const winner = rollA >= rollB ? tgId : opponent.tg_id;
+    // A bit of random chance (up to 15%) is added to each side's power so the match is not purely mathematical —
+    // but ONLY when the two decks' power actually differs. When power is exactly equal, that jitter alone would
+    // make the outcome a near-coinflip, which is not what a tie should mean: whichever player has the higher
+    // account level wins instead (deterministic, no randomness). Only if power AND level are both exactly equal
+    // is a genuine random tie-break used.
+    let winner;
+    if (power === opponent.power) {
+      const myLevel = getUserRankInfo(tgId).level;
+      const oppLevel = getUserRankInfo(opponent.tg_id).level;
+      if (myLevel !== oppLevel) winner = myLevel > oppLevel ? tgId : opponent.tg_id;
+      else winner = Math.random() < 0.5 ? tgId : opponent.tg_id; // power and level both tied — fair coin flip
+    } else {
+      const rollA = power * (1 + Math.random() * 0.15);
+      const rollB = opponent.power * (1 + Math.random() * 0.15);
+      winner = rollA >= rollB ? tgId : opponent.tg_id;
+    }
     const loser = winner === tgId ? opponent.tg_id : tgId;
 
     db.prepare('INSERT INTO game_matches (player_a, player_b, power_a, power_b, winner_tg_id) VALUES (?,?,?,?,?)')

@@ -55,7 +55,7 @@ import { listPromoCodes, createPromoCode, deletePromoCode, listRedemptions } fro
 import { listAlbums, upsertAlbum, deleteAlbum, getAlbumRequirements } from './album-db.js';
 import { getGiftConfig, setGiftConfig } from './gift-db.js';
 import { listSeasons, createSeason, deleteSeason, setCardSeason } from './seasonal-db.js';
-import { getTradeConfig, setTradeConfig } from './trade-db.js';
+import { getCardMarketConfig, setCardMarketConfig, listCardMarketOffers } from './card-market-db.js';
 import { sendMessage } from './telegram.js';
 
 const router = express.Router();
@@ -697,16 +697,12 @@ router.post('/seasons/assign-card', (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------- Card trade ---------- */
-router.get('/trade/config', (req, res) => res.json(getTradeConfig()));
-router.post('/trade/config', (req, res) => {
-  const b = req.body;
-  setTradeConfig({
-    enabled: !!b.enabled, max_tradable_level: Number(b.max_tradable_level),
-    max_trades_per_month: Number(b.max_trades_per_month), min_user_level: Number(b.min_user_level),
-    trade_fee_toman: Number(b.trade_fee_toman),
-  });
+/* ---------- Card Marketplace ---------- */
+router.get('/card-market/config', (req, res) => res.json(getCardMarketConfig()));
+router.post('/card-market/config', (req, res) => {
+  setCardMarketConfig({ enabled: !!req.body.enabled, fee_percent: Number(req.body.fee_percent) });
   res.json({ ok: true });
 });
+router.get('/card-market/listings', (req, res) => res.json(listCardMarketOffers(0)));
 
 export default router;
