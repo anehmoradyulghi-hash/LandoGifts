@@ -73,7 +73,7 @@
     <button data-tab="albums" onclick="showTab('albums')">Album</button>
     <button data-tab="giftcfg" onclick="showTab('giftcfg')">Gift</button>
     <button data-tab="seasons" onclick="showTab('seasons')">Seasonal card</button>
-    <button data-tab="trade" onclick="showTab('trade')">Trade</button>
+    <button data-tab="cardmarket" onclick="showTab('cardmarket')">Card Marketplace</button>
     <button data-tab="cardtasks" onclick="showTab('cardtasks')">Card tasks</button>
     <button data-tab="users" onclick="showTab('users')">Users</button>
   </nav>
@@ -678,7 +678,8 @@
             <select id="qtType">
               <option value="win_battles">Win in battle</option>
               <option value="play_battles">Participate in battle (win or loss)</option>
-              <option value="buy_card">Buy card</option>
+              <option value="buy_card">Buy game card</option>
+              <option value="buy_product">Buy shop product (gift)</option>
               <option value="upgrade_cards">Card upgrade (mutation)</option>
               <option value="deposit_toman">LNDC deposit</option>
               <option value="donate_clan">Donate to clan</option>
@@ -778,19 +779,19 @@
       <div id="seasonsTable"></div>
     </section>
 
-    <section class="tab" id="tab-trade">
+    <section class="tab" id="tab-cardmarket">
       <div class="card">
-        <h3>Card trade settings</h3>
-        <select id="trEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
+        <h3>Card Marketplace settings</h3>
+        <select id="cmEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>Max tradeable level</label><input type="number" id="trMaxLevel"></div>
-          <div><label>Max trades per month</label><input type="number" id="trMaxPerMonth"></div>
+          <div><label>Fee percent on each sale (taken from the price, paid in LNDC)</label><input type="number" id="cmFeePercent" min="0" max="100"></div>
         </div>
-        <div class="row2">
-          <div><label>Minimum user level</label><input type="number" id="trMinLevel"></div>
-          <div><label>Fee per trade (LNDC)</label><input type="number" id="trFee"></div>
-        </div>
-        <button class="btn" onclick="saveTradeConfig()">Save</button>
+        <button class="btn" onclick="saveCardMarketConfig()">Save</button>
+        <p class="muted" id="cmSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
+      </div>
+      <div class="card">
+        <h3>Open listings</h3>
+        <div id="cardMarketListingsTable"></div>
       </div>
     </section>
 
@@ -881,7 +882,7 @@ function showTab(name) {
     cardcategories: loadCategories, mergecosts: loadMergeCosts, wheel: loadWheelAdmin,
     auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
-    giftcfg: loadGiftConfigAdmin, seasons: loadSeasonsAdmin, trade: loadTradeConfigAdmin,
+    giftcfg: loadGiftConfigAdmin, seasons: loadSeasonsAdmin, cardmarket: loadCardMarketConfigAdmin,
     creqs: loadCreqs, products: loadProducts, orders: loadOrders, gifts: loadGifts, tasks: loadTasks,
     gamecards: loadGameCards, specialcards: loadSpecialCards, gameconfig: loadGameConfig, leaderboard: loadLeaderboardTab, cardtasks: loadCardTasksTab,
     raffles: loadRafflesAdmin,
@@ -2154,24 +2155,25 @@ async function assignCardToSeason() {
   alert('Done');
 }
 
-/* ---------- Card trade ---------- */
-async function loadTradeConfigAdmin() {
-  const cfg = await api('/trade/config');
-  document.getElementById('trEnabled').value = cfg.enabled ? '1' : '0';
-  document.getElementById('trMaxLevel').value = cfg.max_tradable_level;
-  document.getElementById('trMaxPerMonth').value = cfg.max_trades_per_month;
-  document.getElementById('trMinLevel').value = cfg.min_user_level;
-  document.getElementById('trFee').value = cfg.trade_fee_toman;
+/* ---------- Card Marketplace ---------- */
+async function loadCardMarketConfigAdmin() {
+  const cfg = await api('/card-market/config');
+  document.getElementById('cmEnabled').value = cfg.enabled ? '1' : '0';
+  document.getElementById('cmFeePercent').value = cfg.fee_percent;
+  const listings = await api('/card-market/listings');
+  document.getElementById('cardMarketListingsTable').innerHTML = listings.length ? `
+    <table><tr><th>Card</th><th>Level</th><th>Seller</th><th>Price (LNDC)</th><th>Listed at</th></tr>
+    ${listings.map(l => `<tr><td>${l.name}</td><td>${l.level}</td><td>${l.first_name || ''} (${l.seller_tg_id})</td><td>${l.price_toman.toLocaleString('en-US')}</td><td>${l.created_at}</td></tr>`).join('')}
+    </table>` : '<p class="muted">No open listings right now.</p>';
 }
-async function saveTradeConfig() {
-  await api('/trade/config', { method: 'POST', body: JSON.stringify({
-    enabled: document.getElementById('trEnabled').value === '1',
-    max_tradable_level: document.getElementById('trMaxLevel').value,
-    max_trades_per_month: document.getElementById('trMaxPerMonth').value,
-    min_user_level: document.getElementById('trMinLevel').value,
-    trade_fee_toman: document.getElementById('trFee').value,
+async function saveCardMarketConfig() {
+  await api('/card-market/config', { method: 'POST', body: JSON.stringify({
+    enabled: document.getElementById('cmEnabled').value === '1',
+    fee_percent: document.getElementById('cmFeePercent').value,
   }) });
-  alert('Saved');
+  const msg = document.getElementById('cmSavedMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
 }
 
 /* ---------- Start ---------- */
