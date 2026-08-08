@@ -48,6 +48,7 @@
     <button data-tab="currencies" onclick="showTab('currencies')">Currencies</button>
     <button data-tab="payment" onclick="showTab('payment')">Payment</button>
     <button data-tab="referral" onclick="showTab('referral')">Referral rewards</button>
+    <button data-tab="design" onclick="showTab('design')">🎨 App design</button>
     <button data-tab="messages" onclick="showTab('messages')">Messages</button>
     <button data-tab="topups" onclick="showTab('topups')">Card-to-card top-up</button>
     <button data-tab="withdrawals" onclick="showTab('withdrawals')">LNDC withdrawal</button>
@@ -119,10 +120,6 @@
         <input id="payCardNumber" placeholder="6037-xxxx-xxxx-xxxx">
         <label>Cardholder name</label>
         <input id="payCardOwner" placeholder="e.g. Ali Mohammadi">
-        <h3>Zarinpal gateway (online payment)</h3>
-        <label>Zarinpal merchant code</label>
-        <input id="payZarinpal" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-        <p class="muted">If you leave this empty, the online payment button will not show in the mini app and only card-to-card stays active.</p>
         <button class="btn" onclick="savePaymentSettings()">Save</button>
         <p class="muted" id="paymentSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
@@ -175,6 +172,27 @@
         </div>
         <button class="btn" onclick="saveReferralSettings()">Save</button>
         <p class="muted" id="referralSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-design">
+      <div class="card">
+        <h3>🎨 Hub shortcut tile images</h3>
+        <p class="muted">Optional custom artwork for each shortcut tile on the main screen (Shop, Card game, Battle pass, Gift market, Wallet). Paste an image URL — leave empty to keep the default icon/color look. Recommended: a square-ish image, at least 400px wide.</p>
+        <label>Shop</label><input id="uiImgHubShop" placeholder="https://...">
+        <label>Card game</label><input id="uiImgHubCardgame" placeholder="https://...">
+        <label>Battle pass</label><input id="uiImgHubBattlepass" placeholder="https://...">
+        <label>Gift market</label><input id="uiImgHubMarket" placeholder="https://...">
+        <label>Currency wallet</label><input id="uiImgHubWallet" placeholder="https://...">
+        <label>Clan (quick-access tile)</label><input id="uiImgHubClan" placeholder="https://...">
+      </div>
+      <div class="card">
+        <h3>🖼 Section banner images</h3>
+        <p class="muted">Optional wide banner artwork shown at the top of the Clan and Battle pass pages. Recommended: a wide image (at least 800×300).</p>
+        <label>Clan banner</label><input id="uiImgBannerClan" placeholder="https://...">
+        <label>Battle pass banner</label><input id="uiImgBannerBattlepass" placeholder="https://...">
+        <button class="btn" onclick="saveUiImages()">Save</button>
+        <p class="muted" id="uiImagesSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
     </section>
 
@@ -403,12 +421,13 @@
         <h3>⚔️ Weekly league (Bronze/Silver/Gold)</h3>
         <p class="muted">Separate from the game score — based only on this week's wins/losses in card battles. Everyone starts from Bronze.</p>
         <select id="lgEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
-        <div class="row2">
-          <div><label>Number of promotions per league</label><input type="number" id="lgPromote"></div>
-          <div><label>Number of demotions per league</label><input type="number" id="lgRelegate"></div>
-        </div>
         <label>Promotion/demotion period (days)</label><input type="number" id="lgResetDays">
         <button class="btn" onclick="saveLeagueConfig()">Save league settings</button>
+      </div>
+      <div class="card">
+        <h3>Promotions/demotions per league</h3>
+        <p class="muted">Set independently for each league — e.g. 8 promote from Bronze but only 3 from Silver. Promotion doesn't apply to Gold (nothing above it) and demotion doesn't apply to Bronze (nothing below it).</p>
+        <div id="leagueTiersTable"></div>
       </div>
     </section>
 
@@ -874,7 +893,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: loadReferralSettings, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
+  const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: loadReferralSettings, design: loadUiImages, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
     cardcategories: loadCategories, mergecosts: loadMergeCosts, wheel: loadWheelAdmin,
     auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
@@ -954,7 +973,6 @@ async function loadPaymentSettings() {
   const s = await api('/payment-settings');
   document.getElementById('payCardNumber').value = s.cardNumber || '';
   document.getElementById('payCardOwner').value = s.cardOwner || '';
-  document.getElementById('payZarinpal').value = s.zarinpalMerchantId || '';
   const sup = await api('/support-contact');
   document.getElementById('supportUsername').value = sup.username || '';
   const info = await api('/info-pages');
@@ -994,6 +1012,31 @@ async function saveReferralSettings() {
   msg.style.display = 'block';
   setTimeout(() => msg.style.display = 'none', 2500);
 }
+
+/* ---------- App design (hub tile + section banner images) ---------- */
+const UI_IMAGE_FIELD_MAP = {
+  hub_shop: 'uiImgHubShop', hub_cardgame: 'uiImgHubCardgame', hub_battlepass: 'uiImgHubBattlepass',
+  hub_market: 'uiImgHubMarket', hub_wallet: 'uiImgHubWallet', hub_clan: 'uiImgHubClan',
+  banner_clan: 'uiImgBannerClan', banner_battlepass: 'uiImgBannerBattlepass',
+};
+async function loadUiImages() {
+  const images = await api('/ui-images');
+  for (const [key, elId] of Object.entries(UI_IMAGE_FIELD_MAP)) {
+    const el = document.getElementById(elId);
+    if (el) el.value = images[key] || '';
+  }
+}
+async function saveUiImages() {
+  const body = {};
+  for (const [key, elId] of Object.entries(UI_IMAGE_FIELD_MAP)) {
+    const el = document.getElementById(elId);
+    if (el) body[key] = el.value.trim();
+  }
+  await api('/ui-images', { method: 'POST', body: JSON.stringify(body) });
+  const msg = document.getElementById('uiImagesSavedMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
+}
 async function saveSupportContact() {
   await api('/support-contact', { method: 'POST', body: JSON.stringify({ username: document.getElementById('supportUsername').value }) });
   alert('Saved');
@@ -1010,7 +1053,6 @@ async function savePaymentSettings() {
   await api('/payment-settings', { method: 'POST', body: JSON.stringify({
     cardNumber: document.getElementById('payCardNumber').value,
     cardOwner: document.getElementById('payCardOwner').value,
-    zarinpalMerchantId: document.getElementById('payZarinpal').value,
   }) });
   const msg = document.getElementById('paymentSavedMsg');
   msg.style.display = 'block';
@@ -1611,17 +1653,34 @@ async function loadLeaderboardTab() {
 
   const lg = await api('/league/config');
   document.getElementById('lgEnabled').value = lg.enabled ? '1' : '0';
-  document.getElementById('lgPromote').value = lg.promote_count;
-  document.getElementById('lgRelegate').value = lg.relegate_count;
   document.getElementById('lgResetDays').value = lg.reset_days;
+  const tiers = await api('/league/tiers');
+  const tierLabels = { bronze: '🥉 Bronze', silver: '🥈 Silver', gold: '🥇 Gold' };
+  document.getElementById('leagueTiersTable').innerHTML = tiers.map(t => `
+    <div class="row2" style="align-items:center;">
+      <div><label>${tierLabels[t.league] || t.league}</label></div>
+      <div style="display:flex;gap:6px;">
+        <input type="number" inputmode="numeric" id="lgTierPromote-${t.league}" value="${t.promote_count}" placeholder="Promote" ${t.league === 'gold' ? 'disabled title="Nothing above Gold"' : ''}>
+        <input type="number" inputmode="numeric" id="lgTierRelegate-${t.league}" value="${t.relegate_count}" placeholder="Demote" ${t.league === 'bronze' ? 'disabled title="Nothing below Bronze"' : ''}>
+      </div>
+    </div>`).join('') + `<button class="btn secondary" onclick="saveLeagueTiers()">Save promotions/demotions</button>`;
 }
 async function saveLeagueConfig() {
   await api('/league/config', { method: 'POST', body: JSON.stringify({
     enabled: document.getElementById('lgEnabled').value === '1',
-    promote_count: document.getElementById('lgPromote').value,
-    relegate_count: document.getElementById('lgRelegate').value,
     reset_days: document.getElementById('lgResetDays').value,
   }) });
+  alert('Saved');
+}
+async function saveLeagueTiers() {
+  for (const league of ['bronze', 'silver', 'gold']) {
+    const promoteEl = document.getElementById(`lgTierPromote-${league}`);
+    const relegateEl = document.getElementById(`lgTierRelegate-${league}`);
+    if (!promoteEl) continue;
+    await api('/league/tiers', { method: 'POST', body: JSON.stringify({
+      league, promote_count: promoteEl.value, relegate_count: relegateEl.value,
+    }) });
+  }
   alert('Saved');
 }
 async function saveLeaderboardPrize() {
