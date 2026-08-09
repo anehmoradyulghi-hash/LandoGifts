@@ -320,6 +320,8 @@
           <div><label>Quantity limit (empty = unlimited)</label><input type="number" id="gcMaxSupply"></div>
           <div><label>active?</label><select id="gcActive"><option value="1">Yes</option><option value="0">No</option></select></div>
         </div>
+        <label>Marketplace value coefficient (1 = normal, &gt;1 = more prestigious/valuable than its raw power suggests, &lt;1 = less)</label>
+        <input type="number" id="gcMarketCoeff" step="0.05" min="0.1" placeholder="1">
         <h3 style="margin-top:16px;">Level-specific image (optional)</h3>
         <p class="muted">If you leave any of them empty, the default image above will be shown.</p>
         <div id="levelImagesGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
@@ -722,6 +724,7 @@
               <option value="deposit_toman">LNDC deposit</option>
               <option value="donate_clan">Donate to clan</option>
               <option value="checkin">Daily check-in</option>
+              <option value="join_raffle">Join a giveaway (Big wheel)</option>
               <option value="custom">Custom</option>
             </select>
           </div>
@@ -1413,6 +1416,7 @@ function editGameCard(c) {
   document.getElementById('gcMaxSupply').value = c.max_supply || '';
   document.getElementById('gcActive').value = c.active ? '1' : '0';
   document.getElementById('gcCategory').value = c.category_id || '';
+  document.getElementById('gcMarketCoeff').value = c.market_coefficient ?? 1;
   const preview = document.getElementById('gcImagePreview');
   if (c.image_url) { preview.src = c.image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
   let imgs = [];
@@ -1432,6 +1436,7 @@ async function saveGameCard() {
     active: document.getElementById('gcActive').value === '1',
     category_id: document.getElementById('gcCategory').value || null,
     level_images: LEVEL_IMAGES,
+    market_coefficient: document.getElementById('gcMarketCoeff').value || 1,
   }) });
   document.getElementById('gcId').value = '';
   LEVEL_IMAGES = ['', '', '', '', '', '', ''];
