@@ -452,7 +452,7 @@
 
 <!-- Shared header -->
 <div class="topbar">
-  <button class="icon-btn" id="headerBackBtn" style="display:none;" onclick="headerBack()">
+  <button class="icon-btn" id="headerBackBtn" style="display:flex;" onclick="headerBack()">
     <svg viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
   <span class="title" id="headerTitle">Lando Gifts</span>
@@ -1033,7 +1033,9 @@ function showPage(name) {
   document.getElementById('page-' + name).classList.add('active');
   document.querySelectorAll('.navitem').forEach(b => b.classList.toggle('active', b.dataset.page === name));
   document.getElementById('headerTitle').textContent = PAGE_TITLES[name] || 'Lando Gifts';
-  document.getElementById('headerBackBtn').style.display = (name === 'tasks' || name === 'info') ? 'flex' : 'none';
+  // The back button always stays visible everywhere in the app — never hidden, even on a main tab —
+  // headerBack() itself decides where "back" goes to (a nested view if there's history, otherwise a
+  // sensible default), so there's never a state where tapping it does nothing.
   // if we are going to a main page (not tasks/info, which are sub-pages themselves), save it here as "page before sub-page"
   if (name !== 'tasks' && name !== 'info') { PAGE_BEFORE_SUBPAGE = name; NAV_STACK = []; } // switching top-level tabs starts a fresh nested-navigation history
   CURRENT_PAGE = name;
@@ -1058,7 +1060,6 @@ function showGView(name) {
   if (name === 'hub') NAV_STACK = []; // back at the section hub — nothing left to step back through
   document.querySelectorAll('#page-games .view').forEach(v => v.classList.remove('active'));
   document.getElementById('gview-' + name).classList.add('active');
-  document.getElementById('headerBackBtn').style.display = name === 'hub' ? 'none' : 'flex';
   document.getElementById('headerTitle').textContent = name === 'hub' ? 'Lando Gifts' : { cardgame:'Card game', wheel:'Wheel of fortune', battlepass:'Battle pass', events:'Events' }[name];
   if (name === 'cardgame') { showGameSub('shop'); loadGame(); }
   if (name === 'wheel') loadWheel();
@@ -1081,7 +1082,6 @@ function showMView(name) {
   if (name === 'hub') NAV_STACK = []; // back at the section hub — nothing left to step back through
   document.querySelectorAll('#page-more .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mview-' + name).classList.add('active');
-  document.getElementById('headerBackBtn').style.display = name === 'hub' ? 'none' : 'flex';
   const titles = { auction:'Flash auction', clan:'Clan', clanwar:'⚔️ Clan war', clanchat:'💬 Clan chat', album:'Collection album', cardmarket:'Card Marketplace', avatars:'Avatar shop', raffle:'🎟 Big wheel' };
   document.getElementById('headerTitle').textContent = name === 'hub' ? 'More' : titles[name];
   if (name === 'auction') loadAuctions();
