@@ -614,6 +614,16 @@
         <button class="btn danger" onclick="resetClanSeasonUI()">Distribute prize & manual reset</button>
       </div>
       <div class="card">
+        <h3>💬 Clan chat</h3>
+        <p class="muted">Each clan has its own private chat, visible only to its members. Messages are polled by the app every couple of seconds and auto-delete after the retention window below.</p>
+        <select id="ccEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
+        <div class="row2">
+          <div><label>Message retention (minutes)</label><input type="number" id="ccRetentionMinutes" min="1"></div>
+          <div><label>Max message length</label><input type="number" id="ccMaxLength" min="20"></div>
+        </div>
+        <button class="btn" onclick="saveClanChatConfig()">Save chat settings</button>
+      </div>
+      <div class="card">
         <h3>⚔️ Clan war settings</h3>
         <select id="cwEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
@@ -1894,6 +1904,11 @@ async function loadClanAdmin() {
   document.getElementById('cwFeePercent').value = cw.fee_percent;
   document.getElementById('cwTeamSize').value = cw.team_size;
 
+  const cc = await api('/clan/chat-config');
+  document.getElementById('ccEnabled').value = cc.enabled ? '1' : '0';
+  document.getElementById('ccRetentionMinutes').value = cc.retention_minutes;
+  document.getElementById('ccMaxLength').value = cc.max_message_length;
+
   const lb = await api('/clan/all');
   document.getElementById('clanLeaderboardTable').innerHTML = lb.length ? `
     <table><tr><th>Name</th><th>Tag</th><th>Score</th><th>Bank</th><th>Actions</th></tr>
@@ -1926,6 +1941,14 @@ async function saveClanConfig() {
     min_score_threshold: document.getElementById('clnMinScore').value,
     reset_days: document.getElementById('clnResetDays').value,
     withdraw_fee_percent: document.getElementById('clnWithdrawFee').value,
+  }) });
+  alert('Saved');
+}
+async function saveClanChatConfig() {
+  await api('/clan/chat-config', { method: 'POST', body: JSON.stringify({
+    enabled: document.getElementById('ccEnabled').value === '1',
+    retention_minutes: document.getElementById('ccRetentionMinutes').value,
+    max_message_length: document.getElementById('ccMaxLength').value,
   }) });
   alert('Saved');
 }
