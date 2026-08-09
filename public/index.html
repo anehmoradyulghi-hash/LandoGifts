@@ -228,6 +228,17 @@
   .btn.ghost { background:none; color:var(--muted); font-weight:600; box-shadow:none; }
   .btn.outline { background:none; border:1px solid var(--p1); color:#c9b3ff; box-shadow:none; }
   .btn.gold { background:radial-gradient(130% 180% at 18% -30%, rgba(255,255,255,.4), transparent 55%), linear-gradient(135deg,#fde68a,#f59e0b); color:#241800; box-shadow:0 8px 20px -8px rgba(245,158,11,.55), inset 0 1px 0 rgba(255,255,255,.35); }
+
+  /* ---------- Shimmer sweep — a subtle recurring light pass over the two "hero" CTA buttons
+     (gold and premium), a common premium-gaming touch. Cheap: one pseudo-element, transform-only. ---------- */
+  .btn.gold, .btn.premium { position:relative; overflow:hidden; }
+  .btn.gold::after, .btn.premium::after {
+    content:''; position:absolute; top:0; bottom:0; width:40%;
+    background:linear-gradient(115deg, transparent, rgba(255,255,255,.35), transparent);
+    transform:translateX(-160%); animation:btnShimmer 3.2s ease-in-out infinite;
+  }
+  @keyframes btnShimmer { 0%,55% { transform:translateX(-160%); } 85% { transform:translateX(220%); } 100% { transform:translateX(220%); } }
+  @media (prefers-reduced-motion: reduce) { .btn.gold::after, .btn.premium::after { animation:none; display:none; } }
   .btn.danger { background:rgba(251,113,133,.14); border:1px solid rgba(251,113,133,.4); color:var(--danger); box-shadow:none; }
   /* Premium variant — for standout purchase/upgrade actions, distinct from .gold (which is used for
      currency-specific actions like paying/claiming) without competing visually with it. */
@@ -749,13 +760,7 @@
   <div id="lndcTopupSection">
     <h3 class="sec">Top up wallet</h3>
     <div class="card">
-      <div id="starsTopupBox" style="display:none;">
-        <p class="muted" style="margin:0 0 6px;">⚡ Instant top-up with Telegram Stars:</p>
-        <input type="number" id="starsAmount" placeholder="Number of Stars" />
-        <div class="muted" id="starsToTomanHint" style="margin-bottom:8px;"></div>
-        <button class="btn" style="background:linear-gradient(90deg,#ffd76b,#ff9f43);" onclick="doStarsTopup()">⭐ Pay with Stars</button>
-      </div>
-      <div id="manualTopupBox" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+      <div id="manualTopupBox">
         <label>Amount (LNDC)</label>
         <input type="number" id="topupAmount" placeholder="e.g. 100000" />
         <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
@@ -792,6 +797,16 @@
       <button class="btn gold" onclick="doTonPay()">💎 Pay with TON wallet</button>
       <p class="muted" style="margin-top:6px;">Sends TON directly from your connected wallet to the deposit address below, then submits the top-up request automatically.</p>
     </div>
+  </div>
+  <div class="card">
+    <h3 class="sec" style="margin-top:0;">⭐ Top up with Telegram Stars</h3>
+    <div id="starsTopupBox" style="display:none;">
+      <p class="muted" style="margin:0 0 6px;">Instant top-up — credited to your LNDC balance right away.</p>
+      <input type="number" id="starsAmount" placeholder="Number of Stars" />
+      <div class="muted" id="starsToTomanHint" style="margin-bottom:8px;"></div>
+      <button class="btn" style="background:linear-gradient(90deg,#ffd76b,#ff9f43);" onclick="doStarsTopup()">⭐ Pay with Stars</button>
+    </div>
+    <p class="muted" id="starsUnavailableMsg" style="display:none;">Star payments have not been enabled by the admin yet.</p>
   </div>
   <div class="card">
     <h3 class="sec" style="margin-top:0;">Crypto deposit</h3>
@@ -940,8 +955,9 @@
   <div class="view" id="mview-cardmarket">
     <div class="card">
       <h3 class="sec" style="margin-top:0;">List a card for sale</h3>
-      <p class="muted">Pick one of your cards and set a price in LNDC. While it's listed, this card can't be used in battle, upgraded, or gifted.</p>
-      <select id="cmMyCardToList"></select>
+      <p class="muted">Pick one of your cards. While it's listed, this card can't be used in battle, upgraded, or gifted.</p>
+      <select id="cmMyCardToList" onchange="onCmCardPick()"></select>
+      <div id="cmPriceGuidance" class="muted" style="display:none;margin:8px 0;padding:10px 12px;border-radius:12px;background:var(--surface2);"></div>
       <label>Price (LNDC)</label>
       <input type="number" id="cmListPrice" min="1" placeholder="e.g. 50000">
       <button class="btn" onclick="createCardMarketListingUI()">➕ List for sale</button>
@@ -949,6 +965,21 @@
     <h3 class="sec">My listings</h3>
     <div id="myCardMarketListings" class="muted">Loading...</div>
     <h3 class="sec">Marketplace (other players' cards)</h3>
+    <div class="card" style="padding:10px 12px;">
+      <div class="row2">
+        <div><label style="font-size:11px;">Sort by</label>
+          <select id="cmSort" onchange="renderCardMarketBoard()">
+            <option value="new_desc">Newest first</option>
+            <option value="new_asc">Oldest first</option>
+            <option value="price_asc">Price: low to high</option>
+            <option value="price_desc">Price: high to low</option>
+            <option value="power_asc">Power: low to high</option>
+            <option value="power_desc">Power: high to low</option>
+          </select>
+        </div>
+        <div><label style="font-size:11px;">Card</label><select id="cmFilterCard" onchange="renderCardMarketBoard()"><option value="">All cards</option></select></div>
+      </div>
+    </div>
     <div id="cardMarketBoard" class="muted">Loading...</div>
   </div>
 
@@ -1296,6 +1327,7 @@ async function loadWallet() {
   const starsCur = allCurrencies.find(c => c.code === 'STARS' || c.code === 'XTR');
   STARS_RATE = starsCur?.rate_toman || 0;
   document.getElementById('starsTopupBox').style.display = STARS_RATE ? 'block' : 'none';
+  document.getElementById('starsUnavailableMsg').style.display = STARS_RATE ? 'none' : 'block';
   ledgerOffset = 0;
   const data = await api('/api/wallet/ledger?limit=15&offset=0');
   document.getElementById('ledgerList').innerHTML = data.rows.length
@@ -2104,9 +2136,49 @@ async function loadClanMine() {
       <button class="btn danger" onclick="leaveClanUI()">${clan.myRole === 'owner' ? 'Disband clan' : 'Leave clan'}</button>
       <button class="btn" style="margin-top:8px;background:linear-gradient(90deg,#ff5f6d,#ffc371);" onclick="showMView('clanwar')">⚔️ Clan vs clan war</button>
     </div>
+    ${clan.myRole === 'owner' ? `
+    <div class="card">
+      <h3 class="sec" style="margin-top:0;">⚙️ Clan settings (leader only)</h3>
+      <label>Who can join</label>
+      <select id="clanJoinPolicy">
+        <option value="open" ${clan.join_policy === 'open' ? 'selected' : ''}>Open — anyone can join instantly</option>
+        <option value="request" ${clan.join_policy === 'request' ? 'selected' : ''}>By request — you approve each member</option>
+        <option value="closed" ${clan.join_policy === 'closed' ? 'selected' : ''}>Closed — no new members</option>
+      </select>
+      <label>Minimum account level to join (0 = no restriction)</label>
+      <input type="number" id="clanMinLevel" min="0" value="${clan.min_level || 0}">
+      <button class="btn secondary" onclick="saveClanJoinSettingsUI()">Save</button>
+    </div>
+    ${clan.join_policy === 'request' ? `<div class="card"><h3 class="sec" style="margin-top:0;">📥 Pending join requests</h3><div id="clanJoinRequestsList" class="muted">Loading...</div></div>` : ''}` : ''}
     <h3 class="sec" id="clanMembersSection">Members</h3>
     ${members.map(m => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${m.first_name || ''} ${m.username ? '@' + m.username : ''} ${m.role === 'owner' ? '👑' : ''}</span><span class="tag">Donate: ${m.donated_total.toLocaleString('en-US')}</span></div>
       ${clan.myRole === 'owner' && m.tg_id !== clan.owner_tg_id ? `<button class="btn danger" style="margin-top:6px;" onclick="kickMemberUI(${m.tg_id})">Kick</button>` : ''}</div>`).join('')}`;
+  if (clan.myRole === 'owner' && clan.join_policy === 'request') loadClanJoinRequests();
+}
+async function saveClanJoinSettingsUI() {
+  await api('/api/clan/join-settings', { method: 'POST', body: JSON.stringify({
+    joinPolicy: document.getElementById('clanJoinPolicy').value,
+    minLevel: document.getElementById('clanMinLevel').value,
+  }) });
+  toast('Saved ✅'); loadClanMine();
+}
+async function loadClanJoinRequests() {
+  const requests = await api('/api/clan/join-requests');
+  const el = document.getElementById('clanJoinRequestsList');
+  if (!el) return;
+  el.innerHTML = requests.length ? requests.map(r => `
+    <div class="card" style="padding:10px 14px;">
+      <div class="row"><span>${r.first_name || ''} ${r.username ? '@' + r.username : ''}</span></div>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <button class="btn" onclick="respondClanJoinRequestUI(${r.id},true)">Accept</button>
+        <button class="btn danger" onclick="respondClanJoinRequestUI(${r.id},false)">Reject</button>
+      </div>
+    </div>`).join('') : 'No pending requests.';
+}
+async function respondClanJoinRequestUI(id, accept) {
+  await api(`/api/clan/join-requests/${id}/respond`, { method: 'POST', body: JSON.stringify({ accept }) });
+  toast(accept ? 'Member accepted ✅' : 'Request rejected');
+  loadClanMine();
 }
 
 /* ---- Browse & join: dedicated search/create screen + clan leaderboard ---- */
@@ -2120,9 +2192,20 @@ async function loadClanBrowse() {
 async function createClanUI() { await api('/api/clan/create', { method: 'POST', body: JSON.stringify({ name: document.getElementById('newClanName').value, tag: document.getElementById('newClanTag').value }) }); toast('Clan created ✅'); loadMe(); showMView('clanmine'); }
 async function searchClanUI() {
   const results = await api('/api/clan/search?q=' + encodeURIComponent(document.getElementById('clanSearchQ').value));
-  document.getElementById('clanSearchResults').innerHTML = results.map(c => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${c.name} #${c.tag}</span><button class="btn" style="width:auto;" onclick="joinClanUI(${c.id})">Membership</button></div></div>`).join('') || 'Nothing found.';
+  const policyLabel = { open: '🟢 Open', request: '🟡 By request', closed: '🔴 Closed' };
+  document.getElementById('clanSearchResults').innerHTML = results.map(c => `<div class="card" style="padding:10px 14px;">
+      <div class="row"><span>${c.name} #${c.tag}</span><span class="tag">${policyLabel[c.join_policy] || '🟢 Open'}</span></div>
+      ${c.min_level > 0 ? `<p class="muted" style="margin:4px 0;">Requires level ${c.min_level}+</p>` : ''}
+      <button class="btn" style="width:auto;" onclick="joinClanUI(${c.id})" ${c.join_policy === 'closed' ? 'disabled' : ''}>${c.join_policy === 'request' ? 'Request to join' : 'Membership'}</button>
+    </div>`).join('') || 'Nothing found.';
 }
-async function joinClanUI(id) { await api(`/api/clan/${id}/join`, { method: 'POST' }); toast('You joined the clan ✅'); showMView('clanmine'); }
+async function joinClanUI(id) {
+  try {
+    const r = await api(`/api/clan/${id}/join`, { method: 'POST' });
+    if (r.requested) { toast('Join request sent — waiting for the leader to approve ✅'); }
+    else { toast('You joined the clan ✅'); showMView('clanmine'); }
+  } catch (e) { toast(e.message || 'Could not join this clan'); }
+}
 async function leaveClanUI() { if (!confirm('Are you sure?')) return; await api('/api/clan/leave', { method: 'POST' }); toast('Done'); showMView('clan'); }
 async function donateClanUI() { await api('/api/clan/donate', { method: 'POST', body: JSON.stringify({ amount: Number(document.getElementById('donateAmount').value) }) }); toast('Donation recorded ✅'); loadMe(); loadClanMine(); }
 async function withdrawClanUI() {
@@ -2157,9 +2240,9 @@ function startClanChat() {
   CLAN_CHAT_LAST_ID = 0;
   document.getElementById('clanChatMessages').innerHTML = '<p class="muted" style="text-align:center;">Loading...</p>';
   pollClanChat();
-  // Polling every 2 seconds is what "near real-time" looks like without a websocket/push layer —
-  // close enough that new messages show up within a couple seconds of being sent.
-  CLAN_CHAT_TIMER = setInterval(pollClanChat, 2000);
+  // Poll every second — the fastest practical interval without a websocket/push layer, so new
+  // messages from other members show up almost immediately instead of lagging a couple seconds.
+  CLAN_CHAT_TIMER = setInterval(pollClanChat, 1000);
 }
 function stopClanChat() {
   if (CLAN_CHAT_TIMER) { clearInterval(CLAN_CHAT_TIMER); CLAN_CHAT_TIMER = null; }
@@ -2377,12 +2460,20 @@ async function loadAlbums() {
 async function claimAlbumUI(id) { await api(`/api/albums/${id}/claim`, { method: 'POST' }); toast('Reward claimed 🎉'); loadMe(); loadAlbums(); }
 
 /* ================= Card Marketplace ================= */
+let CM_MY_CARDS = [];
+let CM_BOARD_CACHE = [];
+function cmCardPower(l) {
+  const base = l.fixed_power != null ? l.fixed_power : (l.rolled_power != null ? l.rolled_power : l.base_power);
+  return base + (l.bonus_power || 0);
+}
 async function loadCardMarket() {
-  const mine = await api('/api/game/my-cards');
-  const cardOptions = mine.length
-    ? mine.map(c => `<option value="${c.id}">${c.name} — Level ${c.level} — power ${c.power}</option>`).join('')
+  CM_MY_CARDS = await api('/api/game/my-cards');
+  const cardOptions = CM_MY_CARDS.length
+    ? CM_MY_CARDS.map(c => `<option value="${c.id}">${c.name} — Level ${c.level} — power ${c.power}</option>`).join('')
     : '';
   document.getElementById('cmMyCardToList').innerHTML = cardOptions || '<option value="">You have no cards</option>';
+  document.getElementById('cmPriceGuidance').style.display = 'none';
+  if (CM_MY_CARDS.length) onCmCardPick();
 
   const myListings = await api('/api/card-market/my-listings');
   const openListings = myListings.filter(l => l.status === 'open');
@@ -2394,12 +2485,47 @@ async function loadCardMarket() {
       </div>`).join('')
     : 'You have no active listing.';
 
-  const board = await api('/api/card-market/board');
-  document.getElementById('cardMarketBoard').innerHTML = board.length
-    ? board.map(l => `
+  CM_BOARD_CACHE = await api('/api/card-market/board');
+  const cardNames = [...new Set(CM_BOARD_CACHE.map(l => l.name))].sort();
+  const filterSel = document.getElementById('cmFilterCard');
+  const prevFilter = filterSel.value;
+  filterSel.innerHTML = '<option value="">All cards</option>' + cardNames.map(n => `<option value="${n}">${n}</option>`).join('');
+  filterSel.value = cardNames.includes(prevFilter) ? prevFilter : '';
+  renderCardMarketBoard();
+}
+// Shows the system-computed Recommended Price + Allowed Range for whichever card is selected in the
+// "list a card" dropdown, and pre-fills the price field with the recommendation as a starting point.
+async function onCmCardPick() {
+  const userCardId = document.getElementById('cmMyCardToList').value;
+  const box = document.getElementById('cmPriceGuidance');
+  if (!userCardId) { box.style.display = 'none'; return; }
+  try {
+    const g = await api('/api/card-market/price-guidance/' + userCardId);
+    box.style.display = 'block';
+    box.innerHTML = `💡 Recommended price: <b>${g.recommended.toLocaleString('en-US')} LNDC</b><br>
+      Allowed range: <b>${g.minPrice.toLocaleString('en-US')} – ${g.maxPrice.toLocaleString('en-US')} LNDC</b>
+      <span style="opacity:.7;">(the system sets this range from the card's level/power, its market value setting, and recent market activity — you can price anywhere inside it)</span>`;
+    const priceInput = document.getElementById('cmListPrice');
+    priceInput.min = g.minPrice; priceInput.max = g.maxPrice;
+    if (!priceInput.value) priceInput.value = g.recommended;
+  } catch (e) { box.style.display = 'none'; }
+}
+function renderCardMarketBoard() {
+  const sort = document.getElementById('cmSort').value;
+  const filterCard = document.getElementById('cmFilterCard').value;
+  let list = filterCard ? CM_BOARD_CACHE.filter(l => l.name === filterCard) : CM_BOARD_CACHE.slice();
+  const sorters = {
+    new_desc: (a, b) => b.id - a.id, new_asc: (a, b) => a.id - b.id,
+    price_asc: (a, b) => a.price_toman - b.price_toman, price_desc: (a, b) => b.price_toman - a.price_toman,
+    power_asc: (a, b) => cmCardPower(a) - cmCardPower(b), power_desc: (a, b) => cmCardPower(b) - cmCardPower(a),
+  };
+  list.sort(sorters[sort] || sorters.new_desc);
+  document.getElementById('cardMarketBoard').innerHTML = list.length
+    ? list.map(l => `
       <div class="card">
         ${l.image_url ? `<img src="${l.image_url}">` : ''}
         <div class="row"><b>${l.name} (Lv${l.level})</b><span class="muted">${l.first_name || ''}</span></div>
+        <div class="row"><span class="muted">Power</span><b>${cmCardPower(l)}</b></div>
         <div class="row"><span class="muted">Price</span><b>${l.price_toman.toLocaleString('en-US')} LNDC</b></div>
         <button class="btn gold" onclick="buyCardMarketListingUI(${l.id})">🛒 Buy</button>
       </div>`).join('')
