@@ -41,6 +41,7 @@ import {
   getClanConfig, getMyClan, getClanMembers, searchClans, getClanLeaderboard, getClanRank,
   createClan, joinClan, leaveClan, kickMember, setMemberRole, donateToClan, withdrawFromClanBank, giftFromClanBank,
   addClanPurchaseScore, addClanWinScore, checkAutoResetClanSeason,
+  sendClanMessage, getClanMessages,
 } from './clan-db.js';
 import {
   getClanWarConfig, listOpenClanWars, getMyActiveClanWar, getClanWarHistory,
@@ -556,6 +557,16 @@ app.post('/api/clan/gift', requireTelegramAuth, (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+/* ---------- Clan chat — private to each clan's own members, polled by the client every couple of
+ * seconds while open; messages auto-delete after the admin-configured retention window. ---------- */
+app.get('/api/clan/chat', requireTelegramAuth, (req, res) => {
+  res.json(getClanMessages(req.dbUser.tg_id, Number(req.query.afterId) || 0));
+});
+app.post('/api/clan/chat', requireTelegramAuth, (req, res) => {
+  try { const id = sendClanMessage(req.dbUser.tg_id, req.body.text); res.json({ ok: true, id }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 /* =========================================================================
  * Clan vs clan war
  * ========================================================================= */
@@ -961,6 +972,17 @@ async function handleTelegramUpdate(update) {
 /* =========================================================================
  * Serving the mini app and admin panel
  * ========================================================================= */
+// TonConnect needs this manifest reachable at a public HTTPS URL to let wallet apps identify this
+// mini app when a user connects their TON wallet. Served dynamically (not a static file) so it always
+// reflects the real PUBLIC_URL from the environment, instead of needing manual editing per deployment.
+app.get('/tonconnect-manifest.json', (req, res) => {
+  const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+  res.json({
+    url: `${base}/miniapp`,
+    name: 'Lando Gifts',
+    iconUrl: `${base}/miniapp/icon.png`,
+  });
+});
 app.use('/miniapp', express.static('public'));
 app.use('/admin/api', adminApi);
 app.use('/admin', express.static('admin'));

@@ -287,3 +287,70 @@ export function adminAdjustClanBank(clanId, amount) {
 export function listAllClansAdmin() {
   return db.prepare('SELECT * FROM clans ORDER BY score DESC').all();
 }
+
+/* =========================================================================
+ * Clan chat — private to each clan's own members. Messages are polled by the mini app every couple
+ * of seconds while the chat is open (there's no websocket/push layer in this stack, so short polling
+ * is what gets closest to "real-time" here) and are auto-deleted after a configurable retention
+ * window so the chat never grows unbounded.
+ * ========================================================================= */
+db.exec(`
+CREATE TABLE IF NOT EXISTS clan_chat_config (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  enabled INTEGER NOT NULL DEFAULT 1,
+  retention_minutes INTEGER NOT NULL DEFAULT 60,
+  max_message_length INTEGER NOT NULL DEFAULT 300
+);
+INSERT OR IGNORE INTO clan_chat_config (id) VALUES (1);
+
+CREATE TABLE IF NOT EXISTS clan_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  clan_id INTEGER NOT NULL,
+  tg_id INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
+
+export function getClanChatConfig() { return db.prepare('SELECT * FROM clan_chat_config WHERE id = 1').get(); }
+export function setClanChatConfig(c) {
+  db.prepare(`UPDATE clan_chat_config SET enabled=?, retention_minutes=?, max_message_length=? WHERE id = 1`)
+    .run(c.enabled ? 1 : 0, Math.max(1, Number(c.retention_minutes) || 60), Math.max(20, Number(c.max_message_length) || 300));
+}
+function getMemberClanId(tgId) {
+  const member = db.prepare('SELECT clan_id FROM clan_members WHERE tg_id = ?').get(tgId);
+  return member ? member.clan_id : null;
+}
+// Deletes messages older than the configured retention window — run on every send/fetch so a clan's
+// chat never keeps growing and old messages always disappear on schedule, without needing a
+// separate background job/cron.
+function cleanupOldClanMessages(clanId, retentionMinutes) {
+  db.prepare(`DELETE FROM clan_messages WHERE clan_id = ? AND created_at < datetime('now', ?)`)
+    .run(clanId, `-${retentionMinutes} minutes`);
+}
+export function sendClanMessage(tgId, text) {
+  const cfg = getClanChatConfig();
+  if (!cfg.enabled) throw new Error('Clan chat is currently disabled');
+  const clanId = getMemberClanId(tgId);
+  if (!clanId) throw new Error('You are not in a clan');
+  const trimmed = String(text || '').trim();
+  if (!trimmed) throw new Error('Message cannot be empty');
+  if (trimmed.length > cfg.max_message_length) throw new Error(`Message is too long (max ${cfg.max_message_length} characters)`);
+  cleanupOldClanMessages(clanId, cfg.retention_minutes);
+  const info = db.prepare('INSERT INTO clan_messages (clan_id, tg_id, text) VALUES (?,?,?)').run(clanId, tgId, trimmed);
+  return info.lastInsertRowid;
+}
+// afterId lets the mini app poll incrementally (only new messages since its last known id) instead of
+// re-fetching and re-rendering the whole chat every couple of seconds.
+export function getClanMessages(tgId, afterId = 0) {
+  const cfg = getClanChatConfig();
+  const clanId = getMemberClanId(tgId);
+  if (!clanId) return { messages: [], enabled: cfg.enabled };
+  cleanupOldClanMessages(clanId, cfg.retention_minutes);
+  const messages = db.prepare(`
+    SELECT cm.id, cm.tg_id, cm.text, cm.created_at, u.first_name, u.username
+    FROM clan_messages cm JOIN users u ON u.tg_id = cm.tg_id
+    WHERE cm.clan_id = ? AND cm.id > ? ORDER BY cm.id ASC LIMIT 200
+  `).all(clanId, afterId);
+  return { messages, enabled: cfg.enabled, retentionMinutes: cfg.retention_minutes };
+}

@@ -58,6 +58,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_clan_donations_clan_id ON clan_donations(clan_id);
   CREATE INDEX IF NOT EXISTS idx_clan_donations_tg_id ON clan_donations(tg_id);
   CREATE INDEX IF NOT EXISTS idx_clan_wars_status ON clan_wars(status);
+  CREATE INDEX IF NOT EXISTS idx_clan_messages_clan_id ON clan_messages(clan_id, id);
 
   -- Ranks / quests / albums / promo
   CREATE INDEX IF NOT EXISTS idx_promo_redemptions_tg_id ON promo_redemptions(tg_id);

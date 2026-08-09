@@ -41,7 +41,7 @@ import {
 import {
   getSeasonConfig, setSeasonConfig, getCurrentSeason, startNewSeason, listSeasonTiers, upsertSeasonTier, deleteSeasonTier,
 } from './season-db.js';
-import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason, adminDeleteClan, adminAdjustClanBank, listAllClansAdmin } from './clan-db.js';
+import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason, adminDeleteClan, adminAdjustClanBank, listAllClansAdmin, getClanChatConfig, setClanChatConfig } from './clan-db.js';
 import { getClanWarConfig, setClanWarConfig } from './clan-war-db.js';
 import { getLeagueConfig, setLeagueConfig, getLeagueTierConfig, setLeagueTierConfig } from './league-db.js';
 import {
@@ -576,6 +576,13 @@ router.post('/clan/reset-season', (req, res) => {
   resetClanSeason((tgId, clan, reward) => {
     sendMessage(tgId, `🏆 Your clan "${clan.name}" was on the top leaderboard and got a ${reward.toLocaleString()} LNDC prize!`).catch(() => {});
   });
+  res.json({ ok: true });
+});
+
+/* ---------- Clan chat ---------- */
+router.get('/clan/chat-config', (req, res) => res.json(getClanChatConfig()));
+router.post('/clan/chat-config', (req, res) => {
+  setClanChatConfig({ enabled: !!req.body.enabled, retention_minutes: req.body.retention_minutes, max_message_length: req.body.max_message_length });
   res.json({ ok: true });
 });
 
