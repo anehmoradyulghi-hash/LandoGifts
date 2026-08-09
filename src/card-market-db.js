@@ -40,6 +40,84 @@ function findOwnedUserCard(tgId, userCardId) {
   `).get(userCardId, tgId);
 }
 
+// This card instance's current power — replicated locally (rather than importing game-db.js's
+// computeTotalPower) to avoid a circular import, since game-db.js already imports
+// isCardListedForSale from this file.
+function computeUserCardPower(row) {
+  const base = row.fixed_power != null ? row.fixed_power : (row.rolled_power != null ? row.rolled_power : row.base_power);
+  return base + (row.bonus_power || 0);
+}
+function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+
+/* =========================================================================
+ * System-Guided Dynamic Pricing
+ * The system computes a Recommended Price and an Allowed Range around it; the seller can pick any
+ * price inside that range, never outside it. This keeps pricing "controlled" (no wild manipulation
+ * or inflation) while still leaving the player real choice.
+ *
+ * Recommended Price is built from:
+ *   1. This exact card's base admin price (game_cards.price_toman) scaled by how much stronger this
+ *      specific instance is than a fresh level-1 card of the same type (power ratio) — this is what
+ *      "Level" and "Power" contribute.
+ *   2. The admin-set market_coefficient for this card (how prestigious/desirable it is beyond raw power).
+ *   3. Recent actual sale prices for this exact card, blended in once there's enough real data —
+ *      this is the "recent transactions & market status" input.
+ *   4. A supply & demand nudge: more open listings than recent sales pushes the price down a bit,
+ *      more recent sales than open listings pushes it up a bit (capped either way).
+ *
+ * The Allowed Range's width is itself dynamic: it narrows when this card's recent sale prices have
+ * been volatile (protects against manipulation/inflation during unstable swings) and widens when
+ * prices have been stable (gives the player more freedom when the market agrees on a value).
+ * ========================================================================= */
+function getRecentSales(cardId, limit = 20) {
+  return db.prepare(`
+    SELECT ml.price_toman, ml.resolved_at FROM card_market_listings ml
+    JOIN user_cards uc ON uc.id = ml.user_card_id
+    WHERE uc.card_id = ? AND ml.status = 'sold' AND ml.resolved_at >= datetime('now', '-30 days')
+    ORDER BY ml.resolved_at DESC LIMIT ?
+  `).all(cardId, limit);
+}
+export function getPriceGuidance(tgId, userCardId) {
+  const card = findOwnedUserCard(tgId, userCardId);
+  if (!card) throw new Error('This card was not found in your collection');
+  const gameCard = db.prepare('SELECT * FROM game_cards WHERE id = ?').get(card.card_id);
+  const level1 = db.prepare('SELECT min_power FROM card_level_power WHERE level = 1').get();
+  const level1Power = Math.max(1, level1?.min_power || 1);
+  const currentPower = Math.max(1, computeUserCardPower(card));
+  const powerRatio = currentPower / level1Power;
+  const coefficient = gameCard.market_coefficient || 1;
+
+  let recommended = Math.max(1, gameCard.price_toman) * powerRatio * coefficient;
+
+  const recentSales = getRecentSales(card.card_id);
+  if (recentSales.length >= 3) {
+    const prices = recentSales.map(s => s.price_toman);
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    recommended = recommended * 0.5 + avg * 0.5; // blend the formula with what the market has actually been paying
+  }
+
+  const openSupply = db.prepare(`SELECT COUNT(*) n FROM card_market_listings ml JOIN user_cards uc ON uc.id = ml.user_card_id WHERE uc.card_id = ? AND ml.status = 'open'`).get(card.card_id).n;
+  const recentDemand = db.prepare(`SELECT COUNT(*) n FROM card_market_listings ml JOIN user_cards uc ON uc.id = ml.user_card_id WHERE uc.card_id = ? AND ml.status = 'sold' AND ml.resolved_at >= datetime('now', '-7 days')`).get(card.card_id).n;
+  const sdFactor = 1 + clamp((recentDemand - openSupply) * 0.02, -0.15, 0.15);
+  recommended = Math.round(recommended * sdFactor);
+  recommended = Math.max(1, recommended);
+
+  // Volatility (coefficient of variation of recent sale prices) drives the range width: more
+  // volatile recent sales → narrower allowed range; stable/consistent recent sales → wider range.
+  let volatility = 0;
+  if (recentSales.length >= 3) {
+    const prices = recentSales.map(s => s.price_toman);
+    const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const variance = prices.reduce((a, b) => a + (b - mean) ** 2, 0) / prices.length;
+    volatility = mean > 0 ? Math.sqrt(variance) / mean : 0;
+  }
+  const halfWidthPct = clamp(0.15 / (1 + volatility * 2), 0.05, 0.25);
+  const minPrice = Math.max(1, Math.round(recommended * (1 - halfWidthPct)));
+  const maxPrice = Math.max(minPrice, Math.round(recommended * (1 + halfWidthPct)));
+
+  return { recommended, minPrice, maxPrice, volatility, openSupply, recentDemand, recentSalesCount: recentSales.length };
+}
+
 // A card is "locked" the moment it has an open marketplace listing. Every other place in the app
 // that can use or move a card (joining a battle deck, mutation/level-up, sacrifice/boost, gifting a
 // card to a friend, listing it again) must check this and refuse — otherwise the same card could be
@@ -56,6 +134,12 @@ export function createCardMarketListing(tgId, userCardId, priceToman) {
   const card = findOwnedUserCard(tgId, userCardId);
   if (!card) throw new Error('This card was not found in your collection');
   if (isCardListedForSale(userCardId)) throw new Error('This card is already listed on the marketplace');
+  // System-guided dynamic pricing: the seller may pick any price, but only within the system's
+  // currently computed allowed range for this exact card — never outside it.
+  const guidance = getPriceGuidance(tgId, userCardId);
+  if (price < guidance.minPrice || price > guidance.maxPrice) {
+    throw new Error(`Price must be between ${guidance.minPrice.toLocaleString('en-US')} and ${guidance.maxPrice.toLocaleString('en-US')} LNDC for this card right now`);
+  }
   return db.prepare(`
     INSERT INTO card_market_listings (seller_tg_id, user_card_id, price_toman) VALUES (?,?,?)
   `).run(tgId, userCardId, price).lastInsertRowid;

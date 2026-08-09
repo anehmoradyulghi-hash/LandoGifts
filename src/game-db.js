@@ -63,6 +63,7 @@ safeAddColumn('user_cards', 'bonus_power INTEGER NOT NULL DEFAULT 0'); // comes 
 safeAddColumn('user_cards', 'rolled_power INTEGER'); // The fixed power for that level (set by the admin) at the time this card was created/leveled-up
 safeAddColumn('game_cards', 'instant_level INTEGER'); // if set (e.g. 7), every card created from this template starts at that level (special/custom card)
 safeAddColumn('game_cards', 'fixed_power INTEGER'); // if set, this custom power is used instead of the level-based formula (used only by instant_level special cards)
+safeAddColumn('game_cards', 'market_coefficient REAL DEFAULT 1'); // admin-set multiplier on this card's marketplace-recommended price — how "prestigious"/desirable this card is beyond raw power
 
 // The per-card custom "fixed power" / "max power" override system has been fully retired. Card power
 // is now determined exclusively by the general Power-per-level system below — never by anything set
@@ -299,21 +300,22 @@ export function listGameCards(onlyActive = false) {
 export function getGameCard(id) { return db.prepare('SELECT * FROM game_cards WHERE id = ?').get(id); }
 export function upsertGameCard(c) {
   const levelImagesJson = JSON.stringify((c.level_images || []).slice(0, 7));
+  const marketCoefficient = c.market_coefficient != null && c.market_coefficient !== '' ? Number(c.market_coefficient) : 1;
   if (c.id) {
     db.prepare(`
       UPDATE game_cards SET name=?, image_url=?, rarity=?, base_power=?, price_toman=?, max_level=?, active=?,
-        category_id=?, level_images=?, edition=?, max_supply=?, instant_level=?, fixed_power=? WHERE id=?
+        category_id=?, level_images=?, edition=?, max_supply=?, instant_level=?, fixed_power=?, market_coefficient=? WHERE id=?
     `).run(c.name, c.image_url || null, c.rarity, c.base_power, c.price_toman, c.max_level, c.active ? 1 : 0,
       c.category_id || null, levelImagesJson, c.edition || 'standard', c.max_supply || null,
-      c.instant_level || null, c.fixed_power || null, c.id);
+      c.instant_level || null, c.fixed_power || null, marketCoefficient, c.id);
     return c.id;
   }
   return db.prepare(`
-    INSERT INTO game_cards (name, image_url, rarity, base_power, price_toman, max_level, active, category_id, level_images, edition, max_supply, instant_level, fixed_power)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT INTO game_cards (name, image_url, rarity, base_power, price_toman, max_level, active, category_id, level_images, edition, max_supply, instant_level, fixed_power, market_coefficient)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(c.name, c.image_url || null, c.rarity, c.base_power, c.price_toman, c.max_level, c.active ? 1 : 0,
     c.category_id || null, levelImagesJson, c.edition || 'standard', c.max_supply || null,
-    c.instant_level || null, c.fixed_power || null).lastInsertRowid;
+    c.instant_level || null, c.fixed_power || null, marketCoefficient).lastInsertRowid;
 }
 export function deleteGameCard(id) { db.prepare('DELETE FROM game_cards WHERE id = ?').run(id); }
 

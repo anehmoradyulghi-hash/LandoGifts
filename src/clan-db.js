@@ -27,7 +27,19 @@ CREATE TABLE IF NOT EXISTS clans (
   owner_tg_id INTEGER NOT NULL,
   bank_balance INTEGER NOT NULL DEFAULT 0,
   score INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  join_policy TEXT NOT NULL DEFAULT 'open', -- open | closed | request
+  min_level INTEGER NOT NULL DEFAULT 0      -- minimum account level required to join (0 = no restriction)
+);
+
+-- Pending join requests when a clan's join_policy is 'request' — the leader/officers approve or reject.
+CREATE TABLE IF NOT EXISTS clan_join_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  clan_id INTEGER NOT NULL,
+  tg_id INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', -- pending | accepted | rejected | cancelled
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS clan_members (
@@ -119,15 +131,65 @@ export function createClan(tgId, name, tag, avatarUrl) {
   return clanId;
 }
 
+function getUserLevel(tgId) {
+  const xpPerLevel = getRankConfig().xp_per_level || 1000;
+  const row = db.prepare('SELECT xp FROM user_rank WHERE tg_id = ?').get(tgId);
+  return Math.max(1, Math.floor((row?.xp || 0) / xpPerLevel) + 1);
+}
+function requireOwner(tgId, clanId) {
+  const member = db.prepare('SELECT * FROM clan_members WHERE tg_id = ? AND clan_id = ?').get(tgId, clanId);
+  if (!member || member.role !== 'owner') throw new Error('Only the clan leader can do this');
+}
+
 export function joinClan(tgId, clanId) {
   const cfg = getClanConfig();
   if (!cfg.enabled) throw new Error('The clan system is currently disabled');
   if (getMyClan(tgId)) throw new Error('You are already a member of a clan');
   const clan = getClanById(clanId);
   if (!clan) throw new Error('Clan not found');
+  if (clan.join_policy === 'closed') throw new Error('This clan is not accepting new members right now');
+  if (clan.min_level > 0 && getUserLevel(tgId) < clan.min_level) throw new Error(`This clan requires at least level ${clan.min_level} to join`);
   const memberCount = db.prepare('SELECT COUNT(*) c FROM clan_members WHERE clan_id = ?').get(clanId).c;
   if (memberCount >= cfg.max_members) throw new Error('This clan is full');
+  if (clan.join_policy === 'request') {
+    const existing = db.prepare(`SELECT 1 FROM clan_join_requests WHERE clan_id = ? AND tg_id = ? AND status = 'pending'`).get(clanId, tgId);
+    if (existing) throw new Error('You already have a pending request for this clan');
+    db.prepare('INSERT INTO clan_join_requests (clan_id, tg_id) VALUES (?,?)').run(clanId, tgId);
+    return { requested: true };
+  }
   db.prepare(`INSERT INTO clan_members (tg_id, clan_id, role) VALUES (?,?,'member')`).run(tgId, clanId);
+  return { requested: false };
+}
+
+// Leader-only: how open the clan is to new members, and an optional minimum account level.
+export function setClanJoinSettings(tgId, clanId, { joinPolicy, minLevel }) {
+  requireOwner(tgId, clanId);
+  const policy = ['open', 'closed', 'request'].includes(joinPolicy) ? joinPolicy : 'open';
+  db.prepare('UPDATE clans SET join_policy = ?, min_level = ? WHERE id = ?').run(policy, Math.max(0, Number(minLevel) || 0), clanId);
+}
+export function listClanJoinRequests(tgId, clanId) {
+  requireOwner(tgId, clanId);
+  return db.prepare(`
+    SELECT r.id, r.tg_id, r.created_at, u.first_name, u.username FROM clan_join_requests r
+    JOIN users u ON u.tg_id = r.tg_id
+    WHERE r.clan_id = ? AND r.status = 'pending' ORDER BY r.id ASC
+  `).all(clanId);
+}
+export function respondClanJoinRequest(tgId, clanId, requestId, accept) {
+  requireOwner(tgId, clanId);
+  const cfg = getClanConfig();
+  const request = db.prepare(`SELECT * FROM clan_join_requests WHERE id = ? AND clan_id = ? AND status = 'pending'`).get(requestId, clanId);
+  if (!request) throw new Error('This request is no longer valid');
+  const tx = db.transaction(() => {
+    db.prepare(`UPDATE clan_join_requests SET status = ?, resolved_at = datetime('now') WHERE id = ?`).run(accept ? 'accepted' : 'rejected', requestId);
+    if (accept) {
+      if (getMyClan(request.tg_id)) throw new Error('This user has already joined another clan');
+      const memberCount = db.prepare('SELECT COUNT(*) c FROM clan_members WHERE clan_id = ?').get(clanId).c;
+      if (memberCount >= cfg.max_members) throw new Error('This clan is full');
+      db.prepare(`INSERT INTO clan_members (tg_id, clan_id, role) VALUES (?,?,'member')`).run(request.tg_id, clanId);
+    }
+  });
+  tx();
 }
 
 // If the leader leaves, the clan is fully disbanded; a regular member just leaves

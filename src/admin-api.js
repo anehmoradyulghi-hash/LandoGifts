@@ -385,7 +385,7 @@ router.post('/merge-costs', (req, res) => {
 /* ---------- Card game: cards ---------- */
 router.get('/game/cards', (req, res) => res.json(listGameCards(false)));
 router.post('/game/cards', (req, res) => {
-  const { id, name, image_url, base_power, price_toman, active, category_id, level_images, edition, max_supply, instant_level, fixed_power } = req.body;
+  const { id, name, image_url, base_power, price_toman, active, category_id, level_images, edition, max_supply, instant_level, fixed_power, market_coefficient } = req.body;
   if (!name) return res.status(400).json({ error: 'Card name is required' });
   if (instant_level) {
     // This card is custom, so it only respects that level's cap (not that it must equal it exactly)
@@ -409,6 +409,7 @@ router.post('/game/cards', (req, res) => {
     max_supply: max_supply ? Number(max_supply) : null,
     instant_level: instant_level ? Number(instant_level) : null,
     fixed_power: fixed_power ? Number(fixed_power) : null,
+    market_coefficient: market_coefficient !== undefined && market_coefficient !== '' ? Number(market_coefficient) : 1,
   });
   res.json({ ok: true, id: savedId });
 });

@@ -42,6 +42,7 @@ import {
   createClan, joinClan, leaveClan, kickMember, setMemberRole, donateToClan, withdrawFromClanBank, giftFromClanBank,
   addClanPurchaseScore, addClanWinScore, checkAutoResetClanSeason,
   sendClanMessage, getClanMessages,
+  setClanJoinSettings, listClanJoinRequests, respondClanJoinRequest,
 } from './clan-db.js';
 import {
   getClanWarConfig, listOpenClanWars, getMyActiveClanWar, getClanWarHistory,
@@ -61,7 +62,7 @@ import { getGiftConfig, giftToman, giftCard, getRemainingCardGifts } from './gif
 import { checkExpiredSeasons } from './seasonal-db.js';
 import {
   getCardMarketConfig, createCardMarketListing, cancelCardMarketListing,
-  listCardMarketOffers, getMyCardMarketListings, buyCardMarketListing,
+  listCardMarketOffers, getMyCardMarketListings, buyCardMarketListing, getPriceGuidance,
 } from './card-market-db.js';
 import adminApi from './admin-api.js';
 import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
@@ -525,8 +526,31 @@ app.post('/api/clan/create', requireTelegramAuth, (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/clan/:id/join', requireTelegramAuth, (req, res) => {
-  try { joinClan(req.dbUser.tg_id, Number(req.params.id)); res.json({ ok: true }); }
+  try { res.json({ ok: true, ...joinClan(req.dbUser.tg_id, Number(req.params.id)) }); }
   catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/clan/join-settings', requireTelegramAuth, (req, res) => {
+  try {
+    const clan = getMyClan(req.dbUser.tg_id);
+    if (!clan) throw new Error('You are not in a clan');
+    setClanJoinSettings(req.dbUser.tg_id, clan.id, { joinPolicy: req.body.joinPolicy, minLevel: req.body.minLevel });
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/clan/join-requests', requireTelegramAuth, (req, res) => {
+  try {
+    const clan = getMyClan(req.dbUser.tg_id);
+    if (!clan) throw new Error('You are not in a clan');
+    res.json(listClanJoinRequests(req.dbUser.tg_id, clan.id));
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/clan/join-requests/:id/respond', requireTelegramAuth, (req, res) => {
+  try {
+    const clan = getMyClan(req.dbUser.tg_id);
+    if (!clan) throw new Error('You are not in a clan');
+    respondClanJoinRequest(req.dbUser.tg_id, clan.id, Number(req.params.id), !!req.body.accept);
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/clan/leave', requireTelegramAuth, (req, res) => {
   try { res.json({ ok: true, ...leaveClan(req.dbUser.tg_id) }); }
@@ -633,11 +657,11 @@ app.get('/api/raffle/list', requireTelegramAuth, (req, res) => {
   res.json(raffles);
 });
 app.post('/api/raffle/:id/register', requireTelegramAuth, (req, res) => {
-  try { registerForRaffle(req.dbUser.tg_id, Number(req.params.id)); res.json({ ok: true }); }
+  try { registerForRaffle(req.dbUser.tg_id, Number(req.params.id)); incrementQuestProgress(req.dbUser.tg_id, 'join_raffle', 1); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/raffle/:id/buy-ticket', requireTelegramAuth, (req, res) => {
-  try { buyRaffleTicket(req.dbUser.tg_id, Number(req.params.id)); res.json({ ok: true }); }
+  try { buyRaffleTicket(req.dbUser.tg_id, Number(req.params.id)); incrementQuestProgress(req.dbUser.tg_id, 'join_raffle', 1); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/rank/checkin', requireTelegramAuth, (req, res) => {
@@ -713,6 +737,10 @@ app.post('/api/gift/card', requireTelegramAuth, (req, res) => {
 app.get('/api/card-market/config', (req, res) => res.json(getCardMarketConfig()));
 app.get('/api/card-market/board', requireTelegramAuth, (req, res) => res.json(listCardMarketOffers(req.dbUser.tg_id)));
 app.get('/api/card-market/my-listings', requireTelegramAuth, (req, res) => res.json(getMyCardMarketListings(req.dbUser.tg_id)));
+app.get('/api/card-market/price-guidance/:userCardId', requireTelegramAuth, (req, res) => {
+  try { res.json(getPriceGuidance(req.dbUser.tg_id, Number(req.params.userCardId))); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.post('/api/card-market/list', requireTelegramAuth, (req, res) => {
   try { const id = createCardMarketListing(req.dbUser.tg_id, Number(req.body.userCardId), Number(req.body.priceToman)); res.json({ ok: true, id }); }
   catch (e) { res.status(400).json({ error: e.message }); }
