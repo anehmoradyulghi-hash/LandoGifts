@@ -437,6 +437,15 @@
 
     <section class="tab" id="tab-raffles">
       <div class="card">
+        <h3>📢 Giveaway channel</h3>
+        <p class="muted">When set, every new giveaway is posted to this channel automatically, and the results (winner IDs) are posted there when it ends. The bot must already be an admin of this channel with permission to post messages.</p>
+        <label>Channel ID or @username</label><input id="gwChannelId" placeholder="@yourchannel or -1001234567890">
+        <label>Image shown when a giveaway starts (optional)</label><input id="gwStartImage" placeholder="https://...">
+        <label>Image shown when a giveaway ends / winners announced (optional)</label><input id="gwEndImage" placeholder="https://...">
+        <button class="btn" onclick="saveGiveawayChannel()">Save</button>
+        <p class="muted" id="gwSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
+      </div>
+      <div class="card">
         <h3>Create / edit big wheel</h3>
         <input type="hidden" id="rfId">
         <label>Wheel title</label><input id="rfTitle" placeholder="e.g. weekly gift raffle">
@@ -914,7 +923,7 @@ function showTab(name) {
     giftcfg: loadGiftConfigAdmin, seasons: loadSeasonsAdmin, cardmarket: loadCardMarketConfigAdmin,
     creqs: loadCreqs, products: loadProducts, orders: loadOrders, gifts: loadGifts, tasks: loadTasks,
     gamecards: loadGameCards, specialcards: loadSpecialCards, gameconfig: loadGameConfig, leaderboard: loadLeaderboardTab, cardtasks: loadCardTasksTab,
-    raffles: loadRafflesAdmin,
+    raffles: () => { loadRafflesAdmin(); loadGiveawayChannel(); },
     users: loadUsers };
   loaders[name]?.();
 }
@@ -1275,6 +1284,22 @@ async function saveTask() {
 async function deleteTask(id) { if (confirm('be deleted?')) { await api(`/tasks/${id}`, { method: 'DELETE' }); loadTasks(); } }
 
 /* ---------- Big wheel (raffle) ---------- */
+async function loadGiveawayChannel() {
+  const s = await api('/giveaway-channel');
+  document.getElementById('gwChannelId').value = s.channelId || '';
+  document.getElementById('gwStartImage').value = s.startImage || '';
+  document.getElementById('gwEndImage').value = s.endImage || '';
+}
+async function saveGiveawayChannel() {
+  await api('/giveaway-channel', { method: 'POST', body: JSON.stringify({
+    channelId: document.getElementById('gwChannelId').value,
+    startImage: document.getElementById('gwStartImage').value,
+    endImage: document.getElementById('gwEndImage').value,
+  }) });
+  const msg = document.getElementById('gwSavedMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
+}
 async function loadRafflesAdmin() {
   const tasks = await api('/tasks');
   document.getElementById('rfTaskId').innerHTML = '<option value="">No task required</option>' + tasks.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
