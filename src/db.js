@@ -707,11 +707,12 @@ export function setSetting(key, value) {
 
 // Custom design images for the mini app's main sections — purely visual branding, set from the admin
 // panel. Each key is optional; when empty, that section falls back to its default icon/gradient look.
-// UI_IMAGE_KEYS covers both hub shortcut cards (small tile background) and full banner images shown
-// at the top of a section's own page (Clan, Battle pass).
+// UI_IMAGE_KEYS covers hub shortcut cards (small tile background), full section banners, and a few
+// other Game Hub cards/teasers that logically support artwork.
 const UI_IMAGE_KEYS = [
   'hub_shop', 'hub_wallet', 'hub_market', 'hub_cardgame', 'hub_battlepass', 'hub_clan', // hub shortcut tiles
-  'banner_clan', 'banner_battlepass', // full-width banners at the top of those sections
+  'banner_clan', 'banner_battlepass', 'banner_events', 'banner_wheel', // full-width banners at the top of a section's own page
+  'card_missions', 'card_leaderboard', // Game Hub quick-access card artwork
 ];
 export function getUiImages() {
   const out = {};
