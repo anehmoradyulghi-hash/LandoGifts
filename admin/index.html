@@ -188,9 +188,13 @@
       </div>
       <div class="card">
         <h3>🖼 Section banner images</h3>
-        <p class="muted">Optional wide banner artwork shown at the top of the Clan and Battle pass pages. Recommended: a wide image (at least 800×300).</p>
+        <p class="muted">Optional wide banner artwork shown at the top of a section's own page. Recommended: a wide image (at least 800×300).</p>
         <label>Clan banner</label><input id="uiImgBannerClan" placeholder="https://...">
         <label>Battle pass banner</label><input id="uiImgBannerBattlepass" placeholder="https://...">
+        <label>Events banner</label><input id="uiImgBannerEvents" placeholder="https://...">
+        <label>Wheel of fortune banner</label><input id="uiImgBannerWheel" placeholder="https://...">
+        <label>Missions banner (inside Events)</label><input id="uiImgCardMissions" placeholder="https://...">
+        <label>Leaderboard banner</label><input id="uiImgCardLeaderboard" placeholder="https://...">
         <button class="btn" onclick="saveUiImages()">Save</button>
         <p class="muted" id="uiImagesSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
@@ -1028,6 +1032,8 @@ const UI_IMAGE_FIELD_MAP = {
   hub_shop: 'uiImgHubShop', hub_cardgame: 'uiImgHubCardgame', hub_battlepass: 'uiImgHubBattlepass',
   hub_market: 'uiImgHubMarket', hub_wallet: 'uiImgHubWallet', hub_clan: 'uiImgHubClan',
   banner_clan: 'uiImgBannerClan', banner_battlepass: 'uiImgBannerBattlepass',
+  banner_events: 'uiImgBannerEvents', banner_wheel: 'uiImgBannerWheel',
+  card_missions: 'uiImgCardMissions', card_leaderboard: 'uiImgCardLeaderboard',
 };
 async function loadUiImages() {
   const images = await api('/ui-images');
