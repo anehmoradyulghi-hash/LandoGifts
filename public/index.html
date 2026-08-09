@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <title>Lando Gifts</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@2/dist/tonconnect-ui.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -377,6 +378,27 @@
   .battle-banner { padding:22px 14px; border-radius:22px; text-align:center; font-weight:800; font-size:17px; margin-bottom:12px; }
   .battle-banner.win { background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.4); color:var(--success); box-shadow:0 0 24px rgba(52,211,153,.15); }
   .battle-banner.lose { background:rgba(251,113,133,.12); border:1px solid rgba(251,113,133,.4); color:var(--danger); box-shadow:0 0 24px rgba(251,113,133,.15); }
+
+  /* ---------- Battle clash animation ---------- */
+  .battle-fx { position:relative; border-radius:22px; overflow:hidden; padding:26px 10px 18px; margin-bottom:12px;
+    background:radial-gradient(circle at 50% 40%, #241332, #0a0c12 75%); border:1px solid var(--border); }
+  .battle-fx-row { display:flex; align-items:center; justify-content:center; gap:10px; position:relative; min-height:104px; }
+  .battle-fx-card { width:84px; height:104px; border-radius:14px; overflow:hidden; background:var(--surface2); box-shadow:0 10px 26px -8px rgba(0,0,0,.6); border:2px solid rgba(255,255,255,.12); flex-shrink:0; }
+  .battle-fx-card img { width:100%; height:100%; object-fit:cover; display:block; }
+  .battle-fx-card.mine { animation: fxLungeLeft 1.1s ease-in-out 0.5s 2 alternate; }
+  .battle-fx-card.opp { animation: fxLungeRight 1.1s ease-in-out 0.5s 2 alternate; }
+  @keyframes fxLungeLeft { 0% { transform:translateX(0) rotate(0deg); } 100% { transform:translateX(22px) rotate(-6deg); } }
+  @keyframes fxLungeRight { 0% { transform:translateX(0) rotate(0deg); } 100% { transform:translateX(-22px) rotate(6deg); } }
+  .battle-fx-vs { font-size:22px; font-weight:900; color:var(--gold); text-shadow:0 0 14px rgba(255,215,0,.6); flex-shrink:0; animation: fxPulse 0.6s ease-in-out infinite alternate; }
+  @keyframes fxPulse { from { transform:scale(1); } to { transform:scale(1.18); } }
+  .battle-fx-spark { position:absolute; left:50%; top:50%; width:70px; height:70px; margin:-35px 0 0 -35px; pointer-events:none; opacity:0;
+    background:radial-gradient(circle, rgba(255,255,255,.95), rgba(255,215,0,.5) 40%, transparent 70%); border-radius:50%; }
+  .battle-fx-spark.hit { animation: fxSpark 0.35s ease-out; }
+  @keyframes fxSpark { 0% { opacity:0; transform:scale(.2); } 40% { opacity:1; transform:scale(1.3); } 100% { opacity:0; transform:scale(1.6); } }
+  .battle-fx-names { display:flex; justify-content:space-between; padding:0 4px; margin-top:10px; font-size:11px; color:var(--muted); }
+  .battle-fx-power { display:flex; justify-content:space-between; padding:0 4px; margin-top:2px; font-size:16px; font-weight:800; }
+  .battle-fx-power span.mine { color:var(--success); } .battle-fx-power span.opp { color:var(--danger); }
+  .battle-fx-status { text-align:center; margin-top:12px; font-size:12.5px; color:var(--muted); min-height:16px; }
   /* ---------- Shop ---------- */
   .shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .shop-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; box-shadow:0 10px 24px -14px rgba(0,0,0,.55); transition:transform .12s ease; animation:popIn .35s cubic-bezier(.22,.9,.34,1) backwards; }
@@ -707,6 +729,15 @@
     <button class="btn" onclick="doSwap()">Convert</button>
   </div>
   <div class="card">
+    <h3 class="sec" style="margin-top:0;">TON wallet</h3>
+    <div id="tonWalletStatus" class="row"><span class="muted" id="tonWalletLabel">Not connected</span><span id="tonConnectBtn"></span></div>
+    <div id="tonPayBox" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+      <label>Amount (TON)</label><input type="number" id="tonPayAmount" step="0.01" placeholder="e.g. 1.5">
+      <button class="btn gold" onclick="doTonPay()">💎 Pay with TON wallet</button>
+      <p class="muted" style="margin-top:6px;">Sends TON directly from your connected wallet to the deposit address below, then submits the top-up request automatically.</p>
+    </div>
+  </div>
+  <div class="card">
     <h3 class="sec" style="margin-top:0;">Crypto deposit</h3>
     <label>Currency</label><select id="depCode" onchange="onDepCodeChange()"></select>
     <div id="depAddressBox" class="muted" style="margin-bottom:10px;"></div>
@@ -808,13 +839,23 @@
     </div>
     <div class="icon-grid">
       <div class="icon-grid-item" onclick="showMView('clanwar')"><div class="icon-grid-ic">⚔️</div><div class="icon-grid-t">Clan war</div></div>
+      <div class="icon-grid-item" onclick="showMView('clanchat')"><div class="icon-grid-ic">💬</div><div class="icon-grid-t">Chat</div></div>
       <div class="icon-grid-item" onclick="document.getElementById('clanBankSection')?.scrollIntoView({behavior:'smooth',block:'center'})"><div class="icon-grid-ic">💰</div><div class="icon-grid-t">Bank & donate</div></div>
       <div class="icon-grid-item" onclick="document.getElementById('clanMembersSection')?.scrollIntoView({behavior:'smooth',block:'center'})"><div class="icon-grid-ic">👥</div><div class="icon-grid-t">Members</div></div>
-      <div class="icon-grid-item" onclick="document.getElementById('clanLeaderboard')?.scrollIntoView({behavior:'smooth',block:'center'})"><div class="icon-grid-ic">🏆</div><div class="icon-grid-t">Leaderboard</div></div>
     </div>
     <div id="clanContent" class="muted">Loading...</div>
     <h3 class="sec">Top clans leaderboard</h3>
     <div id="clanLeaderboard" class="muted"></div>
+  </div>
+
+  <div class="view" id="mview-clanchat">
+    <div class="card" style="display:flex;flex-direction:column;height:calc(100vh - 190px);padding:10px;">
+      <div id="clanChatMessages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px;"></div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <input type="text" id="clanChatInput" placeholder="Message..." style="flex:1;margin:0;" onkeydown="if(event.key==='Enter')sendClanChatMessage()">
+        <button class="btn" style="width:auto;padding:0 18px;" onclick="sendClanChatMessage()">➤</button>
+      </div>
+    </div>
   </div>
 
   <div class="view" id="mview-clanwar">
@@ -987,6 +1028,7 @@ async function uploadImage(file) {
 /* ================= page navigation ================= */
 const PAGE_TITLES = { games:'Lando Gifts', shop:'Shop', market:'User market', leaderboard:'Leaderboard', wallet:'Wallet', profile:'Profile', more:'More', tasks:'Tasks' };
 function showPage(name) {
+  if (name !== 'more') stopClanChat(); // leaving the "more" section entirely — no reason to keep polling clan chat in the background
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.querySelectorAll('.navitem').forEach(b => b.classList.toggle('active', b.dataset.page === name));
@@ -1040,11 +1082,12 @@ function showMView(name) {
   document.querySelectorAll('#page-more .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mview-' + name).classList.add('active');
   document.getElementById('headerBackBtn').style.display = name === 'hub' ? 'none' : 'flex';
-  const titles = { auction:'Flash auction', clan:'Clan', clanwar:'⚔️ Clan war', album:'Collection album', cardmarket:'Card Marketplace', avatars:'Avatar shop', raffle:'🎟 Big wheel' };
+  const titles = { auction:'Flash auction', clan:'Clan', clanwar:'⚔️ Clan war', clanchat:'💬 Clan chat', album:'Collection album', cardmarket:'Card Marketplace', avatars:'Avatar shop', raffle:'🎟 Big wheel' };
   document.getElementById('headerTitle').textContent = name === 'hub' ? 'More' : titles[name];
   if (name === 'auction') loadAuctions();
   if (name === 'clan') loadClan();
   if (name === 'clanwar') loadClanWar();
+  if (name === 'clanchat') startClanChat(); else stopClanChat();
   if (name === 'raffle') loadRaffles();
   if (name === 'album') loadAlbums();
   if (name === 'cardmarket') loadCardMarket();
@@ -1269,6 +1312,54 @@ async function doCurrencyDeposit() {
   const code = document.getElementById('depCode').value, amount = Number(document.getElementById('depAmount').value), txHash = document.getElementById('depTx').value;
   await api('/api/wallet/currency-deposit', { method: 'POST', body: JSON.stringify({ code, amount, txHash }) });
   toast('Deposit request submitted ✅');
+}
+
+/* ================= TON wallet connect ================= */
+let tonConnectUI = null;
+function initTonConnect() {
+  if (tonConnectUI || typeof TON_CONNECT_UI === 'undefined') return; // already initialized, or the CDN SDK failed to load (e.g. no internet) — fail quietly, the rest of the wallet page still works
+  try {
+    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+      manifestUrl: window.location.origin + '/tonconnect-manifest.json',
+      buttonRootId: 'tonConnectBtn',
+    });
+    tonConnectUI.onStatusChange(wallet => {
+      const label = document.getElementById('tonWalletLabel');
+      const payBox = document.getElementById('tonPayBox');
+      if (wallet) {
+        const addr = wallet.account.address;
+        if (label) label.textContent = 'Connected: ' + addr.slice(0, 6) + '...' + addr.slice(-4);
+        if (payBox) payBox.style.display = 'block';
+      } else {
+        if (label) label.textContent = 'Not connected';
+        if (payBox) payBox.style.display = 'none';
+      }
+    });
+  } catch (e) { console.error('TonConnect init failed', e); }
+}
+async function doTonPay() {
+  if (!tonConnectUI || !tonConnectUI.connected) { toast('Connect your TON wallet first'); return; }
+  const amountTon = Number(document.getElementById('tonPayAmount').value);
+  if (!amountTon || amountTon <= 0) { toast('Enter a valid amount'); return; }
+  const tonCurrency = CURRENCIES.find(c => c.code === 'TON');
+  if (!tonCurrency) { toast('TON is not an active currency — ask the admin to enable it'); return; }
+  if (!tonCurrency.deposit_address) { toast('The admin has not set a TON deposit address yet'); return; }
+  const nanoTons = Math.round(amountTon * 1e9).toString();
+  try {
+    const result = await tonConnectUI.sendTransaction({
+      validUntil: Math.floor(Date.now() / 1000) + 300,
+      messages: [{ address: tonCurrency.deposit_address, amount: nanoTons }],
+    });
+    // The signed transaction (boc) is used as the reference the admin sees when approving this
+    // deposit — same manual-approval safety net as every other currency deposit in this app, just
+    // with the "send the payment" step automated through the connected wallet instead of the user
+    // having to leave the app and paste a transaction hash by hand.
+    await api('/api/wallet/currency-deposit', { method: 'POST', body: JSON.stringify({ code: 'TON', amount: amountTon, txHash: 'tonconnect:' + (result.boc || '').slice(0, 80) }) });
+    toast('Payment sent — waiting for admin confirmation ✅');
+    document.getElementById('tonPayAmount').value = '';
+  } catch (e) {
+    toast(e?.message || 'Transaction was cancelled or failed');
+  }
 }
 async function doCurrencyWithdraw() {
   const code = document.getElementById('wdCode').value, amount = Number(document.getElementById('wdAmount').value), address = document.getElementById('wdAddress').value;
@@ -1596,10 +1687,50 @@ async function joinGameQueue() {
   const r = await api('/api/game/queue', { method: 'POST', body: JSON.stringify({ userCardIds: SELECTED_DECK }) });
   const banner = document.getElementById('battleBanner');
   if (r.matched) {
-    banner.innerHTML = `<div class="battle-banner ${r.won ? 'win' : 'lose'}">${r.won ? '🏆 You won!' : '😢 You lost'}<br><span style="font-weight:400;font-size:13px;">My power: ${r.myPower} — Opponent's power: ${r.opponentPower}</span></div>`;
+    playBattleClashAnimation(banner, r);
     document.getElementById('gameQueueState').textContent = 'You are not in queue';
   } else { banner.innerHTML = ''; toast('You have entered the queue, wait for an opponent...'); updateQueueState({ waiting: true }); }
   loadMe(); loadGameHistory(); loadGame();
+}
+// A short (~3s), purely visual clash sequence shown right after a match result comes back — the
+// result itself (r.won/myPower/opponentPower) was already decided by the server before this runs;
+// this only animates revealing it, it never changes the outcome.
+function playBattleClashAnimation(banner, r) {
+  const myCard = MY_CARDS_CACHE.find(c => SELECTED_DECK.includes(c.id)) || {};
+  const myImg = myCard.image ? `<img src="${myCard.image}">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:30px;">⚔️</div>';
+  banner.innerHTML = `
+    <div class="battle-fx" id="battleFx">
+      <div class="battle-fx-row">
+        <div class="battle-fx-card mine">${myImg}</div>
+        <div class="battle-fx-spark" id="fxSpark"></div>
+        <div class="battle-fx-vs">VS</div>
+        <div class="battle-fx-card opp"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:30px;background:linear-gradient(150deg,#3a3f52,#1c2030);">🛡️</div></div>
+      </div>
+      <div class="battle-fx-names"><span>You</span><span>Opponent</span></div>
+      <div class="battle-fx-power"><span class="mine" id="fxMyPower">0</span><span class="opp" id="fxOppPower">0</span></div>
+      <div class="battle-fx-status" id="fxStatus">Cards are clashing...</div>
+    </div>`;
+  const spark = document.getElementById('fxSpark');
+  const myPowerEl = document.getElementById('fxMyPower');
+  const oppPowerEl = document.getElementById('fxOppPower');
+  // Two hits, timed to land with the card-lunge animation (which alternates twice over ~2.2s)
+  const hitAt = [550, 1650];
+  hitAt.forEach(t => setTimeout(() => { spark.classList.remove('hit'); void spark.offsetWidth; spark.classList.add('hit'); }, t));
+  // Count both power numbers up together so the reveal feels like a live tally, not a static label
+  const duration = 2400, steps = 30;
+  for (let i = 1; i <= steps; i++) {
+    setTimeout(() => {
+      myPowerEl.textContent = Math.round(r.myPower * (i / steps));
+      oppPowerEl.textContent = Math.round(r.opponentPower * (i / steps));
+    }, (duration / steps) * i);
+  }
+  setTimeout(() => {
+    const status = document.getElementById('fxStatus');
+    if (status) status.textContent = r.won ? '🏆 Victory!' : '😢 Defeat';
+  }, duration - 200);
+  setTimeout(() => {
+    banner.innerHTML = `<div class="battle-banner ${r.won ? 'win' : 'lose'}">${r.won ? '🏆 You won!' : '😢 You lost'}<br><span style="font-weight:400;font-size:13px;">My power: ${r.myPower} — Opponent's power: ${r.opponentPower}</span></div>`;
+  }, duration + 500);
 }
 async function cancelGameQueue() { await api('/api/game/queue/cancel', { method: 'POST' }); clearTimeout(GAME_QUEUE_TIMER); document.getElementById('gameQueueState').textContent = 'You are not in queue'; }
 async function loadGameLeaderboard() {
@@ -1934,6 +2065,55 @@ async function kickMemberUI(tgId) { if (!confirm('be kicked?')) return; await ap
 let WAR_STATE = null;
 let WAR_PICKS = [];
 let WAR_MEMBER_CARDS = {};
+
+/* ================= Clan chat ================= */
+let CLAN_CHAT_TIMER = null;
+let CLAN_CHAT_LAST_ID = 0;
+let CLAN_CHAT_MY_TG_ID = null;
+function startClanChat() {
+  stopClanChat();
+  CLAN_CHAT_LAST_ID = 0;
+  document.getElementById('clanChatMessages').innerHTML = '<p class="muted" style="text-align:center;">Loading...</p>';
+  pollClanChat();
+  // Polling every 2 seconds is what "near real-time" looks like without a websocket/push layer —
+  // close enough that new messages show up within a couple seconds of being sent.
+  CLAN_CHAT_TIMER = setInterval(pollClanChat, 2000);
+}
+function stopClanChat() {
+  if (CLAN_CHAT_TIMER) { clearInterval(CLAN_CHAT_TIMER); CLAN_CHAT_TIMER = null; }
+}
+async function pollClanChat() {
+  try {
+    const r = await api('/api/clan/chat?afterId=' + CLAN_CHAT_LAST_ID);
+    if (!r.enabled) { document.getElementById('clanChatMessages').innerHTML = '<p class="muted" style="text-align:center;">Clan chat is currently disabled.</p>'; stopClanChat(); return; }
+    if (!r.messages.length) { if (CLAN_CHAT_LAST_ID === 0) document.getElementById('clanChatMessages').innerHTML = '<p class="muted" style="text-align:center;">No messages yet — say hi to your clan!</p>'; return; }
+    if (!CLAN_CHAT_MY_TG_ID) { try { const me = await api('/api/me'); CLAN_CHAT_MY_TG_ID = me.tg_id; } catch (e) {} }
+    const box = document.getElementById('clanChatMessages');
+    if (CLAN_CHAT_LAST_ID === 0) box.innerHTML = ''; // first load — clear the "loading" placeholder
+    const wasAtBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+    r.messages.forEach(m => {
+      const mine = m.tg_id === CLAN_CHAT_MY_TG_ID;
+      const time = (m.created_at || '').split(' ')[1]?.slice(0, 5) || '';
+      const div = document.createElement('div');
+      div.style.cssText = `align-self:${mine ? 'flex-end' : 'flex-start'};max-width:78%;`;
+      div.innerHTML = `
+        ${!mine ? `<div style="font-size:10.5px;color:var(--muted);margin:0 8px 2px;">${m.first_name || m.username || 'Member'}</div>` : ''}
+        <div style="background:${mine ? 'linear-gradient(135deg,var(--p1),var(--b1))' : 'var(--surface2)'};color:#fff;padding:8px 12px;border-radius:14px;${mine ? 'border-bottom-right-radius:4px;' : 'border-bottom-left-radius:4px;'}font-size:13px;line-height:1.5;word-break:break-word;">${m.text.replace(/</g, '&lt;')}</div>
+        <div style="font-size:9.5px;color:var(--muted);margin:2px 8px 0;text-align:${mine ? 'right' : 'left'};">${time}</div>`;
+      box.appendChild(div);
+      CLAN_CHAT_LAST_ID = m.id;
+    });
+    if (wasAtBottom) box.scrollTop = box.scrollHeight;
+  } catch (e) { /* transient network errors are silently retried on the next poll */ }
+}
+async function sendClanChatMessage() {
+  const input = document.getElementById('clanChatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  try { await api('/api/clan/chat', { method: 'POST', body: JSON.stringify({ text }) }); pollClanChat(); }
+  catch (e) { toast(e.message || 'Could not send the message'); input.value = text; }
+}
 
 async function loadClanWar() {
   const el = document.getElementById('clanWarContent');
@@ -2298,6 +2478,7 @@ async function bootApp() {
   try { CONFIG = await fetch('/api/config', { signal: AbortSignal.timeout(15000) }).then(r => r.json()); }
   catch (e) { console.error('config load failed', e); }
   applyUiImages();
+  initTonConnect();
   loadMe().catch(() => {});
   loadGamesHub().catch(() => {});
 }
