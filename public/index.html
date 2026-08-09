@@ -426,6 +426,19 @@
   .battle-fx-power { display:flex; justify-content:space-between; padding:0 4px; margin-top:2px; font-size:16px; font-weight:800; }
   .battle-fx-power span.mine { color:var(--success); } .battle-fx-power span.opp { color:var(--danger); }
   .battle-fx-status { text-align:center; margin-top:12px; font-size:12.5px; color:var(--muted); min-height:16px; }
+
+  /* ---------- Clan chat: avatar + level badge next to the sender's name ---------- */
+  .chat-avatar {
+    width:30px; height:30px; border-radius:50%; flex-shrink:0; overflow:hidden; background:linear-gradient(150deg,var(--p1),var(--b1));
+    display:flex; align-items:center; justify-content:center; font-size:14px; box-shadow:0 0 0 2px rgba(255,255,255,.08), 0 4px 10px -4px rgba(0,0,0,.6);
+  }
+  .chat-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+  .chat-name-row { display:flex; align-items:center; gap:6px; margin:0 2px 3px; }
+  .chat-name-text { font-size:11.5px; font-weight:700; color:var(--text); }
+  .chat-level-badge {
+    display:inline-flex; align-items:center; gap:2px; font-size:9.5px; font-weight:800; padding:1.5px 7px 2px; border-radius:999px;
+    background:linear-gradient(135deg,var(--gold),#d97706); color:#2b1a00; box-shadow:0 2px 6px -2px rgba(217,119,6,.7);
+  }
   /* ---------- Shop ---------- */
   .shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .shop-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; box-shadow:0 10px 24px -14px rgba(0,0,0,.55); transition:transform .12s ease; animation:popIn .35s cubic-bezier(.22,.9,.34,1) backwards; }
@@ -2137,13 +2150,21 @@ async function pollClanChat() {
     r.messages.forEach(m => {
       const mine = m.tg_id === CLAN_CHAT_MY_TG_ID;
       const time = (m.created_at || '').split(' ')[1]?.slice(0, 5) || '';
-      const div = document.createElement('div');
-      div.style.cssText = `align-self:${mine ? 'flex-end' : 'flex-start'};max-width:78%;`;
-      div.innerHTML = `
-        ${!mine ? `<div style="font-size:10.5px;color:var(--muted);margin:0 8px 2px;">${m.first_name || m.username || 'Member'}</div>` : ''}
+      const row = document.createElement('div');
+      row.style.cssText = `display:flex;align-items:flex-end;gap:7px;align-self:${mine ? 'flex-end' : 'flex-start'};max-width:100%;${mine ? 'flex-direction:row-reverse;' : ''}`;
+      const avatarHtml = `<div class="chat-avatar">${m.avatar_image ? `<img src="${m.avatar_image}">` : '👤'}</div>`;
+      const bubbleWrap = document.createElement('div');
+      bubbleWrap.style.cssText = 'max-width:76%;';
+      bubbleWrap.innerHTML = `
+        <div class="chat-name-row" style="${mine ? 'flex-direction:row-reverse;' : ''}">
+          <span class="chat-name-text">${m.first_name || m.username || 'Member'}</span>
+          <span class="chat-level-badge">⭐ Lv.${m.level || 1}</span>
+        </div>
         <div style="background:${mine ? 'linear-gradient(135deg,var(--p1),var(--b1))' : 'var(--surface2)'};color:#fff;padding:8px 12px;border-radius:14px;${mine ? 'border-bottom-right-radius:4px;' : 'border-bottom-left-radius:4px;'}font-size:13px;line-height:1.5;word-break:break-word;">${m.text.replace(/</g, '&lt;')}</div>
         <div style="font-size:9.5px;color:var(--muted);margin:2px 8px 0;text-align:${mine ? 'right' : 'left'};">${time}</div>`;
-      box.appendChild(div);
+      row.innerHTML = avatarHtml;
+      row.appendChild(bubbleWrap);
+      box.appendChild(row);
       CLAN_CHAT_LAST_ID = m.id;
     });
     if (wasAtBottom) box.scrollTop = box.scrollHeight;
