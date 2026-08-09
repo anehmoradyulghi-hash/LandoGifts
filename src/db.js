@@ -758,6 +758,22 @@ export function setSupportContact(username) {
   setSetting('support_username', (username || '').replace(/^@/, ''));
 }
 
+// The channel where giveaway (raffle/"Big wheel") posts go — the bot must be an admin of this
+// channel with post permission. Two optional images: one shown when a giveaway starts, one shown
+// when it ends (with the winners). Falls back to a plain text post if no image is set.
+export function getGiveawayChannelSettings() {
+  return {
+    channelId: getSetting('giveaway_channel_id', ''),
+    startImage: getSetting('giveaway_start_image', ''),
+    endImage: getSetting('giveaway_end_image', ''),
+  };
+}
+export function setGiveawayChannelSettings({ channelId, startImage, endImage }) {
+  setSetting('giveaway_channel_id', (channelId || '').trim());
+  setSetting('giveaway_start_image', (startImage || '').trim());
+  setSetting('giveaway_end_image', (endImage || '').trim());
+}
+
 // Info page text (guide/FAQ/rules) — editable from the admin panel
 export function getInfoPage(key) { return getSetting('info_' + key, ''); }
 export function setInfoPage(key, content) { setSetting('info_' + key, content || ''); }

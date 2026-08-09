@@ -1,5 +1,6 @@
 import db from './db.js';
 import { adjustToman, getUser } from './db.js';
+import { getRankConfig } from './rank-db.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS clan_config (
@@ -347,10 +348,17 @@ export function getClanMessages(tgId, afterId = 0) {
   const clanId = getMemberClanId(tgId);
   if (!clanId) return { messages: [], enabled: cfg.enabled };
   cleanupOldClanMessages(clanId, cfg.retention_minutes);
-  const messages = db.prepare(`
-    SELECT cm.id, cm.tg_id, cm.text, cm.created_at, u.first_name, u.username
+  // Level + equipped avatar are joined in directly (not fetched per-message) so the chat can show a
+  // proper level badge and avatar image next to each sender's name without an N+1 query per message.
+  const xpPerLevel = getRankConfig().xp_per_level || 1000;
+  const rows = db.prepare(`
+    SELECT cm.id, cm.tg_id, cm.text, cm.created_at, u.first_name, u.username,
+      COALESCE(ur.xp, 0) AS xp, av.image_url AS avatar_image
     FROM clan_messages cm JOIN users u ON u.tg_id = cm.tg_id
+    LEFT JOIN user_rank ur ON ur.tg_id = cm.tg_id
+    LEFT JOIN avatars av ON av.id = ur.equipped_avatar_id
     WHERE cm.clan_id = ? AND cm.id > ? ORDER BY cm.id ASC LIMIT 200
   `).all(clanId, afterId);
+  const messages = rows.map(r => ({ ...r, level: Math.max(1, Math.floor(r.xp / xpPerLevel) + 1) }));
   return { messages, enabled: cfg.enabled, retentionMinutes: cfg.retention_minutes };
 }

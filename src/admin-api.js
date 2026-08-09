@@ -17,6 +17,7 @@ import {
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
   getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact, getInfoPage, setInfoPage,
+  getGiveawayChannelSettings, setGiveawayChannelSettings,
   getUiImages, setUiImages,
   getReferralSettings, setReferralSettings, getLndcWalletSettings, setLndcWalletSettings,
   listGiftCategories, upsertGiftCategory, deleteGiftCategory,
@@ -45,7 +46,7 @@ import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason, admi
 import { getClanWarConfig, setClanWarConfig } from './clan-war-db.js';
 import { getLeagueConfig, setLeagueConfig, getLeagueTierConfig, setLeagueTierConfig } from './league-db.js';
 import {
-  listRafflesAdmin, createRaffle, updateRaffle, deleteRaffle, cancelRaffle, listRaffleEntries, finishRaffle,
+  listRafflesAdmin, getRaffle, createRaffle, updateRaffle, deleteRaffle, cancelRaffle, listRaffleEntries, finishRaffle,
 } from './raffle-db.js';
 import {
   getRankConfig, setRankConfig, listRankTitles, upsertRankTitle, deleteRankTitle,
@@ -57,7 +58,7 @@ import { listAlbums, upsertAlbum, deleteAlbum, getAlbumRequirements } from './al
 import { getGiftConfig, setGiftConfig } from './gift-db.js';
 import { listSeasons, createSeason, deleteSeason, setCardSeason } from './seasonal-db.js';
 import { getCardMarketConfig, setCardMarketConfig, listCardMarketOffers } from './card-market-db.js';
-import { sendMessage } from './telegram.js';
+import { sendMessage, sendPhoto } from './telegram.js';
 
 const router = express.Router();
 
@@ -605,12 +606,19 @@ router.post('/league/tiers', (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-/* ---------- Big wheel (raffle) ---------- */
+/* ---------- Big wheel (raffle / giveaway) ---------- */
 router.get('/raffles', (req, res) => res.json(listRafflesAdmin()));
+router.get('/giveaway-channel', (req, res) => res.json(getGiveawayChannelSettings()));
+router.post('/giveaway-channel', (req, res) => {
+  setGiveawayChannelSettings({ channelId: req.body.channelId, startImage: req.body.startImage, endImage: req.body.endImage });
+  res.json({ ok: true });
+});
 router.post('/raffles', (req, res) => {
   try {
     if (!req.body.title) return res.status(400).json({ error: 'Title is required' });
+    const isNew = !req.body.id;
     const id = req.body.id ? (updateRaffle(Number(req.body.id), req.body), Number(req.body.id)) : createRaffle(req.body);
+    if (isNew) postGiveawayToChannel(getRaffle(id), 'start').catch(() => {});
     res.json({ ok: true, id });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -618,9 +626,34 @@ router.delete('/raffles/:id', (req, res) => { deleteRaffle(Number(req.params.id)
 router.post('/raffles/:id/cancel', (req, res) => { cancelRaffle(Number(req.params.id)); res.json({ ok: true }); });
 router.get('/raffles/:id/entries', (req, res) => res.json(listRaffleEntries(Number(req.params.id))));
 router.post('/raffles/:id/finish', (req, res) => {
-  try { res.json({ ok: true, winners: finishRaffle(Number(req.params.id)) }); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    const winners = finishRaffle(Number(req.params.id));
+    postGiveawayToChannel(getRaffle(Number(req.params.id)), 'end', winners).catch(() => {});
+    res.json({ ok: true, winners });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
+// Posts a giveaway's info to the configured channel — the bot must already be an admin there with
+// post permission, or this silently fails (caught by the .catch(()=>{}) at each call site above, so
+// a channel-posting problem never blocks the actual raffle create/finish action for the admin).
+async function postGiveawayToChannel(raffle, phase, winners = []) {
+  const { channelId, startImage, endImage } = getGiveawayChannelSettings();
+  if (!channelId || !raffle) return;
+  let text;
+  if (phase === 'start') {
+    text = `🎉 <b>New giveaway started!</b>\n\n🏆 <b>${raffle.title}</b>` +
+      (raffle.prize_description ? `\n🎁 Prize: ${raffle.prize_description}` : '') +
+      `\n👥 Winners: ${raffle.winners_count}` +
+      (raffle.ticket_price_toman > 0 ? `\n🎟 Ticket price: ${raffle.ticket_price_toman.toLocaleString('en-US')} LNDC` : '\n🎟 Free entry') +
+      `\n\nOpen the mini app to join! 👇`;
+    if (startImage) await sendPhoto(channelId, startImage, text);
+    else await sendMessage(channelId, text);
+  } else {
+    const winnerList = winners.length ? winners.map(w => `🆔 <code>${w.tg_id}</code>`).join('\n') : 'No entries were registered.';
+    text = `🏁 <b>Giveaway ended!</b>\n\n🏆 <b>${raffle.title}</b>\n\n🎊 Winners:\n${winnerList}`;
+    if (endImage) await sendPhoto(channelId, endImage, text);
+    else await sendMessage(channelId, text);
+  }
+}
 
 /* ---------- Ranking, title, avatar ---------- */
 router.get('/rank/config', (req, res) => res.json(getRankConfig()));
