@@ -144,6 +144,26 @@
   }
   .icon-grid-t { font-size:11px; font-weight:700; color:var(--text); line-height:1.3; }
 
+  /* ---------- Hero stat numbers (balance, power, XP) — strong emphasis, gradient-filled text ---------- */
+  .stat-hero {
+    background:linear-gradient(135deg,#fff, #d9c9ff 55%, var(--p1));
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    text-shadow:0 2px 18px rgba(168,85,247,.25);
+  }
+
+  /* ---------- Staggered card entrance — lightweight, transform/opacity only, no layout cost ---------- */
+  @keyframes cardStagger { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  .grid2 > .gcard, .icon-grid-item, .hscroll > * {
+    animation: cardStagger .38s cubic-bezier(.22,.9,.34,1) backwards;
+  }
+  .grid2 > .gcard:nth-child(1), .icon-grid-item:nth-child(1) { animation-delay: .02s; }
+  .grid2 > .gcard:nth-child(2), .icon-grid-item:nth-child(2) { animation-delay: .07s; }
+  .grid2 > .gcard:nth-child(3), .icon-grid-item:nth-child(3) { animation-delay: .12s; }
+  .grid2 > .gcard:nth-child(4), .icon-grid-item:nth-child(4) { animation-delay: .17s; }
+  .hscroll > *:nth-child(1) { animation-delay: .02s; } .hscroll > *:nth-child(2) { animation-delay: .06s; }
+  .hscroll > *:nth-child(3) { animation-delay: .10s; } .hscroll > *:nth-child(4) { animation-delay: .14s; }
+  .hscroll > *:nth-child(5) { animation-delay: .18s; }
+
   .badge-hot {
     position:absolute; top:12px; left:12px; font-size:10.5px; font-weight:800; padding:4px 10px;
     border-radius:20px; background:linear-gradient(135deg,#fbbf24,#d97706); color:#241800;
@@ -209,6 +229,13 @@
   .btn.outline { background:none; border:1px solid var(--p1); color:#c9b3ff; box-shadow:none; }
   .btn.gold { background:radial-gradient(130% 180% at 18% -30%, rgba(255,255,255,.4), transparent 55%), linear-gradient(135deg,#fde68a,#f59e0b); color:#241800; box-shadow:0 8px 20px -8px rgba(245,158,11,.55), inset 0 1px 0 rgba(255,255,255,.35); }
   .btn.danger { background:rgba(251,113,133,.14); border:1px solid rgba(251,113,133,.4); color:var(--danger); box-shadow:none; }
+  /* Premium variant — for standout purchase/upgrade actions, distinct from .gold (which is used for
+     currency-specific actions like paying/claiming) without competing visually with it. */
+  .btn.premium {
+    background:radial-gradient(130% 180% at 18% -30%, rgba(255,255,255,.35), transparent 55%), linear-gradient(135deg,#2d1b4e,#0f0a1f);
+    border:1px solid rgba(255,215,0,.35); color:#ffe9a8;
+    box-shadow:0 8px 22px -8px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 0 1px rgba(255,215,0,.08);
+  }
   .btn:disabled { opacity:.4; }
   .btn3 { display:flex; gap:8px; }
   .btn3 .btn { font-size:12px; padding:10px 6px; }
@@ -550,6 +577,10 @@
 
   <!-- Wheel of fortune -->
   <div class="view" id="gview-wheel">
+    <div class="section-banner" id="wheelBanner">
+      <div class="section-banner-ribbon">🎰 Wheel of fortune</div>
+      <div class="section-banner-desc">Spin daily for a chance at coins, cards, and rare prizes.</div>
+    </div>
     <div class="gcard teal" style="text-align:center;">
       <div class="wheel-wrap">
         <div class="wheel-pointer">▼</div>
@@ -578,11 +609,19 @@
 
   <!-- Events: daily quest + flash auction -->
   <div class="view" id="gview-events">
+    <div class="section-banner" id="eventsBanner">
+      <div class="section-banner-ribbon">🎯 Events</div>
+      <div class="section-banner-desc">Daily quests and time-limited flash auctions.</div>
+    </div>
     <div class="pills">
       <button class="pill active" data-esub="quests" onclick="showEventsSub('quests')">📜 Daily quest</button>
       <button class="pill" data-esub="auction" onclick="showEventsSub('auction')">⚡ Flash auction</button>
     </div>
     <div class="view active" id="esub-quests">
+      <div class="section-banner" id="missionsBanner" style="min-height:100px;margin-bottom:12px;">
+        <div class="section-banner-ribbon" style="font-size:13px;padding:5px 16px;">📜 Missions</div>
+        <div class="section-banner-desc">Complete daily quests for coins, XP, and bonus rewards.</div>
+      </div>
       <div id="dailyQuestsList" class="muted">Loading...</div>
     </div>
     <div class="view" id="esub-auction">
@@ -647,6 +686,10 @@
 
 <!-- ============ Leaderboard ============ -->
 <section class="page" id="page-leaderboard">
+  <div class="section-banner" id="leaderboardBanner">
+    <div class="section-banner-ribbon">🏆 Leaderboard</div>
+    <div class="section-banner-desc">See how you stack up — by game score, clan, level, or league.</div>
+  </div>
   <div class="toptabs">
     <button class="active" data-ltab="game" onclick="showLbTab('game')">🎮 Game score</button>
     <button data-ltab="clan" onclick="showLbTab('clan')">🏰 Clan</button>
@@ -682,7 +725,7 @@
 <section class="page" id="page-wallet">
   <div class="gcard purple" style="margin-top:8px;">
     <div class="s">Total balance</div>
-    <div style="font-size:26px;font-weight:800;margin-top:4px;" id="walletHeroBalance">0 LNDC</div>
+    <div style="font-size:26px;font-weight:800;margin-top:4px;" class="stat-hero" id="walletHeroBalance">0 LNDC</div>
     <div class="btn3" style="margin-top:12px;">
       <button class="btn outline" id="walletTopupShortcut" onclick="document.getElementById('topupAmount').scrollIntoView({behavior:'smooth'})">⬇️ Top up</button>
       <button class="btn outline" id="walletWithdrawShortcut" onclick="document.getElementById('withdrawAmount').scrollIntoView({behavior:'smooth'})">⬆️ Withdraw</button>
@@ -2465,7 +2508,7 @@ function applyUiImages() {
     const url = images[key];
     if (el && url) { el.classList.add('has-img'); el.style.backgroundImage = `url('${url}')`; }
   }
-  const bannerMap = { banner_clan: 'clanBanner', banner_battlepass: 'battlepassBanner' };
+  const bannerMap = { banner_clan: 'clanBanner', banner_battlepass: 'battlepassBanner', banner_events: 'eventsBanner', banner_wheel: 'wheelBanner', card_missions: 'missionsBanner', card_leaderboard: 'leaderboardBanner' };
   for (const [key, elId] of Object.entries(bannerMap)) {
     const el = document.getElementById(elId);
     const url = images[key];
