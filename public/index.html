@@ -894,12 +894,23 @@
       <div class="section-banner-desc">Join a clan or build one of your own — team up in clan wars and compete together.</div>
     </div>
     <div class="icon-grid">
+      <div class="icon-grid-item" onclick="showMView('clanmine')"><div class="icon-grid-ic">🏰</div><div class="icon-grid-t">My clan</div></div>
+      <div class="icon-grid-item" onclick="showMView('clanbrowse')"><div class="icon-grid-ic">🔎</div><div class="icon-grid-t">Browse & join</div></div>
       <div class="icon-grid-item" onclick="showMView('clanwar')"><div class="icon-grid-ic">⚔️</div><div class="icon-grid-t">Clan war</div></div>
       <div class="icon-grid-item" onclick="showMView('clanchat')"><div class="icon-grid-ic">💬</div><div class="icon-grid-t">Chat</div></div>
-      <div class="icon-grid-item" onclick="document.getElementById('clanBankSection')?.scrollIntoView({behavior:'smooth',block:'center'})"><div class="icon-grid-ic">💰</div><div class="icon-grid-t">Bank & donate</div></div>
-      <div class="icon-grid-item" onclick="document.getElementById('clanMembersSection')?.scrollIntoView({behavior:'smooth',block:'center'})"><div class="icon-grid-ic">👥</div><div class="icon-grid-t">Members</div></div>
     </div>
-    <div id="clanContent" class="muted">Loading...</div>
+    <div id="clanQuickPreview" class="muted">Loading...</div>
+  </div>
+
+  <!-- My clan: dedicated profile screen (info, bank, members) — only for the clan you're already in -->
+  <div class="view" id="mview-clanmine">
+    <div id="clanMineContent" class="muted">Loading...</div>
+  </div>
+
+  <!-- Browse & join: dedicated search/create screen + clan leaderboard -->
+  <div class="view" id="mview-clanbrowse">
+    <div class="card"><h3 class="sec" style="margin-top:0;">Create new clan</h3><label>Clan name</label><input id="newClanName"><label>Tag (unique)</label><input id="newClanTag"><button class="btn" onclick="createClanUI()">Create</button></div>
+    <div class="card"><h3 class="sec" style="margin-top:0;">Search clan</h3><input id="clanSearchQ" placeholder="Name or tag"><button class="btn secondary" onclick="searchClanUI()">Search</button><div id="clanSearchResults"></div></div>
     <h3 class="sec">Top clans leaderboard</h3>
     <div id="clanLeaderboard" class="muted"></div>
   </div>
@@ -1138,10 +1149,12 @@ function showMView(name) {
   if (name === 'hub') NAV_STACK = []; // back at the section hub — nothing left to step back through
   document.querySelectorAll('#page-more .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mview-' + name).classList.add('active');
-  const titles = { auction:'Flash auction', clan:'Clan', clanwar:'⚔️ Clan war', clanchat:'💬 Clan chat', album:'Collection album', cardmarket:'Card Marketplace', avatars:'Avatar shop', raffle:'🎟 Big wheel' };
+  const titles = { auction:'Flash auction', clan:'Clan', clanmine:'My clan', clanbrowse:'Browse & join', clanwar:'⚔️ Clan war', clanchat:'💬 Clan chat', album:'Collection album', cardmarket:'Card Marketplace', avatars:'Avatar shop', raffle:'🎟 Big wheel' };
   document.getElementById('headerTitle').textContent = name === 'hub' ? 'More' : titles[name];
   if (name === 'auction') loadAuctions();
   if (name === 'clan') loadClan();
+  if (name === 'clanmine') loadClanMine();
+  if (name === 'clanbrowse') loadClanBrowse();
   if (name === 'clanwar') loadClanWar();
   if (name === 'clanchat') startClanChat(); else stopClanChat();
   if (name === 'raffle') loadRaffles();
@@ -2054,57 +2067,70 @@ async function bidAuction(id) { await api(`/api/auctions/${id}/bid`, { method: '
 
 /* ================= Clan ================= */
 async function loadClan() {
+  // Landing screen — just a short "where do I stand" preview; the full detail lives in the
+  // dedicated My Clan / Browse & Join screens reached from the icon grid above.
+  const { clan } = await api('/api/clan/my');
+  const el = document.getElementById('clanQuickPreview');
+  el.innerHTML = clan
+    ? `<div class="card"><div class="row"><b>${clan.name}</b><span class="tag">#${clan.tag}</span></div><div class="row"><span class="muted">Score</span><b>${clan.score}</b></div><button class="btn secondary" onclick="showMView('clanmine')">Open my clan →</button></div>`
+    : `<div class="card"><p class="muted" style="margin:0 0 10px;">You're not in a clan yet.</p><button class="btn" onclick="showMView('clanbrowse')">🔎 Browse & join a clan</button></div>`;
+}
+
+/* ---- My clan: dedicated profile screen ---- */
+async function loadClanMine() {
   const { clan, members } = await api('/api/clan/my');
   const cfg = await api('/api/clan/config');
-  const el = document.getElementById('clanContent');
+  const el = document.getElementById('clanMineContent');
   if (!clan) {
-    el.innerHTML = `
-      <div class="card"><h3 class="sec" style="margin-top:0;">Create new clan</h3><label>Clan name</label><input id="newClanName"><label>Tag (unique)</label><input id="newClanTag"><button class="btn" onclick="createClanUI()">Create</button></div>
-      <div class="card"><h3 class="sec" style="margin-top:0;">Search clan</h3><input id="clanSearchQ" placeholder="Name or tag"><button class="btn secondary" onclick="searchClanUI()">Search</button><div id="clanSearchResults"></div></div>`;
-  } else {
-    el.innerHTML = `
-      <div class="card">
-        <div class="row"><b>${clan.name}</b><span class="tag">#${clan.tag}</span></div>
-        <div class="row"><span class="muted">Score</span><b>${clan.score}</b></div>
-        <div class="row" id="clanBankSection"><span class="muted">Clan bank</span><b>${clan.bank_balance.toLocaleString('en-US')} LNDC</b></div>
-        <div class="row"><span class="muted">My role</span><b>${clan.myRole === 'owner' ? 'Leader' : clan.myRole === 'admin' ? 'Manager' : 'Member'}</b></div>
-        <label>Donate to clan bank</label><input type="number" id="donateAmount">
-        <button class="btn gold" onclick="donateClanUI()">Donate</button>
-        ${clan.myRole === 'owner' ? `
-        <div class="row" style="margin-top:6px;"><span class="muted">Withdrawable balance</span><b style="color:var(--gold);">${clan.myWithdrawableRemaining.toLocaleString('en-US')} LNDC</b></div>
-        <label style="margin-top:10px;">Withdraw from clan bank to your own wallet${cfg.withdraw_fee_percent > 0 ? ` (Fee ${cfg.withdraw_fee_percent}%)` : ''}</label><input type="number" id="clanWithdrawAmount">
-        <button class="btn secondary" onclick="withdrawClanUI()">Withdraw</button>
-        <label style="margin-top:10px;">Gift from clan bank to a member</label>
-        <select id="giftMemberSelect">${members.filter(m => m.tg_id !== clan.owner_tg_id).map(m => `<option value="${m.tg_id}">${m.first_name || ''} ${m.username ? '@' + m.username : ''}</option>`).join('') || '<option value="">no member</option>'}</select>
-        <input type="number" id="giftAmount" placeholder="Amount (LNDC)">
-        <button class="btn secondary" onclick="giftClanUI()">Send gift</button>` : ''}
-        <button class="btn danger" onclick="leaveClanUI()">${clan.myRole === 'owner' ? 'Disband clan' : 'Leave clan'}</button>
-        <button class="btn" style="margin-top:8px;background:linear-gradient(90deg,#ff5f6d,#ffc371);" onclick="showMView('clanwar')">⚔️ Clan vs clan war</button>
-      </div>
-      <h3 class="sec" id="clanMembersSection">Members</h3>
-      ${members.map(m => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${m.first_name || ''} ${m.username ? '@' + m.username : ''} ${m.role === 'owner' ? '👑' : ''}</span><span class="tag">Donate: ${m.donated_total.toLocaleString('en-US')}</span></div>
-        ${clan.myRole === 'owner' && m.tg_id !== clan.owner_tg_id ? `<button class="btn danger" style="margin-top:6px;" onclick="kickMemberUI(${m.tg_id})">Kick</button>` : ''}</div>`).join('')}`;
+    el.innerHTML = `<div class="card"><p class="muted" style="margin:0 0 10px;">You're not in a clan yet — browse existing clans or create your own.</p><button class="btn" onclick="showMView('clanbrowse')">🔎 Browse & join a clan</button></div>`;
+    return;
   }
+  el.innerHTML = `
+    <div class="card">
+      <div class="row"><b>${clan.name}</b><span class="tag">#${clan.tag}</span></div>
+      <div class="row"><span class="muted">Score</span><b>${clan.score}</b></div>
+      <div class="row" id="clanBankSection"><span class="muted">Clan bank</span><b>${clan.bank_balance.toLocaleString('en-US')} LNDC</b></div>
+      <div class="row"><span class="muted">My role</span><b>${clan.myRole === 'owner' ? 'Leader' : clan.myRole === 'admin' ? 'Manager' : 'Member'}</b></div>
+      <label>Donate to clan bank</label><input type="number" id="donateAmount">
+      <button class="btn gold" onclick="donateClanUI()">Donate</button>
+      ${clan.myRole === 'owner' ? `
+      <div class="row" style="margin-top:6px;"><span class="muted">Withdrawable balance</span><b style="color:var(--gold);">${clan.myWithdrawableRemaining.toLocaleString('en-US')} LNDC</b></div>
+      <label style="margin-top:10px;">Withdraw from clan bank to your own wallet${cfg.withdraw_fee_percent > 0 ? ` (Fee ${cfg.withdraw_fee_percent}%)` : ''}</label><input type="number" id="clanWithdrawAmount">
+      <button class="btn secondary" onclick="withdrawClanUI()">Withdraw</button>
+      <label style="margin-top:10px;">Gift from clan bank to a member</label>
+      <select id="giftMemberSelect">${members.filter(m => m.tg_id !== clan.owner_tg_id).map(m => `<option value="${m.tg_id}">${m.first_name || ''} ${m.username ? '@' + m.username : ''}</option>`).join('') || '<option value="">no member</option>'}</select>
+      <input type="number" id="giftAmount" placeholder="Amount (LNDC)">
+      <button class="btn secondary" onclick="giftClanUI()">Send gift</button>` : ''}
+      <button class="btn danger" onclick="leaveClanUI()">${clan.myRole === 'owner' ? 'Disband clan' : 'Leave clan'}</button>
+      <button class="btn" style="margin-top:8px;background:linear-gradient(90deg,#ff5f6d,#ffc371);" onclick="showMView('clanwar')">⚔️ Clan vs clan war</button>
+    </div>
+    <h3 class="sec" id="clanMembersSection">Members</h3>
+    ${members.map(m => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${m.first_name || ''} ${m.username ? '@' + m.username : ''} ${m.role === 'owner' ? '👑' : ''}</span><span class="tag">Donate: ${m.donated_total.toLocaleString('en-US')}</span></div>
+      ${clan.myRole === 'owner' && m.tg_id !== clan.owner_tg_id ? `<button class="btn danger" style="margin-top:6px;" onclick="kickMemberUI(${m.tg_id})">Kick</button>` : ''}</div>`).join('')}`;
+}
+
+/* ---- Browse & join: dedicated search/create screen + clan leaderboard ---- */
+async function loadClanBrowse() {
   const clanLb = await api('/api/clan/leaderboard');
   const lb = clanLb.leaderboard;
   document.getElementById('clanLeaderboard').innerHTML = lb.length
     ? lb.map((c, i) => `<div class="lb-row"><div class="lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i + 1}</div><div class="lb-name">${c.name} #${c.tag}</div><div class="lb-score">${c.score} Score</div></div>`).join('')
     : 'No clan has scored yet.';
 }
-async function createClanUI() { await api('/api/clan/create', { method: 'POST', body: JSON.stringify({ name: document.getElementById('newClanName').value, tag: document.getElementById('newClanTag').value }) }); toast('Clan created ✅'); loadMe(); loadClan(); }
+async function createClanUI() { await api('/api/clan/create', { method: 'POST', body: JSON.stringify({ name: document.getElementById('newClanName').value, tag: document.getElementById('newClanTag').value }) }); toast('Clan created ✅'); loadMe(); showMView('clanmine'); }
 async function searchClanUI() {
   const results = await api('/api/clan/search?q=' + encodeURIComponent(document.getElementById('clanSearchQ').value));
   document.getElementById('clanSearchResults').innerHTML = results.map(c => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${c.name} #${c.tag}</span><button class="btn" style="width:auto;" onclick="joinClanUI(${c.id})">Membership</button></div></div>`).join('') || 'Nothing found.';
 }
-async function joinClanUI(id) { await api(`/api/clan/${id}/join`, { method: 'POST' }); toast('You joined the clan ✅'); loadClan(); }
-async function leaveClanUI() { if (!confirm('Are you sure?')) return; await api('/api/clan/leave', { method: 'POST' }); toast('Done'); loadClan(); }
-async function donateClanUI() { await api('/api/clan/donate', { method: 'POST', body: JSON.stringify({ amount: Number(document.getElementById('donateAmount').value) }) }); toast('Donation recorded ✅'); loadMe(); loadClan(); }
+async function joinClanUI(id) { await api(`/api/clan/${id}/join`, { method: 'POST' }); toast('You joined the clan ✅'); showMView('clanmine'); }
+async function leaveClanUI() { if (!confirm('Are you sure?')) return; await api('/api/clan/leave', { method: 'POST' }); toast('Done'); showMView('clan'); }
+async function donateClanUI() { await api('/api/clan/donate', { method: 'POST', body: JSON.stringify({ amount: Number(document.getElementById('donateAmount').value) }) }); toast('Donation recorded ✅'); loadMe(); loadClanMine(); }
 async function withdrawClanUI() {
   const amount = Number(document.getElementById('clanWithdrawAmount').value);
   if (!amount || amount <= 0) { toast('Enter a valid amount'); return; }
   const r = await api('/api/clan/withdraw', { method: 'POST', body: JSON.stringify({ amount }) });
   toast(r.fee > 0 ? `${r.net.toLocaleString('en-US')} LNDC came to your wallet (fee ${r.fee.toLocaleString('en-US')} LNDC) ✅` : 'Amount withdrawn to your wallet ✅');
-  loadMe(); loadClan();
+  loadMe(); loadClanMine();
 }
 async function giftClanUI() {
   const targetTgId = document.getElementById('giftMemberSelect').value;
@@ -2113,9 +2139,9 @@ async function giftClanUI() {
   if (!amount || amount <= 0) { toast('Enter a valid amount'); return; }
   const r = await api('/api/clan/gift', { method: 'POST', body: JSON.stringify({ targetTgId, amount }) });
   toast(r.fee > 0 ? `Gift sent (${r.net.toLocaleString('en-US')} LNDC, fee ${r.fee.toLocaleString('en-US')} LNDC) ✅` : 'Gift sent ✅');
-  loadMe(); loadClan();
+  loadMe(); loadClanMine();
 }
-async function kickMemberUI(tgId) { if (!confirm('be kicked?')) return; await api('/api/clan/kick', { method: 'POST', body: JSON.stringify({ targetTgId: tgId }) }); loadClan(); }
+async function kickMemberUI(tgId) { if (!confirm('be kicked?')) return; await api('/api/clan/kick', { method: 'POST', body: JSON.stringify({ targetTgId: tgId }) }); loadClanMine(); }
 
 /* ================= Clan vs clan war ================= */
 let WAR_STATE = null;
