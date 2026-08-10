@@ -66,6 +66,7 @@
     <button data-tab="leaderboard" onclick="showTab('leaderboard')">Leaderboard</button>
     <button data-tab="raffles" onclick="showTab('raffles')">🎟 Big wheel</button>
     <button data-tab="wheel" onclick="showTab('wheel')">Wheel of fortune</button>
+    <button data-tab="chests" onclick="showTab('chests')">📦 Chests</button>
     <button data-tab="auction" onclick="showTab('auction')">Auction</button>
     <button data-tab="season" onclick="showTab('season')">Battle pass</button>
     <button data-tab="clan" onclick="showTab('clan')">Clan</button>
@@ -537,6 +538,53 @@
       <div id="wheelSlotsTable"></div>
     </section>
 
+    <section class="tab" id="tab-chests">
+      <div class="card">
+        <h3>Create / edit chest</h3>
+        <input type="hidden" id="chId">
+        <label>Title</label><input id="chTitle" placeholder="e.g. Rare Chest">
+        <label>Description (optional)</label><textarea id="chDesc" rows="2"></textarea>
+        <label>Image</label>
+        <input type="file" id="chImageFile" accept="image/*" onchange="uploadImageTo('chImageFile','chImage','chImagePreview')">
+        <input type="hidden" id="chImage">
+        <img id="chImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
+        <div class="row2">
+          <div><label>Price (LNDC)</label><input type="number" id="chPrice" value="0"></div>
+          <div><label>Sort order</label><input type="number" id="chOrder" value="0"></div>
+        </div>
+        <label>active?</label>
+        <select id="chActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" onclick="saveChest()">Save</button>
+      </div>
+      <div id="chestsTable"></div>
+      <div class="card" id="chestItemsBox" style="display:none;">
+        <h3 id="chestItemsTitle"></h3>
+        <p class="muted">This is the chest's prize pool — when a user opens it, one of these items below is picked at random weighted by chance %. The chances don't have to add up to exactly 100, but 100 makes them easiest to read as real percentages.</p>
+        <input type="hidden" id="ciChestId">
+        <input type="hidden" id="ciId">
+        <label>Label (shown to the user, optional — auto-generated if left empty)</label><input id="ciLabel" placeholder="e.g. Legendary Card">
+        <div class="row2">
+          <div><label>Prize type</label>
+            <select id="ciType" onchange="toggleChestItemFields()">
+              <option value="toman">LNDC</option>
+              <option value="card">Card</option>
+              <option value="avatar">Avatar</option>
+              <option value="extra_games">Extra game</option>
+            </select>
+          </div>
+          <div><label>Win chance (%)</label><input type="number" id="ciProbability" step="0.1"></div>
+        </div>
+        <div id="ciTomanField"><label>Amount (LNDC)</label><input type="number" id="ciAmount"></div>
+        <div id="ciCardField" style="display:none;"><label>Card</label><select id="ciCardId"></select></div>
+        <div id="ciAvatarField" style="display:none;"><label>Avatar</label><select id="ciAvatarId"></select></div>
+        <div id="ciExtraField" style="display:none;"><label>Extra games count</label><input type="number" id="ciExtraCount"></div>
+        <label>active?</label>
+        <select id="ciActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" onclick="saveChestItem()">Save prize</button>
+      </div>
+      <div id="chestItemsTable"></div>
+    </section>
+
     <section class="tab" id="tab-cardtasks">
       <div class="card">
         <h3>Add / edit card task</h3>
@@ -959,7 +1007,7 @@ function showTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: loadReferralSettings, design: loadUiImages, retention: () => { loadComebackConfig(); loadBackupConfig(); }, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
-    cardcategories: loadCategories, mergecosts: loadMergeCosts, wheel: loadWheelAdmin,
+    cardcategories: loadCategories, mergecosts: loadMergeCosts, wheel: loadWheelAdmin, chests: loadChestsAdmin,
     auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
     giftcfg: loadGiftConfigAdmin, seasons: loadSeasonsAdmin, cardmarket: loadCardMarketConfigAdmin,
@@ -1741,6 +1789,119 @@ async function saveWheelSlot() {
   }) });
   document.getElementById('wsId').value = '';
   loadWheelAdmin();
+}
+
+/* ---------- Shop chests (loot boxes) ---------- */
+function toggleChestItemFields() {
+  const type = document.getElementById('ciType').value;
+  document.getElementById('ciTomanField').style.display = type === 'toman' ? 'block' : 'none';
+  document.getElementById('ciCardField').style.display = type === 'card' ? 'block' : 'none';
+  document.getElementById('ciAvatarField').style.display = type === 'avatar' ? 'block' : 'none';
+  document.getElementById('ciExtraField').style.display = type === 'extra_games' ? 'block' : 'none';
+}
+async function loadChestsAdmin() {
+  const chests = await api('/chests');
+  document.getElementById('chestsTable').innerHTML = chests.length ? `
+    <table><tr><th>Title</th><th>Price</th><th>Active</th><th>Actions</th></tr>
+    ${chests.map(c => `<tr><td>${c.title}</td><td>${Number(c.price_toman).toLocaleString('en-US')}</td><td>${c.active ? '✅' : '❌'}</td>
+      <td>
+        <button class="btn secondary" onclick='editChest(${JSON.stringify(c)})'>Edit</button>
+        <button class="btn secondary" onclick="manageChestItems(${c.id}, '${c.title.replace(/'/g, "\\'")}')">Prizes</button>
+        <button class="btn danger" onclick="deleteChestUI(${c.id})">Delete</button>
+      </td></tr>`).join('')}
+    </table>` : '<p class="muted">You have not created any chest yet.</p>';
+}
+function editChest(c) {
+  document.getElementById('chId').value = c.id;
+  document.getElementById('chTitle').value = c.title;
+  document.getElementById('chDesc').value = c.description || '';
+  document.getElementById('chImage').value = c.image_url || '';
+  const preview = document.getElementById('chImagePreview');
+  if (c.image_url) { preview.src = c.image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+  document.getElementById('chPrice').value = c.price_toman;
+  document.getElementById('chOrder').value = c.sort_order;
+  document.getElementById('chActive').value = c.active ? '1' : '0';
+}
+async function saveChest() {
+  await api('/chests', { method: 'POST', body: JSON.stringify({
+    id: document.getElementById('chId').value || null,
+    title: document.getElementById('chTitle').value,
+    description: document.getElementById('chDesc').value,
+    image_url: document.getElementById('chImage').value,
+    price_toman: document.getElementById('chPrice').value,
+    sort_order: document.getElementById('chOrder').value,
+    active: document.getElementById('chActive').value === '1',
+  }) });
+  document.getElementById('chId').value = '';
+  document.getElementById('chTitle').value = '';
+  document.getElementById('chDesc').value = '';
+  document.getElementById('chImage').value = '';
+  document.getElementById('chImagePreview').style.display = 'none';
+  loadChestsAdmin();
+}
+async function deleteChestUI(id) {
+  if (!confirm('Delete this chest and all its prizes?')) return;
+  await api(`/chests/${id}`, { method: 'DELETE' });
+  document.getElementById('chestItemsBox').style.display = 'none';
+  loadChestsAdmin();
+}
+async function manageChestItems(chestId, title) {
+  document.getElementById('ciChestId').value = chestId;
+  document.getElementById('ciId').value = '';
+  document.getElementById('chestItemsBox').style.display = 'block';
+  document.getElementById('chestItemsTitle').textContent = `Prizes for "${title}"`;
+
+  const cards = await api('/game/cards');
+  document.getElementById('ciCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const avatars = await api('/avatars');
+  document.getElementById('ciAvatarId').innerHTML = avatars.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+
+  await loadChestItemsTable(chestId);
+  document.getElementById('chestItemsBox').scrollIntoView({ behavior: 'smooth' });
+}
+async function loadChestItemsTable(chestId) {
+  const items = await api(`/chests/${chestId}/items`);
+  document.getElementById('chestItemsTable').innerHTML = items.length ? `
+    <table><tr><th>Label</th><th>Type</th><th>Chance %</th><th>Active</th><th>Actions</th></tr>
+    ${items.map(i => `<tr><td>${i.label || '(auto)'}</td><td>${i.type}</td><td>${i.probability_percent}</td><td>${i.active ? '✅' : '❌'}</td>
+      <td><button class="btn secondary" onclick='editChestItem(${JSON.stringify(i)})'>Edit</button>
+      <button class="btn danger" onclick="deleteChestItemUI(${i.id}, ${chestId})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No prize registered yet.</p>';
+}
+function editChestItem(i) {
+  document.getElementById('ciId').value = i.id;
+  document.getElementById('ciLabel').value = i.label || '';
+  document.getElementById('ciType').value = i.type;
+  document.getElementById('ciAmount').value = i.amount_toman || '';
+  document.getElementById('ciCardId').value = i.card_id || '';
+  document.getElementById('ciAvatarId').value = i.avatar_id || '';
+  document.getElementById('ciExtraCount').value = i.extra_games_count || '';
+  document.getElementById('ciProbability').value = i.probability_percent;
+  document.getElementById('ciActive').value = i.active ? '1' : '0';
+  toggleChestItemFields();
+}
+async function saveChestItem() {
+  const chestId = document.getElementById('ciChestId').value;
+  await api('/chest-items', { method: 'POST', body: JSON.stringify({
+    id: document.getElementById('ciId').value || null,
+    chest_id: Number(chestId),
+    label: document.getElementById('ciLabel').value,
+    type: document.getElementById('ciType').value,
+    amount_toman: document.getElementById('ciAmount').value,
+    card_id: document.getElementById('ciCardId').value || null,
+    avatar_id: document.getElementById('ciAvatarId').value || null,
+    extra_games_count: document.getElementById('ciExtraCount').value,
+    probability_percent: document.getElementById('ciProbability').value,
+    active: document.getElementById('ciActive').value === '1',
+  }) });
+  document.getElementById('ciId').value = '';
+  document.getElementById('ciLabel').value = '';
+  loadChestItemsTable(chestId);
+}
+async function deleteChestItemUI(id, chestId) {
+  if (!confirm('Delete this prize?')) return;
+  await api(`/chest-items/${id}`, { method: 'DELETE' });
+  loadChestItemsTable(chestId);
 }
 async function deleteWheelSlot(id) { if (confirm('be deleted?')) { await api(`/wheel/slots/${id}`, { method: 'DELETE' }); loadWheelAdmin(); } }
 
