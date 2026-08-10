@@ -946,6 +946,8 @@
 
   <div class="view" id="mview-raffle">
     <div id="raffleContent" class="muted">Loading...</div>
+    <h3 class="sec">🏆 Recent winners</h3>
+    <div id="raffleWinnersLog" class="muted">Loading...</div>
   </div>
 
   <div class="view" id="mview-album">
@@ -2435,8 +2437,21 @@ async function loadRaffles() {
            ${canBuyMore ? `<button class="btn gold" style="margin-top:8px;" onclick="buyRaffleTicketUI(${r.raffle.id})">🎫 Buy extra ticket (${r.raffle.ticket_price_toman.toLocaleString('en-US')} LNDC)</button>` : ''}`
         : `<button class="btn gold" style="margin-top:8px;" ${!r.taskDone ? 'disabled' : ''} onclick="registerRaffleUI(${r.raffle.id})">🎟 Enter the raffle</button>
            ${!r.taskDone ? `<button class="btn secondary" style="margin-top:6px;" onclick="showPage('tasks')">Go to tasks</button>` : ''}`}
+      ${r.raffle.server_seed_hash ? `<p class="muted" style="margin-top:8px;font-size:10px;word-break:break-all;">🔒 Provably fair — seed commitment: ${r.raffle.server_seed_hash}</p>` : ''}
     </div>`;
   }).join('') : '<div class="empty"><div class="eic">🎟</div>No game wheel right now.</div>';
+  loadRaffleWinnersLog();
+}
+async function loadRaffleWinnersLog() {
+  const finished = await api('/api/raffle/recent-winners');
+  const el = document.getElementById('raffleWinnersLog');
+  if (!el) return;
+  el.innerHTML = finished.length ? finished.map(r => `
+    <div class="card" style="padding:12px 14px;">
+      <div class="row"><b>${r.title}</b><span class="muted" style="font-size:11px;">${(r.finished_at || '').split(' ')[0]}</span></div>
+      <div style="margin-top:6px;">${r.winners.map(w => `<span class="tag" style="margin:2px;">${w.first_name || w.username || w.tg_id}</span>`).join('') || '<span class="muted">No entries</span>'}</div>
+      ${r.server_seed ? `<p class="muted" style="margin-top:6px;font-size:9.5px;word-break:break-all;">🔓 Revealed seed: ${r.server_seed}</p>` : ''}
+    </div>`).join('') : '<p class="muted">No finished giveaway yet.</p>';
 }
 async function registerRaffleUI(id) {
   await api(`/api/raffle/${id}/register`, { method: 'POST' });
@@ -2564,7 +2579,11 @@ async function loadProfile() {
   `;
   loadReferral();
 }
-async function doCheckinUI() { const r = await api('/api/rank/checkin', { method: 'POST' }); toast(`+${r.xpGained} XP ✅`); loadProfile(); }
+async function doCheckinUI() {
+  const r = await api('/api/rank/checkin', { method: 'POST' });
+  toast(r.streakReward > 0 ? `+${r.xpGained} XP, and a ${r.streakReward.toLocaleString('en-US')} LNDC bonus for a ${r.streak}-day streak! 🔥` : `+${r.xpGained} XP — ${r.streak}-day streak 🔥`);
+  loadMe(); loadProfile();
+}
 async function loadAvatarsShop() {
   const mine = await api('/api/avatars/my');
   document.getElementById('myAvatarsList').innerHTML = mine.length ? mine.map(a => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${a.name}</span><button class="btn" style="width:auto;" onclick="equipAvatarUI(${a.avatar_id})">Use</button></div></div>`).join('') : 'You do not have any avatars yet.';
