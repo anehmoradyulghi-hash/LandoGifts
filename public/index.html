@@ -658,6 +658,10 @@
 <section class="page" id="page-shop">
   <h3 class="sec" style="margin-top:0;">🔥 Best-sellers</h3>
   <div class="hscroll" id="shopBestsellers"></div>
+  <div id="chestSection" style="display:none;">
+    <h3 class="sec">📦 Chests</h3>
+    <div id="chestList"></div>
+  </div>
   <h3 class="sec">All products</h3>
   <div id="productList"><div class="skeleton"></div></div>
 </section>
@@ -1281,7 +1285,33 @@ async function loadGamesHub() {
 }
 
 /* ================= Shop ================= */
+async function loadChests() {
+  const section = document.getElementById('chestSection');
+  const list = document.getElementById('chestList');
+  try {
+    const chests = await api('/api/chests');
+    if (!chests.length) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    list.innerHTML = `<div class="shop-grid">${chests.map((c, i) => `
+      <div class="shop-card" ${staggerStyle(i)}>
+        <div class="shop-imgwrap">${c.image_url ? `<img src="${c.image_url}">` : '<span class="ic-fallback">📦</span>'}</div>
+        <div class="shop-body">
+          <div class="shop-name">${c.title}</div>
+          ${c.description ? `<div class="shop-desc">${c.description}</div>` : ''}
+          <button class="shop-buy-pill" onclick="openChestUI(${c.id}, '${c.title.replace(/'/g, "\\'")}')">${c.price_toman > 0 ? c.price_toman.toLocaleString('en-US') + ' LNDC' : 'Free'}</button>
+        </div>
+      </div>`).join('')}</div>`;
+  } catch (e) { section.style.display = 'none'; }
+}
+async function openChestUI(id, title) {
+  try {
+    const r = await api(`/api/chests/${id}/open`, { method: 'POST' });
+    toast(`🎉 ${title}: you won ${r.won.display}!`);
+    loadMe();
+  } catch (e) { /* api() already showed the error toast */ }
+}
 async function loadShop() {
+  loadChests();
   const el = document.getElementById('productList');
   try {
     const products = await api('/api/products');
