@@ -701,8 +701,8 @@
       <input type="hidden" id="giftImage">
       <img id="giftImagePreview" style="max-width:100px;border-radius:10px;display:none;margin-bottom:8px;">
       <label>Price (LNDC)</label><input type="number" id="giftPrice">
-      <label>Serial/model number (optional)</label><input type="text" id="giftSerial" placeholder="e.g. #126547">
-      <label>Gift link (optional)</label><input type="text" id="giftLink" placeholder="https://t.me/nft/...">
+      <label>Serial/model number</label><input type="text" id="giftSerial" placeholder="e.g. #126547">
+      <label>Gift link</label><input type="text" id="giftLink" placeholder="https://t.me/nft/...">
       <button class="btn" id="giftSubmitBtn" onclick="listGift()">Post listing</button>
       <button class="btn ghost" id="giftCancelEditBtn" style="display:none;" onclick="cancelEditGift()">Cancel editing</button>
     </div>
@@ -1604,9 +1604,11 @@ async function listGift() {
   const title = document.getElementById('giftTitle').value;
   const image_url = document.getElementById('giftImage').value;
   const price = Number(document.getElementById('giftPrice').value);
-  const serial_number = document.getElementById('giftSerial').value;
-  const link = document.getElementById('giftLink').value;
+  const serial_number = document.getElementById('giftSerial').value.trim();
+  const link = document.getElementById('giftLink').value.trim();
   const editId = document.getElementById('giftEditId').value;
+  if (!serial_number) { toast('Serial/model number is required'); return; }
+  if (!link) { toast('Gift link is required'); return; }
   if (editId) {
     await api(`/api/gifts/${editId}/edit`, { method: 'POST', body: JSON.stringify({ title, image_url, price, serial_number, link }) });
     toast('Listing edited and is pending admin approval again ✅');
