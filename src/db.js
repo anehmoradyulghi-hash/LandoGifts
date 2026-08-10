@@ -551,6 +551,8 @@ export function setOrderStatus(id, status) { db.prepare('UPDATE orders SET statu
  * GIFT MARKET — Consignment market for real gifts between users
  * ========================================================================= */
 export function createGiftOffer(sellerTgId, title, imageUrl, priceToman, serialNumber, link) {
+  if (!serialNumber || !String(serialNumber).trim()) throw new Error('Serial/model number is required');
+  if (!link || !String(link).trim()) throw new Error('Gift link is required');
   // If the admin has defined categories, the listing title must be exactly one of them (not free text)
   const categories = listGiftCategories(true);
   if (categories.length && !categories.some(c => c.name === title)) {
@@ -575,6 +577,8 @@ export function cancelGiftOffer(tgId, id) {
 }
 // Listing edited by seller — needs re-approval after editing
 export function updateGiftOffer(tgId, id, { title, image_url, price_toman, serial_number, link }) {
+  if (!serial_number || !String(serial_number).trim()) throw new Error('Serial/model number is required');
+  if (!link || !String(link).trim()) throw new Error('Gift link is required');
   const offer = getGiftOffer(id);
   if (!offer || offer.seller_tg_id !== tgId) throw new Error('This listing does not belong to you');
   if (offer.status !== 'active' && offer.status !== 'pending') throw new Error('This listing cannot be edited in its current state');

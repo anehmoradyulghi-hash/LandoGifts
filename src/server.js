@@ -415,6 +415,8 @@ app.post('/api/gifts/list', requireTelegramAuth, (req, res) => {
   const { title, image_url, price, serial_number, link } = req.body;
   const p = Number(price);
   if (!title || !p || p < 5000) return res.status(400).json({ error: 'A valid title and price (minimum 5,000 LNDC) are required' });
+  if (!serial_number || !String(serial_number).trim()) return res.status(400).json({ error: 'Serial/model number is required' });
+  if (!link || !String(link).trim()) return res.status(400).json({ error: 'Gift link is required' });
   const categories = listGiftCategories(true);
   if (categories.length && !categories.some(c => c.name === title)) return res.status(400).json({ error: 'This category is not approved, pick from the list' });
   const id = createGiftOffer(req.dbUser.tg_id, title, image_url, p, serial_number, link);
@@ -425,6 +427,8 @@ app.post('/api/gifts/:id/edit', requireTelegramAuth, (req, res) => {
     const { title, image_url, price, serial_number, link } = req.body;
     const p = Number(price);
     if (!title || !p || p < 5000) return res.status(400).json({ error: 'A valid title and price (minimum 5,000 LNDC) are required' });
+    if (!serial_number || !String(serial_number).trim()) return res.status(400).json({ error: 'Serial/model number is required' });
+    if (!link || !String(link).trim()) return res.status(400).json({ error: 'Gift link is required' });
     updateGiftOffer(req.dbUser.tg_id, Number(req.params.id), { title, image_url, price_toman: p, serial_number, link });
     res.json({ ok: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
