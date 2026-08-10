@@ -49,6 +49,7 @@
     <button data-tab="payment" onclick="showTab('payment')">Payment</button>
     <button data-tab="referral" onclick="showTab('referral')">Referral rewards</button>
     <button data-tab="design" onclick="showTab('design')">🎨 App design</button>
+    <button data-tab="retention" onclick="showTab('retention')">🔁 Retention</button>
     <button data-tab="messages" onclick="showTab('messages')">Messages</button>
     <button data-tab="topups" onclick="showTab('topups')">Card-to-card top-up</button>
     <button data-tab="withdrawals" onclick="showTab('withdrawals')">LNDC withdrawal</button>
@@ -197,6 +198,34 @@
         <label>Leaderboard banner</label><input id="uiImgCardLeaderboard" placeholder="https://...">
         <button class="btn" onclick="saveUiImages()">Save</button>
         <p class="muted" id="uiImagesSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-retention">
+      <div class="card">
+        <h3>🔁 Comeback (re-engagement) notifications</h3>
+        <p class="muted">A background check runs hourly: any user inactive past the threshold below (and not reminded again within the cooldown) gets a Telegram message, optionally with a small LNDC gift already added to their wallet.</p>
+        <select id="cbEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
+        <div class="row2">
+          <div><label>Inactive for (days)</label><input type="number" id="cbInactiveDays" min="1"></div>
+          <div><label>Don't remind again for (days)</label><input type="number" id="cbCooldownDays" min="1"></div>
+        </div>
+        <label>Gift amount (LNDC, 0 = no gift)</label><input type="number" id="cbReward" min="0">
+        <label>Message</label><textarea id="cbMessage" rows="3"></textarea>
+        <button class="btn" onclick="saveComebackConfig()">Save</button>
+        <p class="muted" id="cbSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
+      </div>
+      <div class="card">
+        <h3>💾 Database backups</h3>
+        <p class="muted">Automatic scheduled backups of the whole database, safe to run while the server is live. Old backups beyond the retention count are deleted automatically.</p>
+        <select id="bkEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
+        <div class="row2">
+          <div><label>Interval (hours)</label><input type="number" id="bkIntervalHours" min="1"></div>
+          <div><label>Keep last N backups</label><input type="number" id="bkRetentionCount" min="1"></div>
+        </div>
+        <button class="btn" onclick="saveBackupConfig()">Save</button>
+        <button class="btn secondary" onclick="runBackupNowUI()">Run backup now</button>
+        <div id="backupList" style="margin-top:10px;"></div>
       </div>
     </section>
 
@@ -700,6 +729,16 @@
         <button class="btn secondary" onclick="resetRankTitleForm()">New form</button>
       </div>
       <div id="rankTitlesTable"></div>
+      <div class="card">
+        <h3>🔥 Check-in streak rewards</h3>
+        <p class="muted">A one-time LNDC bonus paid automatically when a user checks in this many days in a row (e.g. 3, 7, 30). Missing a day resets the streak to zero.</p>
+        <div class="row2">
+          <div><label>Streak length (days)</label><input type="number" id="srDays" min="1"></div>
+          <div><label>Reward (LNDC)</label><input type="number" id="srReward" min="0"></div>
+        </div>
+        <button class="btn" onclick="saveStreakReward()">Save milestone</button>
+        <div id="streakRewardsTable" style="margin-top:10px;"></div>
+      </div>
     </section>
 
     <section class="tab" id="tab-quests">
@@ -919,7 +958,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: loadReferralSettings, design: loadUiImages, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
+  const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: loadReferralSettings, design: loadUiImages, retention: () => { loadComebackConfig(); loadBackupConfig(); }, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
     cardcategories: loadCategories, mergecosts: loadMergeCosts, wheel: loadWheelAdmin,
     auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
@@ -1064,6 +1103,56 @@ async function saveUiImages() {
   const msg = document.getElementById('uiImagesSavedMsg');
   msg.style.display = 'block';
   setTimeout(() => msg.style.display = 'none', 2500);
+}
+/* ---------- Comeback notifications ---------- */
+async function loadComebackConfig() {
+  const c = await api('/comeback-config');
+  document.getElementById('cbEnabled').value = c.enabled ? '1' : '0';
+  document.getElementById('cbInactiveDays').value = c.inactive_days;
+  document.getElementById('cbCooldownDays').value = c.cooldown_days;
+  document.getElementById('cbReward').value = c.reward_toman;
+  document.getElementById('cbMessage').value = c.message;
+}
+async function saveComebackConfig() {
+  await api('/comeback-config', { method: 'POST', body: JSON.stringify({
+    enabled: document.getElementById('cbEnabled').value === '1',
+    inactive_days: document.getElementById('cbInactiveDays').value,
+    cooldown_days: document.getElementById('cbCooldownDays').value,
+    reward_toman: document.getElementById('cbReward').value,
+    message: document.getElementById('cbMessage').value,
+  }) });
+  const msg = document.getElementById('cbSavedMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
+}
+/* ---------- Database backups ---------- */
+function formatBackupSize(bytes) { return bytes > 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(1) + ' MB' : Math.round(bytes / 1024) + ' KB'; }
+async function loadBackupConfig() {
+  const c = await api('/backup/config');
+  document.getElementById('bkEnabled').value = c.enabled ? '1' : '0';
+  document.getElementById('bkIntervalHours').value = c.intervalHours;
+  document.getElementById('bkRetentionCount').value = c.retentionCount;
+  await loadBackupList();
+}
+async function loadBackupList() {
+  const backups = await api('/backup/list');
+  document.getElementById('backupList').innerHTML = backups.length ? `
+    <table><tr><th>File</th><th>Size</th><th>Date</th></tr>
+    ${backups.map(b => `<tr><td style="font-size:11px;">${b.name}</td><td>${formatBackupSize(b.sizeBytes)}</td><td style="font-size:11px;">${new Date(b.createdAt).toLocaleString('en-US')}</td></tr>`).join('')}
+    </table>` : '<p class="muted">No backup has been made yet.</p>';
+}
+async function saveBackupConfig() {
+  await api('/backup/config', { method: 'POST', body: JSON.stringify({
+    enabled: document.getElementById('bkEnabled').value === '1',
+    intervalHours: document.getElementById('bkIntervalHours').value,
+    retentionCount: document.getElementById('bkRetentionCount').value,
+  }) });
+  alert('Saved');
+}
+async function runBackupNowUI() {
+  await api('/backup/run', { method: 'POST' });
+  alert('Backup completed ✅');
+  loadBackupList();
 }
 async function saveSupportContact() {
   await api('/support-contact', { method: 'POST', body: JSON.stringify({ username: document.getElementById('supportUsername').value }) });
@@ -2019,7 +2108,26 @@ async function loadRankAdmin() {
     </table>` : '<p class="muted">No avatar registered yet.</p>';
 
   await loadRankTitles();
+  await loadStreakRewards();
 }
+/* ---------- Check-in streak rewards ---------- */
+async function loadStreakRewards() {
+  const rows = await api('/rank/streak-rewards');
+  document.getElementById('streakRewardsTable').innerHTML = rows.length ? `
+    <table><tr><th>Days</th><th>Reward (LNDC)</th><th>Actions</th></tr>
+    ${rows.map(r => `<tr><td>${r.streak_days}</td><td>${r.reward_toman.toLocaleString('en-US')}</td>
+      <td><button class="btn danger" onclick="deleteStreakRewardUI(${r.streak_days})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No streak milestone set yet.</p>';
+}
+async function saveStreakReward() {
+  const days = document.getElementById('srDays').value;
+  const reward = document.getElementById('srReward').value;
+  if (!days) { alert('Enter the streak length'); return; }
+  await api('/rank/streak-rewards', { method: 'POST', body: JSON.stringify({ streak_days: days, reward_toman: reward }) });
+  document.getElementById('srDays').value = ''; document.getElementById('srReward').value = '';
+  loadStreakRewards();
+}
+async function deleteStreakRewardUI(days) { if (confirm('Delete this milestone?')) { await api(`/rank/streak-rewards/${days}`, { method: 'DELETE' }); loadStreakRewards(); } }
 /* ---------- Rank titles ---------- */
 async function loadRankTitles() {
   const rows = await api('/rank/titles');
