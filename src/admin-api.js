@@ -53,6 +53,7 @@ import {
   listAvatars, upsertAvatar, deleteAvatar, listStreakRewards, setStreakReward, deleteStreakReward,
 } from './rank-db.js';
 import { getQuestConfig, setQuestConfig, listQuestTemplates, upsertQuestTemplate, deleteQuestTemplate } from './quest-db.js';
+import { listChests, getChest, upsertChest, deleteChest, listChestItems, upsertChestItem, deleteChestItem } from './chest-db.js';
 import { listPromoCodes, createPromoCode, deletePromoCode, listRedemptions } from './promo-db.js';
 import { listAlbums, upsertAlbum, deleteAlbum, getAlbumRequirements } from './album-db.js';
 import { getGiftConfig, setGiftConfig } from './gift-db.js';
@@ -678,6 +679,20 @@ async function postGiveawayToChannel(raffle, phase, winners = []) {
     else await sendMessage(channelId, text);
   }
 }
+
+/* ---------- Shop chests (loot boxes) ---------- */
+router.get('/chests', (req, res) => res.json(listChests(false)));
+router.post('/chests', (req, res) => {
+  try { res.json({ ok: true, id: upsertChest(req.body) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/chests/:id', (req, res) => { deleteChest(Number(req.params.id)); res.json({ ok: true }); });
+router.get('/chests/:id/items', (req, res) => res.json(listChestItems(Number(req.params.id))));
+router.post('/chest-items', (req, res) => {
+  try { res.json({ ok: true, id: upsertChestItem(req.body) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/chest-items/:id', (req, res) => { deleteChestItem(Number(req.params.id)); res.json({ ok: true }); });
 
 /* ---------- Ranking, title, avatar ---------- */
 router.get('/rank/config', (req, res) => res.json(getRankConfig()));

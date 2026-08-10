@@ -58,6 +58,7 @@ import {
 } from './rank-db.js';
 import { getTodayQuestsForUser, incrementQuestProgress, claimQuestReward } from './quest-db.js';
 import { redeemPromoCode } from './promo-db.js';
+import { listChestsForClient, buyAndOpenChest, getChestHistory } from './chest-db.js';
 import { listAlbums, getAlbumProgress, claimAlbumReward } from './album-db.js';
 import { getGiftConfig, giftToman, giftCard, getRemainingCardGifts } from './gift-db.js';
 import { checkExpiredSeasons } from './seasonal-db.js';
@@ -500,6 +501,18 @@ app.post('/api/wheel/spin', requireTelegramAuth, (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.get('/api/wheel/history', requireTelegramAuth, (req, res) => res.json(getWheelHistory(req.dbUser.tg_id)));
+
+/* =========================================================================
+ * Shop chests (loot boxes) — bought with toman from the shop, opened instantly
+ * ========================================================================= */
+app.get('/api/chests', (req, res) => res.json(listChestsForClient()));
+app.post('/api/chests/:id/open', requireTelegramAuth, (req, res) => {
+  try {
+    const result = buyAndOpenChest(req.dbUser.tg_id, Number(req.params.id));
+    res.json({ ok: true, won: result.won, items: result.items });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/chests/history', requireTelegramAuth, (req, res) => res.json(getChestHistory(req.dbUser.tg_id)));
 
 /* =========================================================================
  * Flash auction

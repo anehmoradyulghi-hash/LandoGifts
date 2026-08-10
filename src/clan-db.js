@@ -72,6 +72,11 @@ function safeAddColumn(table, columnDef) {
 // how much of their own donated share they've withdrawn/gifted so far — so they cannot withdraw more than their own contribution
 safeAddColumn('clan_members', 'withdrawn_total INTEGER NOT NULL DEFAULT 0');
 safeAddColumn('clan_config', 'withdraw_fee_percent INTEGER NOT NULL DEFAULT 0');
+// These two were added to the `clans` table after it was already deployed on existing installs —
+// CREATE TABLE IF NOT EXISTS above does nothing for a table that already exists, so without this
+// migration old databases are left missing the columns entirely ("no such column: join_policy").
+safeAddColumn('clans', "join_policy TEXT NOT NULL DEFAULT 'open'");
+safeAddColumn('clans', 'min_level INTEGER NOT NULL DEFAULT 0');
 
 export function getClanConfig() { return db.prepare('SELECT * FROM clan_config WHERE id = 1').get(); }
 export function setClanConfig(c) {
