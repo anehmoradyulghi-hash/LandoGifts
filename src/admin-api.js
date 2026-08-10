@@ -18,7 +18,7 @@ import {
   getTomanTopup, getTomanWithdrawal,
   getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact, getInfoPage, setInfoPage,
   getGiveawayChannelSettings, setGiveawayChannelSettings,
-  getUiImages, setUiImages,
+  getUiImages, setUiImages, getComebackConfig, setComebackConfig,
   getReferralSettings, setReferralSettings, getLndcWalletSettings, setLndcWalletSettings,
   listGiftCategories, upsertGiftCategory, deleteGiftCategory,
   getMessageSettings, setMessageSettings, getAllUserIds,
@@ -50,7 +50,7 @@ import {
 } from './raffle-db.js';
 import {
   getRankConfig, setRankConfig, listRankTitles, upsertRankTitle, deleteRankTitle,
-  listAvatars, upsertAvatar, deleteAvatar,
+  listAvatars, upsertAvatar, deleteAvatar, listStreakRewards, setStreakReward, deleteStreakReward,
 } from './rank-db.js';
 import { getQuestConfig, setQuestConfig, listQuestTemplates, upsertQuestTemplate, deleteQuestTemplate } from './quest-db.js';
 import { listPromoCodes, createPromoCode, deletePromoCode, listRedemptions } from './promo-db.js';
@@ -59,6 +59,7 @@ import { getGiftConfig, setGiftConfig } from './gift-db.js';
 import { listSeasons, createSeason, deleteSeason, setCardSeason } from './seasonal-db.js';
 import { getCardMarketConfig, setCardMarketConfig, listCardMarketOffers } from './card-market-db.js';
 import { sendMessage, sendPhoto } from './telegram.js';
+import { getBackupConfig, setBackupConfig, listBackups, runBackupNow } from './backup.js';
 
 const router = express.Router();
 
@@ -157,6 +158,28 @@ router.post('/payment-settings', (req, res) => {
 /* ---------- Design images for the mini app's main sections (hub tiles + section banners) ---------- */
 router.get('/ui-images', (req, res) => res.json(getUiImages()));
 router.post('/ui-images', (req, res) => { setUiImages(req.body); res.json({ ok: true }); });
+
+/* ---------- Comeback (re-engagement) notifications ---------- */
+router.get('/comeback-config', (req, res) => res.json(getComebackConfig()));
+router.post('/comeback-config', (req, res) => {
+  setComebackConfig({
+    enabled: !!req.body.enabled, inactive_days: req.body.inactive_days,
+    reward_toman: req.body.reward_toman, message: req.body.message, cooldown_days: req.body.cooldown_days,
+  });
+  res.json({ ok: true });
+});
+
+/* ---------- Database backups ---------- */
+router.get('/backup/config', (req, res) => res.json(getBackupConfig()));
+router.post('/backup/config', (req, res) => {
+  setBackupConfig({ enabled: !!req.body.enabled, intervalHours: req.body.intervalHours, retentionCount: req.body.retentionCount });
+  res.json({ ok: true });
+});
+router.get('/backup/list', (req, res) => res.json(listBackups()));
+router.post('/backup/run', async (req, res) => {
+  try { const file = await runBackupNow(); res.json({ ok: true, file }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 /* ---------- Enable/disable deposit & withdraw for the default currency (Lando Coin) ---------- */
 router.get('/lndc-wallet-settings', (req, res) => res.json(getLndcWalletSettings()));
@@ -673,6 +696,14 @@ router.post('/rank/titles', (req, res) => {
   res.json({ ok: true });
 });
 router.delete('/rank/titles/:t', (req, res) => { deleteRankTitle(Number(req.params.t)); res.json({ ok: true }); });
+
+/* ---------- Check-in streak rewards ---------- */
+router.get('/rank/streak-rewards', (req, res) => res.json(listStreakRewards()));
+router.post('/rank/streak-rewards', (req, res) => {
+  setStreakReward(req.body.streak_days, req.body.reward_toman);
+  res.json({ ok: true });
+});
+router.delete('/rank/streak-rewards/:days', (req, res) => { deleteStreakReward(req.params.days); res.json({ ok: true }); });
 
 router.get('/avatars', (req, res) => res.json(listAvatars(false)));
 router.post('/avatars', (req, res) => {

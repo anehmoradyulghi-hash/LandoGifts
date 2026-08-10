@@ -812,4 +812,43 @@ export function getAllUserIds() {
   return db.prepare('SELECT tg_id FROM users').all().map(r => r.tg_id);
 }
 
+/* =========================================================================
+ * Comeback notifications — if a user hasn't opened the mini app in a while, send them a Telegram
+ * message (optionally with a small LNDC reward) to bring them back. A background scheduler in
+ * server.js calls findUsersDueForComebackReminder() periodically and sends to whoever qualifies.
+ * ========================================================================= */
+safeAddColumn('users', 'last_comeback_reminder_at TEXT'); // when we last sent this user a comeback reminder — prevents repeat spam
+db.exec(`
+CREATE TABLE IF NOT EXISTS comeback_config (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  enabled INTEGER NOT NULL DEFAULT 0,
+  inactive_days INTEGER NOT NULL DEFAULT 3,   -- how many days of no activity before we consider them "gone"
+  reward_toman INTEGER NOT NULL DEFAULT 0,    -- 0 = no reward, just the message
+  message TEXT NOT NULL DEFAULT 'We miss you! Come back and claim a little gift 🎁',
+  cooldown_days INTEGER NOT NULL DEFAULT 14   -- don't remind the same user again within this many days
+);
+INSERT OR IGNORE INTO comeback_config (id) VALUES (1);
+`);
+export function getComebackConfig() { return db.prepare('SELECT * FROM comeback_config WHERE id = 1').get(); }
+export function setComebackConfig(c) {
+  db.prepare(`UPDATE comeback_config SET enabled=?, inactive_days=?, reward_toman=?, message=?, cooldown_days=? WHERE id = 1`)
+    .run(c.enabled ? 1 : 0, Math.max(1, Number(c.inactive_days) || 3), Math.max(0, Number(c.reward_toman) || 0), c.message || '', Math.max(1, Number(c.cooldown_days) || 14));
+}
+// Users who've been inactive long enough and either never got a reminder, or their last one was
+// far enough in the past (cooldown) — this is the only place this table is queried, kept here next
+// to the column/config it depends on rather than duplicated at each call site.
+export function findUsersDueForComebackReminder() {
+  const cfg = getComebackConfig();
+  if (!cfg.enabled) return [];
+  return db.prepare(`
+    SELECT tg_id FROM users
+    WHERE is_banned = 0
+      AND last_seen_at < datetime('now', ?)
+      AND (last_comeback_reminder_at IS NULL OR last_comeback_reminder_at < datetime('now', ?))
+  `).all(`-${cfg.inactive_days} days`, `-${cfg.cooldown_days} days`).map(r => r.tg_id);
+}
+export function markComebackReminderSent(tgId) {
+  db.prepare(`UPDATE users SET last_comeback_reminder_at = datetime('now') WHERE tg_id = ?`).run(tgId);
+}
+
 export default db;

@@ -20,6 +20,7 @@ import db, {
   listActiveTasks, hasClaimedTask, claimTask, getTask,
   getPaymentSettings, getMessageSettings, getSupportContact, getInfoPage, getLndcWalletSettings, getUiImages,
   createStarPaymentRequest, getStarPayment, completeStarPayment,
+  getComebackConfig, findUsersDueForComebackReminder, markComebackReminderSent,
 } from './db.js';
 import {
   listGameCards, getUserCards, buyGameCard, sacrificeCards, getMutationGroups, mutateCards, getGameCard,
@@ -49,9 +50,9 @@ import {
   createClanWar, cancelClanWar, joinClanWar, submitWarPicks, getClanWar, getMemberCardsForLeader,
 } from './clan-war-db.js';
 import { getLeagueConfig, getUserLeagueInfo, getLeagueLeaderboard, checkAutoResetLeague } from './league-db.js';
-import { listOpenRaffles, getRaffleStatusForUser, registerForRaffle, buyRaffleTicket, getRaffle } from './raffle-db.js';
+import { listOpenRaffles, getRaffleStatusForUser, registerForRaffle, buyRaffleTicket, getRaffle, listRecentRaffleWinners } from './raffle-db.js';
 import {
-  getRankConfig, getUserRankInfo, addUserXp, canCheckinToday, doCheckin,
+  getRankConfig, getUserRankInfo, addUserXp, canCheckinToday, doCheckin, listStreakRewards,
   listAvatars, getMyAvatars, buyAvatar, equipAvatar,
   getLevelLeaderboard, getUserLevelRank, getUserLevelRow,
 } from './rank-db.js';
@@ -66,6 +67,7 @@ import {
 } from './card-market-db.js';
 import adminApi from './admin-api.js';
 import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
+import { startBackupScheduler } from './backup.js';
 
 // Some servers (like this VPS) have broken/filtered IPv6 but their IPv4 is fine. Without this line,
 // Node sometimes tries IPv6 first, gets stuck, and before reaching a healthy IPv4, the request
@@ -73,6 +75,10 @@ import './db-indexes.js'; // must be imported last — creates indexes on every 
 dns.setDefaultResultOrder('ipv4first');
 
 const app = express();
+// Deployed behind a reverse proxy/tunnel (Railway, Termux tunnel, etc. — see DEPLOY.md), so trust the
+// X-Forwarded-For header for req.ip; without this every request would appear to come from the same
+// proxy IP, which would make the per-IP rate limiter below apply globally instead of per visitor.
+app.set('trust proxy', true);
 app.use(express.json());
 
 /* ================= Force English (Latin) digits everywhere =================
@@ -93,6 +99,35 @@ function toEnglishDigitsDeep(value) {
   return value;
 }
 app.use((req, res, next) => { if (req.body) req.body = toEnglishDigitsDeep(req.body); next(); });
+
+/* ================= Simple in-memory rate limiting =================
+   No external dependency — a per-IP sliding window over the last 60 seconds, applied to API routes
+   only. This is a basic abuse/spam guard (e.g. someone hammering the wheel-spin or chat-send
+   endpoints), not a replacement for a proper edge/CDN rate limiter in front of the server, and it
+   resets on restart since it's in-memory — that's an acceptable tradeoff for a single-process app. */
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 180; // per IP per window — generous for normal mini-app usage, tight enough to blunt a spam loop
+const rateLimitHits = new Map(); // ip -> timestamps of requests within the current window
+setInterval(() => { // periodic cleanup so the map doesn't grow forever from one-off visitors
+  const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS;
+  for (const [ip, timestamps] of rateLimitHits) {
+    const recent = timestamps.filter(t => t > cutoff);
+    if (recent.length === 0) rateLimitHits.delete(ip); else rateLimitHits.set(ip, recent);
+  }
+}, 5 * 60 * 1000);
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api') && !req.path.startsWith('/admin/api')) return next();
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const cutoff = now - RATE_LIMIT_WINDOW_MS;
+  const timestamps = (rateLimitHits.get(ip) || []).filter(t => t > cutoff);
+  timestamps.push(now);
+  rateLimitHits.set(ip, timestamps);
+  if (timestamps.length > RATE_LIMIT_MAX_REQUESTS) {
+    return res.status(429).json({ error: 'Too many requests, slow down and try again' });
+  }
+  next();
+});
 
 // We wrap every async route with this so that if it throws or rejects, it goes straight to
 // error middleware and a proper response is returned — instead of the request hanging or the server crashing.
@@ -656,6 +691,7 @@ app.get('/api/raffle/list', requireTelegramAuth, (req, res) => {
   const raffles = listOpenRaffles().map(r => getRaffleStatusForUser(r.id, req.dbUser.tg_id));
   res.json(raffles);
 });
+app.get('/api/raffle/recent-winners', requireTelegramAuth, (req, res) => res.json(listRecentRaffleWinners(10)));
 app.post('/api/raffle/:id/register', requireTelegramAuth, (req, res) => {
   try { registerForRaffle(req.dbUser.tg_id, Number(req.params.id)); incrementQuestProgress(req.dbUser.tg_id, 'join_raffle', 1); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
@@ -671,6 +707,7 @@ app.post('/api/rank/checkin', requireTelegramAuth, (req, res) => {
     res.json({ ok: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
+app.get('/api/rank/streak-rewards', (req, res) => res.json(listStreakRewards()));
 app.get('/api/avatars', (req, res) => res.json(listAvatars(true)));
 app.get('/api/avatars/my', requireTelegramAuth, (req, res) => res.json(getMyAvatars(req.dbUser.tg_id)));
 app.post('/api/avatars/buy', requireTelegramAuth, (req, res) => {
@@ -1066,6 +1103,23 @@ setInterval(() => {
   try { checkAutoResetLeague(); } catch (e) { console.error('[league auto-reset]', e); }
 }, 60 * 60 * 1000);
 
+// Sends a "come back" reminder (with an optional small LNDC gift) to users who've been inactive
+// past the admin-set threshold, at most once per cooldown window per user — checked hourly so an
+// inactive user gets picked up reasonably soon without hammering the Telegram API constantly.
+setInterval(() => {
+  try {
+    const cfg = getComebackConfig();
+    if (!cfg.enabled) return;
+    const dueUserIds = findUsersDueForComebackReminder();
+    for (const tgId of dueUserIds) {
+      if (cfg.reward_toman > 0) adjustToman(tgId, cfg.reward_toman, 'Comeback reminder gift');
+      const text = cfg.reward_toman > 0 ? `${cfg.message}\n\n🎁 A ${cfg.reward_toman.toLocaleString()} LNDC gift is waiting in your wallet!` : cfg.message;
+      sendMessage(tgId, text).catch(() => {});
+      markComebackReminderSent(tgId);
+    }
+  } catch (e) { console.error('[comeback reminder]', e); }
+}, 60 * 60 * 1000);
+
 // Register the Telegram webhook; if the domain/tunnel is not up yet (e.g. during boot on
 // Termux), instead of just failing once and giving up, it retries every 30 seconds
 async function ensureWebhookRegistered() {
@@ -1083,4 +1137,5 @@ async function ensureWebhookRegistered() {
 app.listen(process.env.PORT || 3000, () => {
   console.log(`🚀 Lando Gifts server running on port ${process.env.PORT || 3000}`);
   ensureWebhookRegistered();
+  startBackupScheduler();
 });

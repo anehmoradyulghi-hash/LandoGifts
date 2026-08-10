@@ -130,6 +130,19 @@ export function getUserLevelRow(tgId) {
 export function canCheckinToday(tgId) {
   return !db.prepare(`SELECT 1 FROM daily_checkins WHERE tg_id = ? AND checkin_date = date('now')`).get(tgId);
 }
+// Consecutive-day streak, counting backward from today. Only meaningful right after today's
+// check-in row has already been inserted (that's the only caller).
+function getCurrentStreak(tgId) {
+  const rows = db.prepare(`SELECT checkin_date FROM daily_checkins WHERE tg_id = ? ORDER BY checkin_date DESC LIMIT 400`).all(tgId);
+  let streak = 0;
+  const expected = new Date();
+  for (const r of rows) {
+    const expectedStr = expected.toISOString().slice(0, 10);
+    if (r.checkin_date === expectedStr) { streak++; expected.setDate(expected.getDate() - 1); }
+    else break;
+  }
+  return streak;
+}
 export function doCheckin(tgId) {
   if (!canCheckinToday(tgId)) throw new Error('You have already checked in today');
   const cfg = getRankConfig();
@@ -138,8 +151,30 @@ export function doCheckin(tgId) {
     addUserXp(tgId, cfg.xp_per_checkin);
   });
   tx();
-  return { xpGained: cfg.xp_per_checkin };
+  const streak = getCurrentStreak(tgId);
+  const milestone = db.prepare('SELECT reward_toman FROM streak_rewards WHERE streak_days = ?').get(streak);
+  let streakReward = 0;
+  if (milestone && milestone.reward_toman > 0) {
+    adjustToman(tgId, milestone.reward_toman, `${streak}-day check-in streak reward`);
+    streakReward = milestone.reward_toman;
+  }
+  return { xpGained: cfg.xp_per_checkin, streak, streakReward };
 }
+
+/* ---- Streak rewards (admin-configurable milestones: check in N days in a row → LNDC bonus) ---- */
+db.exec(`
+CREATE TABLE IF NOT EXISTS streak_rewards (
+  streak_days INTEGER PRIMARY KEY,
+  reward_toman INTEGER NOT NULL DEFAULT 0
+);
+`);
+export function listStreakRewards() { return db.prepare('SELECT * FROM streak_rewards ORDER BY streak_days ASC').all(); }
+export function setStreakReward(streakDays, rewardToman) {
+  const days = Math.max(1, Number(streakDays) || 0);
+  const reward = Math.max(0, Math.round(Number(rewardToman) || 0));
+  db.prepare(`INSERT INTO streak_rewards (streak_days, reward_toman) VALUES (?,?) ON CONFLICT(streak_days) DO UPDATE SET reward_toman = excluded.reward_toman`).run(days, reward);
+}
+export function deleteStreakReward(streakDays) { db.prepare('DELETE FROM streak_rewards WHERE streak_days = ?').run(Number(streakDays)); }
 
 /* ---------- Avatars ---------- */
 export function listAvatars(onlyActive = false) {
