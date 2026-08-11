@@ -100,13 +100,12 @@ export function deleteChestItem(id) { db.prepare('DELETE FROM chest_items WHERE 
 // to separately look up card or avatar names itself.
 function describeItem(item) {
   let display = item.label;
-  if (!display) {
-    if (item.type === 'toman') display = `${Number(item.amount_toman).toLocaleString('en-US')} Toman`;
-    else if (item.type === 'card') display = getGameCard(item.card_id)?.name || 'Card';
-    else if (item.type === 'avatar') display = getAvatar(item.avatar_id)?.name || 'Avatar';
-    else if (item.type === 'extra_games') display = `${item.extra_games_count} extra game(s)`;
-  }
-  return { ...item, display };
+  let image = null;
+  if (item.type === 'card') { const c = getGameCard(item.card_id); image = c?.image_url || null; if (!display) display = c?.name || 'Card'; }
+  else if (item.type === 'avatar') { const a = getAvatar(item.avatar_id); image = a?.image_url || null; if (!display) display = a?.name || 'Avatar'; }
+  else if (!display && item.type === 'toman') display = `${Number(item.amount_toman).toLocaleString('en-US')} Toman`;
+  else if (!display && item.type === 'extra_games') display = `${item.extra_games_count} extra game(s)`;
+  return { ...item, display, image };
 }
 export function listChestsForClient() {
   return listChests(true).map(c => ({
