@@ -34,9 +34,6 @@ import {
   listMergeCosts, upsertMergeCost,
 } from './game-db.js';
 import {
-  getWheelConfig, setWheelConfig, listWheelSlots, upsertWheelSlot, deleteWheelSlot,
-} from './wheel-db.js';
-import {
   getAuctionConfig, setAuctionConfig, listAllAuctionsAdmin, createAuctionFromProduct, createAuctionFromCard, cancelAuction, listAuctionBids,
 } from './auction-db.js';
 import {
@@ -452,28 +449,6 @@ router.post('/game/level-power', (req, res) => {
   try { setCardLevelPower(Number(req.body.level), maxPower, minPower); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
-
-/* ---------- Daily wheel of fortune ---------- */
-router.get('/wheel/config', (req, res) => res.json(getWheelConfig()));
-router.post('/wheel/config', (req, res) => {
-  setWheelConfig({ enabled: !!req.body.enabled, cooldown_hours: req.body.cooldown_hours, require_purchase: !!req.body.require_purchase });
-  res.json({ ok: true });
-});
-router.get('/wheel/slots', (req, res) => res.json(listWheelSlots(false)));
-router.post('/wheel/slots', (req, res) => {
-  const { id, label, type, amount_toman, card_id, extra_games_count, probability_percent, color, active } = req.body;
-  if (!label || !type) return res.status(400).json({ error: 'Title and prize type are required' });
-  const savedId = upsertWheelSlot({
-    id: id ? Number(id) : null, label, type,
-    amount_toman: Number(amount_toman) || 0,
-    card_id: card_id ? Number(card_id) : null,
-    extra_games_count: Number(extra_games_count) || 0,
-    probability_percent: Number(probability_percent) || 0,
-    color, active: active !== false,
-  });
-  res.json({ ok: true, id: savedId });
-});
-router.delete('/wheel/slots/:id', (req, res) => { deleteWheelSlot(Number(req.params.id)); res.json({ ok: true }); });
 
 /* ---------- Card game: settings ---------- */
 router.get('/game/config', (req, res) => res.json(getGameConfig()));

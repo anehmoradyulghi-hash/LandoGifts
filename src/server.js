@@ -30,7 +30,6 @@ import {
   listActiveCardTasks, hasClaimedCardTask, claimCardTask, getCardTask,
   listCardCategories, getCardImageForLevel, getRarityForLevel, computeCardPower,
 } from './game-db.js';
-import { getWheelStatus, spinWheel, listWheelSlots, getWheelHistory } from './wheel-db.js';
 import {
   getAuctionConfig, listActiveAuctions, getAuction, listAuctionBids, placeBid, finalizeExpiredAuctions, getMyAuctionHistory,
 } from './auction-db.js';
@@ -401,7 +400,22 @@ app.get('/api/orders', requireTelegramAuth, (req, res) => res.json(listOrdersFor
 /* =========================================================================
  * Referral
  * ========================================================================= */
-app.get('/api/referral', requireTelegramAuth, (req, res) => res.json({ ref_code: req.dbUser.ref_code, ...getReferralInfo(req.dbUser.tg_id) }));
+app.get('/api/referral', requireTelegramAuth, (req, res) => {
+  const settings = getReferralSettings();
+  let signupBonusCardName = null;
+  if (settings.signupBonusType === 'card' && settings.signupBonusCardId) {
+    signupBonusCardName = getGameCard(Number(settings.signupBonusCardId))?.name || null;
+  }
+  res.json({
+    ref_code: req.dbUser.ref_code,
+    ...getReferralInfo(req.dbUser.tg_id),
+    percent: settings.percent,
+    signupBonusType: settings.signupBonusType,
+    signupBonus: settings.signupBonus,
+    signupBonusCurrency: settings.signupBonusCurrency,
+    signupBonusCardName,
+  });
+});
 
 /* =========================================================================
  * Gift market — consignment, between users
@@ -489,22 +503,6 @@ app.post('/api/card-tasks/:id/claim', requireTelegramAuth, ah(async (req, res) =
   claimCardTask(req.dbUser.tg_id, task);
   res.json({ ok: true });
 }));
-
-/* =========================================================================
- * Daily wheel of fortune — free, spinnable only at a fixed interval
- * ========================================================================= */
-app.get('/api/wheel/status', requireTelegramAuth, (req, res) => res.json(getWheelStatus(req.dbUser.tg_id)));
-app.get('/api/wheel/slots', (req, res) => res.json(listWheelSlots(true)));
-app.post('/api/wheel/spin', requireTelegramAuth, (req, res) => {
-  try {
-    const result = spinWheel(req.dbUser.tg_id);
-    // Also return the exact slot list the backend used to pick the winner (post deleted-card filtering),
-    // so the frontend animation renders/targets that exact same list instead of a possibly stale cached copy —
-    // this is what guarantees the wheel visually lands on the same item the backend actually awarded.
-    res.json({ ok: true, won: result.slot, slots: result.slots });
-  } catch (e) { res.status(400).json({ error: e.message }); }
-});
-app.get('/api/wheel/history', requireTelegramAuth, (req, res) => res.json(getWheelHistory(req.dbUser.tg_id)));
 
 /* =========================================================================
  * Shop chests (loot boxes) — bought with toman from the shop, opened instantly
