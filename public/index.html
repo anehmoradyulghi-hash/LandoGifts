@@ -479,6 +479,71 @@
   .gshop-card .gc-name { font-weight:800; font-size:12px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .gshop-card .gc-price { font-size:11px; color:var(--muted); margin-top:3px; }
   .gshop-card .gc-buy { display:block; width:100%; margin-top:7px; background:linear-gradient(90deg,var(--p1),var(--b1)); border:none; border-radius:12px; padding:8px; color:#fff; font-weight:800; font-size:12px; cursor:pointer; }
+  /* ============================================================
+     GAMING HUD UPGRADE — additive layer: neon depth, holo-shine on
+     tap, rarity glow halo, pulsing "play" button, HUD-style balance
+     pill. Everything here is additive (new selectors/properties) so
+     it layers on top of the existing design without touching it.
+     ============================================================ */
+
+  /* Faint animated HUD grid behind the whole app, fading out toward the bottom — reads as
+     "game dashboard" texture without competing with the aura glow already in body::before. */
+  body::after {
+    content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.4;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 34px 34px;
+    -webkit-mask-image: radial-gradient(85% 55% at 50% 0%, #000 30%, transparent 88%);
+    mask-image: radial-gradient(85% 55% at 50% 0%, #000 30%, transparent 88%);
+  }
+
+  /* Header title as a glowing gradient "logo" wordmark */
+  .title {
+    background:linear-gradient(90deg,#fff,#d9c9ff 60%,#c9b3ff);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    text-shadow:0 0 18px rgba(168,85,247,.3);
+  }
+
+  /* Balance/status HUD strip — stronger glow so it reads as a live stat readout */
+  .status-pill { font-weight:700; box-shadow:0 0 18px rgba(52,211,153,.24), inset 0 1px 0 rgba(255,255,255,.06); }
+
+  /* Holo shine sweep on tap — same shimmer language as the gold CTA button, now on the big
+     hub tiles and game/shop cards too, for that "opening a premium pack" feeling. Fires only
+     on :active (the moment of the tap), cheap (opacity/transform only), clipped cleanly by
+     each card's own overflow:hidden + border-radius. */
+  .game-card, .gshop-card { position:relative; }
+  .gcard::after, .game-card::before, .gshop-card::before {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:2; border-radius:inherit;
+    background:linear-gradient(115deg, transparent 42%, rgba(255,255,255,.18) 50%, transparent 58%);
+    transform:translateX(-130%); opacity:0;
+  }
+  .gcard:active::after, .game-card:active::before, .gshop-card:active::before {
+    opacity:1; animation:holoSweep .5s ease;
+  }
+  @keyframes holoSweep { from{ transform:translateX(-130%);} to{ transform:translateX(130%);} }
+  @media (prefers-reduced-motion: reduce) {
+    .gcard:active::after, .game-card:active::before, .gshop-card:active::before { animation:none; opacity:0; }
+  }
+
+  /* Rarity glow halo — an outer light matching each card's rarity color (--rc), on top of the
+     existing inset glow. Uses filter:drop-shadow (not box-shadow) specifically because these
+     cards have overflow:hidden, which clips an outer box-shadow but not a drop-shadow filter. */
+  .game-card, .gshop-card { filter:drop-shadow(0 0 8px var(--rc, transparent)); }
+
+  /* The bottom-nav "play" button breathes gently so it reads as the primary action */
+  @keyframes navPulse {
+    0%,100% { box-shadow:0 0 26px rgba(168,85,247,.6), 0 8px 20px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.3); }
+    50%     { box-shadow:0 0 36px rgba(168,85,247,.9), 0 8px 22px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.3); }
+  }
+  .navcenter { animation:navPulse 2.6s ease-in-out infinite; }
+
+  /* Chips/tags/hot-badges get a touch more glow so status indicators pop against the dark surface */
+  .tag { box-shadow:0 0 10px -3px rgba(168,85,247,.55); }
+  .badge-hot { text-shadow:0 1px 1px rgba(0,0,0,.25); }
+  .rarity-badge { text-shadow:0 0 8px currentColor; }
+
+  @media (prefers-reduced-motion: reduce) { .navcenter { animation:none; } }
 </style>
 </head>
 <body>
