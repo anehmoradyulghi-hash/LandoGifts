@@ -4,28 +4,110 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Admin Panel - Lando Gifts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: Tahoma, sans-serif; background:#0f1115; color:#eee; }
-  header { padding:14px; border-bottom:1px solid #232733; display:flex; justify-content:space-between; align-items:center; }
-  nav { display:flex; flex-wrap:wrap; gap:6px; padding:10px 14px; border-bottom:1px solid #232733; }
-  nav button { background:#171a21; color:#ccc; border:1px solid #232733; border-radius:6px; padding:6px 12px; cursor:pointer; font-size:13px; }
-  nav button.active { background:#2f6feb; color:#fff; }
-  main { padding:16px; max-width:900px; margin:0 auto; }
-  .tab { display:none; }
+  :root {
+    --bg:#0A0D14; --surface:#141828; --surface2:#1B2036; --surface3:#232A45;
+    --p1:#A855F7; --p2:#7C3AED; --gold:#FBBF24; --gold2:#D97706;
+    --text:#F1F3FA; --muted:#8B93A9; --border:rgba(255,255,255,.08); --border2:rgba(255,255,255,.14);
+    --danger:#FB7185; --danger2:#9F1239; --success:#34D399; --info:#38BDF8;
+    --shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+  * { box-sizing:border-box; }
+  html { scrollbar-color: var(--surface3) transparent; }
+  ::-webkit-scrollbar { height:8px; width:8px; }
+  ::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:8px; }
+  body {
+    margin:0; font-family:'Inter','Vazirmatn',system-ui,-apple-system,Tahoma,sans-serif;
+    background:var(--bg); color:var(--text); min-height:100vh; -webkit-font-smoothing:antialiased;
+    position:relative;
+  }
+  body::before {
+    content:''; position:fixed; inset:-10% -20%; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(32% 26% at 12% 6%, rgba(168,85,247,.16), transparent 60%),
+      radial-gradient(28% 22% at 90% 10%, rgba(251,191,36,.10), transparent 60%);
+    filter:blur(50px);
+  }
+  h2, h3, h4 { margin:0 0 10px; font-weight:700; letter-spacing:.2px; }
+  h3 { font-size:16px; } h4 { font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin:14px 0 8px; }
+  header {
+    padding:14px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;
+    position:sticky; top:0; z-index:50; background:rgba(10,13,20,.85); backdrop-filter:blur(14px);
+  }
+  header h2 { font-size:18px; background:linear-gradient(90deg,#fff,#c9b3ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  nav {
+    display:flex; flex-wrap:wrap; gap:6px; padding:12px 20px; border-bottom:1px solid var(--border);
+    position:sticky; top:57px; z-index:40; background:rgba(10,13,20,.7); backdrop-filter:blur(10px);
+  }
+  nav button {
+    background:var(--surface); color:var(--muted); border:1px solid var(--border); border-radius:9px;
+    padding:7px 13px; cursor:pointer; font-size:12.5px; font-weight:600; font-family:inherit;
+    transition:all .15s ease; white-space:nowrap;
+  }
+  nav button:hover { color:var(--text); border-color:var(--border2); transform:translateY(-1px); }
+  nav button.active {
+    background:linear-gradient(135deg,var(--p1),var(--p2)); color:#fff; border-color:transparent;
+    box-shadow:0 4px 14px rgba(168,85,247,.4);
+  }
+  main { padding:20px; max-width:960px; margin:0 auto; }
+  .tab { display:none; animation:fadeIn .25s ease; }
   .tab.active { display:block; }
+  @keyframes fadeIn { from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
   table { width:100%; border-collapse:collapse; margin-bottom:16px; font-size:13px; }
-  th, td { border-bottom:1px solid #232733; padding:6px 8px; text-align:right; }
-  .card { background:#171a21; border:1px solid #232733; border-radius:8px; padding:14px; margin-bottom:14px; }
-  input, select, textarea { width:100%; padding:7px; border-radius:6px; border:1px solid #333; background:#0f1115; color:#eee; margin:4px 0 10px; }
-  label { font-size:12px; color:#999; }
-  .btn { background:#2f6feb; color:#fff; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; font-size:13px; }
-  .btn.danger { background:#a33; }
-  .btn.secondary { background:#333; }
-  .row2 { display:flex; gap:8px; }
-  .row2 > * { flex:1; }
-  #loginBox { max-width:320px; margin:80px auto; }
-  .muted { color:#888; font-size:12px; }
+  .card table { margin-bottom:0; }
+  th, td { border-bottom:1px solid var(--border); padding:9px 10px; text-align:right; }
+  th { color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; }
+  tr:hover td { background:rgba(255,255,255,.02); }
+  #chestsTable, #chestItemsTable, #rafflesTable, #tasksTable, #usersTable, #currenciesTable,
+  div[id$="Table"] {
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:6px 14px; box-shadow:var(--shadow);
+  }
+  .card {
+    background:linear-gradient(180deg, var(--surface), var(--surface)), var(--surface);
+    border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:16px;
+    box-shadow:var(--shadow); position:relative; overflow:hidden;
+  }
+  .card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg, var(--p1), var(--gold), transparent);
+    opacity:.6;
+  }
+  input, select, textarea {
+    width:100%; padding:9px 11px; border-radius:10px; border:1px solid var(--border);
+    background:var(--surface2); color:var(--text); margin:4px 0 12px; font-family:inherit; font-size:13.5px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input:hover, select:hover, textarea:hover { border-color:var(--border2); }
+  input:focus, select:focus, textarea:focus {
+    outline:none; border-color:var(--p1); box-shadow:0 0 0 3px rgba(168,85,247,.18);
+  }
+  input[type="file"] { padding:7px; cursor:pointer; }
+  input[type="checkbox"] { width:auto; accent-color:var(--p1); }
+  label { font-size:12px; color:var(--muted); font-weight:600; display:block; margin-top:2px; }
+  .btn {
+    background:linear-gradient(135deg,var(--p1),var(--p2)); color:#fff; border:none; border-radius:10px;
+    padding:8px 16px; cursor:pointer; font-size:13px; font-weight:700; font-family:inherit;
+    box-shadow:0 4px 12px rgba(124,58,237,.35); transition:transform .12s ease, box-shadow .12s ease; margin:2px 2px 2px 0;
+  }
+  .btn:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(124,58,237,.5); }
+  .btn:active { transform:translateY(0); }
+  .btn.danger { background:linear-gradient(135deg,var(--danger),var(--danger2)); box-shadow:0 4px 12px rgba(251,113,133,.3); }
+  .btn.danger:hover { box-shadow:0 6px 16px rgba(251,113,133,.45); }
+  .btn.secondary { background:var(--surface3); color:var(--text); box-shadow:none; border:1px solid var(--border2); }
+  .btn.secondary:hover { background:var(--surface2); box-shadow:none; }
+  .btn.gold { background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#1a1200; box-shadow:0 4px 12px rgba(251,191,36,.35); }
+  .btn.gold:hover { box-shadow:0 6px 16px rgba(251,191,36,.5); }
+  .row2 { display:flex; gap:12px; }
+  .row2 > * { flex:1; min-width:0; }
+  #loginBox {
+    max-width:340px; margin:110px auto; text-align:center;
+  }
+  #loginBox h2 { font-size:20px; }
+  .muted { color:var(--muted); font-size:12px; }
+  .admin-img-preview { max-width:120px; border-radius:10px; display:none; margin-bottom:10px; border:1px solid var(--border); box-shadow:var(--shadow); }
 </style>
 </head>
 <body>
@@ -65,7 +147,6 @@
     <button data-tab="gameconfig" onclick="showTab('gameconfig')">Game settings</button>
     <button data-tab="leaderboard" onclick="showTab('leaderboard')">Leaderboard</button>
     <button data-tab="raffles" onclick="showTab('raffles')">🎟 Big wheel</button>
-    <button data-tab="wheel" onclick="showTab('wheel')">Wheel of fortune</button>
     <button data-tab="chests" onclick="showTab('chests')">📦 Chests</button>
     <button data-tab="auction" onclick="showTab('auction')">Auction</button>
     <button data-tab="season" onclick="showTab('season')">Battle pass</button>
@@ -181,22 +262,43 @@
       <div class="card">
         <h3>🎨 Hub shortcut tile images</h3>
         <p class="muted">Optional custom artwork for each shortcut tile on the main screen (Shop, Card game, Battle pass, Gift market, Wallet). Paste an image URL — leave empty to keep the default icon/color look. Recommended: a square-ish image, at least 400px wide.</p>
-        <label>Shop</label><input id="uiImgHubShop" placeholder="https://...">
-        <label>Card game</label><input id="uiImgHubCardgame" placeholder="https://...">
-        <label>Battle pass</label><input id="uiImgHubBattlepass" placeholder="https://...">
-        <label>Gift market</label><input id="uiImgHubMarket" placeholder="https://...">
-        <label>Currency wallet</label><input id="uiImgHubWallet" placeholder="https://...">
-        <label>Clan (quick-access tile)</label><input id="uiImgHubClan" placeholder="https://...">
+        <label>Shop</label>
+        <input type="file" accept="image/*" id="uiImgHubShop_file" onchange="uploadImageTo('uiImgHubShop_file','uiImgHubShop','uiImgHubShop_prev')">
+        <input type="hidden" id="uiImgHubShop"><img id="uiImgHubShop_prev" class="admin-img-preview">
+        <label>Card game</label>
+        <input type="file" accept="image/*" id="uiImgHubCardgame_file" onchange="uploadImageTo('uiImgHubCardgame_file','uiImgHubCardgame','uiImgHubCardgame_prev')">
+        <input type="hidden" id="uiImgHubCardgame"><img id="uiImgHubCardgame_prev" class="admin-img-preview">
+        <label>Battle pass</label>
+        <input type="file" accept="image/*" id="uiImgHubBattlepass_file" onchange="uploadImageTo('uiImgHubBattlepass_file','uiImgHubBattlepass','uiImgHubBattlepass_prev')">
+        <input type="hidden" id="uiImgHubBattlepass"><img id="uiImgHubBattlepass_prev" class="admin-img-preview">
+        <label>Gift market</label>
+        <input type="file" accept="image/*" id="uiImgHubMarket_file" onchange="uploadImageTo('uiImgHubMarket_file','uiImgHubMarket','uiImgHubMarket_prev')">
+        <input type="hidden" id="uiImgHubMarket"><img id="uiImgHubMarket_prev" class="admin-img-preview">
+        <label>Currency wallet</label>
+        <input type="file" accept="image/*" id="uiImgHubWallet_file" onchange="uploadImageTo('uiImgHubWallet_file','uiImgHubWallet','uiImgHubWallet_prev')">
+        <input type="hidden" id="uiImgHubWallet"><img id="uiImgHubWallet_prev" class="admin-img-preview">
+        <label>Clan (quick-access tile)</label>
+        <input type="file" accept="image/*" id="uiImgHubClan_file" onchange="uploadImageTo('uiImgHubClan_file','uiImgHubClan','uiImgHubClan_prev')">
+        <input type="hidden" id="uiImgHubClan"><img id="uiImgHubClan_prev" class="admin-img-preview">
       </div>
       <div class="card">
         <h3>🖼 Section banner images</h3>
         <p class="muted">Optional wide banner artwork shown at the top of a section's own page. Recommended: a wide image (at least 800×300).</p>
-        <label>Clan banner</label><input id="uiImgBannerClan" placeholder="https://...">
-        <label>Battle pass banner</label><input id="uiImgBannerBattlepass" placeholder="https://...">
-        <label>Events banner</label><input id="uiImgBannerEvents" placeholder="https://...">
-        <label>Wheel of fortune banner</label><input id="uiImgBannerWheel" placeholder="https://...">
-        <label>Missions banner (inside Events)</label><input id="uiImgCardMissions" placeholder="https://...">
-        <label>Leaderboard banner</label><input id="uiImgCardLeaderboard" placeholder="https://...">
+        <label>Clan banner</label>
+        <input type="file" accept="image/*" id="uiImgBannerClan_file" onchange="uploadImageTo('uiImgBannerClan_file','uiImgBannerClan','uiImgBannerClan_prev')">
+        <input type="hidden" id="uiImgBannerClan"><img id="uiImgBannerClan_prev" class="admin-img-preview">
+        <label>Battle pass banner</label>
+        <input type="file" accept="image/*" id="uiImgBannerBattlepass_file" onchange="uploadImageTo('uiImgBannerBattlepass_file','uiImgBannerBattlepass','uiImgBannerBattlepass_prev')">
+        <input type="hidden" id="uiImgBannerBattlepass"><img id="uiImgBannerBattlepass_prev" class="admin-img-preview">
+        <label>Events banner</label>
+        <input type="file" accept="image/*" id="uiImgBannerEvents_file" onchange="uploadImageTo('uiImgBannerEvents_file','uiImgBannerEvents','uiImgBannerEvents_prev')">
+        <input type="hidden" id="uiImgBannerEvents"><img id="uiImgBannerEvents_prev" class="admin-img-preview">
+        <label>Missions banner (inside Events)</label>
+        <input type="file" accept="image/*" id="uiImgCardMissions_file" onchange="uploadImageTo('uiImgCardMissions_file','uiImgCardMissions','uiImgCardMissions_prev')">
+        <input type="hidden" id="uiImgCardMissions"><img id="uiImgCardMissions_prev" class="admin-img-preview">
+        <label>Leaderboard banner</label>
+        <input type="file" accept="image/*" id="uiImgCardLeaderboard_file" onchange="uploadImageTo('uiImgCardLeaderboard_file','uiImgCardLeaderboard','uiImgCardLeaderboard_prev')">
+        <input type="hidden" id="uiImgCardLeaderboard"><img id="uiImgCardLeaderboard_prev" class="admin-img-preview">
         <button class="btn" onclick="saveUiImages()">Save</button>
         <p class="muted" id="uiImagesSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
@@ -472,8 +574,12 @@
         <h3>📢 Giveaway channel</h3>
         <p class="muted">When set, every new giveaway is posted to this channel automatically, and the results (winner IDs) are posted there when it ends. The bot must already be an admin of this channel with permission to post messages.</p>
         <label>Channel ID or @username</label><input id="gwChannelId" placeholder="@yourchannel or -1001234567890">
-        <label>Image shown when a giveaway starts (optional)</label><input id="gwStartImage" placeholder="https://...">
-        <label>Image shown when a giveaway ends / winners announced (optional)</label><input id="gwEndImage" placeholder="https://...">
+        <label>Image shown when a giveaway starts (optional)</label>
+        <input type="file" accept="image/*" id="gwStartImage_file" onchange="uploadImageTo('gwStartImage_file','gwStartImage','gwStartImage_prev')">
+        <input type="hidden" id="gwStartImage"><img id="gwStartImage_prev" class="admin-img-preview">
+        <label>Image shown when a giveaway ends / winners announced (optional)</label>
+        <input type="file" accept="image/*" id="gwEndImage_file" onchange="uploadImageTo('gwEndImage_file','gwEndImage','gwEndImage_prev')">
+        <input type="hidden" id="gwEndImage"><img id="gwEndImage_prev" class="admin-img-preview">
         <button class="btn" onclick="saveGiveawayChannel()">Save</button>
         <p class="muted" id="gwSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
@@ -499,43 +605,6 @@
         <h3 id="raffleEntriesTitle"></h3>
         <div id="raffleEntriesTable"></div>
       </div>
-    </section>
-
-    <section class="tab" id="tab-wheel">
-      <div class="card">
-        <h3>Wheel of fortune settings</h3>
-        <label>active?</label>
-        <select id="wheelEnabled"><option value="1">Yes</option><option value="0">No</option></select>
-        <label>Interval between spins (hours)</label>
-        <input type="number" id="wheelCooldown" value="24">
-        <label>Must they have made a purchase first?</label>
-        <select id="wheelRequirePurchase"><option value="0">No</option><option value="1">Yes</option></select>
-        <button class="btn" onclick="saveWheelConfig()">Save settings</button>
-      </div>
-      <div class="card">
-        <h3>Add / edit wheel prize</h3>
-        <input type="hidden" id="wsId">
-        <label>Title (shown on the wheel)</label><input id="wsLabel" placeholder="e.g. 10,000 LNDC">
-        <div class="row2">
-          <div><label>Prize type</label>
-            <select id="wsType" onchange="toggleWheelSlotFields()">
-              <option value="toman">LNDC</option>
-              <option value="card">Card</option>
-              <option value="extra_games">Extra game</option>
-            </select>
-          </div>
-          <div><label>Color</label><input type="color" id="wsColor" value="#8b5cf6"></div>
-        </div>
-        <div id="wsTomanField"><label>Amount (LNDC)</label><input type="number" id="wsAmount"></div>
-        <div id="wsCardField" style="display:none;"><label>Bonus card</label><select id="wsCardId"></select></div>
-        <div id="wsExtraField" style="display:none;"><label>Extra games count</label><input type="number" id="wsExtraCount"></div>
-        <label>Win chance (%) — the sum of all slots must total 100</label>
-        <input type="number" id="wsProbability" step="0.1">
-        <label>active?</label>
-        <select id="wsActive"><option value="1">Yes</option><option value="0">No</option></select>
-        <button class="btn" onclick="saveWheelSlot()">Save</button>
-      </div>
-      <div id="wheelSlotsTable"></div>
     </section>
 
     <section class="tab" id="tab-chests">
@@ -1007,7 +1076,7 @@ function showTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: loadReferralSettings, design: loadUiImages, retention: () => { loadComebackConfig(); loadBackupConfig(); }, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
-    cardcategories: loadCategories, mergecosts: loadMergeCosts, wheel: loadWheelAdmin, chests: loadChestsAdmin,
+    cardcategories: loadCategories, mergecosts: loadMergeCosts, chests: loadChestsAdmin,
     auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
     giftcfg: loadGiftConfigAdmin, seasons: loadSeasonsAdmin, cardmarket: loadCardMarketConfigAdmin,
@@ -1131,7 +1200,7 @@ const UI_IMAGE_FIELD_MAP = {
   hub_shop: 'uiImgHubShop', hub_cardgame: 'uiImgHubCardgame', hub_battlepass: 'uiImgHubBattlepass',
   hub_market: 'uiImgHubMarket', hub_wallet: 'uiImgHubWallet', hub_clan: 'uiImgHubClan',
   banner_clan: 'uiImgBannerClan', banner_battlepass: 'uiImgBannerBattlepass',
-  banner_events: 'uiImgBannerEvents', banner_wheel: 'uiImgBannerWheel',
+  banner_events: 'uiImgBannerEvents',
   card_missions: 'uiImgCardMissions', card_leaderboard: 'uiImgCardLeaderboard',
 };
 async function loadUiImages() {
@@ -1139,6 +1208,11 @@ async function loadUiImages() {
   for (const [key, elId] of Object.entries(UI_IMAGE_FIELD_MAP)) {
     const el = document.getElementById(elId);
     if (el) el.value = images[key] || '';
+    const preview = document.getElementById(elId + '_prev');
+    if (preview) {
+      if (images[key]) { preview.src = images[key]; preview.style.display = 'block'; }
+      else preview.style.display = 'none';
+    }
   }
 }
 async function saveUiImages() {
@@ -1429,6 +1503,9 @@ async function loadGiveawayChannel() {
   document.getElementById('gwChannelId').value = s.channelId || '';
   document.getElementById('gwStartImage').value = s.startImage || '';
   document.getElementById('gwEndImage').value = s.endImage || '';
+  const p1 = document.getElementById('gwStartImage_prev'), p2 = document.getElementById('gwEndImage_prev');
+  if (s.startImage) { p1.src = s.startImage; p1.style.display = 'block'; } else p1.style.display = 'none';
+  if (s.endImage) { p2.src = s.endImage; p2.style.display = 'block'; } else p2.style.display = 'none';
 }
 async function saveGiveawayChannel() {
   await api('/giveaway-channel', { method: 'POST', body: JSON.stringify({
@@ -1731,66 +1808,6 @@ async function saveMergeCosts() {
   alert('Saved');
 }
 
-/* ---------- Wheel of fortune ---------- */
-function toggleWheelSlotFields() {
-  const type = document.getElementById('wsType').value;
-  document.getElementById('wsTomanField').style.display = type === 'toman' ? 'block' : 'none';
-  document.getElementById('wsCardField').style.display = type === 'card' ? 'block' : 'none';
-  document.getElementById('wsExtraField').style.display = type === 'extra_games' ? 'block' : 'none';
-}
-async function loadWheelAdmin() {
-  const cfg = await api('/wheel/config');
-  document.getElementById('wheelEnabled').value = cfg.enabled ? '1' : '0';
-  document.getElementById('wheelCooldown').value = cfg.cooldown_hours;
-  document.getElementById('wheelRequirePurchase').value = cfg.require_purchase ? '1' : '0';
-
-  const cards = await api('/game/cards');
-  document.getElementById('wsCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-
-  const slots = await api('/wheel/slots');
-  document.getElementById('wheelSlotsTable').innerHTML = slots.length ? `
-    <table><tr><th>Title</th><th>Type</th><th>Chance %</th><th>Active</th><th>Actions</th></tr>
-    ${slots.map(s => `<tr><td style="color:${s.color};">${s.label}</td><td>${s.type}</td><td>${s.probability_percent}</td><td>${s.active ? '✅' : '❌'}</td>
-      <td><button class="btn secondary" onclick='editWheelSlot(${JSON.stringify(s)})'>Edit</button>
-      <button class="btn danger" onclick="deleteWheelSlot(${s.id})">Delete</button></td></tr>`).join('')}
-    </table>` : '<p class="muted">No prize registered yet.</p>';
-}
-function editWheelSlot(s) {
-  document.getElementById('wsId').value = s.id;
-  document.getElementById('wsLabel').value = s.label;
-  document.getElementById('wsType').value = s.type;
-  document.getElementById('wsColor').value = s.color || '#8b5cf6';
-  document.getElementById('wsAmount').value = s.amount_toman || '';
-  document.getElementById('wsCardId').value = s.card_id || '';
-  document.getElementById('wsExtraCount').value = s.extra_games_count || '';
-  document.getElementById('wsProbability').value = s.probability_percent;
-  document.getElementById('wsActive').value = s.active ? '1' : '0';
-  toggleWheelSlotFields();
-}
-async function saveWheelConfig() {
-  await api('/wheel/config', { method: 'POST', body: JSON.stringify({
-    enabled: document.getElementById('wheelEnabled').value === '1',
-    cooldown_hours: document.getElementById('wheelCooldown').value,
-    require_purchase: document.getElementById('wheelRequirePurchase').value === '1',
-  }) });
-  alert('Saved');
-}
-async function saveWheelSlot() {
-  await api('/wheel/slots', { method: 'POST', body: JSON.stringify({
-    id: document.getElementById('wsId').value || null,
-    label: document.getElementById('wsLabel').value,
-    type: document.getElementById('wsType').value,
-    color: document.getElementById('wsColor').value,
-    amount_toman: document.getElementById('wsAmount').value,
-    card_id: document.getElementById('wsCardId').value || null,
-    extra_games_count: document.getElementById('wsExtraCount').value,
-    probability_percent: document.getElementById('wsProbability').value,
-    active: document.getElementById('wsActive').value === '1',
-  }) });
-  document.getElementById('wsId').value = '';
-  loadWheelAdmin();
-}
-
 /* ---------- Shop chests (loot boxes) ---------- */
 function toggleChestItemFields() {
   const type = document.getElementById('ciType').value;
@@ -1903,8 +1920,6 @@ async function deleteChestItemUI(id, chestId) {
   await api(`/chest-items/${id}`, { method: 'DELETE' });
   loadChestItemsTable(chestId);
 }
-async function deleteWheelSlot(id) { if (confirm('be deleted?')) { await api(`/wheel/slots/${id}`, { method: 'DELETE' }); loadWheelAdmin(); } }
-
 /* ---------- Game settings ---------- */
 async function loadGameConfig() {
   const cfg = await api('/game/config');
