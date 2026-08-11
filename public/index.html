@@ -479,23 +479,6 @@
   .gshop-card .gc-name { font-weight:800; font-size:12px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .gshop-card .gc-price { font-size:11px; color:var(--muted); margin-top:3px; }
   .gshop-card .gc-buy { display:block; width:100%; margin-top:7px; background:linear-gradient(90deg,var(--p1),var(--b1)); border:none; border-radius:12px; padding:8px; color:#fff; font-weight:800; font-size:12px; cursor:pointer; }
-  /* ---------- Wheel of fortune ---------- */
-  .wheel-wrap { position:relative; width:230px; height:230px; margin:6px auto 14px; }
-  .wheel-pointer { position:absolute; top:-8px; left:50%; transform:translateX(-50%); font-size:26px; z-index:5; filter:drop-shadow(0 3px 5px rgba(0,0,0,.55)); }
-  .wheel-disc {
-    width:100%; height:100%; border-radius:50%; position:relative; overflow:hidden;
-    border:6px solid var(--surface2); box-shadow:0 0 0 3px rgba(255,255,255,.08), 0 16px 36px -12px rgba(0,0,0,.65);
-    transition:transform 3.6s cubic-bezier(.11,.72,.14,1);
-  }
-  .wheel-label {
-    position:absolute; top:50%; left:50%; transform-origin:0 0; font-size:10.5px; font-weight:800; color:#fff;
-    text-shadow:0 1px 4px rgba(0,0,0,.65); white-space:nowrap; pointer-events:none;
-  }
-  .wheel-hub {
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:46px; height:46px; border-radius:50%;
-    background:radial-gradient(circle at 32% 28%, #fff, var(--gold) 70%); box-shadow:0 4px 12px rgba(0,0,0,.45), 0 0 0 3px var(--bg);
-    z-index:4; display:flex; align-items:center; justify-content:center; font-size:19px;
-  }
 </style>
 </head>
 <body>
@@ -534,7 +517,6 @@
     <h3 class="sec">Quick access</h3>
     <div class="hscroll">
       <div class="mini-card" onclick="showGView('events')"><div class="ic">🎯</div><div class="t">Daily tasks</div><div class="s" id="questsQuickStat">...</div></div>
-      <div class="mini-card" onclick="showGView('wheel')"><div class="ic">🎰</div><div class="t">Wheel of fortune</div><div class="s" id="wheelQuickStat">...</div></div>
       <div class="mini-card" id="hubTile-clan" onclick="showPage('more');showMView('clan')"><div class="ic">🏰</div><div class="t">Clan</div><div class="s" id="clanQuickStat">...</div></div>
     </div>
   </div>
@@ -597,27 +579,6 @@
     <div class="view" id="gsub-tasks">
       <div id="cardTasksList" class="muted">Loading...</div>
     </div>
-  </div>
-
-  <!-- Wheel of fortune -->
-  <div class="view" id="gview-wheel">
-    <div class="section-banner" id="wheelBanner">
-      <div class="section-banner-ribbon">🎰 Wheel of fortune</div>
-      <div class="section-banner-desc">Spin daily for a chance at coins, cards, and rare prizes.</div>
-    </div>
-    <div class="gcard teal" style="text-align:center;">
-      <div class="wheel-wrap">
-        <div class="wheel-pointer">▼</div>
-        <div class="wheel-disc" id="wheelDisc"></div>
-        <div class="wheel-hub">🎰</div>
-      </div>
-      <p id="wheelStatusText">Loading...</p>
-      <button class="btn gold" id="wheelSpinBtn" onclick="doSpinWheel()">Spin</button>
-    </div>
-    <h3 class="sec">Wheel of fortune prizes</h3>
-    <div id="wheelSlotsList" class="muted">Loading...</div>
-    <h3 class="sec">Spin history</h3>
-    <div id="wheelHistoryList" class="muted">Loading...</div>
   </div>
 
   <!-- Battle pass -->
@@ -1164,9 +1125,8 @@ function showGView(name) {
   if (name === 'hub') NAV_STACK = []; // back at the section hub — nothing left to step back through
   document.querySelectorAll('#page-games .view').forEach(v => v.classList.remove('active'));
   document.getElementById('gview-' + name).classList.add('active');
-  document.getElementById('headerTitle').textContent = name === 'hub' ? 'Lando Gifts' : { cardgame:'Card game', wheel:'Wheel of fortune', battlepass:'Battle pass', events:'Events' }[name];
+  document.getElementById('headerTitle').textContent = name === 'hub' ? 'Lando Gifts' : { cardgame:'Card game', battlepass:'Battle pass', events:'Events' }[name];
   if (name === 'cardgame') { showGameSub('shop'); loadGame(); }
-  if (name === 'wheel') loadWheel();
   if (name === 'battlepass') loadSeason();
   if (name === 'events') { showEventsSub('quests'); loadDailyQuests(); loadAuctions(); }
 }
@@ -1270,10 +1230,6 @@ async function loadGamesHub() {
     document.getElementById('questsQuickStat').textContent = q.enabled ? `${done}/${q.quests.length} Done` : 'Inactive';
   } catch (e) {}
   try {
-    const w = await api('/api/wheel/status');
-    document.getElementById('wheelQuickStat').textContent = w.enabled ? (w.canSpin ? 'spinnable!' : 'Please wait') : 'Inactive';
-  } catch (e) {}
-  try {
     const { clan } = await api('/api/clan/my');
     document.getElementById('clanQuickStat').textContent = clan ? clan.name : 'You are not a member';
   } catch (e) {}
@@ -1308,6 +1264,7 @@ async function openChestUI(id, title) {
     const r = await api(`/api/chests/${id}/open`, { method: 'POST' });
     toast(`🎉 ${title}: you won ${r.won.display}!`);
     loadMe();
+    loadMyCards();
   } catch (e) { /* api() already showed the error toast */ }
 }
 async function loadShop() {
@@ -1895,83 +1852,6 @@ async function loadGameHistory() {
     const won = m.winner_tg_id === meId;
     return `<div class="card" style="padding:10px 14px;" ${staggerStyle(i)}><span>${won ? '🏆 Win' : '❌ Loss'} — My power: ${m.player_a === meId ? m.power_a : m.power_b} / Opponent: ${m.player_a === meId ? m.power_b : m.power_a}</span></div>`;
   }).join('') : 'You have not had a match yet.';
-}
-
-/* ================= Wheel of fortune ================= */
-let WHEEL_TIMER = null;
-function formatCountdown(ms) {
-  if (ms <= 0) return 'You can spin now!';
-  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
-  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} Remaining`;
-}
-let WHEEL_SLOTS = [];
-let WHEEL_ROTATION = 0;
-async function loadWheel() {
-  clearInterval(WHEEL_TIMER);
-  const status = await api('/api/wheel/status');
-  const btn = document.getElementById('wheelSpinBtn'), text = document.getElementById('wheelStatusText');
-  if (!status.enabled) { text.textContent = 'The wheel is off right now.'; btn.disabled = true; }
-  else if (status.requirePurchaseNotMet) { text.textContent = 'You need to make a purchase before you can spin.'; btn.disabled = true; }
-  else if (status.canSpin) { text.textContent = 'You can spin right now!'; btn.disabled = false; }
-  else {
-    btn.disabled = true;
-    WHEEL_TIMER = setInterval(() => {
-      const remain = status.nextSpinAt - Date.now();
-      if (remain <= 0) { clearInterval(WHEEL_TIMER); loadWheel(); return; }
-      text.textContent = formatCountdown(remain);
-    }, 1000);
-  }
-  const slots = await api('/api/wheel/slots');
-  WHEEL_SLOTS = slots;
-  renderWheelDisc(slots);
-  document.getElementById('wheelSlotsList').innerHTML = slots.length ? slots.map((s, i) => `<div class="card" style="padding:10px 14px;border-color:${s.color}55;" ${staggerStyle(i)}><span style="color:${s.color};font-weight:700;">${s.label}</span></div>`).join('') : 'No prize defined yet.';
-  const history = await api('/api/wheel/history');
-  document.getElementById('wheelHistoryList').innerHTML = history.length ? history.map(h => `<div class="row"><span>${h.result_label}</span><span class="muted">${h.spun_at}</span></div>`).join('') : 'You have not spun yet.';
-}
-function computeWheelSegments(slots) {
-  const total = slots.reduce((s, x) => s + (Number(x.probability_percent) || 0), 0) || slots.length;
-  let acc = 0;
-  return slots.map(s => {
-    const size = ((Number(s.probability_percent) || 0) / total) * 360 || (360 / slots.length);
-    const seg = { start: acc, end: acc + size, center: acc + size / 2 };
-    acc += size;
-    return seg;
-  });
-}
-function renderWheelDisc(slots) {
-  const disc = document.getElementById('wheelDisc');
-  if (!slots.length) { disc.style.background = 'var(--surface2)'; disc.innerHTML = ''; return; }
-  const segs = computeWheelSegments(slots);
-  const stops = slots.map((s, i) => `${s.color} ${segs[i].start}deg ${segs[i].end}deg`).join(',');
-  disc.style.background = `conic-gradient(${stops})`;
-  disc.innerHTML = slots.map((s, i) => {
-    return `<div class="wheel-label" style="transform:rotate(${segs[i].center}deg) translate(72px) rotate(90deg);">${s.label}</div>`;
-  }).join('');
-}
-async function doSpinWheel() {
-  const disc = document.getElementById('wheelDisc');
-  try {
-    const r = await api('/api/wheel/spin', { method: 'POST' });
-    // Use the exact slot list the backend used to choose the winner (it may exclude slots whose card was
-    // deleted, or reflect an admin edit that happened after this page was loaded) — re-rendering the disc
-    // with this authoritative list before animating is what guarantees the wheel visually lands on the same
-    // item that was actually awarded, instead of relying on a possibly-stale cached WHEEL_SLOTS.
-    if (Array.isArray(r.slots) && r.slots.length) { WHEEL_SLOTS = r.slots; renderWheelDisc(WHEEL_SLOTS); }
-    let idx = WHEEL_SLOTS.findIndex(s => s.id === r.won.id);
-    if (idx < 0) idx = 0;
-    const segs = computeWheelSegments(WHEEL_SLOTS);
-    const targetCenter = segs[idx].center;
-    const segSize = segs[idx].end - segs[idx].start;
-    const jitter = (Math.random() - 0.5) * segSize * 0.6;
-    const extraSpins = 5 * 360;
-    const currentMod = ((WHEEL_ROTATION % 360) + 360) % 360;
-    // The pointer is at the top of the wheel (0°); the wheel must spin until the winning slice lands under the pointer
-    let delta = (360 - targetCenter - currentMod + jitter + 360) % 360;
-    WHEEL_ROTATION += extraSpins + delta;
-    disc.style.transform = `rotate(${WHEEL_ROTATION}deg)`;
-    setTimeout(() => toast(`🎉 You won: ${r.won.label}`), 3400);
-    setTimeout(loadWheel, 3700); setTimeout(loadMe, 3700);
-  } catch (e) { toast(e.message || 'Something went wrong'); loadWheel(); }
 }
 
 /* ================= Battle pass ================= */
@@ -2629,11 +2509,19 @@ async function equipAvatarUI(id) { await api('/api/avatars/equip', { method: 'PO
 async function loadReferral() {
   const r = await api('/api/referral');
   const link = CONFIG.botUsername ? `https://t.me/${CONFIG.botUsername}?start=ref_${r.ref_code}` : r.ref_code;
-  document.getElementById('referralSubtitle').textContent = `Commission: ${CONFIG.referralPercent || 5}% — ${r.invitedCount} people invited`;
+  let bonusLine = '';
+  if (r.signupBonusType === 'card' && r.signupBonusCardName) {
+    bonusLine = `Gift for each new invite: card «${r.signupBonusCardName}»`;
+  } else if (r.signupBonusType === 'currency' && r.signupBonus > 0) {
+    bonusLine = `Gift for each new invite: ${Number(r.signupBonus).toLocaleString('en-US')} ${r.signupBonusCurrency || 'LNDC'}`;
+  }
+  document.getElementById('referralSubtitle').textContent = `Commission: ${r.percent}% — ${r.invitedCount} people invited`;
   document.getElementById('referralCard').innerHTML = `
     <p>Your referral code: <b>${r.ref_code}</b></p>
     <input readonly value="${link}" onclick="this.select()">
     <p>Number invited: ${r.invitedCount}</p>
+    <p>Purchase commission: ${r.percent}%</p>
+    ${bonusLine ? `<p>${bonusLine}</p>` : ''}
     <p>Total commission earned: ${r.totalEarned.toLocaleString('en-US')} LNDC</p>
   `;
 }
@@ -2732,7 +2620,7 @@ function applyUiImages() {
     const url = images[key];
     if (el && url) { el.classList.add('has-img'); el.style.backgroundImage = `url('${url}')`; }
   }
-  const bannerMap = { banner_clan: 'clanBanner', banner_battlepass: 'battlepassBanner', banner_events: 'eventsBanner', banner_wheel: 'wheelBanner', card_missions: 'missionsBanner', card_leaderboard: 'leaderboardBanner' };
+  const bannerMap = { banner_clan: 'clanBanner', banner_battlepass: 'battlepassBanner', banner_events: 'eventsBanner', card_missions: 'missionsBanner', card_leaderboard: 'leaderboardBanner' };
   for (const [key, elId] of Object.entries(bannerMap)) {
     const el = document.getElementById(elId);
     const url = images[key];
