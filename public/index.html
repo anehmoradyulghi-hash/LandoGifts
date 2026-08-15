@@ -39,18 +39,18 @@
   ::selection { background:rgba(168,85,247,.35); }
   :focus-visible { outline:2px solid var(--p1); outline-offset:2px; }
 
-  /* ---------- Signature: ambient light halo behind the whole app ---------- */
-  body::before {
-    content:''; position:fixed; inset:-10% -20%; z-index:-1; pointer-events:none;
-    background:
-      radial-gradient(38% 30% at 15% 8%, rgba(var(--aura-p),.28), transparent 60%),
-      radial-gradient(34% 26% at 88% 14%, rgba(var(--aura-b),.22), transparent 60%),
-      radial-gradient(40% 32% at 50% 96%, rgba(var(--aura-k),.16), transparent 60%);
-    filter:blur(40px); animation:auraDrift 18s ease-in-out infinite alternate;
-  }
-  @keyframes auraDrift { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(0,-2%,0) scale(1.06); } }
+  /* ---------- Signature: layered ambient light behind the whole app — three blobs drifting
+     independently (different speed/direction each) instead of one static gradient, so the
+     background reads as alive rather than a flat painted glow. ---------- */
+  .bg-blob { position:fixed; z-index:-2; pointer-events:none; border-radius:50%; filter:blur(60px); }
+  .bg-blob-1 { width:70vw; height:70vw; top:-20%; left:-20%; background:radial-gradient(circle, rgba(var(--aura-p),.4), transparent 70%); animation:blobDrift1 19s ease-in-out infinite alternate; }
+  .bg-blob-2 { width:60vw; height:60vw; top:0%; right:-22%; background:radial-gradient(circle, rgba(var(--aura-b),.32), transparent 70%); animation:blobDrift2 24s ease-in-out infinite alternate; }
+  .bg-blob-3 { width:65vw; height:65vw; bottom:-24%; left:15%; background:radial-gradient(circle, rgba(var(--aura-k),.26), transparent 70%); animation:blobDrift3 28s ease-in-out infinite alternate; }
+  @keyframes blobDrift1 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(6%,8%,0) scale(1.18); } }
+  @keyframes blobDrift2 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(-9%,7%,0) scale(.88); } }
+  @keyframes blobDrift3 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(5%,-9%,0) scale(1.12); } }
   @media (prefers-reduced-motion: reduce) {
-    body::before { animation:none; }
+    .bg-blob { animation:none; }
     *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
   }
 
@@ -279,20 +279,20 @@
     flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none;
     color:var(--muted); font-size:9.5px; font-weight:700; cursor:pointer; padding:6px 0;
   }
-  .navitem .ic { font-size:19px; opacity:.55; transition:.2s ease; border-radius:10px; padding:3px 9px; }
+  .navitem .ic { font-size:19px; opacity:.55; transition:.2s ease; border-radius:10px; padding:3px 9px; display:inline-flex; }
   .navitem.active { color:#fff; }
   .navitem.active .ic { opacity:1; transform:translateY(-1px); background:rgba(168,85,247,.16); box-shadow:0 0 0 1px rgba(168,85,247,.25) inset; }
   .navitem.active .label-underline { width:14px; height:2px; border-radius:2px; background:linear-gradient(90deg,var(--p1),var(--b1)); margin-top:2px; box-shadow:0 0 6px rgba(168,85,247,.7); }
   .label-underline { width:14px; height:2px; margin-top:2px; }
   .navcenter {
-    position:relative; top:-20px; width:54px; height:54px; border-radius:50%; flex:none;
+    position:relative; top:-20px; width:54px; height:54px; border-radius:50%; flex:none; color:#fff;
     background:radial-gradient(120% 150% at 25% -10%, rgba(255,255,255,.35), transparent 55%), linear-gradient(135deg,var(--p1),var(--b1));
     display:flex; align-items:center; justify-content:center;
     box-shadow:0 0 26px rgba(168,85,247,.6), 0 8px 20px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.3);
     border:3px solid var(--bg); cursor:pointer; transition:transform .15s ease;
   }
   .navcenter:active { transform:scale(.92); }
-  .navcenter .ic { font-size:24px; opacity:1; }
+  .navcenter .ic { font-size:24px; opacity:1; display:inline-flex; }
 
   /* ---------- horizontal tabs ---------- */
   .toptabs { display:flex; gap:6px; margin-bottom:12px; background:var(--surface); border-radius:16px; padding:5px; border:1px solid var(--border); }
@@ -487,7 +487,7 @@
      ============================================================ */
 
   /* Faint animated HUD grid behind the whole app, fading out toward the bottom — reads as
-     "game dashboard" texture without competing with the aura glow already in body::before. */
+     "game dashboard" texture without competing with the drifting light blobs behind it. */
   body::after {
     content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.4;
     background-image:
@@ -636,9 +636,107 @@
   @media (prefers-reduced-motion: reduce) {
     .chest-box, .chest-glow, .chest-rays.burst, .chest-prize.reveal, .chest-prize-icon { animation:none !important; }
   }
+
+  /* ============================================================
+     Rarity-specific card frames — beyond just a border color, each
+     tier above Rare gets its own animated treatment so a Legendary+
+     card visibly stands out from across the screen, the way it does
+     in Hearthstone/Clash Royale.
+     ============================================================ */
+  .game-card[data-rarity], .gshop-card[data-rarity] { position:relative; }
+  .game-card[data-rarity] .gcimgwrap, .gshop-card[data-rarity] .gcimgwrap { position:relative; overflow:hidden; }
+
+  /* Rare — faint diagonal sheen texture on the artwork */
+  .game-card[data-rarity="rare"] .gcimgwrap::before, .gshop-card[data-rarity="rare"] .gcimgwrap::before {
+    content:''; position:absolute; inset:0; z-index:1; pointer-events:none;
+    background:repeating-linear-gradient(115deg, transparent 0 10px, rgba(96,165,250,.1) 10px 12px);
+  }
+
+  /* Epic and above — the card frame breathes with its own rarity glow */
+  @keyframes rarityPulseGlow {
+    0%,100% { box-shadow:0 0 0 1px var(--rc) inset, 0 0 14px -4px var(--rc); }
+    50%     { box-shadow:0 0 0 1px var(--rc) inset, 0 0 26px -3px var(--rc); }
+  }
+  .game-card[data-rarity="epic"], .gshop-card[data-rarity="epic"],
+  .game-card[data-rarity="legendary"], .gshop-card[data-rarity="legendary"],
+  .game-card[data-rarity="mythic"], .gshop-card[data-rarity="mythic"] { animation:rarityPulseGlow 2.4s ease-in-out infinite; }
+
+  /* Legendary — gold shimmer sweeping across the art + a corner star */
+  @keyframes raritySheen { 0%{ background-position:130% 130%; } 100%{ background-position:-30% -30%; } }
+  .game-card[data-rarity="legendary"] .gcimgwrap::before, .gshop-card[data-rarity="legendary"] .gcimgwrap::before {
+    content:''; position:absolute; inset:0; z-index:1; pointer-events:none; background-size:250% 250%;
+    background-image:linear-gradient(115deg, transparent 35%, rgba(251,191,36,.4) 50%, transparent 65%);
+    animation:raritySheen 2.8s linear infinite;
+  }
+  .game-card[data-rarity="legendary"]::after, .gshop-card[data-rarity="legendary"]::after {
+    content:'★'; position:absolute; top:6px; right:6px; z-index:3; font-size:12px; color:#fbbf24;
+    text-shadow:0 0 8px rgba(251,191,36,.9); pointer-events:none;
+  }
+
+  /* Mythic — rose glow + sparkle mark, slightly faster pulse than Epic */
+  .game-card[data-rarity="mythic"], .gshop-card[data-rarity="mythic"] { animation-duration:2s; }
+  .game-card[data-rarity="mythic"]::after, .gshop-card[data-rarity="mythic"]::after {
+    content:'✦'; position:absolute; top:6px; right:6px; z-index:3; font-size:12px; color:#fb7185;
+    text-shadow:0 0 8px rgba(251,113,133,.9); pointer-events:none;
+  }
+
+  /* Divine (top tier) — the whole frame cycles through colors, plus a bright sweeping sheen and a crown mark */
+  @keyframes divineShift {
+    0%,100% { box-shadow:0 0 0 1.5px #f472b6 inset, 0 0 22px -2px #f472b6; }
+    33%     { box-shadow:0 0 0 1.5px #a78bfa inset, 0 0 22px -2px #a78bfa; }
+    66%     { box-shadow:0 0 0 1.5px #60a5fa inset, 0 0 22px -2px #60a5fa; }
+  }
+  .game-card[data-rarity="god"], .gshop-card[data-rarity="god"] { animation:divineShift 3.2s linear infinite; }
+  .game-card[data-rarity="god"] .gcimgwrap::before, .gshop-card[data-rarity="god"] .gcimgwrap::before {
+    content:''; position:absolute; inset:0; z-index:1; pointer-events:none; background-size:250% 250%;
+    background-image:linear-gradient(115deg, transparent 35%, rgba(255,255,255,.45) 50%, transparent 65%);
+    animation:raritySheen 2.1s linear infinite;
+  }
+  .game-card[data-rarity="god"]::after, .gshop-card[data-rarity="god"]::after {
+    content:'♛'; position:absolute; top:6px; right:6px; z-index:3; font-size:13px; color:#fdf4ff;
+    text-shadow:0 0 10px rgba(244,114,182,.95); pointer-events:none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .game-card[data-rarity], .gshop-card[data-rarity],
+    .game-card[data-rarity] .gcimgwrap::before, .gshop-card[data-rarity] .gcimgwrap::before { animation:none !important; }
+  }  /* Live activity feed strip on the home hub */
+  .activity-feed-marquee {
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:4px 12px;
+    max-height:118px; overflow:hidden; backdrop-filter:blur(10px);
+  }
+  .activity-feed-row {
+    display:flex; align-items:center; gap:8px; padding:6px 0; font-size:12px; color:var(--muted);
+    border-bottom:1px solid var(--border); animation:feedRowIn .3s ease;
+  }
+  .activity-feed-row:last-child { border-bottom:none; }
+  @keyframes feedRowIn { from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:translateY(0); } }
+
+  /* Achievement badge cards */
+  .ach-card {
+    border-radius:18px; padding:14px 10px; text-align:center; position:relative; overflow:hidden;
+    background:var(--surface2); border:1px solid var(--border); transition:transform .15s ease;
+  }
+  .ach-card.locked { filter:grayscale(1); opacity:.5; }
+  .ach-card.unlocked {
+    background:linear-gradient(160deg, rgba(251,191,36,.14), var(--surface2) 60%);
+    border-color:rgba(251,191,36,.35);
+    box-shadow:0 0 0 1px rgba(251,191,36,.12) inset, 0 10px 24px -14px rgba(0,0,0,.55);
+    animation:achGlowPulse 3s ease-in-out infinite;
+  }
+  @keyframes achGlowPulse {
+    0%,100% { box-shadow:0 0 0 1px rgba(251,191,36,.12) inset, 0 10px 24px -14px rgba(0,0,0,.55), 0 0 0 rgba(251,191,36,0); }
+    50%     { box-shadow:0 0 0 1px rgba(251,191,36,.25) inset, 0 10px 24px -14px rgba(0,0,0,.55), 0 0 16px -2px rgba(251,191,36,.4); }
+  }
+  .ach-icon { font-size:30px; margin-bottom:4px; filter:drop-shadow(0 0 8px rgba(251,191,36,.4)); }
+  .ach-card.locked .ach-icon { filter:none; font-size:24px; }
+  @media (prefers-reduced-motion: reduce) { .ach-card.unlocked { animation:none; } }
 </style>
 </head>
 <body>
+<div class="bg-blob bg-blob-1"></div>
+<div class="bg-blob bg-blob-2"></div>
+<div class="bg-blob bg-blob-3"></div>
 <div class="toast" id="toast"></div>
 
 <!-- ============ Chest opening reveal modal ============ -->
@@ -675,24 +773,27 @@
 <section class="page active" id="page-games">
 
   <div class="view active" id="gview-hub">
+    <div id="activityFeedWrap" style="display:none;margin-bottom:14px;">
+      <div class="activity-feed-marquee" id="activityFeed"></div>
+    </div>
     <div class="gcard purple featured" onclick="showPage('shop')" style="margin-top:14px;" id="hubTile-shop">
       <span class="badge-hot">Best-seller 🔥</span>
-      <span class="ic">🛍</span>
+      <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-4.6A2 2 0 0 1 7.3 3h9.4a2 2 0 0 1 1.9 1.4L20 9"/><path d="M4 9h16v1.5a3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3V9z"/><path d="M6 13.5V20a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-6.5"/><path d="M10 21v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"/></svg></span>
       <span class="t">Shop</span>
       <span class="s">Newest gift cards & products</span>
     </div>
 
     <div class="grid2">
-      <div class="gcard blue" onclick="showGView('cardgame')" id="hubTile-cardgame"><span class="ic">⚔️</span><span class="t">Card game</span><span class="s">Collection, mutation & battles</span></div>
-      <div class="gcard teal" onclick="showGView('battlepass')" id="hubTile-battlepass"><span class="ic">🏅</span><span class="t">Battle pass</span><span class="s">Seasonal rewards track</span></div>
-      <div class="gcard pink" onclick="showPage('market')" id="hubTile-market"><span class="ic">🎁</span><span class="t">Gift market</span><span class="s">Consignment buy/sell</span></div>
-      <div class="gcard green" onclick="showPage('wallet')" id="hubTile-wallet"><span class="ic">💎</span><span class="t">Currency wallet</span><span class="s">Top up & convert currency</span></div>
+      <div class="gcard blue" onclick="showGView('cardgame')" id="hubTile-cardgame"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t">Card game</span><span class="s">Collection, mutation & battles</span></div>
+      <div class="gcard teal" onclick="showGView('battlepass')" id="hubTile-battlepass"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 12.3 7 21l5-3 5 3-2-8.7"/></svg></span><span class="t">Battle pass</span><span class="s">Seasonal rewards track</span></div>
+      <div class="gcard pink" onclick="showPage('market')" id="hubTile-market"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8.5" width="17" height="11" rx="1.5"/><path d="M3.5 12.5h17"/><path d="M12 8.5v11"/><path d="M12 8.5C9 8.5 7.8 4 10.2 4c1.8 0 1.8 3 1.8 4.5zM12 8.5c3 0 4.2-4.5 1.8-4.5-1.8 0-1.8 3-1.8 4.5z"/></svg></span><span class="t">Gift market</span><span class="s">Consignment buy/sell</span></div>
+      <div class="gcard green" onclick="showPage('wallet')" id="hubTile-wallet"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h8l5 6.2-9 10.8-9-10.8z"/><path d="M6 3.5l3 6.2-3.9.2M14 3.5l-3 6.2M9 3.5l3 6.2 3-6.2M2.1 9.7h19.6"/></svg></span><span class="t">Currency wallet</span><span class="s">Top up & convert currency</span></div>
     </div>
 
     <h3 class="sec">Quick access</h3>
     <div class="hscroll">
-      <div class="mini-card" onclick="showGView('events')"><div class="ic">🎯</div><div class="t">Daily tasks</div><div class="s" id="questsQuickStat">...</div></div>
-      <div class="mini-card" id="hubTile-clan" onclick="showPage('more');showMView('clan')"><div class="ic">🏰</div><div class="t">Clan</div><div class="s" id="clanQuickStat">...</div></div>
+      <div class="mini-card" onclick="showGView('events')"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></div><div class="t">Daily tasks</div><div class="s" id="questsQuickStat">...</div></div>
+      <div class="mini-card" id="hubTile-clan" onclick="showPage('more');showMView('clan')"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9.5l2.5-2v3l2.5-2.5v3L12 8l3 3V8l2.5 3v-3l2.5 2.5v3l2.5-2V21z"/><path d="M4 21h16M10 21v-5a2 2 0 0 1 4 0v5"/></svg></div><div class="t">Clan</div><div class="s" id="clanQuickStat">...</div></div>
     </div>
   </div>
 
@@ -716,13 +817,8 @@
       <div id="gameShop" class="muted">Loading...</div>
     </div>
     <div class="view" id="gsub-mycards">
-      <p class="muted">To "upgrade", tap the upgrade button on the target card, then pick as many cards as you want to sacrifice — the sacrifices are destroyed and part of their power is added to the target (the target's level does not change).</p>
+      <p class="muted">💪 Upgrade sacrifices any other cards to boost this card's power (level stays the same). 🧬 Mutate consumes one identical duplicate (same name & level) to raise this card's level and rarity.</p>
       <div id="gameMyCards" class="muted">Loading...</div>
-      <div id="mutationsWrap" style="display:none;">
-        <h3 class="sec">🧬 Possible mutations</h3>
-        <p class="muted">Got two identical cards (same name and level)? You can mutate them to raise the level (and rarity).</p>
-        <div id="mutationsList"></div>
-      </div>
     </div>
     <div id="upgradePanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;padding:16px;overflow-y:auto;">
       <div class="card" style="max-width:480px;margin:40px auto 24px;">
@@ -734,6 +830,17 @@
         <p class="muted">Select as many cards as you want to sacrifice:</p>
         <div id="upgradeSacrificeList" class="game-card-grid"></div>
         <button class="btn gold" style="margin-top:12px;width:100%;" onclick="confirmUpgrade()">💪 Upgrade</button>
+      </div>
+    </div>
+    <div id="mutatePanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;padding:16px;overflow-y:auto;">
+      <div class="card" style="max-width:480px;margin:40px auto 24px;">
+        <div class="row" style="margin-bottom:8px;">
+          <h3 style="margin:0;">🧬 Mutate</h3>
+          <button class="btn secondary" style="padding:6px 14px;" onclick="closeMutatePanel()">‹ Back</button>
+        </div>
+        <div id="mutateTargetInfo" class="muted" style="margin-bottom:10px;"></div>
+        <p class="muted">Pick the identical card to consume — the target above goes up one level, this one is destroyed:</p>
+        <div id="mutatePartnerList" class="game-card-grid"></div>
       </div>
     </div>
     <div class="view" id="gsub-battle">
@@ -808,6 +915,7 @@
     <button class="active" data-mtab="buy" onclick="showMarketTab('buy')">Buy</button>
     <button data-mtab="sell" onclick="showMarketTab('sell')">Sell</button>
     <button data-mtab="mine" onclick="showMarketTab('mine')">My consignments</button>
+    <button data-mtab="watch" onclick="showMarketTab('watch')">🔔 Watch</button>
   </div>
   <div class="view active" id="mtab-buy">
     <div class="mkt-filterbar">
@@ -830,21 +938,47 @@
     <div class="card">
       <h3 class="sec" style="margin-top:0;" id="sellFormTitle">Post a gift for sale</h3>
       <input type="hidden" id="giftEditId">
-      <label>Gift category</label>
-      <select id="giftTitle" onchange="onGiftCategoryChange()"><option value="">Loading...</option></select>
-      <label>Gift image</label>
-      <input type="file" id="giftImageFile" accept="image/*" onchange="uploadGiftImage()">
+      <label>Telegram NFT gift link</label>
+      <div class="row2">
+        <input type="text" id="giftLink" placeholder="https://t.me/nft/PlushPepe-2658" oninput="document.getElementById('giftFetchedBox').style.display='none';document.getElementById('giftTitle').value='';">
+        <button type="button" class="btn secondary" onclick="lookupGiftNft()">🔍 Fetch</button>
+      </div>
+      <div id="giftFetchedBox" style="display:none;margin:8px 0 12px;">
+        <div class="row" style="gap:10px;">
+          <img id="giftImagePreview" style="width:56px;height:56px;border-radius:10px;object-fit:cover;">
+          <div style="flex:1;">
+            <div style="font-weight:800;" id="giftFetchedName"></div>
+            <div class="muted" style="font-size:12px;" id="giftFetchedNumber"></div>
+          </div>
+        </div>
+      </div>
+      <input type="hidden" id="giftTitle">
       <input type="hidden" id="giftImage">
-      <img id="giftImagePreview" style="max-width:100px;border-radius:10px;display:none;margin-bottom:8px;">
+      <input type="hidden" id="giftSerial">
       <label>Price (LNDC)</label><input type="number" id="giftPrice">
-      <label>Serial/model number</label><input type="text" id="giftSerial" placeholder="e.g. #126547">
-      <label>Gift link</label><input type="text" id="giftLink" placeholder="https://t.me/nft/...">
       <button class="btn" id="giftSubmitBtn" onclick="listGift()">Post listing</button>
-      <button class="btn ghost" id="giftCancelEditBtn" style="display:none;" onclick="cancelEditGift()">Cancel editing</button>
+      <button class="btn ghost" id="giftCancelEditBtn" style="display:none;" onclick="resetGiftForm()">Cancel editing</button>
     </div>
   </div>
   <div class="view" id="mtab-mine">
     <div id="myGiftsList" class="muted">Loading...</div>
+  </div>
+  <div class="view" id="mtab-watch">
+    <div class="card">
+      <h3 class="sec" style="margin-top:0;">🔔 Add a price watch</h3>
+      <p class="muted">Get a direct message the moment a gift of this type appears in the market at or under your price.</p>
+      <label>Telegram NFT gift link (used only to read the gift's name)</label>
+      <div class="row2">
+        <input type="text" id="watchLink" placeholder="https://t.me/nft/PlushPepe-2658">
+        <button type="button" class="btn secondary" onclick="lookupWatchNft()">🔍 Fetch</button>
+      </div>
+      <div id="watchFetchedName" class="muted" style="margin:6px 0;"></div>
+      <input type="hidden" id="watchTitle">
+      <label>Notify me at or under (LNDC)</label><input type="number" id="watchMaxPrice">
+      <button class="btn gold" onclick="addWatchUI()">🔔 Add watch</button>
+    </div>
+    <h3 class="sec">Your watches</h3>
+    <div id="watchList" class="muted">Loading...</div>
   </div>
 </section>
 
@@ -924,6 +1058,7 @@
   <div class="card"><div id="currencyBalances" class="muted">Loading...</div></div>
   <div class="card">
     <h3 class="sec" style="margin-top:0;">Convert LNDC ⇄ currency</h3>
+    <p class="muted" id="swapFeeNote" style="margin-top:-4px;"></p>
     <label>From</label><select id="swapFrom"></select>
     <label>To</label><select id="swapTo"></select>
     <label>Amount</label><input type="number" id="swapAmount" />
@@ -996,10 +1131,11 @@
 
   <h3 class="sec">Quick access</h3>
   <div class="hscroll">
-    <div class="mini-card" onclick="showPage('games');showGView('cardgame');"><div class="ic">🎴</div><div class="t">My cards</div></div>
-    <div class="mini-card" onclick="showPage('market');showMarketTab('mine');"><div class="ic">📋</div><div class="t">My listings</div></div>
-    <div class="mini-card" onclick="showPage('wallet');setTimeout(()=>document.getElementById('ledgerList')?.scrollIntoView({behavior:'smooth'}),300);"><div class="ic">📜</div><div class="t">Transactions</div></div>
-    <div class="mini-card" onclick="showPage('more');showMView('avatars')"><div class="ic">🎨</div><div class="t">My avatars</div></div>
+    <div class="mini-card" onclick="showPage('games');showGView('cardgame');"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="12" height="15" rx="2" transform="rotate(-8 9 14)"/><rect x="8" y="4" width="12" height="15" rx="2"/></svg></div><div class="t">My cards</div></div>
+    <div class="mini-card" onclick="showPage('market');showMarketTab('mine');"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div><div class="t">My listings</div></div>
+    <div class="mini-card" onclick="showPage('wallet');setTimeout(()=>document.getElementById('ledgerList')?.scrollIntoView({behavior:'smooth'}),300);"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h9l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M14.5 3.5V8h4"/><path d="M8.5 12.5h6M8.5 15.5h6M8.5 9.5h2.5"/></svg></div><div class="t">Transactions</div></div>
+    <div class="mini-card" onclick="showPage('more');showMView('avatars')"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.2 8.2 0 1 0 0 16.4c1.3 0 1.9-1 1.2-2-.5-.7-.1-1.7.8-1.7h1.7A4.3 4.3 0 0 0 20 12a8.4 8.4 0 0 0-8-8.5z"/><circle cx="8" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg></div><div class="t">My avatars</div></div>
+    <div class="mini-card" onclick="showPage('achievements')"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="5.5"/><path d="M9 13.2 7.3 20l4.7-2.5 4.7 2.5-1.7-6.8"/></svg></div><div class="t">Achievements</div></div>
   </div>
 
   <h3 class="sec">Menu</h3>
@@ -1010,6 +1146,7 @@
     <span class="mic">👥</span><div class="mtxt"><div class="mt">Invite friends</div><div class="ms" id="referralSubtitle">Referral commission</div></div><span class="arrow">‹</span>
   </div>
   <div class="card" id="referralCard">Loading...</div>
+  <div class="menu-row" onclick="toggleSound()"><span class="mic">🔊</span><div class="mtxt"><div class="mt" id="soundToggleRow">Sound effects: On</div></div><span class="arrow">‹</span></div>
   <div class="menu-row" onclick="openSupportChat()">
     <span class="mic">🎧</span><div class="mtxt"><div class="mt">Support</div><div class="ms">Direct contact with admin</div></div><span class="arrow">‹</span>
   </div>
@@ -1085,9 +1222,39 @@
   </div>
 
   <div class="view" id="mview-raffle">
-    <div id="raffleContent" class="muted">Loading...</div>
-    <h3 class="sec">🏆 Recent winners</h3>
-    <div id="raffleWinnersLog" class="muted">Loading...</div>
+    <div id="raffleListBox">
+      <div id="raffleContent" class="muted">Loading...</div>
+      <h3 class="sec">🏆 Recent winners</h3>
+      <div id="raffleWinnersLog" class="muted">Loading...</div>
+    </div>
+    <div id="raffleDetailBox" style="display:none;">
+      <button class="btn secondary" onclick="closeRaffleDetail()">‹ Back</button>
+      <h3 class="sec" id="rdTitle" style="margin-top:10px;"></h3>
+      <div class="card" style="display:flex;gap:8px;text-align:center;">
+        <div style="flex:1;"><div style="font-size:19px;font-weight:800;" id="rdParticipants">0</div><div class="muted" style="font-size:11px;">Participants</div></div>
+        <div style="flex:1;"><div style="font-size:19px;font-weight:800;" id="rdGiftsCount">0</div><div class="muted" style="font-size:11px;">Gifts</div></div>
+        <div style="flex:1;"><div style="font-size:15px;font-weight:800;" id="rdCountdown">—</div><div class="muted" style="font-size:11px;" id="rdCountdownLabel">Ends in</div></div>
+      </div>
+      <div class="card"><div class="row"><span class="muted">🎫 Total ticket pool</span><b id="rdTicketPool">0</b></div></div>
+      <div id="rdGiftsRow" class="hscroll"></div>
+      <div id="rdWinnersBox" style="display:none;">
+        <h3 class="sec">🏆 Winners</h3>
+        <div id="rdWinnersList"></div>
+      </div>
+      <div id="rdJoinBox" class="card" style="display:none;">
+        <div id="rdRequirement" class="muted" style="margin-bottom:8px;"></div>
+        <div class="row"><span class="muted">Your tickets</span><b id="rdMyTickets">0</b></div>
+        <div id="rdStepperRow" style="display:flex;align-items:center;gap:10px;margin:10px 0;">
+          <button class="btn secondary" style="padding:8px 16px;" onclick="rdStep(-1)">−</button>
+          <input type="number" id="rdQty" value="1" min="1" style="text-align:center;flex:1;">
+          <button class="btn secondary" style="padding:8px 16px;" onclick="rdStep(1)">+</button>
+        </div>
+        <button class="btn gold" style="width:100%;" id="rdJoinBtn" onclick="rdJoinOrBuy()">🎟 Join giveaway</button>
+      </div>
+      <h3 class="sec">👥 Top entries</h3>
+      <div id="rdTopEntries" class="muted">Loading...</div>
+      <p class="muted" id="rdSeedHash" style="margin-top:10px;font-size:10px;word-break:break-all;"></p>
+    </div>
   </div>
 
   <div class="view" id="mview-album">
@@ -1142,26 +1309,31 @@
   <div class="card" id="infoPageContent" style="line-height:2;white-space:pre-wrap;">Loading...</div>
 </section>
 
+<section class="page" id="page-achievements">
+  <p class="muted">Pin up to 3 unlocked badges to show next to your name in clan chat and the leaderboard.</p>
+  <div id="achievementsGrid" class="muted">Loading...</div>
+</section>
+
 <!-- ---------- bottom navigation ---------- -->
 <nav class="bottomnav">
   <button class="navitem" data-page="shop" onclick="showPage('shop')">
-    <span class="ic">🏪</span><span>Shop</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-4.6A2 2 0 0 1 7.3 3h9.4a2 2 0 0 1 1.9 1.4L20 9"/><path d="M4 9h16v1.5a3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3V9z"/><path d="M6 13.5V20a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-6.5"/><path d="M10 21v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"/></svg></span><span>Shop</span><span class="label-underline"></span>
   </button>
   <button class="navitem" data-page="market" onclick="showPage('market')">
-    <span class="ic">🛒</span><span>Market</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/><path d="M3 4h2l2.3 11a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.2L20 8H6.2"/></svg></span><span>Market</span><span class="label-underline"></span>
   </button>
-  <div class="navcenter" onclick="showPage('games')"><span class="ic">🎮</span></div>
+  <div class="navcenter" onclick="showPage('games')"><span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="11" rx="4.5"/><path d="M7 10.3v4.4M4.9 12.5h4.2"/><circle cx="16" cy="10.6" r="1" fill="currentColor" stroke="none"/><circle cx="18.5" cy="13.1" r="1" fill="currentColor" stroke="none"/></svg></span></div>
   <button class="navitem" data-page="leaderboard" onclick="showPage('leaderboard')">
-    <span class="ic">🏆</span><span>Leaderboard</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z"/><path d="M7 5H4.3a1 1 0 0 0-1 1.1c.2 2.7 2.1 4 4.2 4.4M17 5h2.7a1 1 0 0 1 1 1.1c-.2 2.7-2.1 4-4.2 4.4"/><path d="M12 13.5V16M9.5 21h5M10 17.5h4V19a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-1.5z"/></svg></span><span>Leaderboard</span><span class="label-underline"></span>
   </button>
   <button class="navitem" data-page="wallet" onclick="showPage('wallet')">
-    <span class="ic">👛</span><span>Wallet</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.2A2 2 0 0 1 5.5 5h12a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2V7.2z"/><path d="M16.5 12.2h2.6a1.4 1.4 0 0 1 0 2.8h-2.6a1.9 1.9 0 0 1 0-3.8z"/><path d="M3.5 8.7h13.5"/></svg></span><span>Wallet</span><span class="label-underline"></span>
   </button>
   <button class="navitem" data-page="profile" onclick="showPage('profile')">
-    <span class="ic">👤</span><span>Profile</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></span><span>Profile</span><span class="label-underline"></span>
   </button>
   <button class="navitem" data-page="more" onclick="showPage('more')">
-    <span class="ic">☰</span><span>More</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg></span><span>More</span><span class="label-underline"></span>
   </button>
 </nav>
 
@@ -1199,6 +1371,48 @@ function haptic(kind) {
   else if (kind === 'rigid' || kind === 'soft' || kind === 'medium' || kind === 'heavy' || kind === 'light') h.impactOccurred(kind);
   else h.selectionChanged();
 }
+// Lightweight synthesized sound effects (Web Audio API — no audio files to host/load) for the app's
+// biggest moments. Off by default is NOT the behavior — sound defaults ON but is fully toggleable
+// and the preference persists locally on the device.
+let SOUND_ENABLED = localStorage.getItem('lando_sound') !== 'off';
+let AUDIO_CTX = null;
+function getAudioCtx() {
+  if (!AUDIO_CTX) { try { AUDIO_CTX = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+  return AUDIO_CTX;
+}
+function playTone(freqs, durationMs, type, gainVal) {
+  if (!SOUND_ENABLED) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  const now = ctx.currentTime;
+  freqs.forEach((f, i) => {
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = type; osc.frequency.value = f;
+    const start = now + i * 0.09;
+    gain.gain.setValueAtTime(gainVal, start);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + durationMs / 1000);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(start); osc.stop(start + durationMs / 1000 + 0.03);
+  });
+}
+function sfx(kind) {
+  if (kind === 'win') playTone([523, 659, 784, 1047], 200, 'sine', 0.08);
+  else if (kind === 'purchase') playTone([600, 800], 120, 'triangle', 0.06);
+  else if (kind === 'error') playTone([220, 170], 160, 'sawtooth', 0.05);
+  else if (kind === 'tap') playTone([500], 40, 'sine', 0.035);
+  else playTone([700], 90, 'sine', 0.05);
+}
+function toggleSound() {
+  SOUND_ENABLED = !SOUND_ENABLED;
+  localStorage.setItem('lando_sound', SOUND_ENABLED ? 'on' : 'off');
+  updateSoundToggleUI();
+  if (SOUND_ENABLED) sfx('tap');
+}
+function updateSoundToggleUI() {
+  const el = document.getElementById('soundToggleRow');
+  if (el) el.textContent = SOUND_ENABLED ? '🔊 Sound effects: On' : '🔇 Sound effects: Off';
+}
 let CONFIG = {};
 let CURRENT_PAGE = 'games';
 let PAGE_BEFORE_SUBPAGE = 'more'; // the page we were on before going to tasks/info — the back button returns there
@@ -1230,11 +1444,11 @@ async function api(path, opts = {}) {
     res = await fetch(path, { ...opts, headers, signal: AbortSignal.timeout(15000) });
   } catch (e) {
     const msg = (e.name === 'TimeoutError' || e.name === 'AbortError') ? 'Server did not respond, try again' : 'Connection failed';
-    toast(msg); haptic('error');
+    toast(msg); haptic('error'); sfx('error');
     throw new Error(msg);
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) { toast(data.error || 'An error occurred'); haptic('error'); throw new Error(data.error || 'error'); }
+  if (!res.ok) { toast(data.error || 'An error occurred'); haptic('error'); sfx('error'); throw new Error(data.error || 'error'); }
   // Any successful write (purchase, claim, upgrade, vote...) gets a light confirmation buzz;
   // plain GETs (page loads/polling) stay silent so haptics don't fire on every screen open.
   if (method !== 'GET') haptic('success');
@@ -1279,10 +1493,11 @@ async function uploadImage(file) {
 }
 
 /* ================= page navigation ================= */
-const PAGE_TITLES = { games:'Lando Gifts', shop:'Shop', market:'User market', leaderboard:'Leaderboard', wallet:'Wallet', profile:'Profile', more:'More', tasks:'Tasks' };
+const PAGE_TITLES = { games:'Lando Gifts', shop:'Shop', market:'User market', leaderboard:'Leaderboard', wallet:'Wallet', profile:'Profile', more:'More', tasks:'Tasks', achievements:'My achievements' };
 function showPage(name) {
   haptic('light');
   if (name !== 'more') stopClanChat(); // leaving the "more" section entirely — no reason to keep polling clan chat in the background
+  if (name !== 'more') clearInterval(RD_TIMER); // leaving "more" also leaves any open raffle detail — stop its countdown timer
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.querySelectorAll('.navitem').forEach(b => b.classList.toggle('active', b.dataset.page === name));
@@ -1291,7 +1506,7 @@ function showPage(name) {
   // headerBack() itself decides where "back" goes to (a nested view if there's history, otherwise a
   // sensible default), so there's never a state where tapping it does nothing.
   // if we are going to a main page (not tasks/info, which are sub-pages themselves), save it here as "page before sub-page"
-  if (name !== 'tasks' && name !== 'info') { PAGE_BEFORE_SUBPAGE = name; NAV_STACK = []; } // switching top-level tabs starts a fresh nested-navigation history
+  if (name !== 'tasks' && name !== 'info' && name !== 'achievements') { PAGE_BEFORE_SUBPAGE = name; NAV_STACK = []; } // switching top-level tabs starts a fresh nested-navigation history
   CURRENT_PAGE = name;
   window.scrollTo(0, 0);
   if (name === 'shop') loadShop();
@@ -1302,6 +1517,7 @@ function showPage(name) {
   if (name === 'games') loadGamesHub();
   if (name === 'more') loadMoreHub();
   if (name === 'tasks') loadTasks();
+  if (name === 'achievements') loadAchievements();
 }
 
 /* Games: sub-pages */
@@ -1328,6 +1544,7 @@ function showEventsSub(name) {
 
 /* More: sub-pages */
 function showMView(name) {
+  if (name !== 'raffle') clearInterval(RD_TIMER); // leaving the raffle section — stop its countdown timer if one was running
   if (!NAV_GOING_BACK) {
     const activeEl = document.querySelector('#page-more .view.active');
     const prevName = activeEl ? activeEl.id.replace('mview-', '') : null;
@@ -1344,7 +1561,7 @@ function showMView(name) {
   if (name === 'clanbrowse') loadClanBrowse();
   if (name === 'clanwar') loadClanWar();
   if (name === 'clanchat') startClanChat(); else stopClanChat();
-  if (name === 'raffle') loadRaffles();
+  if (name === 'raffle') { document.getElementById('raffleDetailBox').style.display = 'none'; document.getElementById('raffleListBox').style.display = 'block'; loadRaffles(); }
   if (name === 'album') loadAlbums();
   if (name === 'cardmarket') loadCardMarket();
   if (name === 'avatars') loadAvatarsShop();
@@ -1373,23 +1590,8 @@ function showMarketTab(name) {
   document.querySelectorAll('#page-market .toptabs button').forEach(b => b.classList.toggle('active', b.dataset.mtab === name));
   if (name === 'buy') loadMarket();
   if (name === 'mine') loadMarket();
-  if (name === 'sell') loadGiftCategoriesForSell();
-}
-let GIFT_CATEGORIES = [];
-async function loadGiftCategoriesForSell() {
-  GIFT_CATEGORIES = await api('/api/gifts/categories');
-  const sel = document.getElementById('giftTitle');
-  sel.innerHTML = GIFT_CATEGORIES.length
-    ? '<option value="">Choose deck...</option>' + GIFT_CATEGORIES.map(c => `<option value="${c.name}">${c.name}</option>`).join('')
-    : '<option value="">No deck set yet</option>';
-}
-function onGiftCategoryChange() {
-  const cat = GIFT_CATEGORIES.find(c => c.name === document.getElementById('giftTitle').value);
-  if (cat && cat.image_url) {
-    document.getElementById('giftImage').value = cat.image_url;
-    const preview = document.getElementById('giftImagePreview');
-    preview.src = cat.image_url; preview.style.display = 'block';
-  }
+  if (name === 'sell') resetGiftForm();
+  if (name === 'watch') loadWatchlist();
 }
 /* Leaderboard: tabs */
 function showLbTab(name) {
@@ -1428,6 +1630,7 @@ async function loadGamesHub() {
     const sub = document.querySelector('#hubTile-battlepass .s');
     if (sub) sub.textContent = s.config.enabled ? `Tier ${s.progress.currentTier}` : 'Inactive';
   } catch (e) {}
+  loadActivityFeed();
 }
 
 /* ================= Shop ================= */
@@ -1505,7 +1708,7 @@ async function openChestUI(id) {
     prize.classList.add('reveal');
     hint.textContent = `🎉 ${chest?.title || 'Chest'}`;
     closeBtn.style.display = 'block';
-    haptic('success');
+    haptic('success'); sfx('win');
   }, 460);
 
   loadMe();
@@ -1620,6 +1823,7 @@ async function loadCurrency() {
   document.getElementById('wdCode').innerHTML = codeOptions;
   document.getElementById('swapFrom').innerHTML = `<option value="LNDC">Lando Coin (LNDC)</option>` + codeOptions;
   document.getElementById('swapTo').innerHTML = codeOptions + `<option value="LNDC">Lando Coin (LNDC)</option>`;
+  document.getElementById('swapFeeNote').textContent = `Conversion fee: ${CONFIG.swapFeePercent ?? 1}%`;
   onDepCodeChange();
 }
 function onDepCodeChange() {
@@ -1715,15 +1919,66 @@ async function doGiftToman() {
 }
 
 /* ================= Gift market (P2P) ================= */
-async function uploadGiftImage() {
-  const file = document.getElementById('giftImageFile').files[0];
-  if (!file) return;
+async function lookupGiftNft() {
+  const link = document.getElementById('giftLink').value.trim();
+  if (!link) { toast('Paste the NFT gift link first'); return; }
   try {
-    const url = await uploadImage(file);
-    document.getElementById('giftImage').value = url;
-    const preview = document.getElementById('giftImagePreview');
-    preview.src = url; preview.style.display = 'block';
-  } catch (e) { toast('Image upload failed'); }
+    const g = await api('/api/nft-lookup', { method: 'POST', body: JSON.stringify({ link }) });
+    document.getElementById('giftTitle').value = g.name;
+    document.getElementById('giftImage').value = g.image_url;
+    document.getElementById('giftSerial').value = g.number || '';
+    document.getElementById('giftFetchedName').textContent = g.name;
+    document.getElementById('giftFetchedNumber').textContent = g.number ? `#${g.number}` : '';
+    document.getElementById('giftImagePreview').src = g.image_url;
+    document.getElementById('giftFetchedBox').style.display = 'block';
+  } catch (e) { /* api() already showed the error toast */ }
+}
+async function lookupWatchNft() {
+  const link = document.getElementById('watchLink').value.trim();
+  if (!link) { toast('Paste the NFT gift link first'); return; }
+  try {
+    const g = await api('/api/nft-lookup', { method: 'POST', body: JSON.stringify({ link }) });
+    document.getElementById('watchTitle').value = g.name;
+    document.getElementById('watchFetchedName').textContent = `Gift type: ${g.name}`;
+  } catch (e) { /* api() already showed the error toast */ }
+}
+async function addWatchUI() {
+  const title = document.getElementById('watchTitle').value;
+  const max_price = document.getElementById('watchMaxPrice').value;
+  if (!title) { toast('Fetch the gift type from Telegram first'); return; }
+  try {
+    await api('/api/watchlist', { method: 'POST', body: JSON.stringify({ title, max_price }) });
+    toast('Watch added 🔔');
+    document.getElementById('watchLink').value = '';
+    document.getElementById('watchTitle').value = '';
+    document.getElementById('watchFetchedName').textContent = '';
+    document.getElementById('watchMaxPrice').value = '';
+    loadWatchlist();
+  } catch (e) { /* api() already showed the error toast */ }
+}
+async function loadWatchlist() {
+  const rows = await api('/api/watchlist');
+  document.getElementById('watchList').innerHTML = rows.length ? rows.map(w => `
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;">
+      <div><b>${w.title}</b><div class="muted" style="font-size:12px;">at or under ${w.max_price.toLocaleString('en-US')} LNDC</div></div>
+      <button class="btn danger" style="padding:6px 12px;" onclick="removeWatchUI(${w.id})">Remove</button>
+    </div>`).join('') : '<p class="muted">No watch added yet.</p>';
+}
+async function removeWatchUI(id) {
+  await api(`/api/watchlist/${id}`, { method: 'DELETE' });
+  loadWatchlist();
+}
+function resetGiftForm() {
+  document.getElementById('giftEditId').value = '';
+  document.getElementById('giftLink').value = '';
+  document.getElementById('giftTitle').value = '';
+  document.getElementById('giftImage').value = '';
+  document.getElementById('giftSerial').value = '';
+  document.getElementById('giftPrice').value = '';
+  document.getElementById('giftFetchedBox').style.display = 'none';
+  document.getElementById('sellFormTitle').textContent = 'Post a gift for sale';
+  document.getElementById('giftSubmitBtn').textContent = 'Post listing';
+  document.getElementById('giftCancelEditBtn').style.display = 'none';
 }
 let MKT_OFFERS = [];
 let MKT_FEE_PERCENT = 5;
@@ -1809,8 +2064,8 @@ async function listGift() {
   const serial_number = document.getElementById('giftSerial').value.trim();
   const link = document.getElementById('giftLink').value.trim();
   const editId = document.getElementById('giftEditId').value;
-  if (!serial_number) { toast('Serial/model number is required'); return; }
-  if (!link) { toast('Gift link is required'); return; }
+  if (!title) { toast('Fetch the gift from Telegram first'); return; }
+  if (!price) { toast('Enter a price'); return; }
   if (editId) {
     await api(`/api/gifts/${editId}/edit`, { method: 'POST', body: JSON.stringify({ title, image_url, price, serial_number, link }) });
     toast('Listing edited and is pending admin approval again ✅');
@@ -1818,7 +2073,7 @@ async function listGift() {
     await api('/api/gifts/list', { method: 'POST', body: JSON.stringify({ title, image_url, price, serial_number, link }) });
     toast('Listing submitted — it will appear in the market after admin approval ✅');
   }
-  cancelEditGift();
+  resetGiftForm();
   showMarketTab('mine');
 }
 function editGiftUI(id) {
@@ -1830,23 +2085,14 @@ function editGiftUI(id) {
   document.getElementById('giftPrice').value = o.price_toman;
   document.getElementById('giftSerial').value = o.serial_number || '';
   document.getElementById('giftLink').value = o.link || '';
-  const preview = document.getElementById('giftImagePreview');
-  if (o.image_url) { preview.src = o.image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+  document.getElementById('giftFetchedName').textContent = o.title;
+  document.getElementById('giftFetchedNumber').textContent = o.serial_number ? `#${o.serial_number}` : '';
+  document.getElementById('giftImagePreview').src = o.image_url || '';
+  document.getElementById('giftFetchedBox').style.display = o.image_url ? 'block' : 'none';
   document.getElementById('sellFormTitle').textContent = 'Edit listing';
   document.getElementById('giftSubmitBtn').textContent = 'Save edit';
   document.getElementById('giftCancelEditBtn').style.display = 'block';
   showMarketTab('sell');
-}
-function cancelEditGift() {
-  document.getElementById('giftEditId').value = '';
-  document.getElementById('giftPrice').value = '';
-  document.getElementById('giftSerial').value = '';
-  document.getElementById('giftLink').value = '';
-  document.getElementById('giftImage').value = '';
-  document.getElementById('giftImagePreview').style.display = 'none';
-  document.getElementById('sellFormTitle').textContent = 'Post a gift for sale';
-  document.getElementById('giftSubmitBtn').textContent = 'Post listing';
-  document.getElementById('giftCancelEditBtn').style.display = 'none';
 }
 async function buyGift(id) { await api(`/api/gifts/${id}/buy`, { method: 'POST' }); toast('Reserved ✅'); loadMe(); loadMarket(); }
 async function cancelGift(id) { await api(`/api/gifts/${id}/cancel`, { method: 'POST' }); loadMarket(); }
@@ -1878,7 +2124,9 @@ async function loadTasks() {
     ? tasks.map((t, i) => `
       <div class="card" ${staggerStyle(i)}>
         <div class="row"><b>${t.title}</b><span class="tag">${t.reward_toman.toLocaleString('en-US')} LNDC</span></div>
+        ${t.description ? `<p class="muted" style="margin:6px 0;">${t.description}</p>` : ''}
         ${t.kind === 'join_channel' && t.channel_username && !t.done ? `<button class="btn secondary" onclick="tg?.openTelegramLink ? tg.openTelegramLink('https://t.me/${t.channel_username.replace(/^@/, '')}') : window.open('https://t.me/${t.channel_username.replace(/^@/, '')}','_blank')">📢 Join the channel</button>` : ''}
+        ${t.kind === 'custom' && t.link && !t.done ? `<button class="btn secondary" onclick="tg?.openLink ? tg.openLink('${t.link}') : window.open('${t.link}','_blank')">🔗 Open</button>` : ''}
         <button class="btn" ${t.done ? 'disabled' : ''} onclick="claimTask(${t.id})">${t.done ? 'Completed ✅' : 'I did it'}</button>
       </div>`).join('')
     : 'No task right now.';
@@ -1908,7 +2156,7 @@ async function loadGame() {
   const cards = await api('/api/game/cards');
   const filtered = selectedCat ? cards.filter(c => String(c.category_id) === selectedCat) : cards;
   document.getElementById('gameShop').innerHTML = filtered.length ? `<div class="gshop-grid">${filtered.map((c, i) => `
-    <div class="gshop-card" style="--rc:${c.rarity_color || 'var(--border)'};" ${staggerStyle(i)}>
+    <div class="gshop-card" data-rarity="${c.rarity_key || ''}" style="--rc:${c.rarity_color || 'var(--border)'};" ${staggerStyle(i)}>
       <div class="gcimgwrap">${c.image_url ? `<img src="${c.image_url}">` : ''}</div>
       <div class="gc-body">
         <div class="gc-name">${c.name}</div>
@@ -1917,27 +2165,33 @@ async function loadGame() {
         <button class="gc-buy" onclick="buyGameCard(${c.id})">Buy</button>
       </div>
     </div>`).join('')}</div>` : 'No card in this category right now.';
-  await loadMyCards(); await loadMutationGroups(); await loadGameLeaderboard(); await loadCardTasks(); await loadGameHistory();
+  await loadMyCards(); await loadGameLeaderboard(); await loadCardTasks(); await loadGameHistory();
 }
-async function buyGameCard(id) { await api('/api/game/buy-card', { method: 'POST', body: JSON.stringify({ cardId: id }) }); toast('Card purchased ✅'); loadMe(); loadMyCards(); loadMutationGroups(); }
+async function buyGameCard(id) { await api('/api/game/buy-card', { method: 'POST', body: JSON.stringify({ cardId: id }) }); sfx('purchase'); toast('Card purchased ✅'); loadMe(); loadMyCards(); }
 let MY_CARDS_CACHE = [];
 async function loadMyCards() {
   const mine = await api('/api/game/my-cards');
   MY_CARDS_CACHE = mine;
   SELECTED_DECK = SELECTED_DECK.filter(id => mine.some(c => c.id === id));
   if (UPGRADE_TARGET && !mine.some(c => c.id === UPGRADE_TARGET)) closeUpgradePanel();
-  document.getElementById('gameMyCards').innerHTML = mine.length ? `<div class="game-card-grid">${mine.map((c, i) => `
-    <div class="game-card" style="--rc:${c.rarity_color || 'var(--border)'};" ${staggerStyle(i)}>
+  if (MUTATE_TARGET && !mine.some(c => c.id === MUTATE_TARGET)) closeMutatePanel();
+  document.getElementById('gameMyCards').innerHTML = mine.length ? `<div class="game-card-grid">${mine.map((c, i) => {
+    const canMutate = mine.some(o => o.id !== c.id && o.card_id === c.card_id && o.level === c.level);
+    return `
+    <div class="game-card" data-rarity="${c.rarity_key || ''}" style="--rc:${c.rarity_color || 'var(--border)'};" ${staggerStyle(i)}>
       <div class="gcimgwrap">${c.image ? `<img src="${c.image}">` : ''}</div>
       <div class="gc-body">
         <div class="row"><b style="font-size:12.5px;">${c.name}</b></div>
         <div class="row" style="margin-top:2px;">${rarityBadge(c.rarity_label, c.rarity_color)}<span class="tag">${c.power}⚡</span></div>
         <div class="muted" style="font-size:11px;margin-top:2px;">Level ${c.level}</div>
         <button class="btn secondary" style="font-size:11px;padding:8px 4px;margin-top:8px;width:100%;" onclick="openUpgradePanel(${c.id})">💪 Upgrade</button>
+        ${canMutate ? `<button class="btn gold" style="font-size:11px;padding:8px 4px;margin-top:6px;width:100%;" onclick="openMutatePanel(${c.id})">🧬 Mutate</button>` : ''}
       </div>
-    </div>`).join('')}</div>` : 'You do not have any cards yet, buy some from the shop.';
+    </div>`;
+  }).join('')}</div>` : 'You do not have any cards yet, buy some from the shop.';
   renderBattleDeckPicker(mine);
   if (UPGRADE_TARGET) renderUpgradePanel();
+  if (MUTATE_TARGET) renderMutatePanel();
 }
 function renderBattleDeckPicker(mine) {
   const el = document.getElementById('battleDeckPicker');
@@ -1991,25 +2245,38 @@ async function confirmUpgrade() {
   const r = await api('/api/game/sacrifice', { method: 'POST', body: JSON.stringify({ targetUserCardId: targetId, sacrificeUserCardIds: UPGRADE_SELECTED }) });
   toast(`Upgrade successful! +${r.transferAmount} power 💪${r.skippedCount ? ` (${r.skippedCount} card hit the power cap and was not used)` : ''}`);
   closeUpgradePanel();
-  loadMe(); loadMyCards(); loadMutationGroups();
+  loadMe(); loadMyCards();
 }
-async function loadMutationGroups() {
-  const groups = await api('/api/game/mutation-groups');
-  const wrap = document.getElementById('mutationsWrap');
-  if (!groups.length) { wrap.style.display = 'none'; return; }
-  wrap.style.display = 'block';
-  document.getElementById('mutationsList').innerHTML = groups.map((g, i) => `
-    <div class="card" ${staggerStyle(i)}>
-      ${g.image ? `<img src="${g.image}">` : ''}
-      <div class="row"><b>${g.name}</b>${rarityBadge(g.rarity_label, g.rarity_color)}</div>
-      <div class="row"><span class="muted">Level ${g.level} — ${g.cnt} pcs</span><span class="tag">Power ${g.power}</span></div>
-      <button class="btn gold" ${g.canMutate ? '' : 'disabled'} onclick="mutateGroup(${g.card_id}, ${g.level})">🧬 Mutate${g.mergeCost > 0 ? ` (${g.mergeCost.toLocaleString('en-US')} LNDC)` : ''}</button>
-    </div>`).join('');
+let MUTATE_TARGET = null;
+function openMutatePanel(id) {
+  MUTATE_TARGET = id;
+  renderMutatePanel();
+  document.getElementById('mutatePanel').style.display = 'block';
 }
-async function mutateGroup(cardId, level) {
-  const r = await api('/api/game/mutate', { method: 'POST', body: JSON.stringify({ cardId, level }) });
-  toast(`Mutation successful! New level: ${r.newLevel} (${r.rarity_label}) 🧬`);
-  loadMe(); loadMyCards(); loadMutationGroups();
+function closeMutatePanel() {
+  document.getElementById('mutatePanel').style.display = 'none';
+  MUTATE_TARGET = null;
+}
+function renderMutatePanel() {
+  const target = MY_CARDS_CACHE.find(c => c.id === MUTATE_TARGET);
+  if (!target) { closeMutatePanel(); return; }
+  document.getElementById('mutateTargetInfo').innerHTML = `Target card: <b>${target.name}</b> — Level ${target.level} → ${target.level + 1} — current power <b>${target.power}⚡</b>`;
+  const partners = MY_CARDS_CACHE.filter(c => c.id !== MUTATE_TARGET && c.card_id === target.card_id && c.level === target.level);
+  document.getElementById('mutatePartnerList').innerHTML = partners.length ? partners.map(c => `
+    <div class="mini-card" style="cursor:pointer;" onclick="confirmMutate(${c.id})">
+      <div class="ic">🧬</div>
+      <div class="t">${c.name}</div>
+      <div class="s">Lv${c.level} · ${c.power}⚡</div>
+    </div>`).join('') : '<p class="muted">No identical card available.</p>';
+}
+async function confirmMutate(partnerId) {
+  const targetId = MUTATE_TARGET;
+  try {
+    const r = await api('/api/game/mutate', { method: 'POST', body: JSON.stringify({ keepUserCardId: targetId, sacrificeUserCardId: partnerId }) });
+    toast(`Mutation successful! New level: ${r.newLevel} (${r.rarity_label}) 🧬`);
+    closeMutatePanel();
+    loadMe(); loadMyCards();
+  } catch (e) { renderMutatePanel(); }
 }
 async function buyExtraPlays() { const r = await api('/api/game/buy-extra-plays', { method: 'POST' }); toast('Extra game purchased ✅'); loadMe(); document.getElementById('gamePlaysLeft').textContent = r.playsRemaining; }
 function updateQueueState(queue) {
@@ -2089,7 +2356,7 @@ async function loadCardTasks() {
     <div class="card" ${staggerStyle(i)}><div class="row"><b>${t.title}</b><span class="tag">Prize: ${t.card_name}</span></div>
     <button class="btn" ${t.done ? 'disabled' : ''} onclick="claimCardTask(${t.id})">${t.done ? 'Completed ✅' : 'I did it'}</button></div>`).join('') : 'No card task right now.';
 }
-async function claimCardTask(id) { await api(`/api/card-tasks/${id}/claim`, { method: 'POST' }); toast('Bonus card added ✅'); loadMyCards(); loadMutationGroups(); loadCardTasks(); }
+async function claimCardTask(id) { await api(`/api/card-tasks/${id}/claim`, { method: 'POST' }); toast('Bonus card added ✅'); loadMyCards(); loadCardTasks(); }
 async function loadGameHistory() {
   const history = await api('/api/game/history');
   const meId = (await api('/api/me')).tg_id;
@@ -2234,6 +2501,7 @@ async function loadAuctions() {
   }, 1000);
   // we refresh from the server every few seconds to keep the last bidder and price live
   AUCTION_POLL = setInterval(async () => {
+    if (document.hidden) return;
     if (!document.getElementById('page-more')?.classList.contains('active') && !document.getElementById('page-games')?.classList.contains('active')) return;
     try {
       const fresh = await api('/api/auctions');
@@ -2247,14 +2515,14 @@ function renderAuctionsList(auctions) {
     <div class="card" ${staggerStyle(i)}>
       ${a.image_url ? `<img src="${a.image_url}">` : ''}
       <div class="row"><b>${a.title}</b><span class="tag" id="auction-timer-${a.id}">${formatAuctionCountdown(a.ends_at)}</span></div>
-      <p class="muted">Current price: <b style="color:var(--gold);">${a.current_price.toLocaleString('en-US')}</b> LNDC (next step: ${(a.current_price + a.bid_step).toLocaleString('en-US')})</p>
+      <p class="muted">Current price: <b style="color:var(--gold);">${a.current_price.toLocaleString('en-US')}</b> LNDC (next bid: ${a.nextBidAmount.toLocaleString('en-US')}, +${a.bid_step_percent || 5}%)</p>
       <p class="muted">Last bidder: <b style="color:#c4b0ff;">${a.bidder_first_name ? (a.bidder_first_name + (a.bidder_username ? ' @' + a.bidder_username : '')) : 'No one has bid yet'}</b></p>
-      <button class="btn gold" onclick="bidAuction(${a.id})">Place bid (${(a.current_price + a.bid_step).toLocaleString('en-US')} LNDC)</button>
+      <button class="btn gold" onclick="bidAuction(${a.id})">Place bid (${a.nextBidAmount.toLocaleString('en-US')} LNDC)</button>
     </div>`).join('');
   document.getElementById('auctionsList').innerHTML = html;
   const el2 = document.getElementById('auctionsList2'); if (el2) el2.innerHTML = html;
 }
-async function bidAuction(id) { await api(`/api/auctions/${id}/bid`, { method: 'POST' }); toast('Your bid was placed ✅'); loadMe(); loadAuctions(); }
+async function bidAuction(id) { await api(`/api/auctions/${id}/bid`, { method: 'POST' }); sfx('purchase'); toast('Your bid was placed ✅'); loadMe(); loadAuctions(); }
 
 /* ================= Clan ================= */
 async function loadClan() {
@@ -2263,7 +2531,7 @@ async function loadClan() {
   const { clan } = await api('/api/clan/my');
   const el = document.getElementById('clanQuickPreview');
   el.innerHTML = clan
-    ? `<div class="card"><div class="row"><b>${clan.name}</b><span class="tag">#${clan.tag}</span></div><div class="row"><span class="muted">Score</span><b>${clan.score}</b></div><button class="btn secondary" onclick="showMView('clanmine')">Open my clan →</button></div>`
+    ? `<div class="card"><div class="row"><b>${clan.emblem.icon} ${clan.name}</b><span class="tag">#${clan.tag}</span></div><div class="row">${clanEmblemChip(clan.emblem)}<b>${clan.score} pts</b></div><button class="btn secondary" onclick="showMView('clanmine')">Open my clan →</button></div>`
     : `<div class="card"><p class="muted" style="margin:0 0 10px;">You're not in a clan yet.</p><button class="btn" onclick="showMView('clanbrowse')">🔎 Browse & join a clan</button></div>`;
 }
 
@@ -2278,8 +2546,9 @@ async function loadClanMine() {
   }
   el.innerHTML = `
     <div class="card">
-      <div class="row"><b>${clan.name}</b><span class="tag">#${clan.tag}</span></div>
-      <div class="row"><span class="muted">Score</span><b>${clan.score}</b></div>
+      <div class="row"><b>${clan.emblem.icon} ${clan.name}</b><span class="tag">#${clan.tag}</span></div>
+      <div class="row">${clanEmblemChip(clan.emblem)}<b>${clan.score} pts</b></div>
+      ${clan.emblem.nextThreshold ? `<div class="bp-progress"><div class="bp-progress-fill" style="width:${Math.min(100, Math.round(clan.score / clan.emblem.nextThreshold * 100))}%;"></div></div><p class="muted" style="font-size:11px;margin:4px 0 0;">${clan.emblem.nextThreshold - clan.score} pts to the next emblem</p>` : `<p class="muted" style="font-size:11px;">🏆 Highest emblem reached!</p>`}
       <div class="row" id="clanBankSection"><span class="muted">Clan bank</span><b>${clan.bank_balance.toLocaleString('en-US')} LNDC</b></div>
       <div class="row"><span class="muted">My role</span><b>${clan.myRole === 'owner' ? 'Leader' : clan.myRole === 'admin' ? 'Manager' : 'Member'}</b></div>
       <label>Donate to clan bank</label><input type="number" id="donateAmount">
@@ -2345,7 +2614,7 @@ async function loadClanBrowse() {
   const clanLb = await api('/api/clan/leaderboard');
   const lb = clanLb.leaderboard;
   document.getElementById('clanLeaderboard').innerHTML = lb.length
-    ? lb.map((c, i) => `<div class="lb-row"><div class="lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i + 1}</div><div class="lb-name">${c.name} #${c.tag}</div><div class="lb-score">${c.score} Score</div></div>`).join('')
+    ? lb.map((c, i) => `<div class="lb-row"><div class="lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i + 1}</div><div class="lb-name">${c.emblem.icon} ${c.name} #${c.tag}</div><div class="lb-score">${c.score} Score</div></div>`).join('')
     : 'No clan has scored yet.';
 }
 async function createClanUI() { await api('/api/clan/create', { method: 'POST', body: JSON.stringify({ name: document.getElementById('newClanName').value, tag: document.getElementById('newClanTag').value }) }); toast('Clan created ✅'); loadMe(); showMView('clanmine'); }
@@ -2353,7 +2622,7 @@ async function searchClanUI() {
   const results = await api('/api/clan/search?q=' + encodeURIComponent(document.getElementById('clanSearchQ').value));
   const policyLabel = { open: '🟢 Open', request: '🟡 By request', closed: '🔴 Closed' };
   document.getElementById('clanSearchResults').innerHTML = results.map(c => `<div class="card" style="padding:10px 14px;">
-      <div class="row"><span>${c.name} #${c.tag}</span><span class="tag">${policyLabel[c.join_policy] || '🟢 Open'}</span></div>
+      <div class="row"><span>${c.emblem.icon} ${c.name} #${c.tag}</span><span class="tag">${policyLabel[c.join_policy] || '🟢 Open'}</span></div>
       ${c.min_level > 0 ? `<p class="muted" style="margin:4px 0;">Requires level ${c.min_level}+</p>` : ''}
       <button class="btn" style="width:auto;" onclick="joinClanUI(${c.id})" ${c.join_policy === 'closed' ? 'disabled' : ''}>${c.join_policy === 'request' ? 'Request to join' : 'Membership'}</button>
     </div>`).join('') || 'Nothing found.';
@@ -2399,13 +2668,19 @@ function startClanChat() {
   CLAN_CHAT_LAST_ID = 0;
   document.getElementById('clanChatMessages').innerHTML = '<p class="muted" style="text-align:center;">Loading...</p>';
   pollClanChat();
-  // Poll every second — the fastest practical interval without a websocket/push layer, so new
-  // messages from other members show up almost immediately instead of lagging a couple seconds.
-  CLAN_CHAT_TIMER = setInterval(pollClanChat, 1000);
+  // Polls every 2s while the app is actually visible — fast enough that new messages feel live
+  // without a websocket/push layer, but cheap enough to hold up at scale. Pausing entirely while
+  // backgrounded (see the visibilitychange listener below) means a member who leaves the chat
+  // screen open in the background costs the server nothing until they come back.
+  CLAN_CHAT_TIMER = setInterval(pollClanChat, 2000);
 }
 function stopClanChat() {
   if (CLAN_CHAT_TIMER) { clearInterval(CLAN_CHAT_TIMER); CLAN_CHAT_TIMER = null; }
 }
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (CLAN_CHAT_TIMER) { clearInterval(CLAN_CHAT_TIMER); CLAN_CHAT_TIMER = null; } }
+  else if (document.getElementById('mview-clan')?.classList.contains('active')) { CLAN_CHAT_TIMER = setInterval(pollClanChat, 2000); pollClanChat(); }
+});
 async function pollClanChat() {
   try {
     const r = await api('/api/clan/chat?afterId=' + CLAN_CHAT_LAST_ID);
@@ -2426,6 +2701,7 @@ async function pollClanChat() {
       bubbleWrap.innerHTML = `
         <div class="chat-name-row" style="${mine ? 'flex-direction:row-reverse;' : ''}">
           <span class="chat-name-text">${m.first_name || m.username || 'Member'}</span>
+          ${renderBadges(m.badges)}
           <span class="chat-level-badge">⭐ Lv.${m.level || 1}</span>
         </div>
         <div style="background:${mine ? 'linear-gradient(135deg,var(--p1),var(--b1))' : 'var(--surface2)'};color:#fff;padding:8px 12px;border-radius:14px;${mine ? 'border-bottom-right-radius:4px;' : 'border-bottom-left-radius:4px;'}font-size:13px;line-height:1.5;word-break:break-word;">${m.text.replace(/</g, '&lt;')}</div>
@@ -2575,28 +2851,37 @@ async function joinWarUI(id) {
   toast('You joined! Now set your deck ⚔️'); loadClanWar();
 }
 
-/* ================= Big wheel (raffle) ================= */
+/* ================= Big wheel (raffle / giveaway) ================= */
+let RAFFLE_CACHE = {};
+let RD_CURRENT_ID = null;
+let RD_TIMER = null;
+
+function formatCountdown(ms) {
+  if (ms <= 0) return 'Ended';
+  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${s}s`;
+}
+function giftThumbs(prizes, max = 3) {
+  const shown = prizes.slice(0, max);
+  return shown.map(p => `<div style="width:44px;height:44px;border-radius:10px;overflow:hidden;flex:none;background:var(--surface2);display:flex;align-items:center;justify-content:center;">${p.image_url ? `<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover;">` : '🎁'}</div>`).join('')
+    + (prizes.length > max ? `<div style="width:44px;height:44px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);flex:none;">+${prizes.length - max}</div>` : '');
+}
 async function loadRaffles() {
   const raffles = await api('/api/raffle/list');
+  RAFFLE_CACHE = {};
+  raffles.forEach(r => RAFFLE_CACHE[r.raffle.id] = r);
   const el = document.getElementById('raffleContent');
-  el.innerHTML = raffles.length ? raffles.map(r => {
-    const pct = Math.min(100, Math.round((r.entriesCount / r.raffle.capacity) * 100));
-    const canBuyMore = r.raffle.ticket_price_toman > 0 && r.myEntry && r.myEntry.tickets < r.raffle.max_tickets_per_user;
-    return `<div class="card">
-      <h3 class="sec" style="margin-top:0;">${r.raffle.title}</h3>
-      ${r.raffle.prize_description ? `<p class="muted">${r.raffle.prize_description}</p>` : ''}
-      <div class="row"><span class="muted">Capacity</span><b>${r.entriesCount} / ${r.raffle.capacity}</b></div>
-      <div class="bp-progress"><div class="bp-progress-fill" style="width:${pct}%;"></div></div>
-      <div class="row" style="margin-top:6px;"><span class="muted">Number of winners</span><b>${r.raffle.winners_count} people</b></div>
-      ${r.raffle.required_task_id ? `<div class="row"><span class="muted">Entry requirement</span><b>${r.taskDone ? '✅ Task completed' : `❌ Task «${r.requiredTask?.title || ''}» do it`}</b></div>` : ''}
-      ${r.myEntry
-        ? `<div class="tag" style="margin-top:8px;">✅ You are registered — you have ${r.myEntry.tickets} ticket(s)</div>
-           ${canBuyMore ? `<button class="btn gold" style="margin-top:8px;" onclick="buyRaffleTicketUI(${r.raffle.id})">🎫 Buy extra ticket (${r.raffle.ticket_price_toman.toLocaleString('en-US')} LNDC)</button>` : ''}`
-        : `<button class="btn gold" style="margin-top:8px;" ${!r.taskDone ? 'disabled' : ''} onclick="registerRaffleUI(${r.raffle.id})">🎟 Enter the raffle</button>
-           ${!r.taskDone ? `<button class="btn secondary" style="margin-top:6px;" onclick="showPage('tasks')">Go to tasks</button>` : ''}`}
-      ${r.raffle.server_seed_hash ? `<p class="muted" style="margin-top:8px;font-size:10px;word-break:break-all;">🔒 Provably fair — seed commitment: ${r.raffle.server_seed_hash}</p>` : ''}
+  el.innerHTML = raffles.length ? `<div style="display:flex;flex-direction:column;gap:10px;">${raffles.map(r => {
+    const endsAt = r.raffle.ends_at ? new Date(r.raffle.ends_at.replace(' ', 'T') + 'Z').getTime() : null;
+    const remain = endsAt ? endsAt - Date.now() : null;
+    return `<div class="card" style="cursor:pointer;" onclick="openRaffleDetail(${r.raffle.id})">
+      <div class="row"><b>${r.raffle.title}</b><span class="tag">${r.entriesCount} joined</span></div>
+      ${r.prizes.length ? `<div style="display:flex;gap:6px;margin:8px 0;">${giftThumbs(r.prizes)}</div>` : (r.raffle.prize_description ? `<p class="muted">${r.raffle.prize_description}</p>` : '')}
+      <div class="row"><span class="muted">🎫 Ticket pool</span><b>${r.ticketPool.toLocaleString('en-US')}</b></div>
+      ${remain !== null ? `<div class="row"><span class="muted">⏱ Ends in</span><b style="color:${remain < 300000 ? 'var(--danger)' : 'var(--text)'};">${formatCountdown(remain)}</b></div>` : ''}
     </div>`;
-  }).join('') : '<div class="empty"><div class="eic">🎟</div>No game wheel right now.</div>';
+  }).join('')}</div>` : '<div class="empty"><div class="eic">🎟</div>No giveaway right now.</div>';
   loadRaffleWinnersLog();
 }
 async function loadRaffleWinnersLog() {
@@ -2606,17 +2891,105 @@ async function loadRaffleWinnersLog() {
   el.innerHTML = finished.length ? finished.map(r => `
     <div class="card" style="padding:12px 14px;">
       <div class="row"><b>${r.title}</b><span class="muted" style="font-size:11px;">${(r.finished_at || '').split(' ')[0]}</span></div>
-      <div style="margin-top:6px;">${r.winners.map(w => `<span class="tag" style="margin:2px;">${w.first_name || w.username || w.tg_id}</span>`).join('') || '<span class="muted">No entries</span>'}</div>
+      ${r.prizes.length ? `<div style="display:flex;gap:6px;margin:8px 0;">${giftThumbs(r.prizes)}</div>` : ''}
+      <div style="margin-top:6px;">${r.winners.map(w => `<span class="tag" style="margin:2px;">${w.masked}</span>`).join('') || '<span class="muted">No entries</span>'}</div>
       ${r.server_seed ? `<p class="muted" style="margin-top:6px;font-size:9.5px;word-break:break-all;">🔓 Revealed seed: ${r.server_seed}</p>` : ''}
     </div>`).join('') : '<p class="muted">No finished giveaway yet.</p>';
 }
-async function registerRaffleUI(id) {
-  await api(`/api/raffle/${id}/register`, { method: 'POST' });
-  toast('You are registered 🎉'); loadRaffles();
+
+async function openRaffleDetail(id) {
+  RD_CURRENT_ID = id;
+  document.getElementById('raffleListBox').style.display = 'none';
+  document.getElementById('raffleDetailBox').style.display = 'block';
+  await refreshRaffleDetail();
+  clearInterval(RD_TIMER);
+  RD_TIMER = setInterval(refreshRaffleCountdownOnly, 1000);
+  const top = await api(`/api/raffle/${id}/top-entries`);
+  document.getElementById('rdTopEntries').innerHTML = top.length ? `<div style="display:flex;flex-direction:column;gap:2px;">${top.map(t => `
+    <div class="row" style="padding:6px 0;"><span>${t.rank <= 3 ? ['🥇','🥈','🥉'][t.rank-1] : t.rank}. ${t.masked}</span><span class="tag">🎫 ${t.tickets}</span></div>`).join('')}</div>`
+    : '<p class="muted">No one has entered yet.</p>';
 }
-async function buyRaffleTicketUI(id) {
-  await api(`/api/raffle/${id}/buy-ticket`, { method: 'POST' });
-  toast('Extra ticket purchased ✅'); loadMe(); loadRaffles();
+function closeRaffleDetail() {
+  clearInterval(RD_TIMER);
+  document.getElementById('raffleDetailBox').style.display = 'none';
+  document.getElementById('raffleListBox').style.display = 'block';
+  loadRaffles();
+}
+function refreshRaffleCountdownOnly() {
+  const r = RAFFLE_CACHE[RD_CURRENT_ID];
+  if (!r || !r.raffle.ends_at) return;
+  const remain = new Date(r.raffle.ends_at.replace(' ', 'T') + 'Z').getTime() - Date.now();
+  document.getElementById('rdCountdown').textContent = formatCountdown(remain);
+  if (remain <= 0) { clearInterval(RD_TIMER); setTimeout(() => openRaffleDetail(RD_CURRENT_ID), 2000); }
+}
+async function refreshRaffleDetail() {
+  const raffles = await api('/api/raffle/list');
+  raffles.forEach(r => RAFFLE_CACHE[r.raffle.id] = r);
+  const r = RAFFLE_CACHE[RD_CURRENT_ID];
+  if (!r) { closeRaffleDetail(); return; }
+  document.getElementById('rdTitle').textContent = r.raffle.title;
+  document.getElementById('rdParticipants').textContent = r.entriesCount;
+  document.getElementById('rdGiftsCount').textContent = r.prizes.length || r.raffle.winners_count;
+  document.getElementById('rdTicketPool').textContent = r.ticketPool.toLocaleString('en-US');
+  const endsAt = r.raffle.ends_at ? new Date(r.raffle.ends_at.replace(' ', 'T') + 'Z').getTime() : null;
+  document.getElementById('rdCountdown').textContent = endsAt ? formatCountdown(endsAt - Date.now()) : '—';
+  document.getElementById('rdCountdownLabel').textContent = endsAt ? 'Ends in' : 'No deadline';
+  document.getElementById('rdGiftsRow').innerHTML = r.prizes.length ? r.prizes.map(p => `
+    <div class="mini-card">
+      <div style="width:100%;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:var(--surface2);margin-bottom:6px;">${p.image_url ? `<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover;">` : ''}</div>
+      <div class="t">${p.title}</div><div class="s">${p.gift_number ? '#' + p.gift_number : ''}</div>
+    </div>`).join('') : (r.raffle.prize_description ? `<p class="muted">${r.raffle.prize_description}</p>` : '');
+  document.getElementById('rdSeedHash').textContent = r.raffle.server_seed_hash ? `🔒 Provably fair — seed commitment: ${r.raffle.server_seed_hash}` : '';
+
+  const winnersBox = document.getElementById('rdWinnersBox'), joinBox = document.getElementById('rdJoinBox');
+  if (r.raffle.status !== 'open') {
+    winnersBox.style.display = 'block'; joinBox.style.display = 'none';
+    document.getElementById('rdWinnersList').innerHTML = r.prizes.filter(p => p.winner_tg_id).length
+      ? r.prizes.filter(p => p.winner_tg_id).map(p => `<div class="row"><span>${p.title}</span><span class="tag">🆔 ${p.winner_tg_id}</span></div>`).join('')
+      : '<p class="muted">Winners announced soon.</p>';
+    return;
+  }
+  winnersBox.style.display = 'none'; joinBox.style.display = 'block';
+  document.getElementById('rdMyTickets').textContent = r.myEntry ? r.myEntry.tickets : 0;
+  document.getElementById('rdRequirement').textContent = r.raffle.required_task_id
+    ? (r.taskDone ? '✅ Entry task completed' : `❌ You must first complete the task «${r.requiredTask?.title || ''}»`) : '';
+  const btn = document.getElementById('rdJoinBtn');
+  const stepper = document.getElementById('rdStepperRow');
+  if (!r.myEntry) {
+    stepper.style.display = 'none';
+    btn.textContent = '🎟 Join giveaway';
+    btn.disabled = !r.taskDone;
+  } else if (r.raffle.ticket_price_toman > 0 && r.myEntry.tickets < r.raffle.max_tickets_per_user) {
+    stepper.style.display = 'flex';
+    document.getElementById('rdQty').max = r.raffle.max_tickets_per_user - r.myEntry.tickets;
+    btn.textContent = `🎫 Buy ticket(s) (${r.raffle.ticket_price_toman.toLocaleString('en-US')} LNDC each)`;
+    btn.disabled = false;
+  } else {
+    stepper.style.display = 'none';
+    btn.textContent = '✅ Joined';
+    btn.disabled = true;
+  }
+}
+function rdStep(delta) {
+  const input = document.getElementById('rdQty');
+  const max = Number(input.max) || 999;
+  input.value = Math.min(max, Math.max(1, (Number(input.value) || 1) + delta));
+}
+async function rdJoinOrBuy() {
+  const r = RAFFLE_CACHE[RD_CURRENT_ID];
+  if (!r) return;
+  try {
+    if (!r.myEntry) {
+      await api(`/api/raffle/${RD_CURRENT_ID}/register`, { method: 'POST' });
+      toast('You are registered 🎉');
+    } else {
+      const qty = Number(document.getElementById('rdQty').value) || 1;
+      await api(`/api/raffle/${RD_CURRENT_ID}/buy-ticket`, { method: 'POST', body: JSON.stringify({ qty }) });
+      toast('Ticket(s) purchased ✅');
+    }
+    loadMe();
+    await refreshRaffleDetail();
+  } catch (e) { /* api() already showed the error toast */ }
 }
 
 /* ================= Album ================= */
@@ -2625,11 +2998,17 @@ async function loadAlbums() {
   document.getElementById('albumsList').innerHTML = albums.length ? albums.map((a, i) => `
     <div class="card" ${staggerStyle(i)}>
       <div class="row"><b>${a.name}</b>${a.is_seasonal ? '<span class="tag">Seasonal</span>' : ''}</div>
-      <div style="margin:8px 0;">${a.progress.map(p => `<span class="tag" style="margin-left:4px;opacity:${p.owned ? 1 : .4};">${p.icon || ''} ${p.name}</span>`).join('')}</div>
+      <div style="margin:8px 0;">${a.progress.map(p => `<span class="tag" style="margin-left:4px;opacity:${p.owned ? 1 : .4};">${p.icon || ''} ${p.name} (Lv.${p.min_level || 1}+)</span>`).join('')}</div>
+      <div class="muted" style="font-size:12px;margin-bottom:8px;">🎁 Prize: ${albumPrizeText(a)}</div>
       <button class="btn gold" ${a.complete && !a.claimed ? '' : 'disabled'} onclick="claimAlbumUI(${a.id})">${a.claimed ? 'Claimed ✅' : a.complete ? 'Claim reward' : 'incomplete'}</button>
     </div>`).join('') : 'No album defined yet.';
 }
-async function claimAlbumUI(id) { await api(`/api/albums/${id}/claim`, { method: 'POST' }); toast('Reward claimed 🎉'); loadMe(); loadAlbums(); }
+function albumPrizeText(a) {
+  if (a.reward_type === 'card') return (a.rewardCards || []).map(rc => `${rc.name} (Lv.${rc.level})`).join(', ') || '-';
+  if (a.reward_type === 'avatar') return 'Avatar';
+  return `${Number(a.reward_value || 0).toLocaleString('en-US')} LNDC`;
+}
+async function claimAlbumUI(id) { await api(`/api/albums/${id}/claim`, { method: 'POST' }); toast('Reward claimed 🎉'); loadMe(); loadAlbums(); loadMyCards(); }
 
 /* ================= Card Marketplace ================= */
 let CM_MY_CARDS = [];
@@ -2750,13 +3129,58 @@ async function doCheckinUI() {
   toast(r.streakReward > 0 ? `+${r.xpGained} XP, and a ${r.streakReward.toLocaleString('en-US')} LNDC bonus for a ${r.streak}-day streak! 🔥` : `+${r.xpGained} XP — ${r.streak}-day streak 🔥`);
   loadMe(); loadProfile();
 }
+/* ================= Achievements ================= */
+let ACHIEVEMENTS_CACHE = [];
+async function loadAchievements() {
+  const rows = await api('/api/achievements');
+  ACHIEVEMENTS_CACHE = rows;
+  const pinnedCount = rows.filter(a => a.pinned).length;
+  document.getElementById('achievementsGrid').innerHTML = `<div class="game-card-grid">${rows.map(a => `
+    <div class="ach-card ${a.unlocked ? 'unlocked' : 'locked'}">
+      <div class="ach-icon">${a.unlocked ? a.icon : '🔒'}</div>
+      <div class="t">${a.title}</div>
+      <div class="s">${a.description || ''}</div>
+      ${a.unlocked
+        ? `<button class="btn ${a.pinned ? 'gold' : 'secondary'}" style="margin-top:8px;font-size:11px;padding:6px 4px;width:100%;" onclick="togglePinAchievement(${a.id})">${a.pinned ? '📌 Pinned' : 'Pin'}</button>`
+        : `<div class="tag" style="margin-top:8px;">Locked</div>`}
+    </div>`).join('')}</div>`;
+}
+async function togglePinAchievement(id) {
+  const a = ACHIEVEMENTS_CACHE.find(x => x.id === id);
+  if (!a) return;
+  let pinnedIds = ACHIEVEMENTS_CACHE.filter(x => x.pinned).map(x => x.id);
+  if (a.pinned) pinnedIds = pinnedIds.filter(x => x !== id);
+  else {
+    if (pinnedIds.length >= 3) { toast('You can pin at most 3 badges — unpin one first'); return; }
+    pinnedIds.push(id);
+  }
+  await api('/api/achievements/pin', { method: 'POST', body: JSON.stringify({ achievement_ids: pinnedIds }) });
+  loadAchievements();
+}
+function renderBadges(badges) {
+  return (badges || []).map(b => `<span title="${b.title}" style="margin-right:2px;">${b.icon}</span>`).join('');
+}
+function clanEmblemChip(emblem) {
+  if (!emblem) return '';
+  return `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${emblem.color}22;border:1px solid ${emblem.color}55;color:${emblem.color};">${emblem.icon} ${emblem.label}</span>`;
+}
+/* ================= Activity feed ================= */
+async function loadActivityFeed() {
+  const el = document.getElementById('activityFeed');
+  if (!el) return;
+  try {
+    const rows = await api('/api/activity-feed');
+    el.innerHTML = rows.length ? rows.map(r => `<div class="activity-feed-row"><span>${r.icon}</span><span>${r.text}</span></div>`).join('') : '';
+    el.parentElement.style.display = rows.length ? 'block' : 'none';
+  } catch (e) { el.parentElement.style.display = 'none'; }
+}
 async function loadAvatarsShop() {
   const mine = await api('/api/avatars/my');
   document.getElementById('myAvatarsList').innerHTML = mine.length ? mine.map(a => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${a.name}</span><button class="btn" style="width:auto;" onclick="equipAvatarUI(${a.avatar_id})">Use</button></div></div>`).join('') : 'You do not have any avatars yet.';
   const shop = await api('/api/avatars');
   document.getElementById('avatarShopList').innerHTML = shop.length ? shop.map((a, i) => `<div class="card" ${staggerStyle(i)}>${a.image_url ? `<img src="${a.image_url}">` : ''}<div class="row"><b>${a.name}</b><span class="tag">${a.price_toman.toLocaleString('en-US')} LNDC</span></div><button class="btn secondary" onclick="buyAvatarUI(${a.id})">Buy</button></div>`).join('') : 'No avatars in the shop yet.';
 }
-async function buyAvatarUI(id) { await api('/api/avatars/buy', { method: 'POST', body: JSON.stringify({ avatarId: id }) }); toast('Purchased ✅'); loadMe(); loadAvatarsShop(); }
+async function buyAvatarUI(id) { await api('/api/avatars/buy', { method: 'POST', body: JSON.stringify({ avatarId: id }) }); sfx('purchase'); toast('Purchased ✅'); loadMe(); loadAvatarsShop(); }
 async function equipAvatarUI(id) { await api('/api/avatars/equip', { method: 'POST', body: JSON.stringify({ avatarId: id }) }); toast('Activated ✅'); loadProfile(); loadAvatarsShop(); }
 
 /* ================= Referral ================= */
@@ -2769,7 +3193,8 @@ async function loadReferral() {
   } else if (r.signupBonusType === 'currency' && r.signupBonus > 0) {
     bonusLine = `Gift for each new invite: ${Number(r.signupBonus).toLocaleString('en-US')} ${r.signupBonusCurrency || 'LNDC'}`;
   }
-  document.getElementById('referralSubtitle').textContent = `Commission: ${r.percent}% — ${r.invitedCount} people invited`;
+  const subtitle = bonusLine || `Commission: ${r.percent}%`;
+  document.getElementById('referralSubtitle').textContent = `${subtitle} — ${r.invitedCount} invited`;
   document.getElementById('referralCard').innerHTML = `
     <p>Your referral code: <b>${r.ref_code}</b></p>
     <input readonly value="${link}" onclick="this.select()">
@@ -2816,7 +3241,7 @@ async function loadLeaderboardPage() {
   showLbTab('game');
   const g = await api('/api/game/leaderboard');
   document.getElementById('lbGamePodium').innerHTML = renderPodium(g.leaderboard.slice(0, 3), p => `${p.first_name || ''}`, p => `${p.score} Score`, p => p.avatarImage);
-  document.getElementById('lbGameList').innerHTML = g.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div>${p.avatarImage ? `<img src="${p.avatarImage}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'Not enough data.';
+  document.getElementById('lbGameList').innerHTML = g.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div>${p.avatarImage ? `<img src="${p.avatarImage}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''} ${renderBadges(p.badges)}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'Not enough data.';
   const gInTop = g.leaderboard.some(p => p.tg_id === g.myRow.tg_id);
   document.getElementById('lbGameMine').innerHTML = gInTop ? '' : renderMineRow('My rank: #' + g.myRank + ' —', g.myRank, g.myRow.first_name, `${g.myRow.score} Score`);
   const gPrizes = (g.prizes || []).filter(p => p.reward_toman > 0);
@@ -2825,8 +3250,8 @@ async function loadLeaderboardPage() {
     : '';
 
   const c = await api('/api/clan/leaderboard');
-  document.getElementById('lbClanPodium').innerHTML = renderPodium(c.leaderboard.slice(0, 3), p => p.name, p => `${p.score} Score`);
-  document.getElementById('lbClanList').innerHTML = c.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.name} #${p.tag}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'Not enough data.';
+  document.getElementById('lbClanPodium').innerHTML = renderPodium(c.leaderboard.slice(0, 3), p => `${p.emblem.icon} ${p.name}`, p => `${p.score} Score`);
+  document.getElementById('lbClanList').innerHTML = c.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.emblem.icon} ${p.name} #${p.tag}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'Not enough data.';
   const cInTop = c.myClan && c.leaderboard.some(p => p.id === c.myClan.id);
   document.getElementById('lbClanMine').innerHTML = (c.myClan && !cInTop) ? renderMineRow('My clan rank: #' + c.myRank + ' —', c.myRank, `${c.myClan.name} #${c.myClan.tag}`, `${c.myClan.score} Score`) : '';
   document.getElementById('lbClanPrizes').innerHTML = c.prizeInfo && c.prizeInfo.reward_toman > 0
@@ -2840,14 +3265,13 @@ async function loadLeaderboardPage() {
   document.getElementById('lbLevelMine').innerHTML = lInTop ? '' : renderMineRow('My rank: #' + l.myRank + ' —', l.myRank, l.myRow.first_name, `Lv.${l.myRow.level}`);
 
   const lg = await api('/api/league/status');
-  const leagueNames = { bronze: '🥉 Bronze', silver: '🥈 Silver', gold: '🥇 Gold' };
   document.getElementById('lbLeagueMine').innerHTML = `
     <div class="row"><span class="muted">My league</span><b>${lg.me.leagueLabel}</b></div>
     <div class="row"><span class="muted">This week's rank</span><b>#${lg.me.rank}</b></div>
     <div class="row"><span class="muted">Win/loss this week</span><b>${lg.me.weeklyWins}/${lg.me.weeklyLosses} (${lg.me.score} Score)</b></div>
   `;
-  document.getElementById('lbLeagueChips').innerHTML = Object.keys(leagueNames).map(k =>
-    `<div class="chip ${k === lg.me.league ? 'active' : ''}" data-league="${k}" onclick="loadLeagueBoard('${k}')">${leagueNames[k]}</div>`).join('');
+  document.getElementById('lbLeagueChips').innerHTML = lg.tiers.map(t =>
+    `<div class="chip ${t.key === lg.me.league ? 'active' : ''}" data-league="${t.key}" onclick="loadLeagueBoard('${t.key}')">${t.icon || ''} ${t.label}</div>`).join('');
   renderLeagueBoard(lg.leaderboard, lg.me);
 }
 function renderLeagueBoard(leaderboard, me) {
@@ -2887,6 +3311,7 @@ async function bootApp() {
   try { CONFIG = await fetch('/api/config', { signal: AbortSignal.timeout(15000) }).then(r => r.json()); }
   catch (e) { console.error('config load failed', e); }
   applyUiImages();
+  updateSoundToggleUI();
   initTonConnect();
   loadMe().catch(() => {});
   loadGamesHub().catch(() => {});
