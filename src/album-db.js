@@ -1,7 +1,7 @@
 import db from './db.js';
 import { adjustToman } from './db.js';
 import { grantAvatar } from './rank-db.js';
-import { grantCardInstance } from './game-db.js';
+import { grantCardInstance, getGameCard } from './game-db.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS albums (
@@ -22,6 +22,13 @@ CREATE TABLE IF NOT EXISTS album_requirements (
   PRIMARY KEY (album_id, category_id)
 );
 
+CREATE TABLE IF NOT EXISTS album_reward_cards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  album_id INTEGER NOT NULL,
+  card_id INTEGER NOT NULL,
+  level INTEGER NOT NULL DEFAULT 1
+);
+
 CREATE TABLE IF NOT EXISTS user_album_claims (
   tg_id INTEGER NOT NULL,
   album_id INTEGER NOT NULL,
@@ -29,6 +36,15 @@ CREATE TABLE IF NOT EXISTS user_album_claims (
   PRIMARY KEY (tg_id, album_id)
 );
 `);
+
+// Minimum card level required within each required category — added after album_requirements
+// already shipped without it, so existing installs need this migration to pick it up.
+function safeAddColumn(table, columnDef) {
+  const col = columnDef.split(' ')[0];
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+  if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`);
+}
+safeAddColumn('album_requirements', 'min_level INTEGER NOT NULL DEFAULT 1');
 
 export function listAlbums(onlyActive = false) {
   const rows = onlyActive
@@ -51,21 +67,43 @@ export function upsertAlbum(a) {
     id = db.prepare(`INSERT INTO albums (name, reward_type, reward_value, is_seasonal, starts_at, ends_at, active) VALUES (?,?,?,?,?,?,?)`)
       .run(a.name, a.reward_type, a.reward_value, a.is_seasonal ? 1 : 0, a.starts_at || null, a.ends_at || null, a.active ? 1 : 0).lastInsertRowid;
   }
-  if (Array.isArray(a.category_ids)) {
+  // Requirements: [{ category_id, min_level }] — replaces the whole set each save
+  if (Array.isArray(a.requirements)) {
     db.prepare('DELETE FROM album_requirements WHERE album_id = ?').run(id);
-    for (const catId of a.category_ids) db.prepare('INSERT INTO album_requirements (album_id, category_id) VALUES (?,?)').run(id, catId);
+    for (const r of a.requirements) {
+      if (!r.category_id) continue;
+      db.prepare('INSERT INTO album_requirements (album_id, category_id, min_level) VALUES (?,?,?)')
+        .run(id, Number(r.category_id), Math.max(1, Number(r.min_level) || 1));
+    }
+  }
+  // Reward cards: [{ card_id, level }] — only meaningful when reward_type === 'card', but harmless
+  // to store regardless (simply unused unless the album is set to give cards).
+  if (Array.isArray(a.reward_cards)) {
+    db.prepare('DELETE FROM album_reward_cards WHERE album_id = ?').run(id);
+    for (const rc of a.reward_cards) {
+      if (!rc.card_id) continue;
+      db.prepare('INSERT INTO album_reward_cards (album_id, card_id, level) VALUES (?,?,?)')
+        .run(id, Number(rc.card_id), Math.max(1, Number(rc.level) || 1));
+    }
   }
   return id;
 }
 export function deleteAlbum(id) {
   db.prepare('DELETE FROM album_requirements WHERE album_id = ?').run(id);
+  db.prepare('DELETE FROM album_reward_cards WHERE album_id = ?').run(id);
   db.prepare('DELETE FROM albums WHERE id = ?').run(id);
 }
 export function getAlbumRequirements(albumId) {
   return db.prepare(`
-    SELECT ar.category_id, c.name, c.icon FROM album_requirements ar JOIN card_categories c ON c.id = ar.category_id
+    SELECT ar.category_id, ar.min_level, c.name, c.icon FROM album_requirements ar JOIN card_categories c ON c.id = ar.category_id
     WHERE ar.album_id = ?
   `).all(albumId);
+}
+export function getAlbumRewardCards(albumId) {
+  return db.prepare('SELECT * FROM album_reward_cards WHERE album_id = ?').all(albumId).map(rc => {
+    const card = getGameCard(rc.card_id);
+    return { ...rc, name: card?.name || 'Deleted card', image_url: card?.image_url || null };
+  });
 }
 
 export function getAlbumProgress(tgId, albumId) {
@@ -73,8 +111,8 @@ export function getAlbumProgress(tgId, albumId) {
   const progress = reqs.map(r => {
     const owns = db.prepare(`
       SELECT 1 FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id
-      WHERE uc.tg_id = ? AND c.category_id = ? LIMIT 1
-    `).get(tgId, r.category_id);
+      WHERE uc.tg_id = ? AND c.category_id = ? AND uc.level >= ? LIMIT 1
+    `).get(tgId, r.category_id, r.min_level || 1);
     return { ...r, owned: !!owns };
   });
   const complete = reqs.length > 0 && progress.every(p => p.owned);
@@ -97,11 +135,12 @@ export function claimAlbumReward(tgId, albumId) {
       adjustToman(tgId, Number(album.reward_value), `Album completion reward «${album.name}»`);
     } else if (album.reward_type === 'avatar' && album.reward_value) {
       grantAvatar(tgId, Number(album.reward_value));
-    } else if (album.reward_type === 'card' && album.reward_value) {
-      grantCardInstance(tgId, Number(album.reward_value));
+    } else if (album.reward_type === 'card') {
+      const rewardCards = getAlbumRewardCards(albumId);
+      for (const rc of rewardCards) grantCardInstance(tgId, rc.card_id, rc.level);
     }
     db.prepare('INSERT INTO user_album_claims (tg_id, album_id) VALUES (?,?)').run(tgId, albumId);
   });
   tx();
-  return { rewardType: album.reward_type, rewardValue: album.reward_value };
+  return { rewardType: album.reward_type, rewardValue: album.reward_value, rewardCards: album.reward_type === 'card' ? getAlbumRewardCards(albumId) : [] };
 }

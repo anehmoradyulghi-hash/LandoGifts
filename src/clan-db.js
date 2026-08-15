@@ -1,6 +1,7 @@
 import db from './db.js';
 import { adjustToman, getUser } from './db.js';
 import { getRankConfig } from './rank-db.js';
+import { getPinnedBadges } from './achievements-db.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS clan_config (
@@ -88,13 +89,31 @@ export function setClanConfig(c) {
     c.score_per_1k_donation, c.reward_toman, c.winners_count, c.distribution_method, c.min_score_threshold, c.reset_days, c.withdraw_fee_percent || 0);
 }
 
+// Clan emblem — a visual tier derived purely from the clan's existing score (member purchases +
+// battle wins, already accumulated in clans.score by addClanPurchaseScore/addClanWinScore), so it
+// automatically reflects the whole clan's collective effort with no extra admin setup required.
+const CLAN_EMBLEM_TIERS = [
+  { min: 0,     key: 'bronze',   icon: '🛡️', label: 'Bronze Shield',    color: '#cd7f32' },
+  { min: 1000,  key: 'iron',     icon: '⚔️', label: 'Iron Banner',      color: '#9ca3af' },
+  { min: 5000,  key: 'stone',    icon: '🏰', label: 'Stone Fortress',   color: '#60a5fa' },
+  { min: 20000, key: 'gold',     icon: '👑', label: 'Golden Crown',     color: '#fbbf24' },
+  { min: 50000, key: 'diamond',  icon: '💎', label: 'Diamond Legion',   color: '#67e8f9' },
+];
+export function getClanEmblem(score) {
+  let tier = CLAN_EMBLEM_TIERS[0];
+  for (const t of CLAN_EMBLEM_TIERS) { if (score >= t.min) tier = t; }
+  const next = CLAN_EMBLEM_TIERS.find(t => t.min > tier.min);
+  return { ...tier, nextThreshold: next ? next.min : null };
+}
+function withEmblem(clan) { return clan ? { ...clan, emblem: getClanEmblem(clan.score) } : clan; }
+
 export function getMyClan(tgId) {
   const member = db.prepare('SELECT * FROM clan_members WHERE tg_id = ?').get(tgId);
   if (!member) return null;
   const clan = db.prepare('SELECT * FROM clans WHERE id = ?').get(member.clan_id);
-  return clan ? { ...clan, myRole: member.role, myDonatedTotal: member.donated_total, myWithdrawnTotal: member.withdrawn_total, myWithdrawableRemaining: clan.bank_balance } : null;
+  return clan ? { ...withEmblem(clan), myRole: member.role, myDonatedTotal: member.donated_total, myWithdrawnTotal: member.withdrawn_total, myWithdrawableRemaining: clan.bank_balance } : null;
 }
-export function getClanById(id) { return db.prepare('SELECT * FROM clans WHERE id = ?').get(id); }
+export function getClanById(id) { return withEmblem(db.prepare('SELECT * FROM clans WHERE id = ?').get(id)); }
 export function getClanMembers(clanId) {
   return db.prepare(`
     SELECT cm.*, u.first_name, u.username FROM clan_members cm JOIN users u ON u.tg_id = cm.tg_id
@@ -103,10 +122,10 @@ export function getClanMembers(clanId) {
 }
 export function searchClans(query) {
   const like = `%${query || ''}%`;
-  return db.prepare('SELECT * FROM clans WHERE name LIKE ? OR tag LIKE ? ORDER BY score DESC LIMIT 30').all(like, like);
+  return db.prepare('SELECT * FROM clans WHERE name LIKE ? OR tag LIKE ? ORDER BY score DESC LIMIT 30').all(like, like).map(withEmblem);
 }
 export function getClanLeaderboard(limit = 10) {
-  return db.prepare('SELECT * FROM clans ORDER BY score DESC LIMIT ?').all(limit);
+  return db.prepare('SELECT * FROM clans ORDER BY score DESC LIMIT ?').all(limit).map(withEmblem);
 }
 export function getClanRank(clanId) {
   const row = db.prepare(`
@@ -396,6 +415,13 @@ function cleanupOldClanMessages(clanId, retentionMinutes) {
   db.prepare(`DELETE FROM clan_messages WHERE clan_id = ? AND created_at < datetime('now', ?)`)
     .run(clanId, `-${retentionMinutes} minutes`);
 }
+// Runs the same cleanup across every clan at once — called periodically (see server.js), NOT from
+// the chat-read path. Deleting on every single poll request (every ~2s per active chat viewer) added
+// a write to what should be a cheap, frequent read, competing with WAL's single-writer for no reason.
+export function cleanupAllOldClanMessages() {
+  const cfg = getClanChatConfig();
+  db.prepare(`DELETE FROM clan_messages WHERE created_at < datetime('now', ?)`).run(`-${cfg.retention_minutes} minutes`);
+}
 export function sendClanMessage(tgId, text) {
   const cfg = getClanChatConfig();
   if (!cfg.enabled) throw new Error('Clan chat is currently disabled');
@@ -414,7 +440,8 @@ export function getClanMessages(tgId, afterId = 0) {
   const cfg = getClanChatConfig();
   const clanId = getMemberClanId(tgId);
   if (!clanId) return { messages: [], enabled: cfg.enabled };
-  cleanupOldClanMessages(clanId, cfg.retention_minutes);
+  // Old-message cleanup now runs on a periodic timer (see cleanupAllOldClanMessages / server.js),
+  // not here — this function is called on every chat poll and should stay a cheap read.
   // Level + equipped avatar are joined in directly (not fetched per-message) so the chat can show a
   // proper level badge and avatar image next to each sender's name without an N+1 query per message.
   const xpPerLevel = getRankConfig().xp_per_level || 1000;
@@ -427,5 +454,9 @@ export function getClanMessages(tgId, afterId = 0) {
     WHERE cm.clan_id = ? AND cm.id > ? ORDER BY cm.id ASC LIMIT 200
   `).all(clanId, afterId);
   const messages = rows.map(r => ({ ...r, level: Math.max(1, Math.floor(r.xp / xpPerLevel) + 1) }));
-  return { messages, enabled: cfg.enabled, retentionMinutes: cfg.retention_minutes };
+  // Pinned achievement badges, looked up once per distinct sender in this batch (not per message)
+  const badgeCache = {};
+  messages.forEach(m => { if (!(m.tg_id in badgeCache)) badgeCache[m.tg_id] = getPinnedBadges(m.tg_id); });
+  const messagesWithBadges = messages.map(m => ({ ...m, badges: badgeCache[m.tg_id] }));
+  return { messages: messagesWithBadges, enabled: cfg.enabled, retentionMinutes: cfg.retention_minutes };
 }

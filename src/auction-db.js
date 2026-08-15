@@ -45,13 +45,18 @@ function safeAddColumn(table, columnDef) {
 }
 safeAddColumn('auctions', `item_type TEXT NOT NULL DEFAULT 'product'`);
 safeAddColumn('auctions', 'card_id INTEGER');
+// Bids used to go up by a fixed toman amount regardless of the current price, which made no sense
+// across cheap vs expensive items (a 1,000 LNDC step is huge on a 2,000 LNDC item and meaningless on
+// a 500,000 LNDC one) — bidding now goes up by a percentage of the current price instead.
+safeAddColumn('auction_config', 'bid_step_percent INTEGER NOT NULL DEFAULT 5');
+safeAddColumn('auctions', 'bid_step_percent INTEGER NOT NULL DEFAULT 5');
 
 export function getAuctionConfig() { return db.prepare('SELECT * FROM auction_config WHERE id = 1').get(); }
 export function setAuctionConfig(c) {
   db.prepare(`
-    UPDATE auction_config SET enabled=?, discount_percent=?, duration_minutes=?, bid_step=?, anti_snipe_enabled=?, min_wallet_balance=?
+    UPDATE auction_config SET enabled=?, discount_percent=?, duration_minutes=?, bid_step_percent=?, anti_snipe_enabled=?, min_wallet_balance=?
     WHERE id = 1
-  `).run(c.enabled ? 1 : 0, c.discount_percent, c.duration_minutes, c.bid_step, c.anti_snipe_enabled ? 1 : 0, c.min_wallet_balance);
+  `).run(c.enabled ? 1 : 0, c.discount_percent, c.duration_minutes, c.bid_step_percent, c.anti_snipe_enabled ? 1 : 0, c.min_wallet_balance);
 }
 
 export function listActiveAuctions() {
@@ -74,9 +79,9 @@ export function createAuctionFromProduct(productId) {
   const startPrice = Math.round(product.price_toman * (1 - cfg.discount_percent / 100));
   const endsAt = new Date(Date.now() + cfg.duration_minutes * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   return db.prepare(`
-    INSERT INTO auctions (product_id, item_type, title, image_url, start_price, current_price, bid_step, anti_snipe, min_wallet_balance, ends_at)
-    VALUES (?,'product',?,?,?,?,?,?,?,?)
-  `).run(productId, product.title, product.image_url, startPrice, startPrice, cfg.bid_step, cfg.anti_snipe_enabled, cfg.min_wallet_balance, endsAt).lastInsertRowid;
+    INSERT INTO auctions (product_id, item_type, title, image_url, start_price, current_price, bid_step, bid_step_percent, anti_snipe, min_wallet_balance, ends_at)
+    VALUES (?,'product',?,?,?,?,0,?,?,?,?)
+  `).run(productId, product.title, product.image_url, startPrice, startPrice, cfg.bid_step_percent, cfg.anti_snipe_enabled, cfg.min_wallet_balance, endsAt).lastInsertRowid;
 }
 // The admin puts a game card up for auction; once it ends it's added directly to the winner's cards
 export function createAuctionFromCard(cardId) {
@@ -86,9 +91,9 @@ export function createAuctionFromCard(cardId) {
   const startPrice = Math.round(card.price_toman * (1 - cfg.discount_percent / 100));
   const endsAt = new Date(Date.now() + cfg.duration_minutes * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   return db.prepare(`
-    INSERT INTO auctions (product_id, item_type, card_id, title, image_url, start_price, current_price, bid_step, anti_snipe, min_wallet_balance, ends_at)
-    VALUES (0,'card',?,?,?,?,?,?,?,?,?)
-  `).run(cardId, card.name, card.image_url, startPrice, startPrice, cfg.bid_step, cfg.anti_snipe_enabled, cfg.min_wallet_balance, endsAt).lastInsertRowid;
+    INSERT INTO auctions (product_id, item_type, card_id, title, image_url, start_price, current_price, bid_step, bid_step_percent, anti_snipe, min_wallet_balance, ends_at)
+    VALUES (0,'card',?,?,?,?,?,0,?,?,?,?)
+  `).run(cardId, card.name, card.image_url, startPrice, startPrice, cfg.bid_step_percent, cfg.anti_snipe_enabled, cfg.min_wallet_balance, endsAt).lastInsertRowid;
 }
 export function cancelAuction(id) {
   db.prepare(`UPDATE auctions SET status = 'cancelled' WHERE id = ? AND status = 'active'`).run(id);
@@ -109,8 +114,15 @@ export function placeBid(tgId, auctionId) {
   if (!user || user.balance_toman < auction.min_wallet_balance) {
     throw new Error(`You need at least ${auction.min_wallet_balance.toLocaleString()} LNDC balance to participate`);
   }
-  const newPrice = auction.current_price + auction.bid_step;
+  // The next bid is a percentage of the current price (not a flat amount) so the step scales
+  // sensibly whether the item is currently worth 2,000 LNDC or 2,000,000 LNDC.
+  const step = Math.max(1, Math.ceil(auction.current_price * (auction.bid_step_percent || 5) / 100));
+  const newPrice = auction.current_price + step;
   if (user.balance_toman < newPrice) throw new Error('Insufficient wallet balance for this bid');
+
+  // Whoever held the top bid before this one is about to be outbid — captured before the UPDATE
+  // below overwrites winner_tg_id, so the caller can notify them.
+  const outbidTgId = auction.winner_tg_id && auction.winner_tg_id !== tgId ? auction.winner_tg_id : null;
 
   let newEndsAtMs = endsAtMs;
   if (auction.anti_snipe && endsAtMs - Date.now() <= 10000) newEndsAtMs = Date.now() + 30000;
@@ -121,7 +133,7 @@ export function placeBid(tgId, auctionId) {
     db.prepare('INSERT INTO auction_bids (auction_id, tg_id, amount) VALUES (?,?,?)').run(auctionId, tgId, newPrice);
   });
   tx();
-  return { newPrice, newEndsAt, extended: newEndsAtMs !== endsAtMs };
+  return { newPrice, newEndsAt, extended: newEndsAtMs !== endsAtMs, outbidTgId, title: auction.title };
 }
 
 // Closes finished auctions: if there's a winner with enough funds, payment and order are recorded automatically;

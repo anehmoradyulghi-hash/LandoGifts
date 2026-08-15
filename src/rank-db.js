@@ -1,5 +1,6 @@
 import db from './db.js';
 import { adjustToman, getUser } from './db.js';
+import { checkAchievements } from './achievements-db.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS rank_config (
@@ -158,6 +159,8 @@ export function doCheckin(tgId) {
     adjustToman(tgId, milestone.reward_toman, `${streak}-day check-in streak reward`);
     streakReward = milestone.reward_toman;
   }
+  const user = getUser(tgId);
+  checkAchievements(tgId, 'checkin_streak', streak, user?.username || user?.first_name);
   return { xpGained: cfg.xp_per_checkin, streak, streakReward };
 }
 

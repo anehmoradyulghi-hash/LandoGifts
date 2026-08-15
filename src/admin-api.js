@@ -12,12 +12,12 @@ import {
   listCategories, addCategory, deleteCategory,
   listProducts, upsertProduct, deleteProduct,
   listAllOrders, setOrderStatus,
-  listAllGiftOffersAdmin, adminRefundGiftOffer, listPendingGiftOffers, approveGiftOffer, rejectGiftOffer, adminDeleteGiftOffer, getGiftOffer,
+  listAllGiftOffersAdmin, adminRefundGiftOffer, listPendingGiftOffers, approveGiftOffer, rejectGiftOffer, adminDeleteGiftOffer, getGiftOffer, findWatchersForOffer,
   listAllTasksAdmin, upsertTask, deleteTask,
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
-  getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact, getInfoPage, setInfoPage,
-  getGiveawayChannelSettings, setGiveawayChannelSettings,
+  getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact, getInfoPage, setInfoPage, getSwapFeePercent, setSwapFeePercent,
+  getGiveawayChannelSettings, setGiveawayChannelSettings, getLeaderboardChannelSettings, setLeaderboardChannelId,
   getUiImages, setUiImages, getComebackConfig, setComebackConfig,
   getReferralSettings, setReferralSettings, getLndcWalletSettings, setLndcWalletSettings,
   listGiftCategories, upsertGiftCategory, deleteGiftCategory,
@@ -41,9 +41,10 @@ import {
 } from './season-db.js';
 import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason, adminDeleteClan, adminAdjustClanBank, listAllClansAdmin, getClanChatConfig, setClanChatConfig } from './clan-db.js';
 import { getClanWarConfig, setClanWarConfig } from './clan-war-db.js';
-import { getLeagueConfig, setLeagueConfig, getLeagueTierConfig, setLeagueTierConfig } from './league-db.js';
+import { getLeagueConfig, setLeagueConfig, listLeagues, upsertLeagueTier, deleteLeagueTier } from './league-db.js';
 import {
   listRafflesAdmin, getRaffle, createRaffle, updateRaffle, deleteRaffle, cancelRaffle, listRaffleEntries, finishRaffle,
+  listRafflePrizes, upsertRafflePrize, deleteRafflePrize, getRaffleTopEntries, listFinishedRaffles,
 } from './raffle-db.js';
 import {
   getRankConfig, setRankConfig, listRankTitles, upsertRankTitle, deleteRankTitle,
@@ -52,11 +53,13 @@ import {
 import { getQuestConfig, setQuestConfig, listQuestTemplates, upsertQuestTemplate, deleteQuestTemplate } from './quest-db.js';
 import { listChests, getChest, upsertChest, deleteChest, listChestItems, upsertChestItem, deleteChestItem } from './chest-db.js';
 import { listPromoCodes, createPromoCode, deletePromoCode, listRedemptions } from './promo-db.js';
-import { listAlbums, upsertAlbum, deleteAlbum, getAlbumRequirements } from './album-db.js';
+import { listAlbums, upsertAlbum, deleteAlbum, getAlbumRequirements, getAlbumRewardCards } from './album-db.js';
 import { getGiftConfig, setGiftConfig } from './gift-db.js';
 import { listSeasons, createSeason, deleteSeason, setCardSeason } from './seasonal-db.js';
 import { getCardMarketConfig, setCardMarketConfig, listCardMarketOffers } from './card-market-db.js';
-import { sendMessage, sendPhoto } from './telegram.js';
+import { sendMessage, sendPhoto, fetchTelegramNftMeta } from './telegram.js';
+import { logPlayerActivity } from './achievements-db.js';
+import { listAchievementsAdmin, upsertAchievement, deleteAchievement } from './achievements-db.js';
 import { getBackupConfig, setBackupConfig, listBackups, runBackupNow } from './backup.js';
 
 const router = express.Router();
@@ -98,6 +101,12 @@ router.use(requireAdmin);
 router.post('/upload-image', upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image file was sent' });
   res.json({ url: `/uploads/${req.file.filename}` });
+});
+
+/* ---------- Telegram NFT gift lookup (shared helper lives in telegram.js) ---------- */
+router.post('/nft-lookup', async (req, res) => {
+  try { res.json(await fetchTelegramNftMeta(req.body.link)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 /* ---------- Dashboard ---------- */
@@ -144,6 +153,8 @@ router.delete('/currencies/:code', (req, res) => {
 });
 
 /* ---------- Payment settings (deposit card number, manual from the panel) ---------- */
+router.get('/swap-fee', (req, res) => res.json({ percent: getSwapFeePercent() }));
+router.post('/swap-fee', (req, res) => { setSwapFeePercent(req.body.percent); res.json({ ok: true }); });
 router.get('/payment-settings', (req, res) => res.json(getPaymentSettings()));
 router.post('/payment-settings', (req, res) => {
   setPaymentSettings({
@@ -336,6 +347,9 @@ router.post('/gift-offers/:id/approve', (req, res) => {
     approveGiftOffer(Number(req.params.id));
     const offer = getGiftOffer(Number(req.params.id));
     sendMessage(offer.seller_tg_id, `✅ Gift listing "${offer.title}" was approved and is now visible in the market.`).catch(() => {});
+    findWatchersForOffer(offer).forEach(w => {
+      sendMessage(w.tg_id, `🔔 A "${offer.title}" just appeared in the market for ${offer.price_toman.toLocaleString()} LNDC (at or under your watch price of ${w.max_price.toLocaleString()}). Open the app to grab it before it's gone!`).catch(() => {});
+    });
     res.json({ ok: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -360,6 +374,8 @@ router.post('/tasks', (req, res) => {
     title: req.body.title,
     kind: req.body.kind || 'join_channel',
     channel_username: req.body.channel_username,
+    description: req.body.description,
+    link: req.body.link,
     reward_toman: Number(req.body.reward_toman) || 0,
     active: req.body.active !== false,
   });
@@ -506,7 +522,7 @@ router.post('/auction/config', (req, res) => {
   const b = req.body;
   setAuctionConfig({
     enabled: !!b.enabled, discount_percent: Number(b.discount_percent),
-    duration_minutes: Number(b.duration_minutes), bid_step: Number(b.bid_step),
+    duration_minutes: Number(b.duration_minutes), bid_step_percent: Number(b.bid_step_percent),
     anti_snipe_enabled: !!b.anti_snipe_enabled, min_wallet_balance: Number(b.min_wallet_balance) || 0,
   });
   res.json({ ok: true });
@@ -600,9 +616,14 @@ router.post('/league/config', (req, res) => {
   setLeagueConfig(req.body);
   res.json({ ok: true });
 });
-router.get('/league/tiers', (req, res) => res.json(getLeagueTierConfig()));
+router.get('/league/tiers', (req, res) => res.json(listLeagues()));
 router.post('/league/tiers', (req, res) => {
-  try { setLeagueTierConfig(req.body.league, req.body.promote_count, req.body.relegate_count); res.json({ ok: true }); }
+  if (!req.body.key || !req.body.label) return res.status(400).json({ error: 'Key and name are required' });
+  try { const id = upsertLeagueTier(req.body); res.json({ ok: true, id }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/league/tiers/:key', (req, res) => {
+  try { deleteLeagueTier(req.params.key); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -611,6 +632,11 @@ router.get('/raffles', (req, res) => res.json(listRafflesAdmin()));
 router.get('/giveaway-channel', (req, res) => res.json(getGiveawayChannelSettings()));
 router.post('/giveaway-channel', (req, res) => {
   setGiveawayChannelSettings({ channelId: req.body.channelId, startImage: req.body.startImage, endImage: req.body.endImage });
+  res.json({ ok: true });
+});
+router.get('/leaderboard-channel', (req, res) => res.json(getLeaderboardChannelSettings()));
+router.post('/leaderboard-channel', (req, res) => {
+  setLeaderboardChannelId(req.body.channelId);
   res.json({ ok: true });
 });
 router.post('/raffles', (req, res) => {
@@ -625,10 +651,31 @@ router.post('/raffles', (req, res) => {
 router.delete('/raffles/:id', (req, res) => { deleteRaffle(Number(req.params.id)); res.json({ ok: true }); });
 router.post('/raffles/:id/cancel', (req, res) => { cancelRaffle(Number(req.params.id)); res.json({ ok: true }); });
 router.get('/raffles/:id/entries', (req, res) => res.json(listRaffleEntries(Number(req.params.id))));
+router.get('/raffles/:id/top-entries', (req, res) => res.json(getRaffleTopEntries(Number(req.params.id))));
+router.get('/raffles/finished', (req, res) => res.json(listFinishedRaffles(50)));
+/* -- Prizes (each raffle can hold several distinct gifts, e.g. real Telegram NFT gifts pasted via /nft-lookup) -- */
+router.get('/raffles/:id/prizes', (req, res) => res.json(listRafflePrizes(Number(req.params.id))));
+router.post('/raffle-prizes', (req, res) => {
+  if (!req.body.title) return res.status(400).json({ error: 'Prize title is required' });
+  const id = upsertRafflePrize({
+    id: req.body.id ? Number(req.body.id) : null, raffle_id: Number(req.body.raffle_id),
+    title: req.body.title, image_url: req.body.image_url, gift_number: req.body.gift_number, sort_order: req.body.sort_order,
+  });
+  res.json({ ok: true, id });
+});
+router.delete('/raffle-prizes/:id', (req, res) => { deleteRafflePrize(Number(req.params.id)); res.json({ ok: true }); });
 router.post('/raffles/:id/finish', (req, res) => {
   try {
-    const winners = finishRaffle(Number(req.params.id));
-    postGiveawayToChannel(getRaffle(Number(req.params.id)), 'end', winners).catch(() => {});
+    const raffleId = Number(req.params.id);
+    const winners = finishRaffle(raffleId);
+    const raffle = getRaffle(raffleId);
+    const prizes = listRafflePrizes(raffleId);
+    winners.forEach((w, i) => {
+      sendMessage(w.tg_id, `🎉 Congratulations! You won the giveaway "${raffle.title}"${prizes[i] ? ` — ${prizes[i].title}${prizes[i].gift_number ? ' #' + prizes[i].gift_number : ''}` : ''}! Open the app for details.`).catch(() => {});
+      const winnerUser = getUser(w.tg_id);
+      logPlayerActivity(winnerUser?.username || winnerUser?.first_name, `won the giveaway "${raffle.title}" 🎊`, '🎊');
+    });
+    postGiveawayToChannel(raffle, 'end', winners).catch(() => {});
     res.json({ ok: true, winners });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -640,13 +687,21 @@ async function postGiveawayToChannel(raffle, phase, winners = []) {
   if (!channelId || !raffle) return;
   let text;
   if (phase === 'start') {
+    const prizes = listRafflePrizes(raffle.id);
+    const prizeLines = prizes.length ? prizes.map(p => `🎁 ${p.title}${p.gift_number ? ' #' + p.gift_number : ''}`).join('\n') : (raffle.prize_description ? `🎁 Prize: ${raffle.prize_description}` : '');
     text = `🎉 <b>New giveaway started!</b>\n\n🏆 <b>${raffle.title}</b>` +
-      (raffle.prize_description ? `\n🎁 Prize: ${raffle.prize_description}` : '') +
+      (prizeLines ? `\n${prizeLines}` : '') +
       `\n👥 Winners: ${raffle.winners_count}` +
       (raffle.ticket_price_toman > 0 ? `\n🎟 Ticket price: ${raffle.ticket_price_toman.toLocaleString('en-US')} LNDC` : '\n🎟 Free entry') +
-      `\n\nOpen the mini app to join! 👇`;
-    if (startImage) await sendPhoto(channelId, startImage, text);
-    else await sendMessage(channelId, text);
+      `\n\nTap the button below to join instantly, or open the mini app for full details 👇`;
+    // A direct "Join" button right on the channel post — a plain callback button (not web_app) so it
+    // works with one tap even for someone who has never opened the mini app before.
+    const replyMarkup = { inline_keyboard: [
+      [{ text: '🎟 Join Giveaway', callback_data: `raffle_join:${raffle.id}` }],
+      [{ text: '🛍 Open in mini app', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }],
+    ] };
+    if (startImage) await sendPhoto(channelId, startImage, text, { reply_markup: replyMarkup });
+    else await sendMessage(channelId, text, { reply_markup: replyMarkup });
   } else {
     const winnerList = winners.length ? winners.map(w => `🆔 <code>${w.tg_id}</code>`).join('\n') : 'No entries were registered.';
     text = `🏁 <b>Giveaway ended!</b>\n\n🏆 <b>${raffle.title}</b>\n\n🎊 Winners:\n${winnerList}`;
@@ -654,6 +709,15 @@ async function postGiveawayToChannel(raffle, phase, winners = []) {
     else await sendMessage(channelId, text);
   }
 }
+
+/* ---------- Achievements ---------- */
+router.get('/achievements', (req, res) => res.json(listAchievementsAdmin()));
+router.post('/achievements', (req, res) => {
+  if (!req.body.key || !req.body.title || !req.body.metric) return res.status(400).json({ error: 'Key, title and metric are required' });
+  const id = upsertAchievement(req.body);
+  res.json({ ok: true, id });
+});
+router.delete('/achievements/:id', (req, res) => { deleteAchievement(Number(req.params.id)); res.json({ ok: true }); });
 
 /* ---------- Shop chests (loot boxes) ---------- */
 router.get('/chests', (req, res) => res.json(listChests(false)));
@@ -731,11 +795,14 @@ router.delete('/promo/:code', (req, res) => { deletePromoCode(req.params.code.to
 router.get('/promo/:code/redemptions', (req, res) => res.json(listRedemptions(req.params.code.toUpperCase())));
 
 /* ---------- Collection album ---------- */
-router.get('/albums', (req, res) => res.json(listAlbums(false).map(a => ({ ...a, requirements: getAlbumRequirements(a.id) }))));
+router.get('/albums', (req, res) => res.json(listAlbums(false).map(a => ({ ...a, requirements: getAlbumRequirements(a.id), reward_cards: getAlbumRewardCards(a.id) }))));
 router.post('/albums', (req, res) => {
-  const { id, name, reward_type, reward_value, is_seasonal, starts_at, ends_at, active, category_ids } = req.body;
+  const { id, name, reward_type, reward_value, is_seasonal, starts_at, ends_at, active, requirements, reward_cards } = req.body;
   if (!name) return res.status(400).json({ error: 'Album name is required' });
-  const savedId = upsertAlbum({ id: id ? Number(id) : null, name, reward_type, reward_value, is_seasonal, starts_at, ends_at, active, category_ids });
+  if (reward_type === 'card' && (!Array.isArray(reward_cards) || !reward_cards.length)) {
+    return res.status(400).json({ error: 'Pick at least one card for the card reward' });
+  }
+  const savedId = upsertAlbum({ id: id ? Number(id) : null, name, reward_type, reward_value, is_seasonal, starts_at, ends_at, active, requirements, reward_cards });
   res.json({ ok: true, id: savedId });
 });
 router.delete('/albums/:id', (req, res) => { deleteAlbum(Number(req.params.id)); res.json({ ok: true }); });

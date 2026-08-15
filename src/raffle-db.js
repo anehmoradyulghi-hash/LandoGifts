@@ -3,11 +3,14 @@ import { adjustToman, getUser, hasClaimedTask, getTask } from './db.js';
 import crypto from 'crypto';
 
 /* =========================================================================
- * Big wheel (raffle) — completely separate from the daily wheel of fortune.
- * The user registers (may require completing a specific task), can buy extra
- * tickets increase their chance, and when the admin clicks "End raffle",
- * the specified number of winners are drawn with weighting (based on ticket count).
- * Prizes are deposited manually by the admin, this just shows the winners' IDs.
+ * Big wheel (raffle / giveaway) — completely separate from the daily wheel of
+ * fortune. A giveaway can hold several distinct gift prizes (each with its own
+ * title/image/number — perfect for pasting real Telegram NFT gifts via the
+ * NFT-lookup feature). The user registers (may require completing a specific
+ * task), can buy any number of extra tickets up to a cap to increase their
+ * chance, and either the admin ends it manually or it auto-ends at its
+ * deadline — winners are drawn with weighting (based on ticket count) and
+ * assigned to prizes in order (1st winner drawn gets the 1st prize, etc).
  *
  * Provably fair: a random server_seed is generated the moment a raffle is created, and only its
  * SHA-256 hash is shown to players (server_seed_hash) — a public commitment made before anyone
@@ -42,7 +45,27 @@ CREATE TABLE IF NOT EXISTS raffle_entries (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(raffle_id, tg_id)
 );
+
+-- One row per distinct prize in the giveaway (e.g. three different NFT gifts) — winners are
+-- assigned to these in draw order once the raffle finishes.
+CREATE TABLE IF NOT EXISTS raffle_prizes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  raffle_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  image_url TEXT,
+  gift_number TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  winner_tg_id INTEGER
+);
 `);
+function safeAddColumn(table, columnDef) {
+  const col = columnDef.split(' ')[0];
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+  if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`);
+}
+// A deadline the giveaway auto-ends at — added after raffles already shipped without one, so
+// existing installs need this migration to pick it up (admin-set countdown, like the reference design).
+safeAddColumn('raffles', 'ends_at TEXT');
 
 function sha256Hex(str) { return crypto.createHash('sha256').update(str).digest('hex'); }
 // Strips the hidden server_seed from a raffle before it's sent to a player — only revealed once the
@@ -53,31 +76,57 @@ function sanitizeRaffleForClient(raffle) {
   const { server_seed, ...rest } = raffle;
   return rest;
 }
+// "Alex Johnson" -> "Al***on" style masking for public leaderboards/winner lists
+function maskName(name) {
+  const s = String(name || '').trim();
+  if (s.length <= 4) return s ? s[0] + '***' : 'Player';
+  return s.slice(0, 2) + '***' + s.slice(-2);
+}
 
 export function listRafflesAdmin() { return db.prepare('SELECT * FROM raffles ORDER BY id DESC').all(); }
 export function getRaffle(id) { return db.prepare('SELECT * FROM raffles WHERE id = ?').get(id); }
 export function listOpenRaffles() { return db.prepare(`SELECT * FROM raffles WHERE status = 'open' ORDER BY id DESC`).all(); }
+export function listFinishedRaffles(limit = 50) {
+  return db.prepare(`SELECT * FROM raffles WHERE status IN ('finished','cancelled') ORDER BY finished_at DESC LIMIT ?`).all(limit);
+}
+
+/* ---------- Prizes ---------- */
+export function listRafflePrizes(raffleId) {
+  return db.prepare('SELECT * FROM raffle_prizes WHERE raffle_id = ? ORDER BY sort_order ASC, id ASC').all(raffleId);
+}
+export function upsertRafflePrize(p) {
+  if (p.id) {
+    db.prepare('UPDATE raffle_prizes SET title=?, image_url=?, gift_number=?, sort_order=? WHERE id=?')
+      .run(p.title, p.image_url || null, p.gift_number || null, Number(p.sort_order) || 0, p.id);
+    return p.id;
+  }
+  return db.prepare('INSERT INTO raffle_prizes (raffle_id, title, image_url, gift_number, sort_order) VALUES (?,?,?,?,?)')
+    .run(p.raffle_id, p.title, p.image_url || null, p.gift_number || null, Number(p.sort_order) || 0).lastInsertRowid;
+}
+export function deleteRafflePrize(id) { db.prepare('DELETE FROM raffle_prizes WHERE id = ?').run(id); }
+
 // Public log of finished raffles + their winners — for the "recent winners" list in the mini app.
 export function listRecentRaffleWinners(limit = 10) {
   const raffles = db.prepare(`SELECT * FROM raffles WHERE status = 'finished' ORDER BY finished_at DESC LIMIT ?`).all(limit);
   return raffles.map(r => ({
     id: r.id, title: r.title, prize_description: r.prize_description, finished_at: r.finished_at,
     server_seed: r.server_seed, server_seed_hash: r.server_seed_hash,
+    prizes: listRafflePrizes(r.id),
     winners: db.prepare(`
       SELECT re.tg_id, u.first_name, u.username FROM raffle_entries re JOIN users u ON u.tg_id = re.tg_id
       WHERE re.raffle_id = ? AND re.is_winner = 1
-    `).all(r.id),
+    `).all(r.id).map(w => ({ ...w, masked: maskName(w.username || w.first_name) })),
   }));
 }
 
 export function createRaffle(r) {
   const serverSeed = crypto.randomBytes(16).toString('hex');
   return db.prepare(`
-    INSERT INTO raffles (title, prize_description, capacity, winners_count, required_task_id, ticket_price_toman, max_tickets_per_user, server_seed, server_seed_hash)
-    VALUES (?,?,?,?,?,?,?,?,?)
+    INSERT INTO raffles (title, prize_description, capacity, winners_count, required_task_id, ticket_price_toman, max_tickets_per_user, ends_at, server_seed, server_seed_hash)
+    VALUES (?,?,?,?,?,?,?,?,?,?)
   `).run(r.title, r.prize_description || null, Number(r.capacity) || 100, Number(r.winners_count) || 10,
     r.required_task_id ? Number(r.required_task_id) : null, Number(r.ticket_price_toman) || 0, Number(r.max_tickets_per_user) || 1,
-    serverSeed, sha256Hex(serverSeed)
+    r.ends_at || null, serverSeed, sha256Hex(serverSeed)
   ).lastInsertRowid;
 }
 export function updateRaffle(id, r) {
@@ -85,13 +134,14 @@ export function updateRaffle(id, r) {
   if (!raffle) throw new Error('Raffle not found');
   if (raffle.status !== 'open') throw new Error('This raffle is no longer open');
   db.prepare(`
-    UPDATE raffles SET title=?, prize_description=?, capacity=?, winners_count=?, required_task_id=?, ticket_price_toman=?, max_tickets_per_user=?
+    UPDATE raffles SET title=?, prize_description=?, capacity=?, winners_count=?, required_task_id=?, ticket_price_toman=?, max_tickets_per_user=?, ends_at=?
     WHERE id=?
   `).run(r.title, r.prize_description || null, Number(r.capacity) || 100, Number(r.winners_count) || 10,
-    r.required_task_id ? Number(r.required_task_id) : null, Number(r.ticket_price_toman) || 0, Number(r.max_tickets_per_user) || 1, id);
+    r.required_task_id ? Number(r.required_task_id) : null, Number(r.ticket_price_toman) || 0, Number(r.max_tickets_per_user) || 1, r.ends_at || null, id);
 }
 export function deleteRaffle(id) {
   db.prepare('DELETE FROM raffle_entries WHERE raffle_id = ?').run(id);
+  db.prepare('DELETE FROM raffle_prizes WHERE raffle_id = ?').run(id);
   db.prepare('DELETE FROM raffles WHERE id = ?').run(id);
 }
 export function cancelRaffle(id) {
@@ -107,6 +157,17 @@ export function listRaffleEntries(raffleId) {
     WHERE re.raffle_id = ? ORDER BY re.created_at ASC
   `).all(raffleId);
 }
+// Ranked, masked list of the biggest ticket-holders — the "Top Entries" board
+export function getRaffleTopEntries(raffleId, limit = 100) {
+  const rows = db.prepare(`
+    SELECT re.tg_id, re.tickets, u.first_name, u.username FROM raffle_entries re JOIN users u ON u.tg_id = re.tg_id
+    WHERE re.raffle_id = ? ORDER BY re.tickets DESC, re.created_at ASC LIMIT ?
+  `).all(raffleId, limit);
+  return rows.map((r, i) => ({ rank: i + 1, tickets: r.tickets, masked: maskName(r.username || r.first_name) }));
+}
+export function getRaffleTicketPool(raffleId) {
+  return db.prepare('SELECT COALESCE(SUM(tickets),0) s FROM raffle_entries WHERE raffle_id = ?').get(raffleId).s;
+}
 export function getRaffleStatusForUser(raffleId, tgId) {
   const raffle = getRaffle(raffleId);
   if (!raffle) return null;
@@ -114,7 +175,10 @@ export function getRaffleStatusForUser(raffleId, tgId) {
   const myEntry = getEntry(raffleId, tgId);
   const taskDone = raffle.required_task_id ? hasClaimedTask(tgId, raffle.required_task_id) : true;
   const requiredTask = raffle.required_task_id ? getTask(raffle.required_task_id) : null;
-  return { raffle: sanitizeRaffleForClient(raffle), entriesCount, myEntry, taskDone, requiredTask };
+  return {
+    raffle: sanitizeRaffleForClient(raffle), entriesCount, myEntry, taskDone, requiredTask,
+    prizes: listRafflePrizes(raffleId), ticketPool: getRaffleTicketPool(raffleId),
+  };
 }
 
 // Initial registration (free, only if the required task is done and there's capacity) — always gives 1 base ticket
@@ -130,22 +194,28 @@ export function registerForRaffle(tgId, raffleId) {
   db.prepare('INSERT INTO raffle_entries (raffle_id, tg_id, tickets) VALUES (?,?,1)').run(raffleId, tgId);
 }
 
-// Buying extra tickets to increase your chance (up to the cap max_tickets_per_user)
-export function buyRaffleTicket(tgId, raffleId) {
+// Buying extra tickets (any quantity at once) to increase your chance, up to the cap max_tickets_per_user
+export function buyRaffleTickets(tgId, raffleId, qty = 1) {
   const raffle = getRaffle(raffleId);
   if (!raffle || raffle.status !== 'open') throw new Error('This raffle is not open yet');
   if (!raffle.ticket_price_toman) throw new Error('Ticket purchase is not enabled for this raffle');
   const entry = getEntry(raffleId, tgId);
   if (!entry) throw new Error('You must first register for the raffle');
-  if (entry.tickets >= raffle.max_tickets_per_user) throw new Error('You have reached the maximum allowed ticket count');
+  qty = Math.max(1, Math.floor(Number(qty) || 1));
+  if (entry.tickets + qty > raffle.max_tickets_per_user) {
+    throw new Error(`You can hold at most ${raffle.max_tickets_per_user} ticket(s) for this raffle`);
+  }
+  const totalCost = raffle.ticket_price_toman * qty;
   const user = getUser(tgId);
-  if (!user || user.balance_toman < raffle.ticket_price_toman) throw new Error('Insufficient wallet balance');
+  if (!user || user.balance_toman < totalCost) throw new Error('Insufficient wallet balance');
   const tx = db.transaction(() => {
-    adjustToman(tgId, -raffle.ticket_price_toman, `Ticket purchase for raffle «${raffle.title}»`);
-    db.prepare('UPDATE raffle_entries SET tickets = tickets + 1 WHERE raffle_id = ? AND tg_id = ?').run(raffleId, tgId);
+    adjustToman(tgId, -totalCost, `${qty} ticket(s) for raffle «${raffle.title}»`);
+    db.prepare('UPDATE raffle_entries SET tickets = tickets + ? WHERE raffle_id = ? AND tg_id = ?').run(qty, raffleId, tgId);
   });
   tx();
 }
+// Kept for backward compatibility with any old caller expecting a single-ticket purchase
+export function buyRaffleTicket(tgId, raffleId) { return buyRaffleTickets(tgId, raffleId, 1); }
 
 // Deterministic PRNG seeded from a hex string — the same seed always produces the exact same
 // sequence, which is what makes a draw independently re-computable/verifiable once the seed is
@@ -175,9 +245,10 @@ function drawWeightedWinners(entries, winnersCount, random) {
   return winners;
 }
 
-// The admin clicks the "End raffle" button — winners are chosen with weighting (based on ticket
-// count), deterministically from the raffle's pre-committed server_seed (see the provably-fair note
-// at the top of this file).
+// The admin clicks "End raffle" (or the deadline passes) — winners are chosen with weighting
+// (based on ticket count), deterministically from the raffle's pre-committed server_seed (see the
+// provably-fair note at the top of this file), then assigned to prizes in draw order — the 1st
+// winner drawn gets the 1st prize (by sort_order), and so on.
 export function finishRaffle(raffleId) {
   const raffle = getRaffle(raffleId);
   if (!raffle) throw new Error('Raffle not found');
@@ -185,12 +256,27 @@ export function finishRaffle(raffleId) {
   const entries = listRaffleEntries(raffleId);
   const random = raffle.server_seed ? seededRandomFactory(`${raffle.server_seed}:${raffleId}`) : Math.random;
   const winnerIds = drawWeightedWinners(entries, raffle.winners_count, random);
+  const prizes = listRafflePrizes(raffleId);
   const tx = db.transaction(() => {
     for (const tgId of winnerIds) {
       db.prepare('UPDATE raffle_entries SET is_winner = 1 WHERE raffle_id = ? AND tg_id = ?').run(raffleId, tgId);
     }
+    winnerIds.forEach((tgId, i) => {
+      if (prizes[i]) db.prepare('UPDATE raffle_prizes SET winner_tg_id = ? WHERE id = ?').run(tgId, prizes[i].id);
+    });
     db.prepare(`UPDATE raffles SET status = 'finished', finished_at = datetime('now') WHERE id = ?`).run(raffleId);
   });
   tx();
   return listRaffleEntries(raffleId).filter(e => e.is_winner);
+}
+
+// Called periodically (see server.js) — auto-ends any open raffle whose deadline has passed
+export function checkAutoFinishRaffles() {
+  const due = db.prepare(`SELECT id FROM raffles WHERE status = 'open' AND ends_at IS NOT NULL AND ends_at <= datetime('now')`).all();
+  const results = [];
+  for (const { id } of due) {
+    try { results.push({ id, raffle: getRaffle(id), winners: finishRaffle(id) }); }
+    catch (e) { console.error('[raffle auto-finish]', id, e.message); }
+  }
+  return results;
 }

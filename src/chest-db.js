@@ -2,6 +2,7 @@ import db from './db.js';
 import { adjustToman, getUser } from './db.js';
 import { grantCardInstance, getGameCard } from './game-db.js';
 import { grantAvatar, getAvatar } from './rank-db.js';
+import { checkAchievements, logPlayerActivity } from './achievements-db.js';
 
 /* =========================================================================
  * Shop chests (loot boxes) — the admin defines any number of purchasable chest
@@ -164,6 +165,15 @@ export function buyAndOpenChest(tgId, chestId) {
       .run(tgId, chestId, chosen.id, chosen.label || describeItem(chosen).display);
   });
   tx();
+
+  const buyer = getUser(tgId);
+  const displayName = buyer?.username || buyer?.first_name;
+  const opensCount = db.prepare('SELECT COUNT(*) c FROM chest_openings WHERE tg_id = ?').get(tgId).c;
+  checkAchievements(tgId, 'chests_opened', opensCount, displayName);
+  // A card/avatar win from a chest is exactly the kind of moment worth broadcasting to the whole app
+  if (chosen.type === 'card' || chosen.type === 'avatar') {
+    logPlayerActivity(displayName, `opened "${chest.title}" and got ${describeItem(chosen).display} 🎉`, '📦');
+  }
 
   return { won: describeItem(chosen), items: items.map(describeItem) };
 }

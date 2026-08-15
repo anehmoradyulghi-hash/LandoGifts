@@ -5,11 +5,12 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import {
-  sendMessage, answerCallbackQuery, setWebhook, validateInitData, isChannelMember, getMe,
-  createStarsInvoiceLink, answerPreCheckoutQuery,
+  sendMessage, sendPhoto, answerCallbackQuery, setWebhook, validateInitData, isChannelMember, getMe,
+  createStarsInvoiceLink, answerPreCheckoutQuery, fetchTelegramNftMeta, answerInlineQuery, editMessageText, pinChatMessage,
 } from './telegram.js';
 import db, {
-  getOrCreateUser, getUser, adjustToman, isBanned, getLedger, payReferralBonus, getReferralInfo, getReferralSettings,
+  getOrCreateUser, getUser, adjustToman, isBanned, getLedger, payReferralBonus, getReferralInfo, getReferralSettings, getSwapFeePercent, getGiveawayChannelSettings,
+  getLeaderboardChannelSettings, setLeaderboardChannelMessageId,
   listCurrencies, getCurrency, getWalletBalances, getCurrencyBalance, adjustCurrencyBalance,
   createTomanTopup, createTomanWithdrawal,
   createCurrencyRequest,
@@ -17,6 +18,7 @@ import db, {
   listCategories, listProducts, getProduct,
   createOrder, listOrdersForUser,
   createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer, listGiftCategories, updateGiftOffer,
+  listMyWatches, addWatch, removeWatch, getCompletedSalesCount,
   listActiveTasks, hasClaimedTask, claimTask, getTask,
   getPaymentSettings, getMessageSettings, getSupportContact, getInfoPage, getLndcWalletSettings, getUiImages,
   createStarPaymentRequest, getStarPayment, completeStarPayment,
@@ -41,15 +43,15 @@ import {
   getClanConfig, getMyClan, getClanMembers, searchClans, getClanLeaderboard, getClanRank,
   createClan, joinClan, leaveClan, kickMember, setMemberRole, donateToClan, withdrawFromClanBank, giftFromClanBank,
   addClanPurchaseScore, addClanWinScore, checkAutoResetClanSeason,
-  sendClanMessage, getClanMessages,
+  sendClanMessage, getClanMessages, cleanupAllOldClanMessages,
   setClanJoinSettings, listClanJoinRequests, respondClanJoinRequest,
 } from './clan-db.js';
 import {
   getClanWarConfig, listOpenClanWars, getMyActiveClanWar, getClanWarHistory,
   createClanWar, cancelClanWar, joinClanWar, submitWarPicks, getClanWar, getMemberCardsForLeader,
 } from './clan-war-db.js';
-import { getLeagueConfig, getUserLeagueInfo, getLeagueLeaderboard, checkAutoResetLeague } from './league-db.js';
-import { listOpenRaffles, getRaffleStatusForUser, registerForRaffle, buyRaffleTicket, getRaffle, listRecentRaffleWinners } from './raffle-db.js';
+import { getLeagueConfig, getUserLeagueInfo, getLeagueLeaderboard, checkAutoResetLeague, listLeagues } from './league-db.js';
+import { listOpenRaffles, getRaffleStatusForUser, registerForRaffle, buyRaffleTickets, getRaffle, listRecentRaffleWinners, getRaffleTopEntries, checkAutoFinishRaffles, listRafflePrizes } from './raffle-db.js';
 import {
   getRankConfig, getUserRankInfo, addUserXp, canCheckinToday, doCheckin, listStreakRewards,
   listAvatars, getMyAvatars, buyAvatar, equipAvatar,
@@ -58,13 +60,14 @@ import {
 import { getTodayQuestsForUser, incrementQuestProgress, claimQuestReward } from './quest-db.js';
 import { redeemPromoCode } from './promo-db.js';
 import { listChestsForClient, buyAndOpenChest, getChestHistory } from './chest-db.js';
-import { listAlbums, getAlbumProgress, claimAlbumReward } from './album-db.js';
+import { listAlbums, getAlbumProgress, claimAlbumReward, getAlbumRewardCards } from './album-db.js';
 import { getGiftConfig, giftToman, giftCard, getRemainingCardGifts } from './gift-db.js';
 import { checkExpiredSeasons } from './seasonal-db.js';
 import {
   getCardMarketConfig, createCardMarketListing, cancelCardMarketListing,
   listCardMarketOffers, getMyCardMarketListings, buyCardMarketListing, getPriceGuidance,
 } from './card-market-db.js';
+import { logActivity, logPlayerActivity, checkAchievements, getActivityFeed, listAchievementsForUser, setPinnedBadges, getPinnedBadges } from './achievements-db.js';
 import adminApi from './admin-api.js';
 import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
 import { startBackupScheduler } from './backup.js';
@@ -154,6 +157,14 @@ function notifyAdmins(text, extra) {
   ADMIN_IDS.forEach(id => sendMessage(id, text, extra).catch(() => {}));
 }
 
+/* ---------- Achievements & activity feed ---------- */
+app.get('/api/activity-feed', (req, res) => res.json(getActivityFeed(20)));
+app.get('/api/achievements', requireTelegramAuth, (req, res) => res.json(listAchievementsForUser(req.dbUser.tg_id)));
+app.post('/api/achievements/pin', requireTelegramAuth, (req, res) => {
+  setPinnedBadges(req.dbUser.tg_id, req.body.achievement_ids);
+  res.json({ ok: true });
+});
+
 let cachedBotUsername = null;
 app.get('/api/config', ah(async (req, res) => {
   if (!cachedBotUsername) {
@@ -167,7 +178,7 @@ app.get('/api/config', ah(async (req, res) => {
     cardOwner: payment.cardOwner || null,
     referralPercent: getReferralSettings().percent,
     giftMarketFeePercent: Number(process.env.GIFT_MARKET_FEE_PERCENT || 5),
-    swapFeePercent: Number(process.env.SWAP_FEE_PERCENT || 1),
+    swapFeePercent: getSwapFeePercent(),
     supportUsername: getSupportContact(),
     lndcWallet: getLndcWalletSettings(),
     uiImages: getUiImages(),
@@ -279,7 +290,7 @@ app.post('/api/wallet/swap', requireTelegramAuth, (req, res) => {
   if (from === to) return res.status(400).json({ error: 'Source and destination cannot be the same' });
   if (![from, to].includes('LNDC')) return res.status(400).json({ error: 'Conversion is only between LNDC and one other currency' });
 
-  const feePercent = Number(process.env.SWAP_FEE_PERCENT || 1);
+  const feePercent = getSwapFeePercent();
   const code = from === 'LNDC' ? to : from;
   const currency = getCurrency(code);
   if (!currency || !currency.active || !currency.rate_toman) return res.status(503).json({ error: `The ${code} rate has not been set by the admin yet` });
@@ -422,7 +433,17 @@ app.get('/api/referral', requireTelegramAuth, (req, res) => {
  * ========================================================================= */
 app.get('/api/gifts/my', requireTelegramAuth, (req, res) => res.json(listMyGiftOffers(req.dbUser.tg_id)));
 app.get('/api/gifts/market', requireTelegramAuth, (req, res) => res.json({ offers: listMarketGiftOffers(req.dbUser.tg_id), feePercent: Number(process.env.GIFT_MARKET_FEE_PERCENT || 5) }));
+app.get('/api/watchlist', requireTelegramAuth, (req, res) => res.json(listMyWatches(req.dbUser.tg_id)));
+app.post('/api/watchlist', requireTelegramAuth, (req, res) => {
+  try { addWatch(req.dbUser.tg_id, req.body.title, req.body.max_price); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.delete('/api/watchlist/:id', requireTelegramAuth, (req, res) => { removeWatch(req.dbUser.tg_id, Number(req.params.id)); res.json({ ok: true }); });
 app.get('/api/gifts/categories', (req, res) => res.json(listGiftCategories(true)));
+app.post('/api/nft-lookup', requireTelegramAuth, async (req, res) => {
+  try { res.json(await fetchTelegramNftMeta(req.body.link)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 
 app.get('/api/gift-categories', (req, res) => res.json(listGiftCategories(true)));
 app.post('/api/gifts/list', requireTelegramAuth, (req, res) => {
@@ -464,6 +485,9 @@ app.post('/api/gifts/:id/confirm-received', requireTelegramAuth, (req, res) => {
   try {
     const result = confirmGiftReceived(req.dbUser.tg_id, Number(req.params.id), Number(process.env.GIFT_MARKET_FEE_PERCENT || 5));
     sendMessage(result.seller_tg_id, `✅ The buyer confirmed receipt of gift "${result.title}".\n+${result.sellerReceives.toLocaleString()} LNDC added to your wallet.`).catch(() => {});
+    const sellerName = getUser(result.seller_tg_id);
+    logPlayerActivity(sellerName?.username || sellerName?.first_name, `sold a "${result.title}" 💰`, '💰');
+    checkAchievements(result.seller_tg_id, 'nft_sold', getCompletedSalesCount(result.seller_tg_id), sellerName?.username || sellerName?.first_name);
     res.json({ ok: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -519,11 +543,21 @@ app.get('/api/chests/history', requireTelegramAuth, (req, res) => res.json(getCh
 /* =========================================================================
  * Flash auction
  * ========================================================================= */
-app.get('/api/auctions', (req, res) => res.json({ auctions: listActiveAuctions(), config: getAuctionConfig() }));
+app.get('/api/auctions', (req, res) => {
+  const auctions = listActiveAuctions().map(a => ({
+    ...a, nextBidAmount: a.current_price + Math.max(1, Math.ceil(a.current_price * (a.bid_step_percent || 5) / 100)),
+  }));
+  res.json({ auctions, config: getAuctionConfig() });
+});
 app.get('/api/auctions/:id/bids', (req, res) => res.json(listAuctionBids(Number(req.params.id))));
 app.post('/api/auctions/:id/bid', requireTelegramAuth, (req, res) => {
-  try { res.json({ ok: true, ...placeBid(req.dbUser.tg_id, Number(req.params.id)) }); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    const result = placeBid(req.dbUser.tg_id, Number(req.params.id));
+    if (result.outbidTgId) {
+      sendMessage(result.outbidTgId, `⚡ You've been outbid on "${result.title}"! The new price is ${result.newPrice.toLocaleString()} LNDC. Open the app to bid again before it ends.`).catch(() => {});
+    }
+    res.json({ ok: true, ...result });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.get('/api/auctions/my-history', requireTelegramAuth, (req, res) => res.json(getMyAuctionHistory(req.dbUser.tg_id)));
 
@@ -695,24 +729,26 @@ app.get('/api/league/status', requireTelegramAuth, (req, res) => {
   const config = getLeagueConfig();
   const me = getUserLeagueInfo(req.dbUser.tg_id);
   const leaderboard = getLeagueLeaderboard(me.league, 10);
-  res.json({ config, me, leaderboard });
+  const tiers = listLeagues().map(t => ({ key: t.key, label: t.label, icon: t.icon }));
+  res.json({ config, me, leaderboard, tiers });
 });
 app.get('/api/league/leaderboard/:league', requireTelegramAuth, (req, res) => {
   res.json(getLeagueLeaderboard(req.params.league, 10));
 });
 
-/* ---------- Big wheel (raffle) ---------- */
+/* ---------- Big wheel (raffle / giveaway) ---------- */
 app.get('/api/raffle/list', requireTelegramAuth, (req, res) => {
   const raffles = listOpenRaffles().map(r => getRaffleStatusForUser(r.id, req.dbUser.tg_id));
   res.json(raffles);
 });
 app.get('/api/raffle/recent-winners', requireTelegramAuth, (req, res) => res.json(listRecentRaffleWinners(10)));
+app.get('/api/raffle/:id/top-entries', requireTelegramAuth, (req, res) => res.json(getRaffleTopEntries(Number(req.params.id))));
 app.post('/api/raffle/:id/register', requireTelegramAuth, (req, res) => {
   try { registerForRaffle(req.dbUser.tg_id, Number(req.params.id)); incrementQuestProgress(req.dbUser.tg_id, 'join_raffle', 1); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/raffle/:id/buy-ticket', requireTelegramAuth, (req, res) => {
-  try { buyRaffleTicket(req.dbUser.tg_id, Number(req.params.id)); incrementQuestProgress(req.dbUser.tg_id, 'join_raffle', 1); res.json({ ok: true }); }
+  try { buyRaffleTickets(req.dbUser.tg_id, Number(req.params.id), Number(req.body.qty) || 1); incrementQuestProgress(req.dbUser.tg_id, 'join_raffle', 1); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/rank/checkin', requireTelegramAuth, (req, res) => {
@@ -755,7 +791,10 @@ app.post('/api/promo/redeem', requireTelegramAuth, (req, res) => {
  * Collection album
  * ========================================================================= */
 app.get('/api/albums', requireTelegramAuth, (req, res) => {
-  const albums = listAlbums(true).map(a => ({ ...a, ...getAlbumProgress(req.dbUser.tg_id, a.id) }));
+  const albums = listAlbums(true).map(a => ({
+    ...a, ...getAlbumProgress(req.dbUser.tg_id, a.id),
+    rewardCards: a.reward_type === 'card' ? getAlbumRewardCards(a.id) : [],
+  }));
   res.json(albums);
 });
 app.post('/api/albums/:id/claim', requireTelegramAuth, (req, res) => {
@@ -860,7 +899,7 @@ app.post('/api/game/sacrifice', requireTelegramAuth, (req, res) => {
 app.get('/api/game/mutation-groups', requireTelegramAuth, (req, res) => res.json(getMutationGroups(req.dbUser.tg_id)));
 app.post('/api/game/mutate', requireTelegramAuth, (req, res) => {
   try {
-    const result = mutateCards(req.dbUser.tg_id, Number(req.body.cardId), Number(req.body.level));
+    const result = mutateCards(req.dbUser.tg_id, Number(req.body.keepUserCardId), Number(req.body.sacrificeUserCardId));
     incrementQuestProgress(req.dbUser.tg_id, 'upgrade_cards', 1);
     res.json({ ok: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -970,6 +1009,74 @@ async function handleTelegramUpdate(update) {
     await sendMessage(chatId, welcomeMessage, {
       reply_markup: { inline_keyboard: [[{ text: '🛍 Open shop', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }]] },
     });
+    return;
+  }
+
+  // Quick commands for regular users — answer instantly in DM without opening the mini app
+  if (update.message?.text && ['/balance', '/profile', '/help'].includes(update.message.text.trim())) {
+    const chatId = update.message.chat.id;
+    const dbUser = getOrCreateUser(update.message.from);
+    const cmd = update.message.text.trim();
+    if (cmd === '/balance') {
+      await sendMessage(chatId, `💰 <b>Your wallet</b>\n${dbUser.balance_toman.toLocaleString()} LNDC`, {
+        reply_markup: { inline_keyboard: [[{ text: '👛 Open wallet', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }]] },
+      });
+    } else if (cmd === '/profile') {
+      const rank = getUserRankInfo(dbUser.tg_id);
+      const ref = getReferralInfo(dbUser.tg_id);
+      await sendMessage(chatId,
+        `👤 <b>Your profile</b>\n${rank.icon || ''} ${rank.title || '-'} — Level ${rank.level}\n💰 ${dbUser.balance_toman.toLocaleString()} LNDC\n👥 ${ref.invitedCount} people invited`,
+        { reply_markup: { inline_keyboard: [[{ text: '📱 Open full profile', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }]] } });
+    } else {
+      await sendMessage(chatId,
+        `ℹ️ <b>Available commands</b>\n/balance — your wallet balance\n/profile — a quick summary of your profile\n/help — this message\n\nFor everything else, open the mini app 👇`,
+        { reply_markup: { inline_keyboard: [[{ text: '🛍 Open the mini app', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }]] } });
+    }
+    return;
+  }
+
+  // Inline mode — @YourBotUsername in ANY chat lets a user share their invite link without opening
+  // the mini app or even this bot's own DM. Must also be turned on once via BotFather (/setinline).
+  if (update.inline_query) {
+    const q = update.inline_query;
+    const dbUser = getOrCreateUser(q.from);
+    let cachedUsername = cachedBotUsername;
+    if (!cachedUsername) { try { const me = await getMe(); cachedUsername = cachedBotUsername = me.result?.username || null; } catch (e) {} }
+    const inviteLink = cachedUsername ? `https://t.me/${cachedUsername}?start=ref_${dbUser.ref_code}` : null;
+    const results = [];
+    if (inviteLink) {
+      results.push({
+        type: 'article', id: 'invite',
+        title: '🎁 Invite a friend to Lando Gifts',
+        description: 'Share your personal invite link in this chat',
+        input_message_content: { message_text: `🎁 Come join me on Lando Gifts! Free gifts, cards, and giveaways.\n${inviteLink}` },
+        reply_markup: { inline_keyboard: [[{ text: '🛍 Open Lando Gifts', url: inviteLink }]] },
+      });
+    }
+    const rank = getUserRankInfo(dbUser.tg_id);
+    results.push({
+      type: 'article', id: 'profile',
+      title: `${rank.icon || '👤'} My profile — Level ${rank.level}`,
+      description: `${rank.title || ''} — share your progress`,
+      input_message_content: { message_text: `${rank.icon || '👤'} I'm ${rank.title || 'a player'} at Level ${rank.level} on Lando Gifts! 🎮` },
+      reply_markup: cachedUsername ? { inline_keyboard: [[{ text: '🛍 Open Lando Gifts', url: `https://t.me/${cachedUsername}` }]] } : undefined,
+    });
+    answerInlineQuery(q.id, results).catch(() => {});
+    return;
+  }
+
+  // Direct "Join Giveaway" button on the channel post — registers with one tap, no mini app needed
+  if (update.callback_query?.data?.startsWith('raffle_join:')) {
+    const cq = update.callback_query;
+    const raffleId = Number(cq.data.split(':')[1]);
+    const dbUser = getOrCreateUser(cq.from);
+    try {
+      registerForRaffle(dbUser.tg_id, raffleId);
+      const raffle = getRaffle(raffleId);
+      answerCallbackQuery(cq.id, `🎉 You're in! Good luck in "${raffle?.title || 'the giveaway'}".`).catch(() => {});
+    } catch (e) {
+      answerCallbackQuery(cq.id, `⚠️ ${e.message}`).catch(() => {});
+    }
     return;
   }
 
@@ -1102,6 +1209,10 @@ setInterval(() => {
         ? `🎉 You won the auction "${auction.title}" for ${auction.current_price.toLocaleString()} LNDC and it was deducted from your wallet.`
         : `⚠️ You won the auction "${auction.title}" but your wallet balance was not enough. Contact support.`;
       sendMessage(tgId, msg).catch(() => {});
+      if (kind === 'won') {
+        const winner = getUser(tgId);
+        logPlayerActivity(winner?.username || winner?.first_name, `won the auction "${auction.title}" 🔨`, '🔨');
+      }
     });
   } catch (e) { console.error('[auction finalize]', e); }
 }, 20 * 1000);
@@ -1116,7 +1227,64 @@ setInterval(() => {
   } catch (e) { console.error('[clan auto-reset]', e); }
   try { checkExpiredSeasons(); } catch (e) { console.error('[seasonal cards auto-expire]', e); }
   try { checkAutoResetLeague(); } catch (e) { console.error('[league auto-reset]', e); }
+  try { cleanupAllOldClanMessages(); } catch (e) { console.error('[clan chat cleanup]', e); }
+  updatePinnedLeaderboard().catch(e => console.error('[pinned leaderboard]', e));
 }, 60 * 60 * 1000);
+
+// Builds a fresh "Top players / Top clans" message and either edits the previously pinned message in
+// place, or (first time, or if editing failed e.g. the old message was deleted) sends + pins a new one.
+async function updatePinnedLeaderboard() {
+  const { channelId, messageId } = getLeaderboardChannelSettings();
+  if (!channelId) return;
+  const players = getLeaderboard(10);
+  const clans = getClanLeaderboard(5);
+  const medal = i => ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
+  const text = `🏆 <b>Live Leaderboard</b>\n\n<b>Top players</b>\n` +
+    (players.length ? players.map((p, i) => `${medal(i)} ${p.first_name || p.username || 'Player'} — ${p.score} pts`).join('\n') : 'No data yet.') +
+    `\n\n<b>Top clans</b>\n` +
+    (clans.length ? clans.map((c, i) => `${medal(i)} ${c.emblem.icon} ${c.name} #${c.tag} — ${c.score} pts`).join('\n') : 'No data yet.') +
+    `\n\nUpdated hourly · Join the competition 👇`;
+  const replyMarkup = { inline_keyboard: [[{ text: '🛍 Open Lando Gifts', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }]] };
+
+  if (messageId) {
+    const result = await editMessageText(channelId, messageId, text, { reply_markup: replyMarkup });
+    if (result.ok) return;
+    // Edit failed (message likely deleted by someone) — fall through and post a fresh one below
+  }
+  const sent = await sendMessage(channelId, text, { reply_markup: replyMarkup });
+  if (sent.ok && sent.result?.message_id) {
+    setLeaderboardChannelMessageId(sent.result.message_id);
+    pinChatMessage(channelId, sent.result.message_id).catch(() => {});
+  }
+}
+updatePinnedLeaderboard().catch(e => console.error('[pinned leaderboard] startup run', e));
+
+// Raffles can have a short countdown (minutes), so this is checked far more often than the hourly
+// batch above — auto-ends any giveaway whose deadline has passed and posts the results to the
+// configured channel, the same way a manual "End raffle" click from the admin panel does.
+setInterval(() => {
+  let finished;
+  try { finished = checkAutoFinishRaffles(); } catch (e) { console.error('[raffle auto-finish]', e); return; }
+  for (const { raffle, winners } of finished) {
+    (async () => {
+      try {
+        const prizes = listRafflePrizes(raffle.id);
+        winners.forEach((w, i) => {
+          sendMessage(w.tg_id, `🎉 Congratulations! You won the giveaway "${raffle.title}"${prizes[i] ? ` — ${prizes[i].title}${prizes[i].gift_number ? ' #' + prizes[i].gift_number : ''}` : ''}! Open the app for details.`).catch(() => {});
+          const winnerUser = getUser(w.tg_id);
+          logPlayerActivity(winnerUser?.username || winnerUser?.first_name, `won the giveaway "${raffle.title}" 🎊`, '🎊');
+        });
+        const { channelId, endImage } = getGiveawayChannelSettings();
+        if (!channelId) return;
+        const winnerLines = winners.length
+          ? winners.map((w, i) => `🆔 <code>${w.tg_id}</code>${prizes[i] ? ` — ${prizes[i].title}` : ''}`).join('\n')
+          : 'No entries were registered.';
+        const text = `🏁 <b>Giveaway ended!</b>\n\n🏆 <b>${raffle.title}</b>\n\n🎊 Winners:\n${winnerLines}`;
+        if (endImage) await sendPhoto(channelId, endImage, text); else await sendMessage(channelId, text);
+      } catch (e) { console.error('[raffle auto-finish channel post]', e); }
+    })();
+  }
+}, 60 * 1000);
 
 // Sends a "come back" reminder (with an optional small LNDC gift) to users who've been inactive
 // past the admin-set threshold, at most once per cooldown window per user — checked hourly so an

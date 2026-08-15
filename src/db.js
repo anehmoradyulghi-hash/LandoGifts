@@ -8,6 +8,12 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const db = new Database(path.join(DATA_DIR, 'lando-gifts.db'));
 db.pragma('journal_mode = WAL');
+// Tuned for concurrent access under real traffic (many simultaneous readers, one writer at a time):
+db.pragma('synchronous = NORMAL');   // safe with WAL — full fsync on every write is overkill and much slower
+db.pragma('busy_timeout = 5000');    // if a write is briefly locked by another, wait & retry instead of throwing "database is locked"
+db.pragma('cache_size = -20000');    // ~20MB page cache in memory instead of SQLite's small default
+db.pragma('temp_store = MEMORY');    // scratch space (sorts, temp tables) in RAM instead of disk
+db.pragma('mmap_size = 268435456');  // memory-map the db file (256MB) so reads skip a syscall round trip
 
 /* =========================================================================
  * SCHEMA
@@ -175,6 +181,8 @@ function safeAddColumn(table, columnDef) {
 }
 safeAddColumn('gift_offers', 'serial_number TEXT'); // The gift's real serial/model number (optional)
 safeAddColumn('gift_offers', 'link TEXT'); // Optional link to the gift itself
+safeAddColumn('tasks', 'description TEXT'); // Free-text instructions shown to the user for custom tasks
+safeAddColumn('tasks', 'link TEXT'); // Optional "open" button link for custom tasks (e.g. an Instagram page, a video)
 safeAddColumn('currencies', 'deposit_address TEXT'); // The deposit address/account number the user should send to, per currency
 
 db.exec(`
@@ -232,6 +240,53 @@ export function upsertGiftCategory(c) {
     .run(c.name, c.image_url || null, c.active === false ? 0 : 1).lastInsertRowid;
 }
 export function deleteGiftCategory(id) { db.prepare('DELETE FROM gift_categories WHERE id = ?').run(id); }
+
+/* =========================================================================
+ * GIFT WATCHLIST — a user asks to be notified the moment a gift of a given
+ * type appears in the market at or below a price they set.
+ * ========================================================================= */
+db.exec(`
+CREATE TABLE IF NOT EXISTS gift_watchlist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tg_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  max_price INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(tg_id, title)
+);
+`);
+export function listMyWatches(tgId) {
+  return db.prepare('SELECT * FROM gift_watchlist WHERE tg_id = ? ORDER BY created_at DESC').all(tgId);
+}
+export function addWatch(tgId, title, maxPrice) {
+  if (!title || !String(title).trim()) throw new Error('Gift type is required');
+  const price = Number(maxPrice);
+  if (!price || price <= 0) throw new Error('Enter a valid maximum price');
+  db.prepare(`
+    INSERT INTO gift_watchlist (tg_id, title, max_price) VALUES (?,?,?)
+    ON CONFLICT(tg_id, title) DO UPDATE SET max_price = excluded.max_price
+  `).run(tgId, title.trim(), price);
+}
+export function removeWatch(tgId, id) {
+  db.prepare('DELETE FROM gift_watchlist WHERE id = ? AND tg_id = ?').run(id, tgId);
+}
+// Called right after a listing goes live (admin approval) — returns everyone whose watch matches,
+// so the caller (which has access to the Telegram send function) can notify them.
+export function findWatchersForOffer(offer) {
+  return db.prepare(`
+    SELECT * FROM gift_watchlist WHERE title = ? AND max_price >= ? AND tg_id != ?
+  `).all(offer.title, offer.price_toman, offer.seller_tg_id);
+}
+// Used by the gift-market "post a listing" flow: the category is now derived automatically from
+// the fetched NFT gift name instead of the seller picking one — this finds an existing category
+// with that exact name, or silently creates it (using the fetched image as its default artwork) so
+// the market's category filter keeps working without the admin having to pre-register every gift.
+export function getOrCreateGiftCategoryFromName(name, imageUrl) {
+  const existing = db.prepare('SELECT * FROM gift_categories WHERE name = ?').get(name);
+  if (existing) return existing;
+  const id = db.prepare('INSERT INTO gift_categories (name, image_url, active) VALUES (?,?,1)').run(name, imageUrl || null).lastInsertRowid;
+  return db.prepare('SELECT * FROM gift_categories WHERE id = ?').get(id);
+}
 
 // A few default currencies (inactive until the admin manually sets their rate)
 const seedCurrency = db.prepare(`INSERT OR IGNORE INTO currencies (code, name, rate_toman, min_deposit, min_withdraw, active) VALUES (?,?,?,?,?,0)`);
@@ -553,11 +608,12 @@ export function setOrderStatus(id, status) { db.prepare('UPDATE orders SET statu
 export function createGiftOffer(sellerTgId, title, imageUrl, priceToman, serialNumber, link) {
   if (!serialNumber || !String(serialNumber).trim()) throw new Error('Serial/model number is required');
   if (!link || !String(link).trim()) throw new Error('Gift link is required');
-  // If the admin has defined categories, the listing title must be exactly one of them (not free text)
-  const categories = listGiftCategories(true);
-  if (categories.length && !categories.some(c => c.name === title)) {
-    throw new Error('This category is not valid — pick one of the existing categories');
-  }
+  if (!title || !String(title).trim()) throw new Error('Gift title is required');
+  // The gift type/category is derived automatically from the fetched NFT name — first time a given
+  // gift type is listed it's auto-registered as a category (using the fetched artwork as its default
+  // image); the admin can still block a specific type later by deactivating its category.
+  const category = getOrCreateGiftCategoryFromName(title, imageUrl);
+  if (!category.active) throw new Error('This gift type is not currently accepted for listing');
   // New listings must first be approved by the admin before showing up in the market
   return db.prepare(`INSERT INTO gift_offers (seller_tg_id, title, image_url, price_toman, serial_number, link, status) VALUES (?,?,?,?,?,?,'pending')`)
     .run(sellerTgId, title, imageUrl || null, priceToman, serialNumber || null, link || null).lastInsertRowid;
@@ -579,13 +635,12 @@ export function cancelGiftOffer(tgId, id) {
 export function updateGiftOffer(tgId, id, { title, image_url, price_toman, serial_number, link }) {
   if (!serial_number || !String(serial_number).trim()) throw new Error('Serial/model number is required');
   if (!link || !String(link).trim()) throw new Error('Gift link is required');
+  if (!title || !String(title).trim()) throw new Error('Gift title is required');
   const offer = getGiftOffer(id);
   if (!offer || offer.seller_tg_id !== tgId) throw new Error('This listing does not belong to you');
   if (offer.status !== 'active' && offer.status !== 'pending') throw new Error('This listing cannot be edited in its current state');
-  const categories = listGiftCategories(true);
-  if (categories.length && !categories.some(c => c.name === title)) {
-    throw new Error('This category is not valid — pick one of the existing categories');
-  }
+  const category = getOrCreateGiftCategoryFromName(title, image_url);
+  if (!category.active) throw new Error('This gift type is not currently accepted for listing');
   db.prepare(`
     UPDATE gift_offers SET title=?, image_url=?, price_toman=?, serial_number=?, link=?, status='pending' WHERE id=?
   `).run(title, image_url || null, price_toman, serial_number || null, link || null, id);
@@ -610,6 +665,9 @@ export function confirmGiftReceived(buyerTgId, id, feePercent) {
   adjustToman(offer.seller_tg_id, sellerReceives, `Sale of gift "${offer.title}" (consignment, after buyer confirmation)`);
   db.prepare(`UPDATE gift_offers SET status = 'completed', completed_at = datetime('now') WHERE id = ?`).run(id);
   return { ...offer, sellerReceives };
+}
+export function getCompletedSalesCount(sellerTgId) {
+  return db.prepare(`SELECT COUNT(*) c FROM gift_offers WHERE seller_tg_id = ? AND status = 'completed'`).get(sellerTgId).c;
 }
 export function listAllGiftOffersAdmin() {
   return db.prepare('SELECT * FROM gift_offers ORDER BY created_at DESC LIMIT 200').all();
@@ -652,12 +710,12 @@ export function listAllTasksAdmin() { return db.prepare('SELECT * FROM tasks ORD
 export function getTask(id) { return db.prepare('SELECT * FROM tasks WHERE id = ?').get(id); }
 export function upsertTask(t) {
   if (t.id) {
-    db.prepare(`UPDATE tasks SET title=?, kind=?, channel_username=?, reward_toman=?, active=? WHERE id=?`)
-      .run(t.title, t.kind, t.channel_username || null, t.reward_toman, t.active ? 1 : 0, t.id);
+    db.prepare(`UPDATE tasks SET title=?, kind=?, channel_username=?, description=?, link=?, reward_toman=?, active=? WHERE id=?`)
+      .run(t.title, t.kind, t.channel_username || null, t.description || null, t.link || null, t.reward_toman, t.active ? 1 : 0, t.id);
     return t.id;
   }
-  return db.prepare(`INSERT INTO tasks (title, kind, channel_username, reward_toman, active) VALUES (?,?,?,?,?)`)
-    .run(t.title, t.kind, t.channel_username || null, t.reward_toman, t.active ? 1 : 0).lastInsertRowid;
+  return db.prepare(`INSERT INTO tasks (title, kind, channel_username, description, link, reward_toman, active) VALUES (?,?,?,?,?,?,?)`)
+    .run(t.title, t.kind, t.channel_username || null, t.description || null, t.link || null, t.reward_toman, t.active ? 1 : 0).lastInsertRowid;
 }
 export function deleteTask(id) { db.prepare('DELETE FROM tasks WHERE id = ?').run(id); }
 export function hasClaimedTask(tgId, taskId) { return !!db.prepare('SELECT 1 FROM task_claims WHERE tg_id = ? AND task_id = ?').get(tgId, taskId); }
@@ -707,6 +765,12 @@ export function setSetting(key, value) {
     INSERT INTO settings (key, value) VALUES (?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value
   `).run(key, value);
+}
+export function getSwapFeePercent() {
+  return Number(getSetting('swap_fee_percent', process.env.SWAP_FEE_PERCENT || '1'));
+}
+export function setSwapFeePercent(percent) {
+  setSetting('swap_fee_percent', String(Math.max(0, Number(percent) || 0)));
 }
 
 // Custom design images for the mini app's main sections — purely visual branding, set from the admin
@@ -776,6 +840,25 @@ export function setGiveawayChannelSettings({ channelId, startImage, endImage }) 
   setSetting('giveaway_channel_id', (channelId || '').trim());
   setSetting('giveaway_start_image', (startImage || '').trim());
   setSetting('giveaway_end_image', (endImage || '').trim());
+}
+
+// A pinned, self-updating leaderboard message in a channel — the same message gets edited in place
+// (via editMessageText) instead of a new one being sent each time, so it stays pinned and current.
+export function getLeaderboardChannelSettings() {
+  return {
+    channelId: getSetting('lb_channel_id', ''),
+    messageId: getSetting('lb_channel_message_id', ''),
+  };
+}
+export function setLeaderboardChannelId(channelId) {
+  const trimmed = (channelId || '').trim();
+  const prev = getSetting('lb_channel_id', '');
+  setSetting('lb_channel_id', trimmed);
+  // Changing the channel invalidates any previously pinned message id, so a new one gets created there
+  if (trimmed !== prev) setSetting('lb_channel_message_id', '');
+}
+export function setLeaderboardChannelMessageId(messageId) {
+  setSetting('lb_channel_message_id', String(messageId || ''));
 }
 
 // Info page text (guide/FAQ/rules) — editable from the admin panel

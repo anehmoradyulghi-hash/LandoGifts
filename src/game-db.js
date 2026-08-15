@@ -3,6 +3,11 @@ import { adjustToman, getUser } from './db.js';
 import { getOrCreateUserLeague, pickQueueOpponentInLeague, recordLeagueResult } from './league-db.js';
 import { getUserRankInfo } from './rank-db.js';
 import { isCardListedForSale } from './card-market-db.js';
+import { checkAchievements, getPinnedBadges } from './achievements-db.js';
+function displayNameFor(tgId) {
+  const u = db.prepare('SELECT first_name, username FROM users WHERE tg_id = ?').get(tgId);
+  return u ? (u.username || u.first_name) : String(tgId);
+}
 
 /* =========================================================================
  * SCHEMA — Card game. Everything automatic and server-side (no external calls), settings
@@ -334,11 +339,18 @@ function computeTotalPower(row) {
 
 // Single point where a card gets added to a user's cards — used everywhere (purchase, task reward, battle pass, auction)
 // used here so level-7 special cards (instant_level) behave correctly everywhere
-export function grantCardInstance(tgId, cardId) {
+export function grantCardInstance(tgId, cardId, level = null) {
   const card = getGameCard(cardId);
-  const level = card?.instant_level || 1;
-  const rolledPower = rollPowerForLevel(level);
-  return db.prepare('INSERT INTO user_cards (tg_id, card_id, level, rolled_power) VALUES (?,?,?,?)').run(tgId, cardId, level, rolledPower).lastInsertRowid;
+  let lvl = level ? Number(level) : (card?.instant_level || 1);
+  if (card?.max_level) lvl = Math.max(1, Math.min(lvl, card.max_level));
+  const rolledPower = rollPowerForLevel(lvl);
+  const id = db.prepare('INSERT INTO user_cards (tg_id, card_id, level, rolled_power) VALUES (?,?,?,?)').run(tgId, cardId, lvl, rolledPower).lastInsertRowid;
+  if (lvl >= 5) checkLegendaryAchievement(tgId);
+  return id;
+}
+function checkLegendaryAchievement(tgId) {
+  const count = db.prepare('SELECT COUNT(*) c FROM user_cards WHERE tg_id = ? AND level >= 5').get(tgId).c;
+  checkAchievements(tgId, 'legendary_cards', count, displayNameFor(tgId));
 }
 
 /* =========================================================================
@@ -455,38 +467,39 @@ export function getMutationGroups(tgId) {
   });
 }
 
-// Mutation: automatically finds two fully identical cards (same name and level) and merges them for a step-based cost;
-// one is removed and the other goes up one level (level = rarity, so the image and label also change automatically)
-export function mutateCards(tgId, cardId, level) {
-  const candidates = db.prepare(`
-    SELECT uc.id, uc.level, c.max_level FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id
-    WHERE uc.tg_id = ? AND uc.card_id = ? AND uc.level = ?
-    ORDER BY uc.id ASC
-  `).all(tgId, cardId, level);
-  // Cards currently listed on the marketplace are locked out of mutation — skip them when picking
-  // which two identical cards to merge.
-  const rows = candidates.filter(r => !isCardListedForSale(r.id)).slice(0, 2);
-  if (rows.length < 2) throw new Error('You need two fully identical cards (same name and level) to mutate');
-  if (rows[0].level >= rows[0].max_level) throw new Error('This card has reached the max level (Divine)');
+// Mutation: the player picks two of their own identical cards (same name and level) explicitly —
+// one (keep) is leveled up, the other (sacrifice) is consumed; one level = one rarity step, so the
+// image and label change automatically.
+export function mutateCards(tgId, keepUserCardId, sacrificeUserCardId) {
+  if (!keepUserCardId || !sacrificeUserCardId || keepUserCardId === sacrificeUserCardId) throw new Error('Pick a second identical card to mutate with');
+  const keep = db.prepare(`
+    SELECT uc.*, c.max_level FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id WHERE uc.id = ? AND uc.tg_id = ?
+  `).get(keepUserCardId, tgId);
+  const sac = db.prepare(`
+    SELECT uc.*, c.max_level FROM user_cards uc JOIN game_cards c ON c.id = uc.card_id WHERE uc.id = ? AND uc.tg_id = ?
+  `).get(sacrificeUserCardId, tgId);
+  if (!keep || !sac) throw new Error('Card not found');
+  if (keep.card_id !== sac.card_id || keep.level !== sac.level) throw new Error('You need two fully identical cards (same name and level) to mutate');
+  if (isCardListedForSale(keepUserCardId) || isCardListedForSale(sacrificeUserCardId)) throw new Error('One of these cards is currently listed on the marketplace');
+  if (keep.level >= keep.max_level) throw new Error('This card has reached the max level (Divine)');
 
-  const cost = getMergeCost(level);
+  const cost = getMergeCost(keep.level);
   const user = getUser(tgId);
   if (cost > 0 && (!user || user.balance_toman < cost)) throw new Error(`You need ${cost.toLocaleString()} LNDC to mutate`);
 
-  const keepId = rows[0].id;
-  const removeId = rows[1].id;
-  const newLevelNum = level + 1;
+  const newLevelNum = keep.level + 1;
   const newRolledPower = rollPowerForLevel(newLevelNum);
   const tx = db.transaction(() => {
-    if (cost > 0) adjustToman(tgId, -cost, `Mutation cost from level ${level} to ${level + 1}`);
-    const result = db.prepare('UPDATE user_cards SET level = level + 1, rolled_power = ? WHERE id = ?').run(newRolledPower, keepId);
+    if (cost > 0) adjustToman(tgId, -cost, `Mutation cost from level ${keep.level} to ${newLevelNum}`);
+    const result = db.prepare('UPDATE user_cards SET level = level + 1, rolled_power = ? WHERE id = ?').run(newRolledPower, keepUserCardId);
     if (result.changes !== 1) throw new Error('Mutation failed, try again');
-    db.prepare('DELETE FROM user_cards WHERE id = ?').run(removeId);
+    db.prepare('DELETE FROM user_cards WHERE id = ?').run(sacrificeUserCardId);
   });
   tx();
 
-  const updated = db.prepare('SELECT level FROM user_cards WHERE id = ?').get(keepId);
+  const updated = db.prepare('SELECT level FROM user_cards WHERE id = ?').get(keepUserCardId);
   const newRarity = getRarityForLevel(updated.level);
+  if (updated.level >= 5) checkLegendaryAchievement(tgId);
   return { newLevel: updated.level, cost, rarity_key: newRarity.key, rarity_label: newRarity.label };
 }
 
@@ -623,6 +636,8 @@ export function joinQueue(tgId, userCardIds) {
     bumpScore(loser, false);
     recordLeagueResult(winner, true);
     recordLeagueResult(loser, false);
+    const winnerWins = db.prepare('SELECT wins FROM game_scores WHERE tg_id = ?').get(winner)?.wins || 0;
+    checkAchievements(winner, 'battle_wins', winnerWins, displayNameFor(winner));
 
     return {
       matched: true,
@@ -661,7 +676,7 @@ export function getLeaderboard(limit = 20) {
     LEFT JOIN user_rank ur ON ur.tg_id = gs.tg_id
     LEFT JOIN avatars av ON av.id = ur.equipped_avatar_id
     ORDER BY gs.score DESC LIMIT ?
-  `).all(limit).map(r => ({ ...r, avatarImage: r.avatar_image || null }));
+  `).all(limit).map(r => ({ ...r, avatarImage: r.avatar_image || null, badges: getPinnedBadges(r.tg_id) }));
 }
 export function getMyRank(tgId) {
   const row = db.prepare(`

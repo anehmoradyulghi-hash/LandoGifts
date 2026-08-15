@@ -1,9 +1,11 @@
 import db from './db.js';
 
 /* =========================================================================
- * Three-tier weekly league (Bronze/Silver/Gold) — separate from the overall game score, XP, or clan score.
- * based only on this week's wins/losses in PvP card battles. Every Sunday night, promotion/demotion
- * happens automatically and counters reset. Opponents are picked from the same league whenever possible.
+ * Weekly league (an admin-configurable set of tiers, e.g. Bronze/Silver/Gold,
+ * or any number of custom tiers) — separate from the overall game score, XP,
+ * or clan score, based only on this week's wins/losses in PvP card battles.
+ * Every reset period, promotion/demotion happens automatically and counters
+ * reset. Opponents are picked from the same league whenever possible.
  * ========================================================================= */
 db.exec(`
 CREATE TABLE IF NOT EXISTS league_config (
@@ -21,53 +23,69 @@ INSERT OR IGNORE INTO league_state (id) VALUES (1);
 
 CREATE TABLE IF NOT EXISTS user_league (
   tg_id INTEGER PRIMARY KEY,
-  league TEXT NOT NULL DEFAULT 'bronze', -- bronze | silver | gold
+  league TEXT NOT NULL DEFAULT 'bronze',
   weekly_wins INTEGER NOT NULL DEFAULT 0,
   weekly_losses INTEGER NOT NULL DEFAULT 0
 );
 
--- How many players move up (promote_count) and down (relegate_count) each week, set independently
--- for every league tier — e.g. 8 promote from Bronze but only 3 from Silver. promote_count has no
--- effect on the top league (Gold — nowhere to promote to) and relegate_count has no effect on the
--- bottom league (Bronze — nowhere to relegate to).
-CREATE TABLE IF NOT EXISTS league_tier_config (
-  league TEXT PRIMARY KEY,
+-- Admin-defined league tiers, in promotion order (sort_order ascending = lowest to highest tier).
+-- promote_count has no effect on the top tier (nowhere to promote to) and relegate_count has no
+-- effect on the bottom tier (nowhere to relegate to).
+CREATE TABLE IF NOT EXISTS leagues (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL UNIQUE,
+  label TEXT NOT NULL,
+  icon TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
   promote_count INTEGER NOT NULL DEFAULT 5,
   relegate_count INTEGER NOT NULL DEFAULT 5
 );
 `);
-const seedTierCfg = db.prepare('INSERT OR IGNORE INTO league_tier_config (league, promote_count, relegate_count) VALUES (?,?,?)');
-['bronze', 'silver', 'gold'].forEach(l => seedTierCfg.run(l, 5, 5));
+// Seed the classic three tiers once, on a fresh install only — an admin who deletes all leagues
+// later is left with zero (not silently reseeded), same as any other admin-managed list.
+if (!db.prepare('SELECT 1 FROM leagues LIMIT 1').get()) {
+  const seed = db.prepare('INSERT INTO leagues (key, label, icon, sort_order, promote_count, relegate_count) VALUES (?,?,?,?,?,?)');
+  seed.run('bronze', 'Bronze', '🥉', 0, 5, 5);
+  seed.run('silver', 'Silver', '🥈', 1, 5, 5);
+  seed.run('gold', 'Gold', '🥇', 2, 5, 5);
+}
 
-// The old global promote_count/relegate_count on league_config are fully replaced by the per-league
-// table above — drop them so no stale global value can ever be read again.
-try {
-  const cols = db.prepare("PRAGMA table_info(league_config)").all().map(c => c.name);
-  if (cols.includes('promote_count')) db.exec('ALTER TABLE league_config DROP COLUMN promote_count');
-  if (cols.includes('relegate_count')) db.exec('ALTER TABLE league_config DROP COLUMN relegate_count');
-} catch (e) { /* SQLite too old to support DROP COLUMN — harmless: nothing reads these columns anymore */ }
-
-const LEAGUES = ['bronze', 'silver', 'gold'];
-const LEAGUE_LABELS = { bronze: '🥉 Bronze', silver: '🥈 Silver', gold: '🥇 Gold' };
+export function listLeagues() { return db.prepare('SELECT * FROM leagues ORDER BY sort_order ASC, id ASC').all(); }
+export function getLeague(key) { return db.prepare('SELECT * FROM leagues WHERE key = ?').get(key); }
+export function upsertLeagueTier(l) {
+  const existing = l.originalKey ? getLeague(l.originalKey) : (l.key ? getLeague(l.key) : null);
+  if (existing) {
+    db.prepare('UPDATE leagues SET key=?, label=?, icon=?, sort_order=?, promote_count=?, relegate_count=? WHERE id=?')
+      .run(l.key, l.label, l.icon || null, Number(l.sort_order) || 0, Math.max(0, Number(l.promote_count) || 0), Math.max(0, Number(l.relegate_count) || 0), existing.id);
+    if (existing.key !== l.key) db.prepare('UPDATE user_league SET league = ? WHERE league = ?').run(l.key, existing.key);
+    return existing.id;
+  }
+  return db.prepare('INSERT INTO leagues (key, label, icon, sort_order, promote_count, relegate_count) VALUES (?,?,?,?,?,?)')
+    .run(l.key, l.label, l.icon || null, Number(l.sort_order) || 0, Math.max(0, Number(l.promote_count) || 0), Math.max(0, Number(l.relegate_count) || 0)).lastInsertRowid;
+}
+export function deleteLeagueTier(key) {
+  const all = listLeagues();
+  if (all.length <= 1) throw new Error('At least one league tier must remain');
+  // Move any players currently in the deleted tier to the nearest remaining tier (prefer the one
+  // just below it, so nobody is silently "promoted" past tiers they haven't earned).
+  const removed = all.find(l => l.key === key);
+  if (!removed) return;
+  const remaining = all.filter(l => l.key !== key);
+  const fallback = [...remaining].reverse().find(l => l.sort_order <= removed.sort_order) || remaining[0];
+  db.prepare('UPDATE user_league SET league = ? WHERE league = ?').run(fallback.key, key);
+  db.prepare('DELETE FROM leagues WHERE key = ?').run(key);
+}
 
 export function getLeagueConfig() { return db.prepare('SELECT * FROM league_config WHERE id = 1').get(); }
 export function setLeagueConfig(c) {
   db.prepare(`UPDATE league_config SET enabled=?, reset_days=? WHERE id = 1`).run(c.enabled ? 1 : 0, Number(c.reset_days) || 7);
 }
-export function getLeagueTierConfig() {
-  const rows = db.prepare('SELECT * FROM league_tier_config').all();
-  const byLeague = Object.fromEntries(rows.map(r => [r.league, r]));
-  return LEAGUES.map(l => byLeague[l] || { league: l, promote_count: 0, relegate_count: 0 }); // bronze, silver, gold — in that fixed order
-}
-export function setLeagueTierConfig(league, promoteCount, relegateCount) {
-  if (!LEAGUES.includes(league)) throw new Error('Invalid league');
-  db.prepare(`UPDATE league_tier_config SET promote_count=?, relegate_count=? WHERE league=?`)
-    .run(Math.max(0, Number(promoteCount) || 0), Math.max(0, Number(relegateCount) || 0), league);
-}
 function getLeagueState() { return db.prepare('SELECT * FROM league_state WHERE id = 1').get(); }
 
+function firstLeagueKey() { return listLeagues()[0]?.key || 'bronze'; }
+
 export function getOrCreateUserLeague(tgId) {
-  db.prepare('INSERT OR IGNORE INTO user_league (tg_id) VALUES (?)').run(tgId);
+  db.prepare('INSERT OR IGNORE INTO user_league (tg_id, league) VALUES (?, ?)').run(tgId, firstLeagueKey());
   return db.prepare('SELECT * FROM user_league WHERE tg_id = ?').get(tgId);
 }
 function scoreOf(row) { return row.weekly_wins * 3 - row.weekly_losses; }
@@ -90,11 +108,15 @@ export function getUserLeagueInfo(tgId) {
     SELECT COUNT(*) + 1 AS rank FROM user_league
     WHERE league = ? AND (weekly_wins * 3 - weekly_losses) > ?
   `).get(row.league, score).rank;
-  return { league: row.league, leagueLabel: LEAGUE_LABELS[row.league], weeklyWins: row.weekly_wins, weeklyLosses: row.weekly_losses, score, rank };
+  const tier = getLeague(row.league);
+  return {
+    league: row.league, leagueLabel: tier ? `${tier.icon || ''} ${tier.label}`.trim() : row.league,
+    weeklyWins: row.weekly_wins, weeklyLosses: row.weekly_losses, score, rank,
+  };
 }
 
 export function getLeagueLeaderboard(league, limit = 10) {
-  if (!LEAGUES.includes(league)) league = 'bronze';
+  if (!getLeague(league)) league = firstLeagueKey();
   return db.prepare(`
     SELECT ul.tg_id, ul.weekly_wins, ul.weekly_losses, (ul.weekly_wins * 3 - ul.weekly_losses) AS score,
       u.first_name, u.username, av.image_url AS avatar_image
@@ -118,23 +140,22 @@ export function pickQueueOpponentInLeague(league, excludeTgId) {
 }
 
 function resolveWeeklyLeagues() {
-  const tiers = Object.fromEntries(getLeagueTierConfig().map(t => [t.league, t]));
-  const order = LEAGUES; // bronze -> silver -> gold
+  const order = listLeagues(); // lowest to highest tier, in admin-defined order
   const snapshot = {};
-  for (const league of order) {
-    snapshot[league] = db.prepare(`
+  for (const tier of order) {
+    snapshot[tier.key] = db.prepare(`
       SELECT tg_id, (weekly_wins * 3 - weekly_losses) AS score FROM user_league WHERE league = ? ORDER BY score DESC
-    `).all(league);
+    `).all(tier.key);
   }
   const moves = [];
   for (let i = 0; i < order.length; i++) {
-    const members = snapshot[order[i]];
-    const tier = tiers[order[i]] || { promote_count: 0, relegate_count: 0 };
+    const tier = order[i];
+    const members = snapshot[tier.key];
     if (i < order.length - 1 && tier.promote_count > 0 && members.length > tier.promote_count) {
-      members.slice(0, tier.promote_count).forEach(m => moves.push({ tg_id: m.tg_id, newLeague: order[i + 1] }));
+      members.slice(0, tier.promote_count).forEach(m => moves.push({ tg_id: m.tg_id, newLeague: order[i + 1].key }));
     }
     if (i > 0 && tier.relegate_count > 0 && members.length > tier.relegate_count) {
-      members.slice(-tier.relegate_count).forEach(m => moves.push({ tg_id: m.tg_id, newLeague: order[i - 1] }));
+      members.slice(-tier.relegate_count).forEach(m => moves.push({ tg_id: m.tg_id, newLeague: order[i - 1].key }));
     }
   }
   const tx = db.transaction(() => {

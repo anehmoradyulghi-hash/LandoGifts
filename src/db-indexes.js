@@ -74,4 +74,10 @@ db.exec(`
   -- Support tickets
   CREATE INDEX IF NOT EXISTS idx_tickets_tg_id ON tickets(tg_id);
   CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket_id ON ticket_messages(ticket_id);
+
+  -- Chests / achievements / album rewards (added this session)
+  CREATE INDEX IF NOT EXISTS idx_chest_openings_tg_id ON chest_openings(tg_id);
+  CREATE INDEX IF NOT EXISTS idx_raffle_prizes_raffle_id ON raffle_prizes(raffle_id);
+  CREATE INDEX IF NOT EXISTS idx_album_reward_cards_album_id ON album_reward_cards(album_id);
+  CREATE INDEX IF NOT EXISTS idx_user_achievements_achievement_id ON user_achievements(achievement_id);
 `);
