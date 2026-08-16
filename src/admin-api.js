@@ -17,7 +17,7 @@ import {
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
   getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact, getInfoPage, setInfoPage, getSwapFeePercent, setSwapFeePercent,
-  getGiveawayChannelSettings, setGiveawayChannelSettings, getLeaderboardChannelSettings, setLeaderboardChannelId,
+  getGiveawayChannelSettings, setGiveawayChannelSettings,
   getUiImages, setUiImages, getComebackConfig, setComebackConfig,
   getReferralSettings, setReferralSettings, getLndcWalletSettings, setLndcWalletSettings,
   listGiftCategories, upsertGiftCategory, deleteGiftCategory,
@@ -634,11 +634,6 @@ router.post('/giveaway-channel', (req, res) => {
   setGiveawayChannelSettings({ channelId: req.body.channelId, startImage: req.body.startImage, endImage: req.body.endImage });
   res.json({ ok: true });
 });
-router.get('/leaderboard-channel', (req, res) => res.json(getLeaderboardChannelSettings()));
-router.post('/leaderboard-channel', (req, res) => {
-  setLeaderboardChannelId(req.body.channelId);
-  res.json({ ok: true });
-});
 router.post('/raffles', (req, res) => {
   try {
     if (!req.body.title) return res.status(400).json({ error: 'Title is required' });
@@ -693,15 +688,9 @@ async function postGiveawayToChannel(raffle, phase, winners = []) {
       (prizeLines ? `\n${prizeLines}` : '') +
       `\n👥 Winners: ${raffle.winners_count}` +
       (raffle.ticket_price_toman > 0 ? `\n🎟 Ticket price: ${raffle.ticket_price_toman.toLocaleString('en-US')} LNDC` : '\n🎟 Free entry') +
-      `\n\nTap the button below to join instantly, or open the mini app for full details 👇`;
-    // A direct "Join" button right on the channel post — a plain callback button (not web_app) so it
-    // works with one tap even for someone who has never opened the mini app before.
-    const replyMarkup = { inline_keyboard: [
-      [{ text: '🎟 Join Giveaway', callback_data: `raffle_join:${raffle.id}` }],
-      [{ text: '🛍 Open in mini app', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }],
-    ] };
-    if (startImage) await sendPhoto(channelId, startImage, text, { reply_markup: replyMarkup });
-    else await sendMessage(channelId, text, { reply_markup: replyMarkup });
+      `\n\nOpen the mini app to join! 👇`;
+    if (startImage) await sendPhoto(channelId, startImage, text);
+    else await sendMessage(channelId, text);
   } else {
     const winnerList = winners.length ? winners.map(w => `🆔 <code>${w.tg_id}</code>`).join('\n') : 'No entries were registered.';
     text = `🏁 <b>Giveaway ended!</b>\n\n🏆 <b>${raffle.title}</b>\n\n🎊 Winners:\n${winnerList}`;
