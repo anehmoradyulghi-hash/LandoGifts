@@ -31,7 +31,16 @@ export const answerCallbackQuery = (id, text) =>
   call('answerCallbackQuery', { callback_query_id: id, ...(text ? { text } : {}) });
 
 export const setWebhook = (url, secretToken) =>
-  call('setWebhook', { url, secret_token: secretToken, allowed_updates: ['message', 'callback_query', 'pre_checkout_query'] });
+  call('setWebhook', { url, secret_token: secretToken, allowed_updates: ['message', 'callback_query', 'pre_checkout_query', 'inline_query'] });
+
+export const answerInlineQuery = (id, results, extra = {}) =>
+  call('answerInlineQuery', { inline_query_id: id, results, cache_time: 30, ...extra });
+
+export const editMessageText = (chatId, messageId, text, extra = {}) =>
+  call('editMessageText', { chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML', ...extra });
+
+export const pinChatMessage = (chatId, messageId, disableNotification = true) =>
+  call('pinChatMessage', { chat_id: chatId, message_id: messageId, disable_notification: disableNotification });
 
 // Creating a payment invoice link with Telegram Stars (XTR currency) — does not need a provider_token, Telegram handles it itself
 export const createStarsInvoiceLink = (title, description, payload, starsAmount) =>

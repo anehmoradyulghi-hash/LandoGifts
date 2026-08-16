@@ -842,6 +842,25 @@ export function setGiveawayChannelSettings({ channelId, startImage, endImage }) 
   setSetting('giveaway_end_image', (endImage || '').trim());
 }
 
+// A pinned, self-updating leaderboard message in a channel — the same message gets edited in place
+// (via editMessageText) instead of a new one being sent each time, so it stays pinned and current.
+export function getLeaderboardChannelSettings() {
+  return {
+    channelId: getSetting('lb_channel_id', ''),
+    messageId: getSetting('lb_channel_message_id', ''),
+  };
+}
+export function setLeaderboardChannelId(channelId) {
+  const trimmed = (channelId || '').trim();
+  const prev = getSetting('lb_channel_id', '');
+  setSetting('lb_channel_id', trimmed);
+  // Changing the channel invalidates any previously pinned message id, so a new one gets created there
+  if (trimmed !== prev) setSetting('lb_channel_message_id', '');
+}
+export function setLeaderboardChannelMessageId(messageId) {
+  setSetting('lb_channel_message_id', String(messageId || ''));
+}
+
 // Info page text (guide/FAQ/rules) — editable from the admin panel
 export function getInfoPage(key) { return getSetting('info_' + key, ''); }
 export function setInfoPage(key, content) { setSetting('info_' + key, content || ''); }
