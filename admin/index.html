@@ -357,6 +357,13 @@
         <button class="btn" onclick="sendBroadcast()">Send</button>
         <p class="muted" id="broadcastResult"></p>
       </div>
+      <div class="card">
+        <h3>📌 Pinned live leaderboard channel</h3>
+        <p class="muted">A single pinned message posting the top 10 players and top 5 clans, refreshed automatically every hour by editing the same message (not spamming new ones). The bot must already be an admin of this channel with permission to post and pin messages.</p>
+        <label>Channel ID or @username</label><input id="lbChannelId" placeholder="@yourchannel or -1001234567890">
+        <button class="btn" onclick="saveLeaderboardChannel()">Save</button>
+        <p class="muted" id="lbChannelSavedMsg" style="display:none;color:#7ee787;">Saved ✅ — it will update within the hour</p>
+      </div>
     </section>
 
     <section class="tab" id="tab-topups"><div id="topupsTable"></div></section>
@@ -1411,6 +1418,8 @@ async function loadMessageSettings() {
   const s = await api('/message-settings');
   document.getElementById('msgWelcome').value = s.welcomeMessage || '';
   document.getElementById('msgJoinPrompt').value = s.joinPromptMessage || '';
+  const lb = await api('/leaderboard-channel');
+  document.getElementById('lbChannelId').value = lb.channelId || '';
 }
 async function saveMessageSettings() {
   await api('/message-settings', { method: 'POST', body: JSON.stringify({
@@ -1434,6 +1443,12 @@ function messageUser(tgId) {
   showTab('messages');
   document.getElementById('broadcastTarget').value = tgId;
   document.getElementById('broadcastText').focus();
+}
+async function saveLeaderboardChannel() {
+  await api('/leaderboard-channel', { method: 'POST', body: JSON.stringify({ channelId: document.getElementById('lbChannelId').value }) });
+  const msg = document.getElementById('lbChannelSavedMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 3000);
 }
 
 /* ---------- Card-to-card top-up ---------- */
