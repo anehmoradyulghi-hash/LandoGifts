@@ -772,6 +772,12 @@ export function getSwapFeePercent() {
 export function setSwapFeePercent(percent) {
   setSetting('swap_fee_percent', String(Math.max(0, Number(percent) || 0)));
 }
+export function getGiftMarketMinPrice() {
+  return Number(getSetting('gift_market_min_price', '5000'));
+}
+export function setGiftMarketMinPrice(price) {
+  setSetting('gift_market_min_price', String(Math.max(0, Number(price) || 0)));
+}
 
 // Custom design images for the mini app's main sections — purely visual branding, set from the admin
 // panel. Each key is optional; when empty, that section falls back to its default icon/gradient look.
@@ -781,6 +787,7 @@ const UI_IMAGE_KEYS = [
   'hub_shop', 'hub_wallet', 'hub_market', 'hub_cardgame', 'hub_battlepass', 'hub_clan', // hub shortcut tiles
   'banner_clan', 'banner_battlepass', 'banner_events', 'banner_wheel', // full-width banners at the top of a section's own page
   'card_missions', 'card_leaderboard', // Game Hub quick-access card artwork
+  'loading_screen', // shown centered above the boot progress bar while the app first loads
 ];
 export function getUiImages() {
   const out = {};

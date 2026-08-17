@@ -80,4 +80,10 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_raffle_prizes_raffle_id ON raffle_prizes(raffle_id);
   CREATE INDEX IF NOT EXISTS idx_album_reward_cards_album_id ON album_reward_cards(album_id);
   CREATE INDEX IF NOT EXISTS idx_user_achievements_achievement_id ON user_achievements(achievement_id);
+
+  -- These two are scanned by a periodic background job (every 20s for auctions, every 60s for
+  -- raffles) to auto-close expired ones — without an index each scan was a full table scan, getting
+  -- slower as completed/cancelled rows piled up and contending with WAL's single writer.
+  CREATE INDEX IF NOT EXISTS idx_auctions_status_ends_at ON auctions(status, ends_at);
+  CREATE INDEX IF NOT EXISTS idx_raffles_status_ends_at ON raffles(status, ends_at);
 `);

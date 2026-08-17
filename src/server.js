@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   sendMessage, sendPhoto, answerCallbackQuery, setWebhook, validateInitData, isChannelMember, getMe,
-  createStarsInvoiceLink, answerPreCheckoutQuery, fetchTelegramNftMeta, answerInlineQuery, editMessageText, pinChatMessage,
+  createStarsInvoiceLink, answerPreCheckoutQuery, fetchTelegramNftMeta, editMessageText, pinChatMessage,
 } from './telegram.js';
 import db, {
   getOrCreateUser, getUser, adjustToman, isBanned, getLedger, payReferralBonus, getReferralInfo, getReferralSettings, getSwapFeePercent, getGiveawayChannelSettings,
@@ -18,14 +18,14 @@ import db, {
   listCategories, listProducts, getProduct,
   createOrder, listOrdersForUser,
   createGiftOffer, listMyGiftOffers, listMarketGiftOffers, cancelGiftOffer, reserveGiftOffer, confirmGiftReceived, getGiftOffer, listGiftCategories, updateGiftOffer,
-  listMyWatches, addWatch, removeWatch, getCompletedSalesCount,
+  listMyWatches, addWatch, removeWatch, getCompletedSalesCount, getGiftMarketMinPrice,
   listActiveTasks, hasClaimedTask, claimTask, getTask,
   getPaymentSettings, getMessageSettings, getSupportContact, getInfoPage, getLndcWalletSettings, getUiImages,
   createStarPaymentRequest, getStarPayment, completeStarPayment,
   getComebackConfig, findUsersDueForComebackReminder, markComebackReminderSent,
 } from './db.js';
 import {
-  listGameCards, getUserCards, buyGameCard, sacrificeCards, getMutationGroups, mutateCards, getGameCard,
+  listGameCards, getUserCards, buyGameCard, sacrificeCards, getMutationGroups, mutateCards, getGameCard, grantCardInstance,
   getGameConfig, getPlaysRemaining, getExtraPlays, buyExtraPlays,
   joinQueue, getQueueStatus, cancelQueue, getMatchHistory,
   getLeaderboard, getMyRank, getUserLeaderboardRow, listLeaderboardPrizes, checkAndAutoResetLeaderboard,
@@ -50,7 +50,7 @@ import {
   getClanWarConfig, listOpenClanWars, getMyActiveClanWar, getClanWarHistory,
   createClanWar, cancelClanWar, joinClanWar, submitWarPicks, getClanWar, getMemberCardsForLeader,
 } from './clan-war-db.js';
-import { getLeagueConfig, getUserLeagueInfo, getLeagueLeaderboard, checkAutoResetLeague, listLeagues } from './league-db.js';
+import { getLeagueConfig, getUserLeagueInfo, getLeagueLeaderboard, checkAutoResetLeague, listLeagues, listLeaguePrizes, getPrizeForLeagueRank } from './league-db.js';
 import { listOpenRaffles, getRaffleStatusForUser, registerForRaffle, buyRaffleTickets, getRaffle, listRecentRaffleWinners, getRaffleTopEntries, checkAutoFinishRaffles, listRafflePrizes } from './raffle-db.js';
 import {
   getRankConfig, getUserRankInfo, addUserXp, canCheckinToday, doCheckin, listStreakRewards,
@@ -158,7 +158,7 @@ function notifyAdmins(text, extra) {
 }
 
 /* ---------- Achievements & activity feed ---------- */
-app.get('/api/activity-feed', (req, res) => res.json(getActivityFeed(20)));
+app.get('/api/activity-feed', (req, res) => res.json(getActivityFeed(3)));
 app.get('/api/achievements', requireTelegramAuth, (req, res) => res.json(listAchievementsForUser(req.dbUser.tg_id)));
 app.post('/api/achievements/pin', requireTelegramAuth, (req, res) => {
   setPinnedBadges(req.dbUser.tg_id, req.body.achievement_ids);
@@ -178,6 +178,7 @@ app.get('/api/config', ah(async (req, res) => {
     cardOwner: payment.cardOwner || null,
     referralPercent: getReferralSettings().percent,
     giftMarketFeePercent: Number(process.env.GIFT_MARKET_FEE_PERCENT || 5),
+    giftMarketMinPrice: getGiftMarketMinPrice(),
     swapFeePercent: getSwapFeePercent(),
     supportUsername: getSupportContact(),
     lndcWallet: getLndcWalletSettings(),
@@ -447,21 +448,23 @@ app.post('/api/nft-lookup', requireTelegramAuth, async (req, res) => {
 
 app.get('/api/gift-categories', (req, res) => res.json(listGiftCategories(true)));
 app.post('/api/gifts/list', requireTelegramAuth, (req, res) => {
-  const { title, image_url, price, serial_number, link } = req.body;
-  const p = Number(price);
-  if (!title || !p || p < 5000) return res.status(400).json({ error: 'A valid title and price (minimum 5,000 LNDC) are required' });
-  if (!serial_number || !String(serial_number).trim()) return res.status(400).json({ error: 'Serial/model number is required' });
-  if (!link || !String(link).trim()) return res.status(400).json({ error: 'Gift link is required' });
-  const categories = listGiftCategories(true);
-  if (categories.length && !categories.some(c => c.name === title)) return res.status(400).json({ error: 'This category is not approved, pick from the list' });
-  const id = createGiftOffer(req.dbUser.tg_id, title, image_url, p, serial_number, link);
-  res.json({ ok: true, id });
+  try {
+    const { title, image_url, price, serial_number, link } = req.body;
+    const p = Number(price);
+    const minPrice = getGiftMarketMinPrice();
+    if (!title || !p || p < minPrice) return res.status(400).json({ error: `A valid title and price (minimum ${minPrice.toLocaleString('en-US')} LNDC) are required` });
+    if (!serial_number || !String(serial_number).trim()) return res.status(400).json({ error: 'Serial/model number is required' });
+    if (!link || !String(link).trim()) return res.status(400).json({ error: 'Gift link is required' });
+    const id = createGiftOffer(req.dbUser.tg_id, title, image_url, p, serial_number, link);
+    res.json({ ok: true, id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/gifts/:id/edit', requireTelegramAuth, (req, res) => {
   try {
     const { title, image_url, price, serial_number, link } = req.body;
     const p = Number(price);
-    if (!title || !p || p < 5000) return res.status(400).json({ error: 'A valid title and price (minimum 5,000 LNDC) are required' });
+    const minPrice = getGiftMarketMinPrice();
+    if (!title || !p || p < minPrice) return res.status(400).json({ error: `A valid title and price (minimum ${minPrice.toLocaleString('en-US')} LNDC) are required` });
     if (!serial_number || !String(serial_number).trim()) return res.status(400).json({ error: 'Serial/model number is required' });
     if (!link || !String(link).trim()) return res.status(400).json({ error: 'Gift link is required' });
     updateGiftOffer(req.dbUser.tg_id, Number(req.params.id), { title, image_url, price_toman: p, serial_number, link });
@@ -730,7 +733,11 @@ app.get('/api/league/status', requireTelegramAuth, (req, res) => {
   const me = getUserLeagueInfo(req.dbUser.tg_id);
   const leaderboard = getLeagueLeaderboard(me.league, 10);
   const tiers = listLeagues().map(t => ({ key: t.key, label: t.label, icon: t.icon }));
-  res.json({ config, me, leaderboard, tiers });
+  const prizes = listLeaguePrizes(me.league).map(p => ({
+    ...p, cardName: p.reward_type === 'card' && p.card_id ? getGameCard(p.card_id)?.name : null,
+  }));
+  const myPrize = getPrizeForLeagueRank(me.league, me.rank);
+  res.json({ config, me, leaderboard, tiers, prizes, myPrize: myPrize ? { ...myPrize, cardName: myPrize.card_id ? getGameCard(myPrize.card_id)?.name : null } : null });
 });
 app.get('/api/league/leaderboard/:league', requireTelegramAuth, (req, res) => {
   res.json(getLeagueLeaderboard(req.params.league, 10));
@@ -1035,35 +1042,6 @@ async function handleTelegramUpdate(update) {
     return;
   }
 
-  // Inline mode — @YourBotUsername in ANY chat lets a user share their invite link without opening
-  // the mini app or even this bot's own DM. Must also be turned on once via BotFather (/setinline).
-  if (update.inline_query) {
-    const q = update.inline_query;
-    const dbUser = getOrCreateUser(q.from);
-    let cachedUsername = cachedBotUsername;
-    if (!cachedUsername) { try { const me = await getMe(); cachedUsername = cachedBotUsername = me.result?.username || null; } catch (e) {} }
-    const inviteLink = cachedUsername ? `https://t.me/${cachedUsername}?start=ref_${dbUser.ref_code}` : null;
-    const results = [];
-    if (inviteLink) {
-      results.push({
-        type: 'article', id: 'invite',
-        title: '🎁 Invite a friend to Lando Gifts',
-        description: 'Share your personal invite link in this chat',
-        input_message_content: { message_text: `🎁 Come join me on Lando Gifts! Free gifts, cards, and giveaways.\n${inviteLink}` },
-        reply_markup: { inline_keyboard: [[{ text: '🛍 Open Lando Gifts', url: inviteLink }]] },
-      });
-    }
-    const rank = getUserRankInfo(dbUser.tg_id);
-    results.push({
-      type: 'article', id: 'profile',
-      title: `${rank.icon || '👤'} My profile — Level ${rank.level}`,
-      description: `${rank.title || ''} — share your progress`,
-      input_message_content: { message_text: `${rank.icon || '👤'} I'm ${rank.title || 'a player'} at Level ${rank.level} on Lando Gifts! 🎮` },
-      reply_markup: cachedUsername ? { inline_keyboard: [[{ text: '🛍 Open Lando Gifts', url: `https://t.me/${cachedUsername}` }]] } : undefined,
-    });
-    answerInlineQuery(q.id, results).catch(() => {});
-    return;
-  }
 
   // Direct "Join Giveaway" button on the channel post — registers with one tap, no mini app needed
   if (update.callback_query?.data?.startsWith('raffle_join:')) {
@@ -1226,7 +1204,19 @@ setInterval(() => {
     });
   } catch (e) { console.error('[clan auto-reset]', e); }
   try { checkExpiredSeasons(); } catch (e) { console.error('[seasonal cards auto-expire]', e); }
-  try { checkAutoResetLeague(); } catch (e) { console.error('[league auto-reset]', e); }
+  try {
+    const result = checkAutoResetLeague();
+    if (result) {
+      result.cardGrants.forEach(g => {
+        grantCardInstance(g.tg_id, g.card_id);
+        const card = getGameCard(g.card_id);
+        sendMessage(g.tg_id, `🏆 League reward! You finished #${g.rank} in ${g.league_label} and won the card "${card?.name || ''}"! 🎉`).catch(() => {});
+      });
+      result.tomanGrants.forEach(g => {
+        sendMessage(g.tg_id, `🏆 League reward! You finished #${g.rank} in ${g.league_label} and won ${g.amount.toLocaleString()} LNDC! 🎉`).catch(() => {});
+      });
+    }
+  } catch (e) { console.error('[league auto-reset]', e); }
   try { cleanupAllOldClanMessages(); } catch (e) { console.error('[clan chat cleanup]', e); }
   updatePinnedLeaderboard().catch(e => console.error('[pinned leaderboard]', e));
 }, 60 * 60 * 1000);
@@ -1255,8 +1245,22 @@ async function updatePinnedLeaderboard() {
   if (sent.ok && sent.result?.message_id) {
     setLeaderboardChannelMessageId(sent.result.message_id);
     pinChatMessage(channelId, sent.result.message_id).catch(() => {});
+  } else if (!sent.ok) {
+    console.error('[leaderboard channel post failed]', channelId, sent.description || sent.error || sent);
+    const now = Date.now();
+    if (now - lastLbFailureAlert > 10 * 60 * 1000) {
+      lastLbFailureAlert = now;
+      const reason = sent.description || sent.error || 'unknown error';
+      const hint = /chat not found/i.test(reason)
+        ? 'This usually means the Channel ID is wrong, or the bot has never been added to that channel. Channel IDs must include the -100 prefix, e.g. -1001234567890.'
+        : /not enough rights|CHAT_ADMIN_REQUIRED|not.*administrator/i.test(reason)
+        ? 'The bot needs to be an admin of that channel with permission to post and pin messages.'
+        : '';
+      ADMIN_IDS.forEach(id => sendMessage(id, `⚠️ <b>Failed to post the pinned leaderboard</b>\nChannel: <code>${channelId}</code>\nReason: ${reason}\n${hint}`).catch(() => {}));
+    }
   }
 }
+let lastLbFailureAlert = 0;
 updatePinnedLeaderboard().catch(e => console.error('[pinned leaderboard] startup run', e));
 
 // Raffles can have a short countdown (minutes), so this is checked far more often than the hourly

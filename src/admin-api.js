@@ -17,6 +17,7 @@ import {
   listAllTicketsAdmin, getTicket, listTicketMessages, addTicketMessage, closeTicket,
   getTomanTopup, getTomanWithdrawal,
   getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact, getInfoPage, setInfoPage, getSwapFeePercent, setSwapFeePercent,
+  getGiftMarketMinPrice, setGiftMarketMinPrice,
   getGiveawayChannelSettings, setGiveawayChannelSettings, getLeaderboardChannelSettings, setLeaderboardChannelId,
   getUiImages, setUiImages, getComebackConfig, setComebackConfig,
   getReferralSettings, setReferralSettings, getLndcWalletSettings, setLndcWalletSettings,
@@ -41,7 +42,7 @@ import {
 } from './season-db.js';
 import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason, adminDeleteClan, adminAdjustClanBank, listAllClansAdmin, getClanChatConfig, setClanChatConfig } from './clan-db.js';
 import { getClanWarConfig, setClanWarConfig } from './clan-war-db.js';
-import { getLeagueConfig, setLeagueConfig, listLeagues, upsertLeagueTier, deleteLeagueTier } from './league-db.js';
+import { getLeagueConfig, setLeagueConfig, listLeagues, upsertLeagueTier, deleteLeagueTier, listLeaguePrizesAdmin, upsertLeaguePrize, deleteLeaguePrize } from './league-db.js';
 import {
   listRafflesAdmin, getRaffle, createRaffle, updateRaffle, deleteRaffle, cancelRaffle, listRaffleEntries, finishRaffle,
   listRafflePrizes, upsertRafflePrize, deleteRafflePrize, getRaffleTopEntries, listFinishedRaffles,
@@ -155,6 +156,8 @@ router.delete('/currencies/:code', (req, res) => {
 /* ---------- Payment settings (deposit card number, manual from the panel) ---------- */
 router.get('/swap-fee', (req, res) => res.json({ percent: getSwapFeePercent() }));
 router.post('/swap-fee', (req, res) => { setSwapFeePercent(req.body.percent); res.json({ ok: true }); });
+router.get('/gift-market-min-price', (req, res) => res.json({ price: getGiftMarketMinPrice() }));
+router.post('/gift-market-min-price', (req, res) => { setGiftMarketMinPrice(req.body.price); res.json({ ok: true }); });
 router.get('/payment-settings', (req, res) => res.json(getPaymentSettings()));
 router.post('/payment-settings', (req, res) => {
   setPaymentSettings({
@@ -626,6 +629,13 @@ router.delete('/league/tiers/:key', (req, res) => {
   try { deleteLeagueTier(req.params.key); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
+router.get('/league/prizes', (req, res) => res.json(listLeaguePrizesAdmin()));
+router.post('/league/prizes', (req, res) => {
+  if (!req.body.league_key) return res.status(400).json({ error: 'League is required' });
+  const id = upsertLeaguePrize(req.body);
+  res.json({ ok: true, id });
+});
+router.delete('/league/prizes/:id', (req, res) => { deleteLeaguePrize(Number(req.params.id)); res.json({ ok: true }); });
 
 /* ---------- Big wheel (raffle / giveaway) ---------- */
 router.get('/raffles', (req, res) => res.json(listRafflesAdmin()));
@@ -682,6 +692,7 @@ router.post('/raffles/:id/finish', (req, res) => {
 // Posts a giveaway's info to the configured channel — the bot must already be an admin there with
 // post permission, or this silently fails (caught by the .catch(()=>{}) at each call site above, so
 // a channel-posting problem never blocks the actual raffle create/finish action for the admin).
+const ADMIN_IDS_FOR_ALERTS = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean).map(Number);
 async function postGiveawayToChannel(raffle, phase, winners = []) {
   const { channelId, startImage, endImage } = getGiveawayChannelSettings();
   if (!channelId || !raffle) return;
@@ -700,14 +711,36 @@ async function postGiveawayToChannel(raffle, phase, winners = []) {
       [{ text: '🎟 Join Giveaway', callback_data: `raffle_join:${raffle.id}` }],
       [{ text: '🛍 Open in mini app', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }],
     ] };
-    if (startImage) await sendPhoto(channelId, startImage, text, { reply_markup: replyMarkup });
-    else await sendMessage(channelId, text, { reply_markup: replyMarkup });
+    const result = startImage
+      ? await sendPhoto(channelId, startImage, text, { reply_markup: replyMarkup })
+      : await sendMessage(channelId, text, { reply_markup: replyMarkup });
+    if (!result.ok) reportChannelPostFailure('giveaway', channelId, result);
   } else {
     const winnerList = winners.length ? winners.map(w => `🆔 <code>${w.tg_id}</code>`).join('\n') : 'No entries were registered.';
     text = `🏁 <b>Giveaway ended!</b>\n\n🏆 <b>${raffle.title}</b>\n\n🎊 Winners:\n${winnerList}`;
-    if (endImage) await sendPhoto(channelId, endImage, text);
-    else await sendMessage(channelId, text);
+    const result = endImage ? await sendPhoto(channelId, endImage, text) : await sendMessage(channelId, text);
+    if (!result.ok) reportChannelPostFailure('giveaway', channelId, result);
   }
+}
+// Posting to a channel/group can fail for reasons that are invisible unless someone is watching
+// server logs — wrong ID format, the bot never having been added, or having been removed/demoted.
+// Previously these failures were swallowed silently; now they're logged clearly AND the admins get
+// a direct DM explaining exactly what to check, so a misconfigured channel doesn't go unnoticed.
+let lastChannelFailureAlert = 0;
+function reportChannelPostFailure(context, channelId, result) {
+  console.error(`[${context} channel post failed]`, channelId, result.description || result.error || result);
+  const now = Date.now();
+  if (now - lastChannelFailureAlert < 10 * 60 * 1000) return; // avoid spamming admins if it keeps failing
+  lastChannelFailureAlert = now;
+  const reason = result.description || result.error || 'unknown error';
+  const hint = /chat not found/i.test(reason)
+    ? 'This usually means the Channel ID is wrong, or the bot has never been added to that channel. Channel IDs must include the -100 prefix, e.g. -1001234567890.'
+    : /not enough rights|CHAT_ADMIN_REQUIRED|not.*administrator/i.test(reason)
+    ? 'The bot needs to be an admin of that channel with permission to post messages.'
+    : '';
+  ADMIN_IDS_FOR_ALERTS.forEach(id => sendMessage(id,
+    `⚠️ <b>Failed to post to the ${context} channel</b>\nChannel: <code>${channelId}</code>\nReason: ${reason}\n${hint}`
+  ).catch(() => {}));
 }
 
 /* ---------- Achievements ---------- */
