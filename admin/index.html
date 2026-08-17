@@ -221,6 +221,13 @@
         <button class="btn" onclick="saveSupportContact()">Save</button>
       </div>
       <div class="card">
+        <h3>🎁 Gift market minimum listing price</h3>
+        <p class="muted">The lowest price (in LNDC) a user is allowed to list a gift for sale at.</p>
+        <label>Minimum price (LNDC)</label>
+        <input type="number" id="giftMinPrice" value="5000">
+        <button class="btn" onclick="saveGiftMarketMinPrice()">Save</button>
+      </div>
+      <div class="card">
         <h3>📖 Mini app info pages</h3>
         <p class="muted">The text of these three pages is shown to the user in the "More > Info" tab of the mini app.</p>
         <label>User guide</label>
@@ -306,6 +313,9 @@
         <label>Leaderboard banner</label>
         <input type="file" accept="image/*" id="uiImgCardLeaderboard_file" onchange="uploadImageTo('uiImgCardLeaderboard_file','uiImgCardLeaderboard','uiImgCardLeaderboard_prev')">
         <input type="hidden" id="uiImgCardLeaderboard"><img id="uiImgCardLeaderboard_prev" class="admin-img-preview">
+        <label>Loading screen logo (shown while the app first opens)</label>
+        <input type="file" accept="image/*" id="uiImgLoadingScreen_file" onchange="uploadImageTo('uiImgLoadingScreen_file','uiImgLoadingScreen','uiImgLoadingScreen_prev')">
+        <input type="hidden" id="uiImgLoadingScreen"><img id="uiImgLoadingScreen_prev" class="admin-img-preview">
         <button class="btn" onclick="saveUiImages()">Save</button>
         <p class="muted" id="uiImagesSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
@@ -361,6 +371,7 @@
         <h3>📌 Pinned live leaderboard channel</h3>
         <p class="muted">A single pinned message posting the top 10 players and top 5 clans, refreshed automatically every hour by editing the same message (not spamming new ones). The bot must already be an admin of this channel with permission to post and pin messages.</p>
         <label>Channel ID or @username</label><input id="lbChannelId" placeholder="@yourchannel or -1001234567890">
+        <p class="muted" style="font-size:11px;margin-top:-6px;">⚠️ The bot must be an admin of this channel with permission to post & pin. If you use the numeric ID, it must include the -100 prefix (e.g. -1001234567890), not just the number from the channel link.</p>
         <button class="btn" onclick="saveLeaderboardChannel()">Save</button>
         <p class="muted" id="lbChannelSavedMsg" style="display:none;color:#7ee787;">Saved ✅ — it will update within the hour</p>
       </div>
@@ -607,6 +618,27 @@
         <button class="btn" onclick="saveLeagueTier()">Save tier</button>
         <div id="leagueTiersTable" style="margin-top:12px;"></div>
       </div>
+      <div class="card">
+        <h3>🏆 League rank prizes</h3>
+        <p class="muted">Reward players who finish in a given rank range within a specific league when it resets — card or LNDC. Granted automatically at reset.</p>
+        <input type="hidden" id="lpId">
+        <div class="row2">
+          <div><label>League</label><select id="lpLeagueKey"></select></div>
+          <div><label>Rank range (e.g. 1 to 3)</label>
+            <div style="display:flex;gap:6px;">
+              <input type="number" id="lpRankFrom" value="1" style="margin:4px 0;">
+              <input type="number" id="lpRankTo" value="1" style="margin:4px 0;">
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <div><label>Prize type</label><select id="lpRewardType" onchange="toggleLeaguePrizeFields()"><option value="toman">LNDC</option><option value="card">Card</option></select></div>
+          <div id="lpTomanWrap"><label>Amount (LNDC)</label><input type="number" id="lpRewardToman"></div>
+          <div id="lpCardWrap" style="display:none;"><label>Card</label><select id="lpCardId"></select></div>
+        </div>
+        <button class="btn" onclick="saveLeaguePrize()">Save prize</button>
+        <div id="leaguePrizesTable" style="margin-top:12px;"></div>
+      </div>
     </section>
 
     <section class="tab" id="tab-raffles">
@@ -614,6 +646,7 @@
         <h3>📢 Giveaway channel</h3>
         <p class="muted">When set, every new giveaway is posted to this channel automatically, and the results (winner IDs) are posted there when it ends. The bot must already be an admin of this channel with permission to post messages.</p>
         <label>Channel ID or @username</label><input id="gwChannelId" placeholder="@yourchannel or -1001234567890">
+        <p class="muted" style="font-size:11px;margin-top:-6px;">⚠️ The bot must be an admin of this channel with permission to post messages. If you use the numeric ID, it must include the -100 prefix (e.g. -1001234567890), not just the number from the channel link.</p>
         <label>Image shown when a giveaway starts (optional)</label>
         <input type="file" accept="image/*" id="gwStartImage_file" onchange="uploadImageTo('gwStartImage_file','gwStartImage','gwStartImage_prev')">
         <input type="hidden" id="gwStartImage"><img id="gwStartImage_prev" class="admin-img-preview">
@@ -1272,10 +1305,16 @@ async function loadPaymentSettings() {
   document.getElementById('payCardOwner').value = s.cardOwner || '';
   const sup = await api('/support-contact');
   document.getElementById('supportUsername').value = sup.username || '';
+  const gm = await api('/gift-market-min-price');
+  document.getElementById('giftMinPrice').value = gm.price;
   const info = await api('/info-pages');
   document.getElementById('infoGuide').value = info.guide || '';
   document.getElementById('infoFaq').value = info.faq || '';
   document.getElementById('infoRules').value = info.rules || '';
+}
+async function saveGiftMarketMinPrice() {
+  await api('/gift-market-min-price', { method: 'POST', body: JSON.stringify({ price: document.getElementById('giftMinPrice').value }) });
+  alert('Saved');
 }
 function onRefRewardTypeChange() {
   const type = document.getElementById('refRewardType').value;
@@ -1316,7 +1355,7 @@ const UI_IMAGE_FIELD_MAP = {
   hub_market: 'uiImgHubMarket', hub_wallet: 'uiImgHubWallet', hub_clan: 'uiImgHubClan',
   banner_clan: 'uiImgBannerClan', banner_battlepass: 'uiImgBannerBattlepass',
   banner_events: 'uiImgBannerEvents',
-  card_missions: 'uiImgCardMissions', card_leaderboard: 'uiImgCardLeaderboard',
+  card_missions: 'uiImgCardMissions', card_leaderboard: 'uiImgCardLeaderboard', loading_screen: 'uiImgLoadingScreen',
 };
 async function loadUiImages() {
   const images = await api('/ui-images');
@@ -2236,6 +2275,7 @@ async function loadLeaderboardTab() {
   document.getElementById('lgEnabled').value = lg.enabled ? '1' : '0';
   document.getElementById('lgResetDays').value = lg.reset_days;
   await loadLeagueTiersTable();
+  await loadLeaguePrizesTable();
 }
 async function saveLeagueConfig() {
   await api('/league/config', { method: 'POST', body: JSON.stringify({
@@ -2283,6 +2323,56 @@ async function deleteLeagueTierUI(key) {
   if (!confirm('Delete this tier? Players in it move to the nearest remaining tier.')) return;
   await api(`/league/tiers/${key}`, { method: 'DELETE' });
   loadLeagueTiersTable();
+}
+/* ---------- League rank prizes ---------- */
+function toggleLeaguePrizeFields() {
+  const type = document.getElementById('lpRewardType').value;
+  document.getElementById('lpTomanWrap').style.display = type === 'toman' ? 'block' : 'none';
+  document.getElementById('lpCardWrap').style.display = type === 'card' ? 'block' : 'none';
+}
+async function loadLeaguePrizesTable() {
+  const tiers = await api('/league/tiers');
+  document.getElementById('lpLeagueKey').innerHTML = tiers.map(t => `<option value="${t.key}">${t.icon || ''} ${t.label}</option>`).join('');
+  const cards = await api('/game/cards');
+  document.getElementById('lpCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const tierLabel = {};
+  tiers.forEach(t => tierLabel[t.key] = `${t.icon || ''} ${t.label}`);
+  const prizes = await api('/league/prizes');
+  document.getElementById('leaguePrizesTable').innerHTML = prizes.length ? `
+    <table><tr><th>League</th><th>Rank</th><th>Prize</th><th>Actions</th></tr>
+    ${prizes.map(p => `<tr><td>${tierLabel[p.league_key] || p.league_key}</td><td>${p.rank_from}${p.rank_from !== p.rank_to ? '–' + p.rank_to : ''}</td>
+      <td>${p.reward_type === 'card' ? (cards.find(c => c.id === p.card_id)?.name || 'Card') : p.reward_toman.toLocaleString('en-US') + ' LNDC'}</td>
+      <td><button class="btn secondary" onclick='editLeaguePrize(${JSON.stringify(p)})'>Edit</button>
+      <button class="btn danger" onclick="deleteLeaguePrizeUI(${p.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No league prize registered yet.</p>';
+}
+function editLeaguePrize(p) {
+  document.getElementById('lpId').value = p.id;
+  document.getElementById('lpLeagueKey').value = p.league_key;
+  document.getElementById('lpRankFrom').value = p.rank_from;
+  document.getElementById('lpRankTo').value = p.rank_to;
+  document.getElementById('lpRewardType').value = p.reward_type;
+  document.getElementById('lpRewardToman').value = p.reward_toman || '';
+  document.getElementById('lpCardId').value = p.card_id || '';
+  toggleLeaguePrizeFields();
+}
+async function saveLeaguePrize() {
+  await api('/league/prizes', { method: 'POST', body: JSON.stringify({
+    id: document.getElementById('lpId').value || null,
+    league_key: document.getElementById('lpLeagueKey').value,
+    rank_from: document.getElementById('lpRankFrom').value,
+    rank_to: document.getElementById('lpRankTo').value,
+    reward_type: document.getElementById('lpRewardType').value,
+    reward_toman: document.getElementById('lpRewardToman').value,
+    card_id: document.getElementById('lpCardId').value || null,
+  }) });
+  document.getElementById('lpId').value = '';
+  loadLeaguePrizesTable();
+}
+async function deleteLeaguePrizeUI(id) {
+  if (!confirm('Delete this prize?')) return;
+  await api(`/league/prizes/${id}`, { method: 'DELETE' });
+  loadLeaguePrizesTable();
 }
 async function saveLeaderboardPrize() {
   await api('/game/leaderboard-prizes', { method: 'POST', body: JSON.stringify({
