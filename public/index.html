@@ -755,6 +755,17 @@
   #bootLoaderPercent { font-size:12px; color:var(--muted); font-weight:700; letter-spacing:.5px; }
   @media (prefers-reduced-motion: reduce) { #bootLoaderLogo { animation:none; } }
 
+  /* ---------- Mandatory-join gate ---------- */
+  #joinGate {
+    position:fixed; inset:0; z-index:5100; display:none; flex-direction:column; align-items:center; justify-content:center;
+    gap:16px; background:var(--bg); padding:32px 24px; text-align:center;
+  }
+  #joinGate.show { display:flex; }
+  #joinGate .jg-icon { font-size:52px; }
+  #joinGate h2 { font-size:18px; margin:0; }
+  #joinGate p { font-size:13px; color:var(--muted); margin:0; max-width:320px; line-height:1.6; }
+  #joinGate .btn { width:100%; max-width:280px; }
+
   /* ---------- Game hub — bigger, more separated, modern ---------- */
   .gamehub-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
   .gamehub-stat {
@@ -786,6 +797,13 @@
   <div id="bootLoaderLogo">🎁</div>
   <div id="bootLoaderTrack"><div id="bootLoaderFill"></div></div>
   <div id="bootLoaderPercent">0%</div>
+</div>
+<div id="joinGate">
+  <div class="jg-icon">📢</div>
+  <h2 id="joinGateTitle">Join our channel to continue</h2>
+  <p id="joinGateText">You need to join our Telegram channel before you can use the app.</p>
+  <button class="btn" id="joinGateJoinBtn">📢 Join the channel</button>
+  <button class="btn secondary" id="joinGateRetryBtn">✅ I joined, check again</button>
 </div>
 <div class="bg-blob bg-blob-1"></div>
 <div class="bg-blob bg-blob-2"></div>
@@ -1460,11 +1478,48 @@ async function api(path, opts = {}) {
     throw new Error(msg);
   }
   const data = await res.json().catch(() => ({}));
+  if (res.status === 403 && data.error === 'join_required') {
+    showJoinGate();
+    throw new Error('join_required');
+  }
   if (!res.ok) { toast(data.error || 'An error occurred'); haptic('error'); throw new Error(data.error || 'error'); }
   // Any successful write (purchase, claim, upgrade, vote...) gets a light confirmation buzz;
   // plain GETs (page loads/polling) stay silent so haptics don't fire on every screen open.
   if (method !== 'GET') haptic('success');
   return data;
+}
+
+// Shown whenever the backend reports the user hasn't joined the required channel yet (mandatory
+// join). Previously this case fell through to a generic "An error occurred" toast and the rest of
+// the app's boot sequence silently failed with nothing else shown — the user was stuck looking at
+// a broken/empty app with no indication of what to do. This gate makes the requirement and the fix
+// explicit, and lets the user recheck without leaving the mini app.
+let joinGateShown = false;
+function showJoinGate() {
+  if (joinGateShown) return;
+  joinGateShown = true;
+  hideBootLoader();
+  const gate = document.getElementById('joinGate');
+  const joinUrl = CONFIG?.channelJoinUrl || (CONFIG?.channel ? `https://t.me/${String(CONFIG.channel).replace(/^@/, '')}` : null);
+  const joinBtn = document.getElementById('joinGateJoinBtn');
+  joinBtn.style.display = joinUrl ? '' : 'none';
+  joinBtn.onclick = () => {
+    if (!joinUrl) return;
+    tg?.openTelegramLink ? tg.openTelegramLink(joinUrl) : window.open(joinUrl, '_blank');
+  };
+  document.getElementById('joinGateRetryBtn').onclick = async () => {
+    const btn = document.getElementById('joinGateRetryBtn');
+    btn.disabled = true;
+    try {
+      await api('/api/me');
+      // Membership confirmed — the gate is no longer needed, reload to resume the normal boot flow
+      location.reload();
+    } catch (e) {
+      btn.disabled = false;
+      if (e.message !== 'join_required') toast('Still could not verify — try again in a moment');
+    }
+  };
+  gate.classList.add('show');
 }
 
 /* ================= Prevent rapid double-tapping of buttons =================
