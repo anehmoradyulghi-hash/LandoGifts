@@ -367,14 +367,6 @@
         <button class="btn" onclick="sendBroadcast()">Send</button>
         <p class="muted" id="broadcastResult"></p>
       </div>
-      <div class="card">
-        <h3>📌 Pinned live leaderboard channel</h3>
-        <p class="muted">A single pinned message posting the top 10 players and top 5 clans, refreshed automatically every hour by editing the same message (not spamming new ones). The bot must already be an admin of this channel with permission to post and pin messages.</p>
-        <label>Channel ID or @username</label><input id="lbChannelId" placeholder="@yourchannel or -1001234567890">
-        <p class="muted" style="font-size:11px;margin-top:-6px;">⚠️ The bot must be an admin of this channel with permission to post & pin. If you use the numeric ID, it must include the -100 prefix (e.g. -1001234567890), not just the number from the channel link.</p>
-        <button class="btn" onclick="saveLeaderboardChannel()">Save</button>
-        <p class="muted" id="lbChannelSavedMsg" style="display:none;color:#7ee787;">Saved ✅ — it will update within the hour</p>
-      </div>
     </section>
 
     <section class="tab" id="tab-topups"><div id="topupsTable"></div></section>
@@ -642,20 +634,6 @@
     </section>
 
     <section class="tab" id="tab-raffles">
-      <div class="card">
-        <h3>📢 Giveaway channel</h3>
-        <p class="muted">When set, every new giveaway is posted to this channel automatically, and the results (winner IDs) are posted there when it ends. The bot must already be an admin of this channel with permission to post messages.</p>
-        <label>Channel ID or @username</label><input id="gwChannelId" placeholder="@yourchannel or -1001234567890">
-        <p class="muted" style="font-size:11px;margin-top:-6px;">⚠️ The bot must be an admin of this channel with permission to post messages. If you use the numeric ID, it must include the -100 prefix (e.g. -1001234567890), not just the number from the channel link.</p>
-        <label>Image shown when a giveaway starts (optional)</label>
-        <input type="file" accept="image/*" id="gwStartImage_file" onchange="uploadImageTo('gwStartImage_file','gwStartImage','gwStartImage_prev')">
-        <input type="hidden" id="gwStartImage"><img id="gwStartImage_prev" class="admin-img-preview">
-        <label>Image shown when a giveaway ends / winners announced (optional)</label>
-        <input type="file" accept="image/*" id="gwEndImage_file" onchange="uploadImageTo('gwEndImage_file','gwEndImage','gwEndImage_prev')">
-        <input type="hidden" id="gwEndImage"><img id="gwEndImage_prev" class="admin-img-preview">
-        <button class="btn" onclick="saveGiveawayChannel()">Save</button>
-        <p class="muted" id="gwSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
-      </div>
       <div class="card">
         <h3>Create / edit big wheel</h3>
         <input type="hidden" id="rfId">
@@ -1224,7 +1202,7 @@ function showTab(name) {
     giftcfg: loadGiftConfigAdmin, seasons: loadSeasonsAdmin, cardmarket: loadCardMarketConfigAdmin,
     creqs: loadCreqs, products: loadProducts, orders: loadOrders, gifts: loadGifts, tasks: loadTasks,
     gamecards: loadGameCards, specialcards: loadSpecialCards, gameconfig: loadGameConfig, leaderboard: loadLeaderboardTab, cardtasks: loadCardTasksTab,
-    raffles: () => { loadRafflesAdmin(); loadGiveawayChannel(); },
+    raffles: () => { loadRafflesAdmin(); },
     users: loadUsers };
   loaders[name]?.();
 }
@@ -1457,8 +1435,6 @@ async function loadMessageSettings() {
   const s = await api('/message-settings');
   document.getElementById('msgWelcome').value = s.welcomeMessage || '';
   document.getElementById('msgJoinPrompt').value = s.joinPromptMessage || '';
-  const lb = await api('/leaderboard-channel');
-  document.getElementById('lbChannelId').value = lb.channelId || '';
 }
 async function saveMessageSettings() {
   await api('/message-settings', { method: 'POST', body: JSON.stringify({
@@ -1483,13 +1459,6 @@ function messageUser(tgId) {
   document.getElementById('broadcastTarget').value = tgId;
   document.getElementById('broadcastText').focus();
 }
-async function saveLeaderboardChannel() {
-  await api('/leaderboard-channel', { method: 'POST', body: JSON.stringify({ channelId: document.getElementById('lbChannelId').value }) });
-  const msg = document.getElementById('lbChannelSavedMsg');
-  msg.style.display = 'block';
-  setTimeout(() => msg.style.display = 'none', 3000);
-}
-
 /* ---------- Card-to-card top-up ---------- */
 async function loadTopups() {
   const rows = await api('/toman-topups');
@@ -1691,25 +1660,6 @@ async function saveTask() {
 async function deleteTask(id) { if (confirm('be deleted?')) { await api(`/tasks/${id}`, { method: 'DELETE' }); loadTasks(); } }
 
 /* ---------- Big wheel (raffle) ---------- */
-async function loadGiveawayChannel() {
-  const s = await api('/giveaway-channel');
-  document.getElementById('gwChannelId').value = s.channelId || '';
-  document.getElementById('gwStartImage').value = s.startImage || '';
-  document.getElementById('gwEndImage').value = s.endImage || '';
-  const p1 = document.getElementById('gwStartImage_prev'), p2 = document.getElementById('gwEndImage_prev');
-  if (s.startImage) { p1.src = s.startImage; p1.style.display = 'block'; } else p1.style.display = 'none';
-  if (s.endImage) { p2.src = s.endImage; p2.style.display = 'block'; } else p2.style.display = 'none';
-}
-async function saveGiveawayChannel() {
-  await api('/giveaway-channel', { method: 'POST', body: JSON.stringify({
-    channelId: document.getElementById('gwChannelId').value,
-    startImage: document.getElementById('gwStartImage').value,
-    endImage: document.getElementById('gwEndImage').value,
-  }) });
-  const msg = document.getElementById('gwSavedMsg');
-  msg.style.display = 'block';
-  setTimeout(() => msg.style.display = 'none', 2500);
-}
 async function loadRafflesAdmin() {
   const tasks = await api('/tasks');
   document.getElementById('rfTaskId').innerHTML = '<option value="">No task required</option>' + tasks.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
