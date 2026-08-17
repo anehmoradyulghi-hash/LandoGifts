@@ -731,9 +731,62 @@
   .ach-icon { font-size:30px; margin-bottom:4px; filter:drop-shadow(0 0 8px rgba(251,191,36,.4)); }
   .ach-card.locked .ach-icon { filter:none; font-size:24px; }
   @media (prefers-reduced-motion: reduce) { .ach-card.unlocked { animation:none; } }
+
+  /* ---------- Boot loading screen ---------- */
+  #bootLoader {
+    position:fixed; inset:0; z-index:5000; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:22px; background:var(--bg); transition:opacity .4s ease, visibility .4s ease;
+  }
+  #bootLoader.hide { opacity:0; visibility:hidden; pointer-events:none; }
+  #bootLoaderLogo {
+    width:96px; height:96px; border-radius:28px; display:flex; align-items:center; justify-content:center;
+    font-size:44px; background:linear-gradient(135deg,var(--p1),var(--b1)); box-shadow:0 0 40px rgba(168,85,247,.5);
+    animation:bootLogoPulse 1.8s ease-in-out infinite; overflow:hidden;
+  }
+  #bootLoaderLogo img { width:100%; height:100%; object-fit:cover; }
+  @keyframes bootLogoPulse { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.06); } }
+  #bootLoaderTrack {
+    width:180px; height:8px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); overflow:hidden;
+  }
+  #bootLoaderFill {
+    height:100%; width:0%; border-radius:999px; background:linear-gradient(90deg,var(--p1),var(--gold));
+    box-shadow:0 0 10px rgba(168,85,247,.6); transition:width .3s ease;
+  }
+  #bootLoaderPercent { font-size:12px; color:var(--muted); font-weight:700; letter-spacing:.5px; }
+  @media (prefers-reduced-motion: reduce) { #bootLoaderLogo { animation:none; } }
+
+  /* ---------- Game hub — bigger, more separated, modern ---------- */
+  .gamehub-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  .gamehub-stat {
+    background:linear-gradient(160deg, rgba(168,85,247,.14), var(--surface) 65%);
+    border:1px solid var(--border); border-radius:16px; padding:12px 6px; text-align:center;
+  }
+  .gamehub-stat-ic { font-size:20px; margin-bottom:4px; }
+  .gamehub-stat-val { font-size:16px; font-weight:800; }
+  .gamehub-stat-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px; }
+  .gamehub-nav { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
+  .gamehub-tile {
+    background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px 6px;
+    text-align:center; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; position:relative; overflow:hidden;
+  }
+  .gamehub-tile:active { transform:scale(.96); }
+  .gamehub-tile-ic { font-size:26px; margin-bottom:6px; filter:drop-shadow(0 2px 4px rgba(0,0,0,.3)); }
+  .gamehub-tile-label { font-size:11.5px; font-weight:700; color:var(--muted); }
+  .gamehub-tile.active {
+    background:linear-gradient(160deg, var(--p1), var(--p2)); border-color:transparent;
+    box-shadow:0 10px 24px -10px rgba(168,85,247,.6);
+  }
+  .gamehub-tile.active .gamehub-tile-label { color:#fff; }
+  .gamehub-tile:nth-child(4), .gamehub-tile:nth-child(5) { grid-column:span 1; }
 </style>
 </head>
 <body>
+<!-- ============ Boot loading screen ============ -->
+<div id="bootLoader">
+  <div id="bootLoaderLogo">🎁</div>
+  <div id="bootLoaderTrack"><div id="bootLoaderFill"></div></div>
+  <div id="bootLoaderPercent">0%</div>
+</div>
 <div class="bg-blob bg-blob-1"></div>
 <div class="bg-blob bg-blob-2"></div>
 <div class="bg-blob bg-blob-3"></div>
@@ -799,18 +852,18 @@
 
   <!-- Card game -->
   <div class="view" id="gview-cardgame">
-    <div class="card">
-      <div class="row"><span class="muted">Today's games</span><b id="gamePlaysLeft">-</b></div>
-      <div class="row"><span class="muted">My rank</span><b id="gameMyRank">-</b></div>
-      <div class="row"><span class="muted">Queue status</span><b id="gameQueueState">-</b></div>
-      <button class="btn secondary" onclick="buyExtraPlays()">⚡ Buy extra game</button>
+    <div class="gamehub-stats">
+      <div class="gamehub-stat"><div class="gamehub-stat-ic">🎮</div><div class="gamehub-stat-val" id="gamePlaysLeft">-</div><div class="gamehub-stat-label">Games left</div></div>
+      <div class="gamehub-stat"><div class="gamehub-stat-ic">🏆</div><div class="gamehub-stat-val" id="gameMyRank">-</div><div class="gamehub-stat-label">My rank</div></div>
+      <div class="gamehub-stat"><div class="gamehub-stat-ic">⏳</div><div class="gamehub-stat-val" id="gameQueueState" style="font-size:12px;">-</div><div class="gamehub-stat-label">Queue</div></div>
     </div>
-    <div class="pills" id="gamePills">
-      <button class="pill active" data-gsub="shop" onclick="showGameSub('shop')">🛍 Shop</button>
-      <button class="pill" data-gsub="mycards" onclick="showGameSub('mycards')">🎴 My cards</button>
-      <button class="pill" data-gsub="battle" onclick="showGameSub('battle')">⚔️ Match</button>
-      <button class="pill" data-gsub="leaderboard" onclick="showGameSub('leaderboard')">🏆 Scores</button>
-      <button class="pill" data-gsub="tasks" onclick="showGameSub('tasks')">🎁 Card tasks</button>
+    <button class="btn secondary" style="width:100%;margin-bottom:14px;" onclick="buyExtraPlays()">⚡ Buy extra game</button>
+    <div class="gamehub-nav" id="gamePills">
+      <div class="gamehub-tile active" data-gsub="shop" onclick="showGameSub('shop')"><div class="gamehub-tile-ic">🛍</div><div class="gamehub-tile-label">Shop</div></div>
+      <div class="gamehub-tile" data-gsub="mycards" onclick="showGameSub('mycards')"><div class="gamehub-tile-ic">🎴</div><div class="gamehub-tile-label">My cards</div></div>
+      <div class="gamehub-tile" data-gsub="battle" onclick="showGameSub('battle')"><div class="gamehub-tile-ic">⚔️</div><div class="gamehub-tile-label">Match</div></div>
+      <div class="gamehub-tile" data-gsub="leaderboard" onclick="showGameSub('leaderboard')"><div class="gamehub-tile-ic">🏆</div><div class="gamehub-tile-label">Scores</div></div>
+      <div class="gamehub-tile" data-gsub="tasks" onclick="showGameSub('tasks')"><div class="gamehub-tile-ic">🎁</div><div class="gamehub-tile-label">Card tasks</div></div>
     </div>
     <div class="view active" id="gsub-shop">
       <select id="categoryFilter" onchange="loadGame()" style="margin-bottom:10px;"><option value="">All categories</option></select>
@@ -955,7 +1008,8 @@
       <input type="hidden" id="giftTitle">
       <input type="hidden" id="giftImage">
       <input type="hidden" id="giftSerial">
-      <label>Price (LNDC)</label><input type="number" id="giftPrice">
+      <label>Price (LNDC)</label><input type="number" id="giftPrice" placeholder="e.g. 5000">
+      <p class="muted" id="giftMinPriceHint" style="font-size:11px;margin-top:-6px;"></p>
       <button class="btn" id="giftSubmitBtn" onclick="listGift()">Post listing</button>
       <button class="btn ghost" id="giftCancelEditBtn" style="display:none;" onclick="resetGiftForm()">Cancel editing</button>
     </div>
@@ -1013,6 +1067,7 @@
   </div>
   <div class="view" id="ltab-league">
     <div id="lbLeagueMine" class="card"></div>
+    <div id="lbLeaguePrizes" class="muted" style="font-size:13px;margin-bottom:8px;"></div>
     <div class="chips" id="lbLeagueChips" style="margin-top:10px;"></div>
     <div id="lbLeaguePodium"></div>
     <div id="lbLeagueList" class="card muted">Loading...</div>
@@ -1146,7 +1201,6 @@
     <span class="mic">👥</span><div class="mtxt"><div class="mt">Invite friends</div><div class="ms" id="referralSubtitle">Referral commission</div></div><span class="arrow">‹</span>
   </div>
   <div class="card" id="referralCard">Loading...</div>
-  <div class="menu-row" onclick="toggleSound()"><span class="mic">🔊</span><div class="mtxt"><div class="mt" id="soundToggleRow">Sound effects: On</div></div><span class="arrow">‹</span></div>
   <div class="menu-row" onclick="openSupportChat()">
     <span class="mic">🎧</span><div class="mtxt"><div class="mt">Support</div><div class="ms">Direct contact with admin</div></div><span class="arrow">‹</span>
   </div>
@@ -1371,48 +1425,6 @@ function haptic(kind) {
   else if (kind === 'rigid' || kind === 'soft' || kind === 'medium' || kind === 'heavy' || kind === 'light') h.impactOccurred(kind);
   else h.selectionChanged();
 }
-// Lightweight synthesized sound effects (Web Audio API — no audio files to host/load) for the app's
-// biggest moments. Off by default is NOT the behavior — sound defaults ON but is fully toggleable
-// and the preference persists locally on the device.
-let SOUND_ENABLED = localStorage.getItem('lando_sound') !== 'off';
-let AUDIO_CTX = null;
-function getAudioCtx() {
-  if (!AUDIO_CTX) { try { AUDIO_CTX = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
-  return AUDIO_CTX;
-}
-function playTone(freqs, durationMs, type, gainVal) {
-  if (!SOUND_ENABLED) return;
-  const ctx = getAudioCtx();
-  if (!ctx) return;
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-  const now = ctx.currentTime;
-  freqs.forEach((f, i) => {
-    const osc = ctx.createOscillator(), gain = ctx.createGain();
-    osc.type = type; osc.frequency.value = f;
-    const start = now + i * 0.09;
-    gain.gain.setValueAtTime(gainVal, start);
-    gain.gain.exponentialRampToValueAtTime(0.001, start + durationMs / 1000);
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.start(start); osc.stop(start + durationMs / 1000 + 0.03);
-  });
-}
-function sfx(kind) {
-  if (kind === 'win') playTone([523, 659, 784, 1047], 200, 'sine', 0.08);
-  else if (kind === 'purchase') playTone([600, 800], 120, 'triangle', 0.06);
-  else if (kind === 'error') playTone([220, 170], 160, 'sawtooth', 0.05);
-  else if (kind === 'tap') playTone([500], 40, 'sine', 0.035);
-  else playTone([700], 90, 'sine', 0.05);
-}
-function toggleSound() {
-  SOUND_ENABLED = !SOUND_ENABLED;
-  localStorage.setItem('lando_sound', SOUND_ENABLED ? 'on' : 'off');
-  updateSoundToggleUI();
-  if (SOUND_ENABLED) sfx('tap');
-}
-function updateSoundToggleUI() {
-  const el = document.getElementById('soundToggleRow');
-  if (el) el.textContent = SOUND_ENABLED ? '🔊 Sound effects: On' : '🔇 Sound effects: Off';
-}
 let CONFIG = {};
 let CURRENT_PAGE = 'games';
 let PAGE_BEFORE_SUBPAGE = 'more'; // the page we were on before going to tasks/info — the back button returns there
@@ -1444,11 +1456,11 @@ async function api(path, opts = {}) {
     res = await fetch(path, { ...opts, headers, signal: AbortSignal.timeout(15000) });
   } catch (e) {
     const msg = (e.name === 'TimeoutError' || e.name === 'AbortError') ? 'Server did not respond, try again' : 'Connection failed';
-    toast(msg); haptic('error'); sfx('error');
+    toast(msg); haptic('error');
     throw new Error(msg);
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) { toast(data.error || 'An error occurred'); haptic('error'); sfx('error'); throw new Error(data.error || 'error'); }
+  if (!res.ok) { toast(data.error || 'An error occurred'); haptic('error'); throw new Error(data.error || 'error'); }
   // Any successful write (purchase, claim, upgrade, vote...) gets a light confirmation buzz;
   // plain GETs (page loads/polling) stay silent so haptics don't fire on every screen open.
   if (method !== 'GET') haptic('success');
@@ -1708,7 +1720,7 @@ async function openChestUI(id) {
     prize.classList.add('reveal');
     hint.textContent = `🎉 ${chest?.title || 'Chest'}`;
     closeBtn.style.display = 'block';
-    haptic('success'); sfx('win');
+    haptic('success');
   }, 460);
 
   loadMe();
@@ -1979,6 +1991,8 @@ function resetGiftForm() {
   document.getElementById('sellFormTitle').textContent = 'Post a gift for sale';
   document.getElementById('giftSubmitBtn').textContent = 'Post listing';
   document.getElementById('giftCancelEditBtn').style.display = 'none';
+  const hint = document.getElementById('giftMinPriceHint');
+  if (hint) hint.textContent = CONFIG.giftMarketMinPrice ? `Minimum price: ${CONFIG.giftMarketMinPrice.toLocaleString('en-US')} LNDC` : '';
 }
 let MKT_OFFERS = [];
 let MKT_FEE_PERCENT = 5;
@@ -2139,7 +2153,7 @@ let GAME_QUEUE_TIMER = null;
 function showGameSub(name) {
   document.querySelectorAll('#gview-cardgame .view').forEach(el => el.classList.remove('active'));
   document.getElementById('gsub-' + name).classList.add('active');
-  document.querySelectorAll('#gamePills .pill').forEach(b => b.classList.toggle('active', b.dataset.gsub === name));
+  document.querySelectorAll('#gamePills .gamehub-tile').forEach(b => b.classList.toggle('active', b.dataset.gsub === name));
 }
 async function loadGame() {
   const status = await api('/api/game/status');
@@ -2167,7 +2181,7 @@ async function loadGame() {
     </div>`).join('')}</div>` : 'No card in this category right now.';
   await loadMyCards(); await loadGameLeaderboard(); await loadCardTasks(); await loadGameHistory();
 }
-async function buyGameCard(id) { await api('/api/game/buy-card', { method: 'POST', body: JSON.stringify({ cardId: id }) }); sfx('purchase'); toast('Card purchased ✅'); loadMe(); loadMyCards(); }
+async function buyGameCard(id) { await api('/api/game/buy-card', { method: 'POST', body: JSON.stringify({ cardId: id }) }); toast('Card purchased ✅'); loadMe(); loadMyCards(); }
 let MY_CARDS_CACHE = [];
 async function loadMyCards() {
   const mine = await api('/api/game/my-cards');
@@ -2522,7 +2536,7 @@ function renderAuctionsList(auctions) {
   document.getElementById('auctionsList').innerHTML = html;
   const el2 = document.getElementById('auctionsList2'); if (el2) el2.innerHTML = html;
 }
-async function bidAuction(id) { await api(`/api/auctions/${id}/bid`, { method: 'POST' }); sfx('purchase'); toast('Your bid was placed ✅'); loadMe(); loadAuctions(); }
+async function bidAuction(id) { await api(`/api/auctions/${id}/bid`, { method: 'POST' }); toast('Your bid was placed ✅'); loadMe(); loadAuctions(); }
 
 /* ================= Clan ================= */
 async function loadClan() {
@@ -3180,7 +3194,7 @@ async function loadAvatarsShop() {
   const shop = await api('/api/avatars');
   document.getElementById('avatarShopList').innerHTML = shop.length ? shop.map((a, i) => `<div class="card" ${staggerStyle(i)}>${a.image_url ? `<img src="${a.image_url}">` : ''}<div class="row"><b>${a.name}</b><span class="tag">${a.price_toman.toLocaleString('en-US')} LNDC</span></div><button class="btn secondary" onclick="buyAvatarUI(${a.id})">Buy</button></div>`).join('') : 'No avatars in the shop yet.';
 }
-async function buyAvatarUI(id) { await api('/api/avatars/buy', { method: 'POST', body: JSON.stringify({ avatarId: id }) }); sfx('purchase'); toast('Purchased ✅'); loadMe(); loadAvatarsShop(); }
+async function buyAvatarUI(id) { await api('/api/avatars/buy', { method: 'POST', body: JSON.stringify({ avatarId: id }) }); toast('Purchased ✅'); loadMe(); loadAvatarsShop(); }
 async function equipAvatarUI(id) { await api('/api/avatars/equip', { method: 'POST', body: JSON.stringify({ avatarId: id }) }); toast('Activated ✅'); loadProfile(); loadAvatarsShop(); }
 
 /* ================= Referral ================= */
@@ -3269,7 +3283,11 @@ async function loadLeaderboardPage() {
     <div class="row"><span class="muted">My league</span><b>${lg.me.leagueLabel}</b></div>
     <div class="row"><span class="muted">This week's rank</span><b>#${lg.me.rank}</b></div>
     <div class="row"><span class="muted">Win/loss this week</span><b>${lg.me.weeklyWins}/${lg.me.weeklyLosses} (${lg.me.score} Score)</b></div>
+    ${lg.myPrize ? `<div class="row"><span class="muted">🎁 Your current prize</span><b>${lg.myPrize.reward_type === 'card' ? (lg.myPrize.cardName || 'Card') : lg.myPrize.reward_toman.toLocaleString('en-US') + ' LNDC'}</b></div>` : ''}
   `;
+  document.getElementById('lbLeaguePrizes').innerHTML = (lg.prizes || []).length
+    ? '🎁 Prizes for this league: ' + lg.prizes.map(p => `Rank ${p.rank_from}${p.rank_to !== p.rank_from ? '-' + p.rank_to : ''}: ${p.reward_type === 'card' ? (p.cardName || 'Card') : p.reward_toman.toLocaleString('en-US') + ' LNDC'}`).join(' | ')
+    : '';
   document.getElementById('lbLeagueChips').innerHTML = lg.tiers.map(t =>
     `<div class="chip ${t.key === lg.me.league ? 'active' : ''}" data-league="${t.key}" onclick="loadLeagueBoard('${t.key}')">${t.icon || ''} ${t.label}</div>`).join('');
   renderLeagueBoard(lg.leaderboard, lg.me);
@@ -3307,14 +3325,34 @@ function applyUiImages() {
 }
 
 /* ================= Start ================= */
+function setBootProgress(pct) {
+  const fill = document.getElementById('bootLoaderFill');
+  const label = document.getElementById('bootLoaderPercent');
+  if (fill) fill.style.width = Math.min(100, Math.max(0, pct)) + '%';
+  if (label) label.textContent = Math.min(100, Math.max(0, Math.round(pct))) + '%';
+}
+function hideBootLoader() {
+  const el = document.getElementById('bootLoader');
+  if (el) setTimeout(() => el.classList.add('hide'), 250);
+}
 async function bootApp() {
-  try { CONFIG = await fetch('/api/config', { signal: AbortSignal.timeout(15000) }).then(r => r.json()); }
-  catch (e) { console.error('config load failed', e); }
-  applyUiImages();
-  updateSoundToggleUI();
-  initTonConnect();
-  loadMe().catch(() => {});
-  loadGamesHub().catch(() => {});
+  try {
+    setBootProgress(10);
+    try { CONFIG = await fetch('/api/config', { signal: AbortSignal.timeout(15000) }).then(r => r.json()); }
+    catch (e) { console.error('config load failed', e); }
+    setBootProgress(45);
+    const loadingImg = CONFIG.uiImages?.loading_screen;
+    if (loadingImg) document.getElementById('bootLoaderLogo').innerHTML = `<img src="${loadingImg}">`;
+    applyUiImages();
+    initTonConnect();
+    setBootProgress(65);
+    await loadMe().catch(() => {});
+    setBootProgress(88);
+    await loadGamesHub().catch(() => {});
+    setBootProgress(100);
+  } finally {
+    hideBootLoader();
+  }
 }
 bootApp();
 </script>
