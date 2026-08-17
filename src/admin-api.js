@@ -18,7 +18,6 @@ import {
   getTomanTopup, getTomanWithdrawal,
   getPaymentSettings, setPaymentSettings, getSupportContact, setSupportContact, getInfoPage, setInfoPage, getSwapFeePercent, setSwapFeePercent,
   getGiftMarketMinPrice, setGiftMarketMinPrice,
-  getGiveawayChannelSettings, setGiveawayChannelSettings, getLeaderboardChannelSettings, setLeaderboardChannelId,
   getUiImages, setUiImages, getComebackConfig, setComebackConfig,
   getReferralSettings, setReferralSettings, getLndcWalletSettings, setLndcWalletSettings,
   listGiftCategories, upsertGiftCategory, deleteGiftCategory,
@@ -58,7 +57,7 @@ import { listAlbums, upsertAlbum, deleteAlbum, getAlbumRequirements, getAlbumRew
 import { getGiftConfig, setGiftConfig } from './gift-db.js';
 import { listSeasons, createSeason, deleteSeason, setCardSeason } from './seasonal-db.js';
 import { getCardMarketConfig, setCardMarketConfig, listCardMarketOffers } from './card-market-db.js';
-import { sendMessage, sendPhoto, fetchTelegramNftMeta } from './telegram.js';
+import { sendMessage, fetchTelegramNftMeta } from './telegram.js';
 import { logPlayerActivity } from './achievements-db.js';
 import { listAchievementsAdmin, upsertAchievement, deleteAchievement } from './achievements-db.js';
 import { getBackupConfig, setBackupConfig, listBackups, runBackupNow } from './backup.js';
@@ -639,22 +638,10 @@ router.delete('/league/prizes/:id', (req, res) => { deleteLeaguePrize(Number(req
 
 /* ---------- Big wheel (raffle / giveaway) ---------- */
 router.get('/raffles', (req, res) => res.json(listRafflesAdmin()));
-router.get('/giveaway-channel', (req, res) => res.json(getGiveawayChannelSettings()));
-router.post('/giveaway-channel', (req, res) => {
-  setGiveawayChannelSettings({ channelId: req.body.channelId, startImage: req.body.startImage, endImage: req.body.endImage });
-  res.json({ ok: true });
-});
-router.get('/leaderboard-channel', (req, res) => res.json(getLeaderboardChannelSettings()));
-router.post('/leaderboard-channel', (req, res) => {
-  setLeaderboardChannelId(req.body.channelId);
-  res.json({ ok: true });
-});
 router.post('/raffles', (req, res) => {
   try {
     if (!req.body.title) return res.status(400).json({ error: 'Title is required' });
-    const isNew = !req.body.id;
     const id = req.body.id ? (updateRaffle(Number(req.body.id), req.body), Number(req.body.id)) : createRaffle(req.body);
-    if (isNew) postGiveawayToChannel(getRaffle(id), 'start').catch(() => {});
     res.json({ ok: true, id });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -685,63 +672,9 @@ router.post('/raffles/:id/finish', (req, res) => {
       const winnerUser = getUser(w.tg_id);
       logPlayerActivity(winnerUser?.username || winnerUser?.first_name, `won the giveaway "${raffle.title}" 🎊`, '🎊');
     });
-    postGiveawayToChannel(raffle, 'end', winners).catch(() => {});
     res.json({ ok: true, winners });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
-// Posts a giveaway's info to the configured channel — the bot must already be an admin there with
-// post permission, or this silently fails (caught by the .catch(()=>{}) at each call site above, so
-// a channel-posting problem never blocks the actual raffle create/finish action for the admin).
-const ADMIN_IDS_FOR_ALERTS = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean).map(Number);
-async function postGiveawayToChannel(raffle, phase, winners = []) {
-  const { channelId, startImage, endImage } = getGiveawayChannelSettings();
-  if (!channelId || !raffle) return;
-  let text;
-  if (phase === 'start') {
-    const prizes = listRafflePrizes(raffle.id);
-    const prizeLines = prizes.length ? prizes.map(p => `🎁 ${p.title}${p.gift_number ? ' #' + p.gift_number : ''}`).join('\n') : (raffle.prize_description ? `🎁 Prize: ${raffle.prize_description}` : '');
-    text = `🎉 <b>New giveaway started!</b>\n\n🏆 <b>${raffle.title}</b>` +
-      (prizeLines ? `\n${prizeLines}` : '') +
-      `\n👥 Winners: ${raffle.winners_count}` +
-      (raffle.ticket_price_toman > 0 ? `\n🎟 Ticket price: ${raffle.ticket_price_toman.toLocaleString('en-US')} LNDC` : '\n🎟 Free entry') +
-      `\n\nTap the button below to join instantly, or open the mini app for full details 👇`;
-    // A direct "Join" button right on the channel post — a plain callback button (not web_app) so it
-    // works with one tap even for someone who has never opened the mini app before.
-    const replyMarkup = { inline_keyboard: [
-      [{ text: '🎟 Join Giveaway', callback_data: `raffle_join:${raffle.id}` }],
-      [{ text: '🛍 Open in mini app', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }],
-    ] };
-    const result = startImage
-      ? await sendPhoto(channelId, startImage, text, { reply_markup: replyMarkup })
-      : await sendMessage(channelId, text, { reply_markup: replyMarkup });
-    if (!result.ok) reportChannelPostFailure('giveaway', channelId, result);
-  } else {
-    const winnerList = winners.length ? winners.map(w => `🆔 <code>${w.tg_id}</code>`).join('\n') : 'No entries were registered.';
-    text = `🏁 <b>Giveaway ended!</b>\n\n🏆 <b>${raffle.title}</b>\n\n🎊 Winners:\n${winnerList}`;
-    const result = endImage ? await sendPhoto(channelId, endImage, text) : await sendMessage(channelId, text);
-    if (!result.ok) reportChannelPostFailure('giveaway', channelId, result);
-  }
-}
-// Posting to a channel/group can fail for reasons that are invisible unless someone is watching
-// server logs — wrong ID format, the bot never having been added, or having been removed/demoted.
-// Previously these failures were swallowed silently; now they're logged clearly AND the admins get
-// a direct DM explaining exactly what to check, so a misconfigured channel doesn't go unnoticed.
-let lastChannelFailureAlert = 0;
-function reportChannelPostFailure(context, channelId, result) {
-  console.error(`[${context} channel post failed]`, channelId, result.description || result.error || result);
-  const now = Date.now();
-  if (now - lastChannelFailureAlert < 10 * 60 * 1000) return; // avoid spamming admins if it keeps failing
-  lastChannelFailureAlert = now;
-  const reason = result.description || result.error || 'unknown error';
-  const hint = /chat not found/i.test(reason)
-    ? 'This usually means the Channel ID is wrong, or the bot has never been added to that channel. Channel IDs must include the -100 prefix, e.g. -1001234567890.'
-    : /not enough rights|CHAT_ADMIN_REQUIRED|not.*administrator/i.test(reason)
-    ? 'The bot needs to be an admin of that channel with permission to post messages.'
-    : '';
-  ADMIN_IDS_FOR_ALERTS.forEach(id => sendMessage(id,
-    `⚠️ <b>Failed to post to the ${context} channel</b>\nChannel: <code>${channelId}</code>\nReason: ${reason}\n${hint}`
-  ).catch(() => {}));
-}
 
 /* ---------- Achievements ---------- */
 router.get('/achievements', (req, res) => res.json(listAchievementsAdmin()));

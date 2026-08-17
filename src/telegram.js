@@ -39,6 +39,12 @@ export const editMessageText = (chatId, messageId, text, extra = {}) =>
 export const pinChatMessage = (chatId, messageId, disableNotification = true) =>
   call('pinChatMessage', { chat_id: chatId, message_id: messageId, disable_notification: disableNotification });
 
+// Creates (and Telegram will keep reusing/renewing) an invite link for a channel — needed for the
+// mandatory-join button when the channel is configured by numeric ID (private channel, no public
+// @username to build a t.me/... link from).
+export const createChatInviteLink = (chatId, name) =>
+  call('createChatInviteLink', { chat_id: chatId, ...(name ? { name } : {}) });
+
 // Creating a payment invoice link with Telegram Stars (XTR currency) — does not need a provider_token, Telegram handles it itself
 export const createStarsInvoiceLink = (title, description, payload, starsAmount) =>
   call('createInvoiceLink', {
@@ -51,12 +57,66 @@ export const answerPreCheckoutQuery = (id, ok, errorMessage) =>
 
 export const getMe = () => call('getMe', {});
 
-// Channel membership check, for tasks and mandatory join
-export async function isChannelMember(channelUsername, userId) {
-  if (!channelUsername) return true;
-  const data = await call('getChatMember', { chat_id: '@' + channelUsername.replace('@', ''), user_id: userId });
-  if (!data.ok || !data.result?.status) return true; // if it was not checked or the response was odd, do not block the user without reason
-  return !['left', 'kicked'].includes(data.result.status);
+// Turns whatever an admin might have pasted into "Channel ID or @username" (a bare username, an
+// @username, a full t.me link, or a numeric -100... channel ID) into the chat_id format Telegram's
+// API actually expects. Previously this always force-prefixed "@", which silently broke mandatory
+// join / the isChannelMember check whenever the admin used a numeric channel ID (needed for private
+// channels, which have no public @username at all) — every check would then fail, and because
+// isChannelMember fails open (see below), the join requirement was quietly never enforced.
+function normalizeChatId(raw) {
+  let v = String(raw || '').trim();
+  if (!v) return null;
+  v = v.replace(/^https?:\/\/t\.me\//i, '').replace(/^t\.me\//i, '');
+  if (/^-?\d+$/.test(v)) return v; // already a numeric chat id, e.g. -1001234567890
+  return '@' + v.replace(/^@/, '');
+}
+
+// Caches recent membership check results for a short time so mandatory-join isn't re-verified with
+// Telegram on every single mini-app request (requireTelegramAuth checks it on every /api/* call) —
+// without this, an active user's normal browsing could fire dozens of getChatMember calls a minute,
+// adding latency to every request and risking Telegram rate-limiting the bot token, which in turn
+// would slow down or delay everything else the bot does, including replying to /start.
+const MEMBERSHIP_CACHE_TTL_MS = 3 * 60 * 1000;
+const membershipCache = new Map(); // `${chatId}:${userId}` -> { joined, expiresAt }
+
+export function clearChannelMemberCache(userId) {
+  for (const key of membershipCache.keys()) {
+    if (key.endsWith(`:${userId}`)) membershipCache.delete(key);
+  }
+}
+
+// Channel membership check, for tasks and mandatory join.
+let lastConfigWarningAt = 0;
+export async function isChannelMember(channelSetting, userId) {
+  const chatId = normalizeChatId(channelSetting);
+  if (!chatId) return true; // nothing configured -> nothing to enforce
+
+  const cacheKey = `${chatId}:${userId}`;
+  const cached = membershipCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.joined;
+
+  const data = await call('getChatMember', { chat_id: chatId, user_id: userId });
+  if (!data.ok || !data.result?.status) {
+    const reason = data.description || data.error || 'unknown error';
+    // "chat not found" / "not enough rights" mean the required channel is misconfigured (wrong ID,
+    // or the bot was never added there as admin) rather than a transient Telegram hiccup — that's a
+    // real, ongoing bug worth surfacing loudly instead of silently waving every user through.
+    const isConfigProblem = /chat not found|not enough rights|CHAT_ADMIN_REQUIRED|not.*administrator|user not found/i.test(reason);
+    if (isConfigProblem && Date.now() - lastConfigWarningAt > 10 * 60 * 1000) {
+      lastConfigWarningAt = Date.now();
+      console.error(
+        `[isChannelMember] Mandatory-join channel "${channelSetting}" (resolved to ${chatId}) is misconfigured: ${reason}. ` +
+        `The bot must be an admin of that channel, and numeric IDs must include the -100 prefix. ` +
+        `Until this is fixed, the join requirement is NOT being enforced for anyone.`
+      );
+    } else if (!isConfigProblem) {
+      console.error(`[isChannelMember] check failed (${reason}) — treating as joined so a Telegram hiccup does not lock everyone out`);
+    }
+    return true; // do not block the user without reason (transient error or misconfiguration — see log above)
+  }
+  const joined = !['left', 'kicked'].includes(data.result.status);
+  membershipCache.set(cacheKey, { joined, expiresAt: Date.now() + MEMBERSHIP_CACHE_TTL_MS });
+  return joined;
 }
 
 // Mini app initData validation per Telegram's official docs

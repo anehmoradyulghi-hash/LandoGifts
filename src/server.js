@@ -5,12 +5,11 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import {
-  sendMessage, sendPhoto, answerCallbackQuery, setWebhook, validateInitData, isChannelMember, getMe,
-  createStarsInvoiceLink, answerPreCheckoutQuery, fetchTelegramNftMeta, editMessageText, pinChatMessage,
+  sendMessage, sendPhoto, answerCallbackQuery, setWebhook, validateInitData, isChannelMember, clearChannelMemberCache, createChatInviteLink, getMe,
+  createStarsInvoiceLink, answerPreCheckoutQuery, fetchTelegramNftMeta,
 } from './telegram.js';
 import db, {
-  getOrCreateUser, getUser, adjustToman, isBanned, getLedger, payReferralBonus, getReferralInfo, getReferralSettings, getSwapFeePercent, getGiveawayChannelSettings,
-  getLeaderboardChannelSettings, setLeaderboardChannelMessageId,
+  getOrCreateUser, getUser, adjustToman, isBanned, getLedger, payReferralBonus, getReferralInfo, getReferralSettings, getSwapFeePercent,
   listCurrencies, getCurrency, getWalletBalances, getCurrencyBalance, adjustCurrencyBalance,
   createTomanTopup, createTomanWithdrawal,
   createCurrencyRequest,
@@ -51,7 +50,7 @@ import {
   createClanWar, cancelClanWar, joinClanWar, submitWarPicks, getClanWar, getMemberCardsForLeader,
 } from './clan-war-db.js';
 import { getLeagueConfig, getUserLeagueInfo, getLeagueLeaderboard, checkAutoResetLeague, listLeagues, listLeaguePrizes, getPrizeForLeagueRank } from './league-db.js';
-import { listOpenRaffles, getRaffleStatusForUser, registerForRaffle, buyRaffleTickets, getRaffle, listRecentRaffleWinners, getRaffleTopEntries, checkAutoFinishRaffles, listRafflePrizes } from './raffle-db.js';
+import { listOpenRaffles, getRaffleStatusForUser, registerForRaffle, buyRaffleTickets, listRecentRaffleWinners, getRaffleTopEntries, checkAutoFinishRaffles, listRafflePrizes } from './raffle-db.js';
 import {
   getRankConfig, getUserRankInfo, addUserXp, canCheckinToday, doCheckin, listStreakRewards,
   listAvatars, getMyAvatars, buyAvatar, equipAvatar,
@@ -157,6 +156,31 @@ function notifyAdmins(text, extra) {
   ADMIN_IDS.forEach(id => sendMessage(id, text, extra).catch(() => {}));
 }
 
+// Builds the URL for the mandatory-join button. A public channel (set as @username) links directly
+// to t.me/<username>. A private channel (set by its numeric -100... ID, which has no public
+// username to link to) needs an actual invite link generated through the Bot API instead — this is
+// created once, cached, and reused rather than fetched on every /start. If REQUIRED_CHANNEL is a
+// numeric ID and the bot isn't an admin there (so link creation fails), we log it clearly and just
+// omit the button rather than send a broken/misleading link.
+let cachedInviteLink = null;
+let cachedInviteLinkFor = null;
+async function getRequiredChannelJoinUrl() {
+  const raw = (process.env.REQUIRED_CHANNEL || '').trim();
+  if (!raw) return null;
+  if (!/^-?\d+$/.test(raw.replace(/^@/, ''))) return `https://t.me/${raw.replace(/^@/, '')}`;
+  if (cachedInviteLinkFor === raw && cachedInviteLink) return cachedInviteLink;
+  try {
+    const r = await createChatInviteLink(raw, 'Mandatory join');
+    if (r.ok && r.result?.invite_link) {
+      cachedInviteLink = r.result.invite_link;
+      cachedInviteLinkFor = raw;
+      return cachedInviteLink;
+    }
+    console.error('[getRequiredChannelJoinUrl] could not create invite link for', raw, '— the bot needs to be an admin of that channel with the "invite users" permission.', r.description || r.error);
+  } catch (e) { console.error('[getRequiredChannelJoinUrl]', e); }
+  return null;
+}
+
 /* ---------- Achievements & activity feed ---------- */
 app.get('/api/activity-feed', (req, res) => res.json(getActivityFeed(3)));
 app.get('/api/achievements', requireTelegramAuth, (req, res) => res.json(listAchievementsForUser(req.dbUser.tg_id)));
@@ -174,6 +198,9 @@ app.get('/api/config', ah(async (req, res) => {
   res.json({
     botUsername: cachedBotUsername,
     channel: process.env.REQUIRED_CHANNEL || null,
+    // A ready-to-open join link — resolved server-side so the frontend does not need to guess
+    // whether REQUIRED_CHANNEL is a public @username or a private channel's numeric ID.
+    channelJoinUrl: process.env.REQUIRED_CHANNEL ? await getRequiredChannelJoinUrl() : null,
     cardNumber: payment.cardNumber || null,
     cardOwner: payment.cardOwner || null,
     referralPercent: getReferralSettings().percent,
@@ -1004,9 +1031,10 @@ async function handleTelegramUpdate(update) {
     if (process.env.REQUIRED_CHANNEL) {
       const joined = await isChannelMember(process.env.REQUIRED_CHANNEL, update.message.from.id);
       if (!joined) {
+        const joinUrl = await getRequiredChannelJoinUrl();
         await sendMessage(chatId, joinPromptMessage, {
           reply_markup: { inline_keyboard: [
-            [{ text: '📢 Channel membership', url: `https://t.me/${process.env.REQUIRED_CHANNEL.replace('@', '')}` }],
+            ...(joinUrl ? [[{ text: '📢 Channel membership', url: joinUrl }]] : []),
             [{ text: '✅ I joined, check it', callback_data: 'check_join' }],
           ] },
         });
@@ -1043,31 +1071,26 @@ async function handleTelegramUpdate(update) {
   }
 
 
-  // Direct "Join Giveaway" button on the channel post — registers with one tap, no mini app needed
-  if (update.callback_query?.data?.startsWith('raffle_join:')) {
-    const cq = update.callback_query;
-    const raffleId = Number(cq.data.split(':')[1]);
-    const dbUser = getOrCreateUser(cq.from);
-    try {
-      registerForRaffle(dbUser.tg_id, raffleId);
-      const raffle = getRaffle(raffleId);
-      answerCallbackQuery(cq.id, `🎉 You're in! Good luck in "${raffle?.title || 'the giveaway'}".`).catch(() => {});
-    } catch (e) {
-      answerCallbackQuery(cq.id, `⚠️ ${e.message}`).catch(() => {});
-    }
-    return;
-  }
 
   if (update.callback_query?.data === 'check_join') {
     answerCallbackQuery(update.callback_query.id).catch(() => {});
     const chatId = update.callback_query.message.chat.id;
+    // The user just tapped this after (they say) joining — always re-verify live with Telegram
+    // instead of trusting a cached "not joined" result from moments ago.
+    clearChannelMemberCache(update.callback_query.from.id);
     const joined = !process.env.REQUIRED_CHANNEL || await isChannelMember(process.env.REQUIRED_CHANNEL, update.callback_query.from.id);
     if (joined) {
       await sendMessage(chatId, 'Membership confirmed ✅', {
         reply_markup: { inline_keyboard: [[{ text: '🛍 Open shop', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }]] },
       });
     } else {
-      await sendMessage(chatId, '❌ You have not joined the channel yet.');
+      const joinUrl = await getRequiredChannelJoinUrl();
+      await sendMessage(chatId, '❌ You have not joined the channel yet.', {
+        reply_markup: joinUrl ? { inline_keyboard: [
+          [{ text: '📢 Channel membership', url: joinUrl }],
+          [{ text: '✅ I joined, check it', callback_data: 'check_join' }],
+        ] } : undefined,
+      });
     }
     return;
   }
@@ -1218,75 +1241,22 @@ setInterval(() => {
     }
   } catch (e) { console.error('[league auto-reset]', e); }
   try { cleanupAllOldClanMessages(); } catch (e) { console.error('[clan chat cleanup]', e); }
-  updatePinnedLeaderboard().catch(e => console.error('[pinned leaderboard]', e));
 }, 60 * 60 * 1000);
 
-// Builds a fresh "Top players / Top clans" message and either edits the previously pinned message in
-// place, or (first time, or if editing failed e.g. the old message was deleted) sends + pins a new one.
-async function updatePinnedLeaderboard() {
-  const { channelId, messageId } = getLeaderboardChannelSettings();
-  if (!channelId) return;
-  const players = getLeaderboard(10);
-  const clans = getClanLeaderboard(5);
-  const medal = i => ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
-  const text = `🏆 <b>Live Leaderboard</b>\n\n<b>Top players</b>\n` +
-    (players.length ? players.map((p, i) => `${medal(i)} ${p.first_name || p.username || 'Player'} — ${p.score} pts`).join('\n') : 'No data yet.') +
-    `\n\n<b>Top clans</b>\n` +
-    (clans.length ? clans.map((c, i) => `${medal(i)} ${c.emblem.icon} ${c.name} #${c.tag} — ${c.score} pts`).join('\n') : 'No data yet.') +
-    `\n\nUpdated hourly · Join the competition 👇`;
-  const replyMarkup = { inline_keyboard: [[{ text: '🛍 Open Lando Gifts', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }]] };
-
-  if (messageId) {
-    const result = await editMessageText(channelId, messageId, text, { reply_markup: replyMarkup });
-    if (result.ok) return;
-    // Edit failed (message likely deleted by someone) — fall through and post a fresh one below
-  }
-  const sent = await sendMessage(channelId, text, { reply_markup: replyMarkup });
-  if (sent.ok && sent.result?.message_id) {
-    setLeaderboardChannelMessageId(sent.result.message_id);
-    pinChatMessage(channelId, sent.result.message_id).catch(() => {});
-  } else if (!sent.ok) {
-    console.error('[leaderboard channel post failed]', channelId, sent.description || sent.error || sent);
-    const now = Date.now();
-    if (now - lastLbFailureAlert > 10 * 60 * 1000) {
-      lastLbFailureAlert = now;
-      const reason = sent.description || sent.error || 'unknown error';
-      const hint = /chat not found/i.test(reason)
-        ? 'This usually means the Channel ID is wrong, or the bot has never been added to that channel. Channel IDs must include the -100 prefix, e.g. -1001234567890.'
-        : /not enough rights|CHAT_ADMIN_REQUIRED|not.*administrator/i.test(reason)
-        ? 'The bot needs to be an admin of that channel with permission to post and pin messages.'
-        : '';
-      ADMIN_IDS.forEach(id => sendMessage(id, `⚠️ <b>Failed to post the pinned leaderboard</b>\nChannel: <code>${channelId}</code>\nReason: ${reason}\n${hint}`).catch(() => {}));
-    }
-  }
-}
-let lastLbFailureAlert = 0;
-updatePinnedLeaderboard().catch(e => console.error('[pinned leaderboard] startup run', e));
-
 // Raffles can have a short countdown (minutes), so this is checked far more often than the hourly
-// batch above — auto-ends any giveaway whose deadline has passed and posts the results to the
-// configured channel, the same way a manual "End raffle" click from the admin panel does.
+// batch above — auto-ends any giveaway whose deadline has passed and notifies the winners directly.
 setInterval(() => {
   let finished;
   try { finished = checkAutoFinishRaffles(); } catch (e) { console.error('[raffle auto-finish]', e); return; }
   for (const { raffle, winners } of finished) {
-    (async () => {
-      try {
-        const prizes = listRafflePrizes(raffle.id);
-        winners.forEach((w, i) => {
-          sendMessage(w.tg_id, `🎉 Congratulations! You won the giveaway "${raffle.title}"${prizes[i] ? ` — ${prizes[i].title}${prizes[i].gift_number ? ' #' + prizes[i].gift_number : ''}` : ''}! Open the app for details.`).catch(() => {});
-          const winnerUser = getUser(w.tg_id);
-          logPlayerActivity(winnerUser?.username || winnerUser?.first_name, `won the giveaway "${raffle.title}" 🎊`, '🎊');
-        });
-        const { channelId, endImage } = getGiveawayChannelSettings();
-        if (!channelId) return;
-        const winnerLines = winners.length
-          ? winners.map((w, i) => `🆔 <code>${w.tg_id}</code>${prizes[i] ? ` — ${prizes[i].title}` : ''}`).join('\n')
-          : 'No entries were registered.';
-        const text = `🏁 <b>Giveaway ended!</b>\n\n🏆 <b>${raffle.title}</b>\n\n🎊 Winners:\n${winnerLines}`;
-        if (endImage) await sendPhoto(channelId, endImage, text); else await sendMessage(channelId, text);
-      } catch (e) { console.error('[raffle auto-finish channel post]', e); }
-    })();
+    try {
+      const prizes = listRafflePrizes(raffle.id);
+      winners.forEach((w, i) => {
+        sendMessage(w.tg_id, `🎉 Congratulations! You won the giveaway "${raffle.title}"${prizes[i] ? ` — ${prizes[i].title}${prizes[i].gift_number ? ' #' + prizes[i].gift_number : ''}` : ''}! Open the app for details.`).catch(() => {});
+        const winnerUser = getUser(w.tg_id);
+        logPlayerActivity(winnerUser?.username || winnerUser?.first_name, `won the giveaway "${raffle.title}" 🎊`, '🎊');
+      });
+    } catch (e) { console.error('[raffle auto-finish]', e); }
   }
 }, 60 * 1000);
 
