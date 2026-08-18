@@ -1,4 +1,4 @@
-import db from './db.js';
+import db, { round2 } from './db.js';
 import { adjustToman, getUser, hasClaimedTask, getTask } from './db.js';
 import crypto from 'crypto';
 
@@ -66,6 +66,11 @@ function safeAddColumn(table, columnDef) {
 // A deadline the giveaway auto-ends at — added after raffles already shipped without one, so
 // existing installs need this migration to pick it up (admin-set countdown, like the reference design).
 safeAddColumn('raffles', 'ends_at TEXT');
+// Two mutually exclusive ways for a user to earn extra tickets beyond their free base ticket — the
+// admin picks one per raffle: 'toman' (buy tickets, existing ticket_price_toman/qty flow) or
+// 'referral' (1 ticket per successful invite, up to tickets_per_referral each — no LNDC spent).
+safeAddColumn('raffles', "ticket_method TEXT NOT NULL DEFAULT 'toman'");
+safeAddColumn('raffles', 'tickets_per_referral INTEGER NOT NULL DEFAULT 1');
 
 function sha256Hex(str) { return crypto.createHash('sha256').update(str).digest('hex'); }
 // Strips the hidden server_seed from a raffle before it's sent to a player — only revealed once the
@@ -122,11 +127,12 @@ export function listRecentRaffleWinners(limit = 10) {
 export function createRaffle(r) {
   const serverSeed = crypto.randomBytes(16).toString('hex');
   return db.prepare(`
-    INSERT INTO raffles (title, prize_description, capacity, winners_count, required_task_id, ticket_price_toman, max_tickets_per_user, ends_at, server_seed, server_seed_hash)
-    VALUES (?,?,?,?,?,?,?,?,?,?)
+    INSERT INTO raffles (title, prize_description, capacity, winners_count, required_task_id, ticket_price_toman, max_tickets_per_user, ends_at, server_seed, server_seed_hash, ticket_method, tickets_per_referral)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(r.title, r.prize_description || null, Number(r.capacity) || 100, Number(r.winners_count) || 10,
     r.required_task_id ? Number(r.required_task_id) : null, Number(r.ticket_price_toman) || 0, Number(r.max_tickets_per_user) || 1,
-    r.ends_at || null, serverSeed, sha256Hex(serverSeed)
+    r.ends_at || null, serverSeed, sha256Hex(serverSeed),
+    r.ticket_method === 'referral' ? 'referral' : 'toman', Math.max(1, Number(r.tickets_per_referral) || 1)
   ).lastInsertRowid;
 }
 export function updateRaffle(id, r) {
@@ -134,10 +140,11 @@ export function updateRaffle(id, r) {
   if (!raffle) throw new Error('Raffle not found');
   if (raffle.status !== 'open') throw new Error('This raffle is no longer open');
   db.prepare(`
-    UPDATE raffles SET title=?, prize_description=?, capacity=?, winners_count=?, required_task_id=?, ticket_price_toman=?, max_tickets_per_user=?, ends_at=?
+    UPDATE raffles SET title=?, prize_description=?, capacity=?, winners_count=?, required_task_id=?, ticket_price_toman=?, max_tickets_per_user=?, ends_at=?, ticket_method=?, tickets_per_referral=?
     WHERE id=?
   `).run(r.title, r.prize_description || null, Number(r.capacity) || 100, Number(r.winners_count) || 10,
-    r.required_task_id ? Number(r.required_task_id) : null, Number(r.ticket_price_toman) || 0, Number(r.max_tickets_per_user) || 1, r.ends_at || null, id);
+    r.required_task_id ? Number(r.required_task_id) : null, Number(r.ticket_price_toman) || 0, Number(r.max_tickets_per_user) || 1, r.ends_at || null,
+    r.ticket_method === 'referral' ? 'referral' : 'toman', Math.max(1, Number(r.tickets_per_referral) || 1), id);
 }
 export function deleteRaffle(id) {
   db.prepare('DELETE FROM raffle_entries WHERE raffle_id = ?').run(id);
@@ -175,8 +182,15 @@ export function getRaffleStatusForUser(raffleId, tgId) {
   const myEntry = getEntry(raffleId, tgId);
   const taskDone = raffle.required_task_id ? hasClaimedTask(tgId, raffle.required_task_id) : true;
   const requiredTask = raffle.required_task_id ? getTask(raffle.required_task_id) : null;
+  // Only computed when relevant, so the status payload stays cheap for 'toman'-method raffles
+  let referralTickets = null;
+  if (raffle.ticket_method === 'referral') {
+    const referredCount = db.prepare('SELECT COUNT(*) c FROM users WHERE referred_by = ?').get(tgId).c;
+    const earned = Math.min(raffle.max_tickets_per_user, 1 + referredCount * raffle.tickets_per_referral);
+    referralTickets = { referredCount, earned, claimable: myEntry ? Math.max(0, earned - myEntry.tickets) : 0 };
+  }
   return {
-    raffle: sanitizeRaffleForClient(raffle), entriesCount, myEntry, taskDone, requiredTask,
+    raffle: sanitizeRaffleForClient(raffle), entriesCount, myEntry, taskDone, requiredTask, referralTickets,
     prizes: listRafflePrizes(raffleId), ticketPool: getRaffleTicketPool(raffleId),
   };
 }
@@ -195,17 +209,18 @@ export function registerForRaffle(tgId, raffleId) {
 }
 
 // Buying extra tickets (any quantity at once) to increase your chance, up to the cap max_tickets_per_user
+// — only available when the admin has set this raffle's ticket method to 'toman'.
 export function buyRaffleTickets(tgId, raffleId, qty = 1) {
   const raffle = getRaffle(raffleId);
   if (!raffle || raffle.status !== 'open') throw new Error('This raffle is not open yet');
-  if (!raffle.ticket_price_toman) throw new Error('Ticket purchase is not enabled for this raffle');
+  if (raffle.ticket_method !== 'toman' || !raffle.ticket_price_toman) throw new Error('Ticket purchase is not enabled for this raffle');
   const entry = getEntry(raffleId, tgId);
   if (!entry) throw new Error('You must first register for the raffle');
   qty = Math.max(1, Math.floor(Number(qty) || 1));
   if (entry.tickets + qty > raffle.max_tickets_per_user) {
     throw new Error(`You can hold at most ${raffle.max_tickets_per_user} ticket(s) for this raffle`);
   }
-  const totalCost = raffle.ticket_price_toman * qty;
+  const totalCost = round2(raffle.ticket_price_toman * qty);
   const user = getUser(tgId);
   if (!user || user.balance_toman < totalCost) throw new Error('Insufficient wallet balance');
   const tx = db.transaction(() => {
@@ -216,6 +231,25 @@ export function buyRaffleTickets(tgId, raffleId, qty = 1) {
 }
 // Kept for backward compatibility with any old caller expecting a single-ticket purchase
 export function buyRaffleTicket(tgId, raffleId) { return buyRaffleTickets(tgId, raffleId, 1); }
+
+// Converts a user's successful referrals into raffle tickets — only available when the admin has set
+// this raffle's ticket method to 'referral'. Recomputes from scratch every call (rather than tracking
+// a running counter) so it always reflects the user's current total referral count, including
+// referrals that happened after they registered for the raffle; only the newly-earned delta is
+// granted, and it's capped at max_tickets_per_user same as the LNDC-purchase method.
+export function claimReferralTickets(tgId, raffleId) {
+  const raffle = getRaffle(raffleId);
+  if (!raffle || raffle.status !== 'open') throw new Error('This raffle is not open yet');
+  if (raffle.ticket_method !== 'referral') throw new Error('Referral tickets are not enabled for this raffle');
+  const entry = getEntry(raffleId, tgId);
+  if (!entry) throw new Error('You must first register for the raffle');
+  const referredCount = db.prepare('SELECT COUNT(*) c FROM users WHERE referred_by = ?').get(tgId).c;
+  const earned = Math.min(raffle.max_tickets_per_user, 1 + referredCount * raffle.tickets_per_referral);
+  const delta = earned - entry.tickets;
+  if (delta <= 0) throw new Error('No new referral tickets to claim yet — invite more friends!');
+  db.prepare('UPDATE raffle_entries SET tickets = tickets + ? WHERE raffle_id = ? AND tg_id = ?').run(delta, raffleId, tgId);
+  return { granted: delta, totalTickets: earned, referredCount };
+}
 
 // Deterministic PRNG seeded from a hex string — the same seed always produces the exact same
 // sequence, which is what makes a draw independently re-computable/verifiable once the seed is
