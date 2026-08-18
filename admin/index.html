@@ -148,6 +148,7 @@
     <button data-tab="leaderboard" onclick="showTab('leaderboard')">Leaderboard</button>
     <button data-tab="raffles" onclick="showTab('raffles')">🎟 Big wheel</button>
     <button data-tab="chests" onclick="showTab('chests')">📦 Chests</button>
+    <button data-tab="giftpacks" onclick="showTab('giftpacks')">🎁 Gift packs</button>
     <button data-tab="achievements" onclick="showTab('achievements')">🏅 Achievements</button>
     <button data-tab="auction" onclick="showTab('auction')">Auction</button>
     <button data-tab="season" onclick="showTab('season')">Battle pass</button>
@@ -179,12 +180,12 @@
           <div><label>Name</label><input id="curName"></div>
         </div>
         <div class="row2">
-          <div><label>Rate in LNDC</label><input type="number" id="curRate"></div>
+          <div><label>Rate in LNDC</label><input type="number" id="curRate" step="0.01"></div>
           <div><label>active?</label><select id="curActive"><option value="1">Yes</option><option value="0">No</option></select></div>
         </div>
         <div class="row2">
-          <div><label>Minimum deposit</label><input type="number" id="curMinDep"></div>
-          <div><label>Minimum withdrawal</label><input type="number" id="curMinWd"></div>
+          <div><label>Minimum deposit</label><input type="number" id="curMinDep" step="0.01"></div>
+          <div><label>Minimum withdrawal</label><input type="number" id="curMinWd" step="0.01"></div>
         </div>
         <label>Deposit address/number (what the user should deposit to)</label>
         <input id="curDepositAddress" placeholder="e.g. wallet address or account number">
@@ -224,7 +225,7 @@
         <h3>🎁 Gift market minimum listing price</h3>
         <p class="muted">The lowest price (in LNDC) a user is allowed to list a gift for sale at.</p>
         <label>Minimum price (LNDC)</label>
-        <input type="number" id="giftMinPrice" value="5000">
+        <input type="number" id="giftMinPrice" value="5000" step="0.01">
         <button class="btn" onclick="saveGiftMarketMinPrice()">Save</button>
       </div>
       <div class="card">
@@ -257,7 +258,7 @@
         </select>
         <div id="refCurrencyRewardBox">
           <div class="row2">
-            <div><label>Amount</label><input type="number" id="refSignupBonus" min="0"></div>
+            <div><label>Amount</label><input type="number" id="refSignupBonus" min="0" step="0.01"></div>
             <div><label>Currency</label><select id="refSignupBonusCurrency"><option value="LNDC">Lando Coin (LNDC)</option></select></div>
           </div>
           <p class="muted">Leave the amount empty or 0 to disable the flat reward entirely.</p>
@@ -330,7 +331,7 @@
           <div><label>Inactive for (days)</label><input type="number" id="cbInactiveDays" min="1"></div>
           <div><label>Don't remind again for (days)</label><input type="number" id="cbCooldownDays" min="1"></div>
         </div>
-        <label>Gift amount (LNDC, 0 = no gift)</label><input type="number" id="cbReward" min="0">
+        <label>Gift amount (LNDC, 0 = no gift)</label><input type="number" id="cbReward" min="0" step="0.01">
         <label>Message</label><textarea id="cbMessage" rows="3"></textarea>
         <button class="btn" onclick="saveComebackConfig()">Save</button>
         <p class="muted" id="cbSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
@@ -390,7 +391,7 @@
         <input type="hidden" id="prodImage">
         <img id="prodImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
-          <div><label>Price (LNDC)</label><input type="number" id="prodPrice"></div>
+          <div><label>Price (LNDC)</label><input type="number" id="prodPrice" step="0.01"></div>
           <div><label>active?</label><select id="prodActive"><option value="1">Yes</option><option value="0">No</option></select></div>
         </div>
         <button class="btn" onclick="saveProduct()">Save</button>
@@ -439,7 +440,7 @@
           <input id="taskLink" placeholder="https://instagram.com/...">
         </div>
         <div class="row2">
-          <div><label>Reward (LNDC)</label><input type="number" id="taskReward"></div>
+          <div><label>Reward (LNDC)</label><input type="number" id="taskReward" step="0.01"></div>
           <div><label>active?</label><select id="taskActive"><option value="1">Yes</option><option value="0">No</option></select></div>
         </div>
         <button class="btn" onclick="saveTask()">Save</button>
@@ -475,7 +476,7 @@
         </div>
         <div class="row2">
           <div><label>Base power</label><input type="number" id="gcPower"></div>
-          <div><label>Level-1 purchase price (LNDC)</label><input type="number" id="gcPrice"></div>
+          <div><label>Level-1 purchase price (LNDC)</label><input type="number" id="gcPrice" step="0.01"></div>
         </div>
         <div class="row2">
           <div><label>Quantity limit (empty = unlimited)</label><input type="number" id="gcMaxSupply"></div>
@@ -509,7 +510,7 @@
         </div>
         <p class="muted" id="scPowerRangeHint"></p>
         <div class="row2">
-          <div><label>Shop price (LNDC)</label><input type="number" id="scPrice"></div>
+          <div><label>Shop price (LNDC)</label><input type="number" id="scPrice" step="0.01"></div>
           <div><label>Quantity limit (empty = unlimited)</label><input type="number" id="scMaxSupply"></div>
         </div>
         <label>Active in the card shop?</label><select id="scActive"><option value="1">Yes</option><option value="0">No</option></select>
@@ -551,7 +552,7 @@
         </div>
         <div class="row2">
           <div><label>Daily free games count</label><input type="number" id="cfgDailyLimit"></div>
-          <div><label>Extra game cost (LNDC)</label><input type="number" id="cfgExtraPrice"></div>
+          <div><label>Extra game cost (LNDC)</label><input type="number" id="cfgExtraPrice" step="0.01"></div>
         </div>
         <div class="row2">
           <div><label>Extra games per purchase</label><input type="number" id="cfgExtraCount"></div>
@@ -559,7 +560,7 @@
         </div>
         <h3 style="margin-top:16px;">Second upgrade method: boost (sacrificing)</h3>
         <div class="row2">
-          <div><label>Cost per upgrade (LNDC)</label><input type="number" id="cfgSacFee"></div>
+          <div><label>Cost per upgrade (LNDC)</label><input type="number" id="cfgSacFee" step="0.01"></div>
           <div><label>Power transfer percent from sacrifice</label><input type="number" id="cfgSacPercent"></div>
         </div>
         <button class="btn" onclick="saveGameConfig()">Save settings</button>
@@ -574,7 +575,7 @@
           <div><label>From rank</label><input type="number" id="prizeFrom"></div>
           <div><label>To rank</label><input type="number" id="prizeTo"></div>
         </div>
-        <label>Prize (LNDC)</label><input type="number" id="prizeReward">
+        <label>Prize (LNDC)</label><input type="number" id="prizeReward" step="0.01">
         <button class="btn" onclick="saveLeaderboardPrize()">Save</button>
       </div>
       <div id="leaderboardPrizesTable"></div>
@@ -625,7 +626,7 @@
         </div>
         <div class="row2">
           <div><label>Prize type</label><select id="lpRewardType" onchange="toggleLeaguePrizeFields()"><option value="toman">LNDC</option><option value="card">Card</option></select></div>
-          <div id="lpTomanWrap"><label>Amount (LNDC)</label><input type="number" id="lpRewardToman"></div>
+          <div id="lpTomanWrap"><label>Amount (LNDC)</label><input type="number" id="lpRewardToman" step="0.01"></div>
           <div id="lpCardWrap" style="display:none;"><label>Card</label><select id="lpCardId"></select></div>
         </div>
         <button class="btn" onclick="saveLeaguePrize()">Save prize</button>
@@ -646,7 +647,7 @@
         <label>Required task to enter (optional)</label>
         <select id="rfTaskId"><option value="">No task required</option></select>
         <div class="row2">
-          <div><label>Price per extra ticket (LNDC) — zero means disabled</label><input type="number" id="rfTicketPrice" value="0"></div>
+          <div><label>Price per extra ticket (LNDC) — zero means disabled</label><input type="number" id="rfTicketPrice" value="0" step="0.01"></div>
           <div><label>Ticket cap per person</label><input type="number" id="rfMaxTickets" value="1"></div>
         </div>
         <label>Ends at (optional — auto-finishes and draws winners at this time)</label>
@@ -693,9 +694,11 @@
         <input type="hidden" id="chImage">
         <img id="chImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
-          <div><label>Price (LNDC)</label><input type="number" id="chPrice" value="0"></div>
+          <div><label>Price (LNDC)</label><input type="number" id="chPrice" value="0" step="0.01"></div>
           <div><label>Sort order</label><input type="number" id="chOrder" value="0"></div>
         </div>
+        <label>Rewards per opening — how many prizes are drawn (independently, with replacement) each time this chest is opened</label>
+        <input type="number" id="chRewardsCount" value="1" min="1">
         <label>active?</label>
         <select id="chActive"><option value="1">Yes</option><option value="0">No</option></select>
         <button class="btn" onclick="saveChest()">Save</button>
@@ -703,7 +706,7 @@
       <div id="chestsTable"></div>
       <div class="card" id="chestItemsBox" style="display:none;">
         <h3 id="chestItemsTitle"></h3>
-        <p class="muted">This is the chest's prize pool — when a user opens it, one of these items below is picked at random weighted by chance %. The chances don't have to add up to exactly 100, but 100 makes them easiest to read as real percentages.</p>
+        <p class="muted">This is the chest's prize pool — when a user opens it, one of these items below is picked at random weighted by chance % (repeated per "rewards per opening" above). The chances don't have to add up to exactly 100, but 100 makes them easiest to read as real percentages.</p>
         <input type="hidden" id="ciChestId">
         <input type="hidden" id="ciId">
         <label>Label (shown to the user, optional — auto-generated if left empty)</label><input id="ciLabel" placeholder="e.g. Legendary Card">
@@ -718,8 +721,12 @@
           </div>
           <div><label>Win chance (%)</label><input type="number" id="ciProbability" step="0.1"></div>
         </div>
-        <div id="ciTomanField"><label>Amount (LNDC)</label><input type="number" id="ciAmount"></div>
-        <div id="ciCardField" style="display:none;"><label>Card</label><select id="ciCardId"></select></div>
+        <div id="ciTomanField"><label>Amount (LNDC)</label><input type="number" id="ciAmount" step="0.01"></div>
+        <div id="ciCardField" style="display:none;">
+          <label>Card</label><select id="ciCardId" onchange="renderChestItemLevelOdds()"></select>
+          <p class="muted" style="font-size:11px;">Leave the level odds below empty to grant this card at its default level (level 1, or its fixed level if it's a special/instant-level card). Set odds to instead randomize which level a normal leveled (1–7) card is granted at — e.g. 70% level 1, 25% level 2, 5% level 3. This is for leveled cards, not fixed level 2–7 special cards.</p>
+          <div id="ciLevelOddsBox"></div>
+        </div>
         <div id="ciAvatarField" style="display:none;"><label>Avatar</label><select id="ciAvatarId"></select></div>
         <div id="ciExtraField" style="display:none;"><label>Extra games count</label><input type="number" id="ciExtraCount"></div>
         <label>active?</label>
@@ -727,6 +734,58 @@
         <button class="btn" onclick="saveChestItem()">Save prize</button>
       </div>
       <div id="chestItemsTable"></div>
+    </section>
+
+    <section class="tab" id="tab-giftpacks">
+      <div class="card">
+        <h3>Create / edit gift pack</h3>
+        <p class="muted">A purchasable mystery box whose prizes are real Telegram NFT gifts. Unlike chests, a winning gift can't be handed over automatically — you'll need to manually send it and mark it delivered in the "Deliveries" list below.</p>
+        <input type="hidden" id="gpId">
+        <label>Title</label><input id="gpTitle" placeholder="e.g. Mystery Gift Box">
+        <label>Description (optional)</label><textarea id="gpDesc" rows="2"></textarea>
+        <label>Image</label>
+        <input type="file" id="gpImageFile" accept="image/*" onchange="uploadImageTo('gpImageFile','gpImage','gpImagePreview')">
+        <input type="hidden" id="gpImage">
+        <img id="gpImagePreview" style="max-width:120px;border-radius:8px;display:none;margin-bottom:8px;">
+        <div class="row2">
+          <div><label>Price (LNDC)</label><input type="number" id="gpPrice" value="0" step="0.01"></div>
+          <div><label>Sort order</label><input type="number" id="gpOrder" value="0"></div>
+        </div>
+        <label>Rewards per opening — how many gifts are drawn (independently, with replacement) each time this pack is opened</label>
+        <input type="number" id="gpRewardsCount" value="1" min="1">
+        <label>active?</label>
+        <select id="gpActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" onclick="saveGiftPack()">Save</button>
+      </div>
+      <div id="giftPacksTable"></div>
+      <div class="card" id="giftPackItemsBox" style="display:none;">
+        <h3 id="giftPackItemsTitle"></h3>
+        <p class="muted">This is the pack's prize pool — when a user opens it, one of these gifts is picked at random weighted by chance % (repeated per "rewards per opening" above).</p>
+        <input type="hidden" id="gpiPackId">
+        <input type="hidden" id="gpiId">
+        <label>Telegram NFT gift link (optional — auto-fills the fields below)</label>
+        <div class="row2">
+          <input id="gpiNftLink" placeholder="t.me/nft/Name-123">
+          <button type="button" class="btn secondary" onclick="lookupGiftPackItemNft()">Look up</button>
+        </div>
+        <p class="muted" id="gpiNftInfo" style="font-size:11px;"></p>
+        <label>Gift title</label><input id="gpiTitle" placeholder="e.g. Desk Calendar #123">
+        <label>Image</label>
+        <input type="file" id="gpiImageFile" accept="image/*" onchange="uploadImageTo('gpiImageFile','gpiImage','gpiImagePreview')">
+        <input type="hidden" id="gpiImage">
+        <img id="gpiImagePreview" style="max-width:100px;border-radius:8px;display:none;margin-bottom:8px;">
+        <label>Serial number (optional)</label><input id="gpiSerial" placeholder="e.g. 123">
+        <label>Win chance (%)</label><input type="number" id="gpiProbability" step="0.1">
+        <label>active?</label>
+        <select id="gpiActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" onclick="saveGiftPackItem()">Save gift</button>
+      </div>
+      <div id="giftPackItemsTable"></div>
+      <div class="card">
+        <h3>📦 Pending deliveries</h3>
+        <p class="muted">Gifts users have won from a pack but that haven't been manually sent yet. Send the real gift on Telegram, then mark it delivered here.</p>
+        <div id="giftPackDeliveriesTable"></div>
+      </div>
     </section>
 
     <section class="tab" id="tab-achievements">
@@ -791,7 +850,7 @@
         </div>
         <div class="row2">
           <div><label>Bid step (% of current price)</label><input type="number" id="aucStep" step="0.5"></div>
-          <div><label>Minimum balance to participate (LNDC)</label><input type="number" id="aucMinBalance"></div>
+          <div><label>Minimum balance to participate (LNDC)</label><input type="number" id="aucMinBalance" step="0.01"></div>
         </div>
         <label>Anti-Snipe (30-second extension)</label>
         <select id="aucAntiSnipe"><option value="1">Active</option><option value="0">Inactive</option></select>
@@ -816,7 +875,7 @@
         <h3>Seasonal battle pass settings</h3>
         <select id="seaEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>Premium price (LNDC)</label><input type="number" id="seaPrice"></div>
+          <div><label>Premium price (LNDC)</label><input type="number" id="seaPrice" step="0.01"></div>
           <div><label>Season duration (days)</label><input type="number" id="seaDuration"></div>
         </div>
         <div class="row2">
@@ -828,7 +887,7 @@
           <div><label>XP Per purchase</label><input type="number" id="seaXpPurchase"></div>
         </div>
         <label>XP Per clan donation</label><input type="number" id="seaXpDonation">
-        <label>Price per tier purchase (LNDC) — zero means tier purchase is disabled</label><input type="number" id="seaTierSkipPrice">
+        <label>Price per tier purchase (LNDC) — zero means tier purchase is disabled</label><input type="number" id="seaTierSkipPrice" step="0.01">
         <button class="btn" onclick="saveSeasonConfig()">Save settings</button>
         <button class="btn danger" onclick="startNewSeasonUI()">Start new season (full reset)</button>
       </div>
@@ -837,16 +896,18 @@
         <label>Tier number</label><input type="number" id="tierNumber">
         <div class="row2">
           <div><label>Free prize type</label>
-            <select id="tierFreeType" onchange="onBpValueTypeChange('tierFree')"><option value="none">Nothing</option><option value="toman">LNDC</option><option value="card">Card</option><option value="avatar">Avatar</option><option value="product">Product</option><option value="extra_games">Extra game</option></select>
+            <select id="tierFreeType" onchange="onBpValueTypeChange('tierFree')"><option value="none">Nothing</option><option value="toman">LNDC</option><option value="card">Card</option><option value="avatar">Avatar</option><option value="product">Product</option><option value="gift_pack">Gift pack</option><option value="extra_games">Extra game</option></select>
           </div>
           <div id="tierFreeValueWrap"><label>Free amount</label><input id="tierFreeValue"></div>
         </div>
+        <div id="tierFreeLevelOddsBox"></div>
         <div class="row2">
           <div><label>Premium prize type</label>
-            <select id="tierPremType" onchange="onBpValueTypeChange('tierPrem')"><option value="none">Nothing</option><option value="toman">LNDC</option><option value="card">Card</option><option value="avatar">Avatar</option><option value="product">Product</option><option value="extra_games">Extra game</option></select>
+            <select id="tierPremType" onchange="onBpValueTypeChange('tierPrem')"><option value="none">Nothing</option><option value="toman">LNDC</option><option value="card">Card</option><option value="avatar">Avatar</option><option value="product">Product</option><option value="gift_pack">Gift pack</option><option value="extra_games">Extra game</option></select>
           </div>
           <div id="tierPremValueWrap"><label>Premium amount</label><input id="tierPremValue"></div>
         </div>
+        <div id="tierPremLevelOddsBox"></div>
         <button class="btn" onclick="saveSeasonTier()">Save tier</button>
       </div>
       <div id="seasonTiersTable"></div>
@@ -857,7 +918,7 @@
         <h3>Clan system settings</h3>
         <select id="clnEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>Clan creation cost</label><input type="number" id="clnCreateCost"></div>
+          <div><label>Clan creation cost</label><input type="number" id="clnCreateCost" step="0.01"></div>
           <div><label>Max members</label><input type="number" id="clnMaxMembers"></div>
         </div>
         <div class="row2">
@@ -866,7 +927,7 @@
         </div>
         <div class="row2">
           <div><label>Score per 1,000 LNDC donated</label><input type="number" id="clnScoreDonation"></div>
-          <div><label>Top clan prize (LNDC)</label><input type="number" id="clnReward"></div>
+          <div><label>Top clan prize (LNDC)</label><input type="number" id="clnReward" step="0.01"></div>
         </div>
         <div class="row2">
           <div><label>Number of winning clans</label><select id="clnWinnersCount"><option value="1">1</option><option value="3">3</option></select></div>
@@ -894,7 +955,7 @@
         <h3>⚔️ Clan war settings</h3>
         <select id="cwEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>Minimum entry (LNDC)</label><input type="number" id="cwMinEntry"></div>
+          <div><label>Minimum entry (LNDC)</label><input type="number" id="cwMinEntry" step="0.01"></div>
           <div><label>Win fee (%)</label><input type="number" id="cwFeePercent"></div>
         </div>
         <label>Members per team</label><input type="number" id="cwTeamSize">
@@ -930,7 +991,7 @@
         <input type="hidden" id="avImage">
         <img id="avImagePreview" style="max-width:100px;border-radius:8px;display:none;margin-bottom:8px;">
         <div class="row2">
-          <div><label>Price (LNDC)</label><input type="number" id="avPrice"></div>
+          <div><label>Price (LNDC)</label><input type="number" id="avPrice" step="0.01"></div>
           <div><label>Quantity (empty = unlimited)</label><input type="number" id="avQuantity"></div>
         </div>
         <label>Source</label>
@@ -957,7 +1018,7 @@
         <p class="muted">A one-time LNDC bonus paid automatically when a user checks in this many days in a row (e.g. 3, 7, 30). Missing a day resets the streak to zero.</p>
         <div class="row2">
           <div><label>Streak length (days)</label><input type="number" id="srDays" min="1"></div>
-          <div><label>Reward (LNDC)</label><input type="number" id="srReward" min="0"></div>
+          <div><label>Reward (LNDC)</label><input type="number" id="srReward" min="0" step="0.01"></div>
         </div>
         <button class="btn" onclick="saveStreakReward()">Save milestone</button>
         <div id="streakRewardsTable" style="margin-top:10px;"></div>
@@ -1028,7 +1089,7 @@
         <label>Album name</label><input id="albName">
         <div class="row2">
           <div><label>Prize type</label><select id="albRewardType" onchange="toggleAlbumRewardFields()"><option value="toman">LNDC</option><option value="avatar">Avatar</option><option value="card">Card(s)</option></select></div>
-          <div id="albRewardValueWrap"><label>Amount (LNDC)</label><input type="number" id="albRewardValue"></div>
+          <div id="albRewardValueWrap"><label>Amount (LNDC)</label><input type="number" id="albRewardValue" step="0.01"></div>
         </div>
         <div id="albRewardCardsWrap" style="display:none;">
           <label>Card prizes — add one or more, each with its own level</label>
@@ -1063,15 +1124,9 @@
     <section class="tab" id="tab-giftcfg">
       <div class="card">
         <h3>Gift system settings</h3>
+        <p class="muted">Lets users send LNDC to another user directly from the mini app.</p>
         <select id="gcEnabled2"><option value="1">Active</option><option value="0">Inactive</option></select>
-        <div class="row2">
-          <div><label>Minimum referrals for card gift</label><input type="number" id="gcMinReferrals"></div>
-          <div><label>Max card gifts per month</label><input type="number" id="gcMaxPerMonth"></div>
-        </div>
-        <div class="row2">
-          <div><label>Max giftable card level</label><input type="number" id="gcMaxLevel2"></div>
-          <div><label>LNDC gift fee (%)</label><input type="number" id="gcFeePercent"></div>
-        </div>
+        <label>LNDC gift fee (%)</label><input type="number" id="gcFeePercent">
         <button class="btn" onclick="saveGiftConfig()">Save</button>
       </div>
     </section>
@@ -1196,7 +1251,7 @@ function showTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: loadReferralSettings, design: loadUiImages, retention: () => { loadComebackConfig(); loadBackupConfig(); }, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
-    cardcategories: loadCategories, mergecosts: loadMergeCosts, chests: loadChestsAdmin, achievements: loadAchievementsAdmin,
+    cardcategories: loadCategories, mergecosts: loadMergeCosts, chests: loadChestsAdmin, giftpacks: loadGiftPacksAdmin, achievements: loadAchievementsAdmin,
     auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
     giftcfg: loadGiftConfigAdmin, seasons: loadSeasonsAdmin, cardmarket: loadCardMarketConfigAdmin,
@@ -1212,7 +1267,7 @@ async function loadDash() {
   document.getElementById('statsCard').innerHTML = `
     <p>Users: <b>${s.users}</b></p>
     <p>Orders: <b>${s.orders}</b></p>
-    <p>Total LNDC deposited: <b>${s.totalToman.toLocaleString('en-US')}</b></p>
+    <p>Total LNDC deposited: <b>${s.totalToman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></p>
     <p>Pending top-ups: <b>${s.pendingTopups}</b></p>
     <p>Pending currency requests: <b>${s.pendingCurrency}</b></p>
   `;
@@ -1225,7 +1280,7 @@ async function loadCurrencies() {
   const rows = await api('/currencies');
   document.getElementById('currenciesTable').innerHTML = `
     <table><tr><th>Code</th><th>Name</th><th>Rate (LNDC)</th><th>Deposit address</th><th>Active</th><th></th></tr>
-    ${rows.map(c => `<tr><td>${c.code}</td><td>${c.name}</td><td>${c.rate_toman.toLocaleString('en-US')}</td><td>${c.deposit_address || '—'}</td><td>${c.active ? '✅' : '❌'}</td>
+    ${rows.map(c => `<tr><td>${c.code}</td><td>${c.name}</td><td>${c.rate_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${c.deposit_address || '—'}</td><td>${c.active ? '✅' : '❌'}</td>
       <td><button class="btn secondary" onclick='editCurrency(${JSON.stringify(c)})'>Edit</button>
       <button class="btn danger" onclick="deleteCurrencyUI('${c.code}')">Delete</button></td></tr>`).join('')}
     </table>
@@ -1392,7 +1447,7 @@ async function loadBackupList() {
   const backups = await api('/backup/list');
   document.getElementById('backupList').innerHTML = backups.length ? `
     <table><tr><th>File</th><th>Size</th><th>Date</th></tr>
-    ${backups.map(b => `<tr><td style="font-size:11px;">${b.name}</td><td>${formatBackupSize(b.sizeBytes)}</td><td style="font-size:11px;">${new Date(b.createdAt).toLocaleString('en-US')}</td></tr>`).join('')}
+    ${backups.map(b => `<tr><td style="font-size:11px;">${b.name}</td><td>${formatBackupSize(b.sizeBytes)}</td><td style="font-size:11px;">${new Date(b.createdAt).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>`).join('')}
     </table>` : '<p class="muted">No backup has been made yet.</p>';
 }
 async function saveBackupConfig() {
@@ -1464,7 +1519,7 @@ async function loadTopups() {
   const rows = await api('/toman-topups');
   document.getElementById('topupsTable').innerHTML = rows.length ? `
     <table><tr><th>User</th><th>Amount</th><th>Tracking code</th><th>Actions</th></tr>
-    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString('en-US')}</td><td>${r.tracking_code}</td>
+    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${r.tracking_code}</td>
       <td><button class="btn" onclick="decideTopup(${r.id},true)">Approve</button>
       <button class="btn danger" onclick="decideTopup(${r.id},false)">Reject</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No requests.</p>';
@@ -1476,7 +1531,7 @@ async function loadWithdrawals() {
   const rows = await api('/toman-withdrawals');
   document.getElementById('withdrawalsTable').innerHTML = rows.length ? `
     <table><tr><th>User</th><th>Amount</th><th>Card number</th><th>Actions</th></tr>
-    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString('en-US')}</td><td>${r.card_number}</td>
+    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${r.card_number}</td>
       <td><button class="btn" onclick="decideWithdrawal(${r.id},true)">Sent</button>
       <button class="btn danger" onclick="decideWithdrawal(${r.id},false)">Reject</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No requests.</p>';
@@ -1500,7 +1555,7 @@ async function loadProducts() {
   const rows = await api('/products');
   document.getElementById('productsTable').innerHTML = `
     <table><tr><th>Title</th><th>Price</th><th>Active</th><th>Actions</th></tr>
-    ${rows.map(p => `<tr><td>${p.title}</td><td>${p.price_toman.toLocaleString('en-US')}</td><td>${p.active ? '✅' : '❌'}</td>
+    ${rows.map(p => `<tr><td>${p.title}</td><td>${p.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${p.active ? '✅' : '❌'}</td>
       <td><button class="btn secondary" onclick='editProduct(${JSON.stringify(p)})'>Edit</button>
       <button class="btn danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join('')}
     </table>`;
@@ -1556,7 +1611,7 @@ async function loadOrders() {
   const rows = await api('/orders');
   document.getElementById('ordersTable').innerHTML = `
     <table><tr><th>User</th><th>Product</th><th>Count</th><th>Amount</th><th>Status</th><th>Actions</th></tr>
-    ${rows.map(o => `<tr><td>${o.tg_id}</td><td>${o.product_title}</td><td>${o.qty}</td><td>${o.total_toman.toLocaleString('en-US')}</td><td>${o.status}</td>
+    ${rows.map(o => `<tr><td>${o.tg_id}</td><td>${o.product_title}</td><td>${o.qty}</td><td>${o.total_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${o.status}</td>
       <td>${o.status !== 'delivered' ? `<button class="btn" onclick="setOrderStatus(${o.id},'delivered')">Delivered</button>` : ''}</td></tr>`).join('')}
     </table>`;
 }
@@ -1568,14 +1623,14 @@ async function loadGifts() {
   const pending = await api('/gift-offers/pending');
   document.getElementById('pendingGiftsTable').innerHTML = pending.length ? `
     <table><tr><th>Seller</th><th>Title</th><th>Price</th><th>Serial</th><th>Link</th><th>Actions</th></tr>
-    ${pending.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString('en-US')}</td><td>${g.serial_number || '-'}</td><td>${g.link ? `<a href="${g.link}" target="_blank">Link</a>` : '-'}</td>
+    ${pending.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${g.serial_number || '-'}</td><td>${g.link ? `<a href="${g.link}" target="_blank">Link</a>` : '-'}</td>
       <td><button class="btn" onclick="approveGift(${g.id})">✅ Approve</button> <button class="btn danger" onclick="rejectGift(${g.id})">❌ Reject</button></td></tr>`).join('')}
     </table>` : '<p class="muted">Listing is not pending approval.</p>';
 
   const rows = await api('/gift-offers');
   document.getElementById('giftsTable').innerHTML = `
     <table><tr><th>Seller</th><th>Buyer</th><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr>
-    ${rows.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.buyer_tg_id || '-'}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString('en-US')}</td><td>${g.status}</td>
+    ${rows.map(g => `<tr><td>${g.seller_tg_id}</td><td>${g.buyer_tg_id || '-'}</td><td>${g.title}</td><td>${g.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${g.status}</td>
       <td>${g.status === 'reserved' ? `<button class="btn danger" onclick="refundGift(${g.id})">Refund</button>` : ''}
         <button class="btn danger" onclick="deleteGiftOfferUI(${g.id})">Delete</button></td></tr>`).join('')}
     </table>`;
@@ -1622,7 +1677,7 @@ async function loadTasks() {
   const rows = await api('/tasks');
   document.getElementById('tasksTable').innerHTML = `
     <table><tr><th>Title</th><th>Type</th><th>Reward</th><th>Active</th><th>Actions</th></tr>
-    ${rows.map(t => `<tr><td>${t.title}</td><td>${t.kind}</td><td>${t.reward_toman.toLocaleString('en-US')}</td><td>${t.active ? '✅' : '❌'}</td>
+    ${rows.map(t => `<tr><td>${t.title}</td><td>${t.kind}</td><td>${t.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${t.active ? '✅' : '❌'}</td>
       <td><button class="btn secondary" onclick='editTask(${JSON.stringify(t)})'>Edit</button>
       <button class="btn danger" onclick="deleteTask(${t.id})">Delete</button></td></tr>`).join('')}
     </table>`;
@@ -1826,7 +1881,7 @@ async function loadGameCards() {
   const rows = (await api('/game/cards')).filter(c => !c.instant_level);
   document.getElementById('gameCardsTable').innerHTML = rows.length ? `
     <table><tr><th>Name</th><th>Base power</th><th>Price</th><th>Active</th><th>Actions</th></tr>
-    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.base_power}</td><td>${c.price_toman.toLocaleString('en-US')}</td><td>${c.active ? '✅' : '❌'}</td>
+    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.base_power}</td><td>${c.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${c.active ? '✅' : '❌'}</td>
       <td><button class="btn secondary" onclick='editGameCard(${JSON.stringify(c)})'>Edit</button>
       <button class="btn danger" onclick="deleteGameCard(${c.id})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No card registered yet.</p>';
@@ -1902,7 +1957,7 @@ async function loadSpecialCards() {
   const rows = (await api('/game/cards')).filter(c => c.instant_level >= 2);
   document.getElementById('specialCardsTable').innerHTML = rows.length ? `
     <table><tr><th>Name</th><th>Level</th><th>Custom power</th><th>Price</th><th>Active</th><th>Actions</th></tr>
-    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.instant_level}</td><td>${c.fixed_power}</td><td>${c.price_toman.toLocaleString('en-US')}</td><td>${c.active ? '✅' : '❌'}</td>
+    ${rows.map(c => `<tr><td>${c.name}</td><td>${c.instant_level}</td><td>${c.fixed_power}</td><td>${c.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${c.active ? '✅' : '❌'}</td>
       <td>
         <button class="btn secondary" onclick='editSpecialCard(${JSON.stringify(c)})'>Edit</button>
         <button class="btn gold" onclick="grantSpecialCardUI(${c.id})">🎁 Gift to user</button>
@@ -2007,7 +2062,7 @@ async function loadMergeCosts() {
   document.getElementById('mergeCostsForm').innerHTML = rows.map(r => `
     <div class="row2" style="align-items:center;">
       <div><label>Level ${r.from_level} → ${r.from_level + 1}</label></div>
-      <div><input type="number" id="mc-${r.from_level}" value="${r.cost_toman}"></div>
+      <div><input type="number" id="mc-${r.from_level}" value="${r.cost_toman}" step="0.01"></div>
     </div>`).join('');
 }
 async function saveMergeCosts() {
@@ -2026,12 +2081,14 @@ function toggleChestItemFields() {
   document.getElementById('ciCardField').style.display = type === 'card' ? 'block' : 'none';
   document.getElementById('ciAvatarField').style.display = type === 'avatar' ? 'block' : 'none';
   document.getElementById('ciExtraField').style.display = type === 'extra_games' ? 'block' : 'none';
+  if (type === 'card' && document.getElementById('ciCardId').value) renderChestItemLevelOdds();
+  else document.getElementById('ciLevelOddsBox').innerHTML = '';
 }
 async function loadChestsAdmin() {
   const chests = await api('/chests');
   document.getElementById('chestsTable').innerHTML = chests.length ? `
-    <table><tr><th>Title</th><th>Price</th><th>Active</th><th>Actions</th></tr>
-    ${chests.map(c => `<tr><td>${c.title}</td><td>${Number(c.price_toman).toLocaleString('en-US')}</td><td>${c.active ? '✅' : '❌'}</td>
+    <table><tr><th>Title</th><th>Price</th><th>Rewards/open</th><th>Active</th><th>Actions</th></tr>
+    ${chests.map(c => `<tr><td>${c.title}</td><td>${Number(c.price_toman).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${c.rewards_count || 1}</td><td>${c.active ? '✅' : '❌'}</td>
       <td>
         <button class="btn secondary" onclick='editChest(${JSON.stringify(c)})'>Edit</button>
         <button class="btn secondary" onclick="manageChestItems(${c.id}, '${c.title.replace(/'/g, "\\'")}')">Prizes</button>
@@ -2048,6 +2105,7 @@ function editChest(c) {
   if (c.image_url) { preview.src = c.image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
   document.getElementById('chPrice').value = c.price_toman;
   document.getElementById('chOrder').value = c.sort_order;
+  document.getElementById('chRewardsCount').value = c.rewards_count || 1;
   document.getElementById('chActive').value = c.active ? '1' : '0';
 }
 async function saveChest() {
@@ -2058,6 +2116,7 @@ async function saveChest() {
     image_url: document.getElementById('chImage').value,
     price_toman: document.getElementById('chPrice').value,
     sort_order: document.getElementById('chOrder').value,
+    rewards_count: document.getElementById('chRewardsCount').value,
     active: document.getElementById('chActive').value === '1',
   }) });
   document.getElementById('chId').value = '';
@@ -2065,6 +2124,7 @@ async function saveChest() {
   document.getElementById('chDesc').value = '';
   document.getElementById('chImage').value = '';
   document.getElementById('chImagePreview').style.display = 'none';
+  document.getElementById('chRewardsCount').value = 1;
   loadChestsAdmin();
 }
 async function deleteChestUI(id) {
@@ -2073,14 +2133,15 @@ async function deleteChestUI(id) {
   document.getElementById('chestItemsBox').style.display = 'none';
   loadChestsAdmin();
 }
+let CHEST_CARDS_CACHE = [];
 async function manageChestItems(chestId, title) {
   document.getElementById('ciChestId').value = chestId;
   document.getElementById('ciId').value = '';
   document.getElementById('chestItemsBox').style.display = 'block';
   document.getElementById('chestItemsTitle').textContent = `Prizes for "${title}"`;
 
-  const cards = await api('/game/cards');
-  document.getElementById('ciCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  CHEST_CARDS_CACHE = await api('/game/cards');
+  document.getElementById('ciCardId').innerHTML = CHEST_CARDS_CACHE.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   const avatars = await api('/avatars');
   document.getElementById('ciAvatarId').innerHTML = avatars.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
 
@@ -2096,6 +2157,24 @@ async function loadChestItemsTable(chestId) {
       <button class="btn danger" onclick="deleteChestItemUI(${i.id}, ${chestId})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No prize registered yet.</p>';
 }
+// Renders one number input per level (1..card.max_level) for the currently selected card in the
+// chest-item form, so the admin can set a win-weight per level. `existingWeights` (from editing an
+// existing prize) pre-fills them; otherwise they start empty (meaning "use the default level").
+function renderChestItemLevelOdds(existingWeights) {
+  const cardId = Number(document.getElementById('ciCardId').value);
+  const card = CHEST_CARDS_CACHE.find(c => c.id === cardId);
+  const box = document.getElementById('ciLevelOddsBox');
+  if (!card) { box.innerHTML = ''; return; }
+  const maxLevel = card.max_level || 7;
+  const weightByLevel = {};
+  (existingWeights || []).forEach(w => { weightByLevel[w.level] = w.weight; });
+  let html = '<div class="row2" style="flex-wrap:wrap;">';
+  for (let lvl = 1; lvl <= maxLevel; lvl++) {
+    html += `<div style="min-width:90px;"><label style="font-size:11px;">Level ${lvl} weight</label><input type="number" step="0.01" min="0" class="ci-level-weight" data-level="${lvl}" value="${weightByLevel[lvl] ?? ''}" placeholder="0"></div>`;
+  }
+  html += '</div>';
+  box.innerHTML = html;
+}
 function editChestItem(i) {
   document.getElementById('ciId').value = i.id;
   document.getElementById('ciLabel').value = i.label || '';
@@ -2107,23 +2186,36 @@ function editChestItem(i) {
   document.getElementById('ciProbability').value = i.probability_percent;
   document.getElementById('ciActive').value = i.active ? '1' : '0';
   toggleChestItemFields();
+  let weights = null;
+  if (i.card_level_weights) { try { weights = JSON.parse(i.card_level_weights); } catch (e) {} }
+  if (i.type === 'card') renderChestItemLevelOdds(weights);
 }
 async function saveChestItem() {
   const chestId = document.getElementById('ciChestId').value;
+  const type = document.getElementById('ciType').value;
+  let cardLevelWeights = null;
+  if (type === 'card') {
+    const rows = [...document.querySelectorAll('.ci-level-weight')]
+      .map(el => ({ level: Number(el.dataset.level), weight: Number(el.value) }))
+      .filter(w => w.weight > 0);
+    if (rows.length) cardLevelWeights = JSON.stringify(rows);
+  }
   await api('/chest-items', { method: 'POST', body: JSON.stringify({
     id: document.getElementById('ciId').value || null,
     chest_id: Number(chestId),
     label: document.getElementById('ciLabel').value,
-    type: document.getElementById('ciType').value,
+    type,
     amount_toman: document.getElementById('ciAmount').value,
     card_id: document.getElementById('ciCardId').value || null,
     avatar_id: document.getElementById('ciAvatarId').value || null,
     extra_games_count: document.getElementById('ciExtraCount').value,
     probability_percent: document.getElementById('ciProbability').value,
     active: document.getElementById('ciActive').value === '1',
+    card_level_weights: cardLevelWeights,
   }) });
   document.getElementById('ciId').value = '';
   document.getElementById('ciLabel').value = '';
+  document.getElementById('ciLevelOddsBox').innerHTML = '';
   loadChestItemsTable(chestId);
 }
 async function deleteChestItemUI(id, chestId) {
@@ -2131,6 +2223,149 @@ async function deleteChestItemUI(id, chestId) {
   await api(`/chest-items/${id}`, { method: 'DELETE' });
   loadChestItemsTable(chestId);
 }
+
+/* ---------- Shop gift packs (mystery NFT gift boxes) ---------- */
+async function loadGiftPacksAdmin() {
+  const packs = await api('/gift-packs');
+  document.getElementById('giftPacksTable').innerHTML = packs.length ? `
+    <table><tr><th>Title</th><th>Price</th><th>Rewards/open</th><th>Active</th><th>Actions</th></tr>
+    ${packs.map(p => `<tr><td>${p.title}</td><td>${Number(p.price_toman).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${p.rewards_count || 1}</td><td>${p.active ? '✅' : '❌'}</td>
+      <td>
+        <button class="btn secondary" onclick='editGiftPack(${JSON.stringify(p)})'>Edit</button>
+        <button class="btn secondary" onclick="manageGiftPackItems(${p.id}, '${p.title.replace(/'/g, "\\'")}')">Gifts</button>
+        <button class="btn danger" onclick="deleteGiftPackUI(${p.id})">Delete</button>
+      </td></tr>`).join('')}
+    </table>` : '<p class="muted">You have not created any gift pack yet.</p>';
+  await loadGiftPackDeliveries();
+}
+function editGiftPack(p) {
+  document.getElementById('gpId').value = p.id;
+  document.getElementById('gpTitle').value = p.title;
+  document.getElementById('gpDesc').value = p.description || '';
+  document.getElementById('gpImage').value = p.image_url || '';
+  const preview = document.getElementById('gpImagePreview');
+  if (p.image_url) { preview.src = p.image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+  document.getElementById('gpPrice').value = p.price_toman;
+  document.getElementById('gpOrder').value = p.sort_order;
+  document.getElementById('gpRewardsCount').value = p.rewards_count || 1;
+  document.getElementById('gpActive').value = p.active ? '1' : '0';
+}
+async function saveGiftPack() {
+  await api('/gift-packs', { method: 'POST', body: JSON.stringify({
+    id: document.getElementById('gpId').value || null,
+    title: document.getElementById('gpTitle').value,
+    description: document.getElementById('gpDesc').value,
+    image_url: document.getElementById('gpImage').value,
+    price_toman: document.getElementById('gpPrice').value,
+    sort_order: document.getElementById('gpOrder').value,
+    rewards_count: document.getElementById('gpRewardsCount').value,
+    active: document.getElementById('gpActive').value === '1',
+  }) });
+  document.getElementById('gpId').value = '';
+  document.getElementById('gpTitle').value = '';
+  document.getElementById('gpDesc').value = '';
+  document.getElementById('gpImage').value = '';
+  document.getElementById('gpImagePreview').style.display = 'none';
+  document.getElementById('gpRewardsCount').value = 1;
+  loadGiftPacksAdmin();
+}
+async function deleteGiftPackUI(id) {
+  if (!confirm('Delete this gift pack and all its prizes?')) return;
+  await api(`/gift-packs/${id}`, { method: 'DELETE' });
+  document.getElementById('giftPackItemsBox').style.display = 'none';
+  loadGiftPacksAdmin();
+}
+async function manageGiftPackItems(packId, title) {
+  document.getElementById('gpiPackId').value = packId;
+  document.getElementById('gpiId').value = '';
+  document.getElementById('giftPackItemsBox').style.display = 'block';
+  document.getElementById('giftPackItemsTitle').textContent = `Gifts in "${title}"`;
+  await loadGiftPackItemsTable(packId);
+  document.getElementById('giftPackItemsBox').scrollIntoView({ behavior: 'smooth' });
+}
+async function loadGiftPackItemsTable(packId) {
+  const items = await api(`/gift-packs/${packId}/items`);
+  document.getElementById('giftPackItemsTable').innerHTML = items.length ? `
+    <table><tr><th></th><th>Gift</th><th>Serial</th><th>Chance %</th><th>Active</th><th>Actions</th></tr>
+    ${items.map(i => `<tr>
+      <td>${i.gift_image_url ? `<img src="${i.gift_image_url}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;">` : '🎁'}</td>
+      <td>${i.gift_title}</td><td>${i.gift_serial_number || '—'}</td><td>${i.probability_percent}</td><td>${i.active ? '✅' : '❌'}</td>
+      <td><button class="btn secondary" onclick='editGiftPackItem(${JSON.stringify(i)})'>Edit</button>
+      <button class="btn danger" onclick="deleteGiftPackItemUI(${i.id}, ${packId})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No gift registered yet.</p>';
+}
+async function lookupGiftPackItemNft() {
+  const link = document.getElementById('gpiNftLink').value.trim();
+  if (!link) { alert('Paste the NFT gift link first'); return; }
+  const infoEl = document.getElementById('gpiNftInfo');
+  infoEl.textContent = 'Looking up on Telegram...';
+  try {
+    const g = await api('/nft-lookup', { method: 'POST', body: JSON.stringify({ link }) });
+    document.getElementById('gpiTitle').value = g.title;
+    document.getElementById('gpiImage').value = g.image_url;
+    document.getElementById('gpiSerial').value = g.number || '';
+    const preview = document.getElementById('gpiImagePreview');
+    preview.src = g.image_url; preview.style.display = 'block';
+    infoEl.textContent = `✅ Found — ${g.name}${g.number ? ' #' + g.number : ''}`;
+  } catch (e) {
+    infoEl.textContent = '';
+    alert(e.message || 'Could not fetch this gift from Telegram');
+  }
+}
+function editGiftPackItem(i) {
+  document.getElementById('gpiId').value = i.id;
+  document.getElementById('gpiNftLink').value = '';
+  document.getElementById('gpiNftInfo').textContent = '';
+  document.getElementById('gpiTitle').value = i.gift_title || '';
+  document.getElementById('gpiImage').value = i.gift_image_url || '';
+  const preview = document.getElementById('gpiImagePreview');
+  if (i.gift_image_url) { preview.src = i.gift_image_url; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+  document.getElementById('gpiSerial').value = i.gift_serial_number || '';
+  document.getElementById('gpiProbability').value = i.probability_percent;
+  document.getElementById('gpiActive').value = i.active ? '1' : '0';
+}
+async function saveGiftPackItem() {
+  const packId = document.getElementById('gpiPackId').value;
+  if (!document.getElementById('gpiTitle').value.trim()) { alert('Gift title is required'); return; }
+  await api('/gift-pack-items', { method: 'POST', body: JSON.stringify({
+    id: document.getElementById('gpiId').value || null,
+    gift_pack_id: Number(packId),
+    gift_title: document.getElementById('gpiTitle').value,
+    gift_image_url: document.getElementById('gpiImage').value,
+    gift_link: document.getElementById('gpiNftLink').value || null,
+    gift_serial_number: document.getElementById('gpiSerial').value,
+    probability_percent: document.getElementById('gpiProbability').value,
+    active: document.getElementById('gpiActive').value === '1',
+  }) });
+  document.getElementById('gpiId').value = '';
+  document.getElementById('gpiTitle').value = '';
+  document.getElementById('gpiImage').value = '';
+  document.getElementById('gpiImagePreview').style.display = 'none';
+  document.getElementById('gpiNftLink').value = '';
+  document.getElementById('gpiSerial').value = '';
+  document.getElementById('gpiNftInfo').textContent = '';
+  loadGiftPackItemsTable(packId);
+}
+async function deleteGiftPackItemUI(id, packId) {
+  if (!confirm('Delete this gift?')) return;
+  await api(`/gift-pack-items/${id}`, { method: 'DELETE' });
+  loadGiftPackItemsTable(packId);
+}
+async function loadGiftPackDeliveries() {
+  const rows = await api('/gift-pack-deliveries');
+  document.getElementById('giftPackDeliveriesTable').innerHTML = rows.length ? `
+    <table><tr><th>User</th><th>Gift</th><th>Serial</th><th>Link</th><th>Opened</th><th></th></tr>
+    ${rows.map(r => `<tr><td>${r.tg_id}</td><td>${r.gift_title}</td><td>${r.gift_serial_number || '—'}</td>
+      <td>${r.gift_link ? `<a href="${r.gift_link}" target="_blank">Open</a>` : '—'}</td><td>${r.opened_at}</td>
+      <td><button class="btn secondary" onclick="markGiftDelivered(${r.id})">Mark delivered</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No pending deliveries.</p>';
+}
+async function markGiftDelivered(id) {
+  if (!confirm('Confirm you have sent this gift to the user?')) return;
+  await api(`/gift-pack-deliveries/${id}/delivered`, { method: 'POST' });
+  loadGiftPackDeliveries();
+}
+
 /* ---------- Achievements ---------- */
 const ACHIEVEMENT_METRIC_LABELS = {
   battle_wins: 'Battle wins', legendary_cards: 'Legendary+ cards owned', nft_sold: 'Gifts sold',
@@ -2210,7 +2445,7 @@ async function loadLeaderboardTab() {
   const prizes = await api('/game/leaderboard-prizes');
   document.getElementById('leaderboardPrizesTable').innerHTML = prizes.length ? `
     <table><tr><th>From rank</th><th>To rank</th><th>Prize</th><th>Actions</th></tr>
-    ${prizes.map(p => `<tr><td>${p.rank_from}</td><td>${p.rank_to}</td><td>${p.reward_toman.toLocaleString('en-US')}</td>
+    ${prizes.map(p => `<tr><td>${p.rank_from}</td><td>${p.rank_to}</td><td>${p.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
       <td><button class="btn danger" onclick="deleteLeaderboardPrize(${p.id})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No prize registered.</p>';
 
@@ -2291,7 +2526,7 @@ async function loadLeaguePrizesTable() {
   document.getElementById('leaguePrizesTable').innerHTML = prizes.length ? `
     <table><tr><th>League</th><th>Rank</th><th>Prize</th><th>Actions</th></tr>
     ${prizes.map(p => `<tr><td>${tierLabel[p.league_key] || p.league_key}</td><td>${p.rank_from}${p.rank_from !== p.rank_to ? '–' + p.rank_to : ''}</td>
-      <td>${p.reward_type === 'card' ? (cards.find(c => c.id === p.card_id)?.name || 'Card') : p.reward_toman.toLocaleString('en-US') + ' LNDC'}</td>
+      <td>${p.reward_type === 'card' ? (cards.find(c => c.id === p.card_id)?.name || 'Card') : p.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' LNDC'}</td>
       <td><button class="btn secondary" onclick='editLeaguePrize(${JSON.stringify(p)})'>Edit</button>
       <button class="btn danger" onclick="deleteLeaguePrizeUI(${p.id})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No league prize registered yet.</p>';
@@ -2381,7 +2616,7 @@ async function loadUsers() {
   const rows = await api('/users?q=' + encodeURIComponent(q));
   document.getElementById('usersTable').innerHTML = `
     <table><tr><th>ID</th><th>Name</th><th>Balance</th><th>battle pass?</th><th>banned?</th><th>Actions</th></tr>
-    ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString('en-US')}</td><td>${u.has_battlepass ? '👑 has' : '-'}</td><td>${u.is_banned ? '🚫' : '-'}</td>
+    ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${u.has_battlepass ? '👑 has' : '-'}</td><td>${u.is_banned ? '🚫' : '-'}</td>
       <td>
         <button class="btn secondary" onclick="adjustBalance(${u.tg_id})">Adjust LNDC balance</button>
         <button class="btn secondary" onclick="adjustCurrencyBalanceUI(${u.tg_id})">Adjust currency balance</button>
@@ -2423,14 +2658,14 @@ async function loadAuctionAdmin() {
   document.getElementById('aucAntiSnipe').value = cfg.anti_snipe_enabled ? '1' : '0';
 
   const products = await api('/products');
-  document.getElementById('aucProductId').innerHTML = products.map(p => `<option value="${p.id}">${p.title} (${p.price_toman.toLocaleString('en-US')} LNDC)</option>`).join('');
+  document.getElementById('aucProductId').innerHTML = products.map(p => `<option value="${p.id}">${p.title} (${p.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC)</option>`).join('');
   const cards = await api('/game/cards');
-  document.getElementById('aucCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (${c.price_toman.toLocaleString('en-US')} LNDC)</option>`).join('');
+  document.getElementById('aucCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (${c.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC)</option>`).join('');
 
   const rows = await api('/auction/list');
   document.getElementById('auctionsTable').innerHTML = rows.length ? `
     <table><tr><th>Title</th><th>Type</th><th>Current price</th><th>Winner</th><th>Status</th><th>Actions</th></tr>
-    ${rows.map(a => `<tr><td>${a.title}</td><td>${a.item_type === 'card' ? '🎴 Card' : '🛍 Product'}</td><td>${a.current_price.toLocaleString('en-US')}</td><td>${a.winner_tg_id || '-'}</td><td>${a.status}</td>
+    ${rows.map(a => `<tr><td>${a.title}</td><td>${a.item_type === 'card' ? '🎴 Card' : '🛍 Product'}</td><td>${a.current_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${a.winner_tg_id || '-'}</td><td>${a.status}</td>
       <td>${a.status === 'active' ? `<button class="btn danger" onclick="cancelAuctionUI(${a.id})">Cancel</button>` : ''}</td></tr>`).join('')}
     </table>` : '<p class="muted">You have not created any auction yet.</p>';
 }
@@ -2455,17 +2690,46 @@ async function createAuctionUI() {
 async function cancelAuctionUI(id) { if (confirm('be cancelled?')) { await api(`/auction/${id}/cancel`, { method: 'POST' }); loadAuctionAdmin(); } }
 
 /* ---------- Seasonal battle pass ---------- */
-async function onBpValueTypeChange(prefix) {
+let BP_CARDS_CACHE = [];
+async function onBpValueTypeChange(prefix, existingLevelWeights) {
   const type = document.getElementById(prefix + 'Type').value;
   const wrap = document.getElementById(prefix + 'ValueWrap');
   const label = prefix === 'tierFree' ? 'Free amount' : 'Premium amount';
-  if (type === 'card' || type === 'avatar' || type === 'product') {
-    const endpoint = type === 'card' ? '/game/cards' : type === 'avatar' ? '/avatars' : '/products';
+  const oddsBox = document.getElementById(prefix + 'LevelOddsBox');
+  if (type === 'card' || type === 'avatar' || type === 'product' || type === 'gift_pack') {
+    const endpoint = type === 'card' ? '/game/cards' : type === 'avatar' ? '/avatars' : type === 'product' ? '/products' : '/gift-packs';
     const items = await api(endpoint);
-    wrap.innerHTML = `<label>${label}</label><select id="${prefix}Value">${items.map(i => `<option value="${i.id}">${i.name || i.title}</option>`).join('')}</select>`;
+    if (type === 'card') BP_CARDS_CACHE = items;
+    wrap.innerHTML = `<label>${label}</label><select id="${prefix}Value" onchange="renderBpLevelOdds('${prefix}')">${items.map(i => `<option value="${i.id}">${i.name || i.title}</option>`).join('')}</select>`;
   } else {
     wrap.innerHTML = `<label>${label}</label><input id="${prefix}Value">`;
   }
+  if (type === 'card') renderBpLevelOdds(prefix, existingLevelWeights);
+  else oddsBox.innerHTML = '';
+}
+// Same per-level win-weight editor used for chest card prizes, reused here for battle pass card
+// tier rewards — lets the admin randomize which level (1..max) a leveled card is granted at.
+function renderBpLevelOdds(prefix, existingWeights) {
+  const cardId = Number(document.getElementById(prefix + 'Value').value);
+  const card = BP_CARDS_CACHE.find(c => c.id === cardId);
+  const box = document.getElementById(prefix + 'LevelOddsBox');
+  if (!card) { box.innerHTML = ''; return; }
+  const maxLevel = card.max_level || 7;
+  const weightByLevel = {};
+  (existingWeights || []).forEach(w => { weightByLevel[w.level] = w.weight; });
+  box.innerHTML = `
+    <p class="muted" style="font-size:11px;">Optional: randomize which level this card is granted at (leave all empty to always grant the default/level 1).</p>
+    <div class="row2" style="flex-wrap:wrap;">
+      ${Array.from({ length: maxLevel }, (_, i) => i + 1).map(lvl =>
+        `<div style="min-width:90px;"><label style="font-size:11px;">Level ${lvl} weight</label><input type="number" step="0.01" min="0" class="${prefix}-level-weight" data-level="${lvl}" value="${weightByLevel[lvl] ?? ''}" placeholder="0"></div>`
+      ).join('')}
+    </div>`;
+}
+function collectBpLevelWeights(prefix) {
+  const rows = [...document.querySelectorAll(`.${prefix}-level-weight`)]
+    .map(el => ({ level: Number(el.dataset.level), weight: Number(el.value) }))
+    .filter(w => w.weight > 0);
+  return rows.length ? rows : null;
 }
 async function loadSeasonAdmin() {
   const cfg = await api('/season/config');
@@ -2482,9 +2746,24 @@ async function loadSeasonAdmin() {
   const tiers = await api('/season/tiers');
   document.getElementById('seasonTiersTable').innerHTML = tiers.length ? `
     <table><tr><th>Tier</th><th>Free</th><th>Premium</th><th>Actions</th></tr>
-    ${tiers.map(t => `<tr><td>${t.tier_number}</td><td>${t.free_reward_type}: ${t.free_reward_value || '-'}</td><td>${t.premium_reward_type}: ${t.premium_reward_value || '-'}</td>
-      <td><button class="btn danger" onclick="deleteSeasonTierUI(${t.tier_number})">Delete</button></td></tr>`).join('')}
+    ${tiers.map(t => `<tr><td>${t.tier_number}</td><td>${t.free_reward_type}: ${t.free_reward_name || t.free_reward_value || '-'}</td><td>${t.premium_reward_type}: ${t.premium_reward_name || t.premium_reward_value || '-'}</td>
+      <td><button class="btn secondary" onclick='editSeasonTier(${JSON.stringify(t)})'>Edit</button>
+      <button class="btn danger" onclick="deleteSeasonTierUI(${t.tier_number})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No tier defined yet.</p>';
+}
+async function editSeasonTier(t) {
+  document.getElementById('tierNumber').value = t.tier_number;
+  document.getElementById('tierFreeType').value = t.free_reward_type || 'none';
+  document.getElementById('tierPremType').value = t.premium_reward_type || 'none';
+  await onBpValueTypeChange('tierFree', t.free_reward_level_weights ? JSON.parse(t.free_reward_level_weights) : null);
+  await onBpValueTypeChange('tierPrem', t.premium_reward_level_weights ? JSON.parse(t.premium_reward_level_weights) : null);
+  const freeVal = document.getElementById('tierFreeValue');
+  if (freeVal) freeVal.value = t.free_reward_value || '';
+  const premVal = document.getElementById('tierPremValue');
+  if (premVal) premVal.value = t.premium_reward_value || '';
+  if (t.free_reward_type === 'card') renderBpLevelOdds('tierFree', t.free_reward_level_weights ? JSON.parse(t.free_reward_level_weights) : null);
+  if (t.premium_reward_type === 'card') renderBpLevelOdds('tierPrem', t.premium_reward_level_weights ? JSON.parse(t.premium_reward_level_weights) : null);
+  document.getElementById('tierNumber').scrollIntoView({ behavior: 'smooth' });
 }
 async function saveSeasonConfig() {
   await api('/season/config', { method: 'POST', body: JSON.stringify({
@@ -2508,6 +2787,8 @@ async function saveSeasonTier() {
     free_reward_value: document.getElementById('tierFreeValue').value,
     premium_reward_type: document.getElementById('tierPremType').value,
     premium_reward_value: document.getElementById('tierPremValue').value,
+    free_reward_level_weights: collectBpLevelWeights('tierFree'),
+    premium_reward_level_weights: collectBpLevelWeights('tierPrem'),
   }) });
   loadSeasonAdmin();
 }
@@ -2543,7 +2824,7 @@ async function loadClanAdmin() {
   const lb = await api('/clan/all');
   document.getElementById('clanLeaderboardTable').innerHTML = lb.length ? `
     <table><tr><th>Name</th><th>Tag</th><th>Score</th><th>Bank</th><th>Actions</th></tr>
-    ${lb.map(c => `<tr><td>${c.name}</td><td>#${c.tag}</td><td>${c.score}</td><td>${c.bank_balance.toLocaleString('en-US')}</td>
+    ${lb.map(c => `<tr><td>${c.name}</td><td>#${c.tag}</td><td>${c.score}</td><td>${c.bank_balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
       <td><button class="btn secondary" onclick="adjustClanBankUI(${c.id})">Adjust bank</button> <button class="btn danger" onclick="deleteClanUI(${c.id})">Delete clan</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No clan created yet.</p>';
 }
@@ -2608,7 +2889,7 @@ async function loadRankAdmin() {
   const rows = await api('/avatars');
   document.getElementById('avatarsTable').innerHTML = rows.length ? `
     <table><tr><th>Name</th><th>Price</th><th>Balance</th><th>Active</th><th>Actions</th></tr>
-    ${rows.map(a => `<tr><td>${a.name}</td><td>${a.price_toman.toLocaleString('en-US')}</td><td>${a.quantity != null ? (a.quantity - a.sold_count) : 'Unlimited'}</td><td>${a.active ? '✅' : '❌'}</td>
+    ${rows.map(a => `<tr><td>${a.name}</td><td>${a.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${a.quantity != null ? (a.quantity - a.sold_count) : 'Unlimited'}</td><td>${a.active ? '✅' : '❌'}</td>
       <td><button class="btn secondary" onclick='editAvatar(${JSON.stringify(a)})'>Edit</button>
       <button class="btn danger" onclick="deleteAvatarUI(${a.id})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No avatar registered yet.</p>';
@@ -2621,7 +2902,7 @@ async function loadStreakRewards() {
   const rows = await api('/rank/streak-rewards');
   document.getElementById('streakRewardsTable').innerHTML = rows.length ? `
     <table><tr><th>Days</th><th>Reward (LNDC)</th><th>Actions</th></tr>
-    ${rows.map(r => `<tr><td>${r.streak_days}</td><td>${r.reward_toman.toLocaleString('en-US')}</td>
+    ${rows.map(r => `<tr><td>${r.streak_days}</td><td>${r.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
       <td><button class="btn danger" onclick="deleteStreakRewardUI(${r.streak_days})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No streak milestone set yet.</p>';
 }
@@ -2794,7 +3075,7 @@ function toggleAlbumRewardFields(selectedAvatarId) {
   const cardsWrap = document.getElementById('albRewardCardsWrap');
   if (type === 'toman') {
     wrap.style.display = 'block'; cardsWrap.style.display = 'none';
-    wrap.innerHTML = `<label>Amount (LNDC)</label><input type="number" id="albRewardValue">`;
+    wrap.innerHTML = `<label>Amount (LNDC)</label><input type="number" id="albRewardValue" step="0.01">`;
   } else if (type === 'avatar') {
     wrap.style.display = 'block'; cardsWrap.style.display = 'none';
     wrap.innerHTML = `<label>Avatar</label><select id="albRewardValue">${ALBUM_AVATARS_CACHE.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}</select>`;
@@ -2837,7 +3118,7 @@ function removeAlbumRequirement(idx) { ALBUM_REQUIREMENTS.splice(idx, 1); render
 function albumPrizeSummary(a) {
   if (a.reward_type === 'card') return (a.reward_cards || []).map(rc => `${rc.name} (Lv.${rc.level})`).join(', ') || 'No card set';
   if (a.reward_type === 'avatar') { const av = ALBUM_AVATARS_CACHE.find(x => String(x.id) === String(a.reward_value)); return 'Avatar: ' + (av?.name || a.reward_value); }
-  return `${Number(a.reward_value || 0).toLocaleString('en-US')} LNDC`;
+  return `${Number(a.reward_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`;
 }
 async function loadAlbumsAdmin() {
   ALBUM_CATS_CACHE = await api('/card-categories');
@@ -2898,17 +3179,11 @@ async function deleteAlbumUI(id) { if (confirm('be deleted?')) { await api(`/alb
 async function loadGiftConfigAdmin() {
   const cfg = await api('/gift/config');
   document.getElementById('gcEnabled2').value = cfg.enabled ? '1' : '0';
-  document.getElementById('gcMinReferrals').value = cfg.card_gift_min_referrals;
-  document.getElementById('gcMaxPerMonth').value = cfg.card_gift_max_per_month;
-  document.getElementById('gcMaxLevel2').value = cfg.card_gift_max_level;
   document.getElementById('gcFeePercent').value = cfg.toman_gift_fee_percent;
 }
 async function saveGiftConfig() {
   await api('/gift/config', { method: 'POST', body: JSON.stringify({
     enabled: document.getElementById('gcEnabled2').value === '1',
-    card_gift_min_referrals: document.getElementById('gcMinReferrals').value,
-    card_gift_max_per_month: document.getElementById('gcMaxPerMonth').value,
-    card_gift_max_level: document.getElementById('gcMaxLevel2').value,
     toman_gift_fee_percent: document.getElementById('gcFeePercent').value,
   }) });
   alert('Saved');
@@ -2952,7 +3227,7 @@ async function loadCardMarketConfigAdmin() {
   const listings = await api('/card-market/listings');
   document.getElementById('cardMarketListingsTable').innerHTML = listings.length ? `
     <table><tr><th>Card</th><th>Level</th><th>Seller</th><th>Price (LNDC)</th><th>Listed at</th></tr>
-    ${listings.map(l => `<tr><td>${l.name}</td><td>${l.level}</td><td>${l.first_name || ''} (${l.seller_tg_id})</td><td>${l.price_toman.toLocaleString('en-US')}</td><td>${l.created_at}</td></tr>`).join('')}
+    ${listings.map(l => `<tr><td>${l.name}</td><td>${l.level}</td><td>${l.first_name || ''} (${l.seller_tg_id})</td><td>${l.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${l.created_at}</td></tr>`).join('')}
     </table>` : '<p class="muted">No open listings right now.</p>';
 }
 async function saveCardMarketConfig() {
