@@ -1325,6 +1325,7 @@
       <div id="rdJoinBox" class="card" style="display:none;">
         <div id="rdRequirement" class="muted" style="margin-bottom:8px;"></div>
         <div class="row"><span class="muted">Your tickets</span><b id="rdMyTickets">0</b></div>
+        <div id="rdReferralRow" class="row muted" style="display:none;font-size:12px;"><span id="rdReferralText"></span></div>
         <div id="rdStepperRow" style="display:flex;align-items:center;gap:10px;margin:10px 0;">
           <button class="btn secondary" style="padding:8px 16px;" onclick="rdStep(-1)">−</button>
           <input type="number" id="rdQty" value="1" min="1" style="text-align:center;flex:1;">
@@ -3085,10 +3086,27 @@ async function refreshRaffleDetail() {
     ? (r.taskDone ? '✅ Entry task completed' : `❌ You must first complete the task «${r.requiredTask?.title || ''}»`) : '';
   const btn = document.getElementById('rdJoinBtn');
   const stepper = document.getElementById('rdStepperRow');
+  const referralRow = document.getElementById('rdReferralRow');
+  const isReferralMethod = r.raffle.ticket_method === 'referral';
+  referralRow.style.display = (isReferralMethod && r.myEntry) ? 'flex' : 'none';
+  if (isReferralMethod && r.myEntry && r.referralTickets) {
+    document.getElementById('rdReferralText').textContent =
+      `👥 Invited: ${r.referralTickets.referredCount} — tickets earned: ${r.referralTickets.earned}/${r.raffle.max_tickets_per_user}`;
+  }
   if (!r.myEntry) {
     stepper.style.display = 'none';
     btn.textContent = '🎟 Join giveaway';
     btn.disabled = !r.taskDone;
+  } else if (isReferralMethod) {
+    stepper.style.display = 'none';
+    const claimable = r.referralTickets?.claimable || 0;
+    if (claimable > 0) {
+      btn.textContent = `🎁 Claim ${claimable} ticket(s) from referrals`;
+      btn.disabled = false;
+    } else {
+      btn.textContent = '✅ Invite friends for more tickets';
+      btn.disabled = true;
+    }
   } else if (r.raffle.ticket_price_toman > 0 && r.myEntry.tickets < r.raffle.max_tickets_per_user) {
     stepper.style.display = 'flex';
     document.getElementById('rdQty').max = r.raffle.max_tickets_per_user - r.myEntry.tickets;
@@ -3112,6 +3130,9 @@ async function rdJoinOrBuy() {
     if (!r.myEntry) {
       await api(`/api/raffle/${RD_CURRENT_ID}/register`, { method: 'POST' });
       toast('You are registered 🎉');
+    } else if (r.raffle.ticket_method === 'referral') {
+      const result = await api(`/api/raffle/${RD_CURRENT_ID}/claim-referral-tickets`, { method: 'POST' });
+      toast(`🎉 ${result.granted} ticket(s) claimed from referrals!`);
     } else {
       const qty = Number(document.getElementById('rdQty').value) || 1;
       await api(`/api/raffle/${RD_CURRENT_ID}/buy-ticket`, { method: 'POST', body: JSON.stringify({ qty }) });
