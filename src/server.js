@@ -51,7 +51,7 @@ import {
   createClanWar, cancelClanWar, joinClanWar, submitWarPicks, getClanWar, getMemberCardsForLeader,
 } from './clan-war-db.js';
 import { getLeagueConfig, getUserLeagueInfo, getLeagueLeaderboard, checkAutoResetLeague, listLeagues, listLeaguePrizes, getPrizeForLeagueRank } from './league-db.js';
-import { listOpenRaffles, getRaffleStatusForUser, registerForRaffle, buyRaffleTickets, claimReferralTickets, getRaffle, listRecentRaffleWinners, getRaffleTopEntries, checkAutoFinishRaffles, listRafflePrizes } from './raffle-db.js';
+import { listOpenRaffles, getRaffleStatusForUser, registerForRaffle, buyRaffleTickets, claimReferralTickets, listRecentRaffleWinners, getRaffleTopEntries, checkAutoFinishRaffles, listRafflePrizes } from './raffle-db.js';
 import {
   getRankConfig, getUserRankInfo, addUserXp, canCheckinToday, doCheckin, listStreakRewards,
   listAvatars, getMyAvatars, buyAvatar, equipAvatar,
@@ -1100,26 +1100,6 @@ async function handleTelegramUpdate(update) {
     return;
   }
 
-
-
-  // Direct "Join Giveaway" button — works from ANY chat the message was forwarded to (a group, a
-  // channel, a DM), because it's a plain callback button rather than something tied to a specific
-  // channel post. Deliberately does nothing but a local DB write: no channel membership check, no
-  // external API calls — so it can't add latency to the bot regardless of how widely the message
-  // gets shared (see the "share-message" admin endpoint that generates this button).
-  if (update.callback_query?.data?.startsWith('raffle_join:')) {
-    const cq = update.callback_query;
-    const raffleId = Number(cq.data.split(':')[1]);
-    const dbUser = getOrCreateUser(cq.from);
-    try {
-      registerForRaffle(dbUser.tg_id, raffleId);
-      const raffle = getRaffle(raffleId);
-      answerCallbackQuery(cq.id, `🎉 You're in! Good luck in "${raffle?.title || 'the giveaway'}".`).catch(() => {});
-    } catch (e) {
-      answerCallbackQuery(cq.id, `⚠️ ${e.message}`).catch(() => {});
-    }
-    return;
-  }
 
   if (update.callback_query?.data === 'check_join') {
     answerCallbackQuery(update.callback_query.id).catch(() => {});

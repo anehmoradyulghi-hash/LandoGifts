@@ -643,65 +643,14 @@ router.delete('/league/prizes/:id', (req, res) => { deleteLeaguePrize(Number(req
 
 /* ---------- Big wheel (raffle / giveaway) ---------- */
 router.get('/raffles', (req, res) => res.json(listRafflesAdmin()));
-// Builds the forwardable "Join giveaway" message text + button for a raffle — shared by the
-// auto-send-on-create below and the manual re-send endpoint further down.
-function buildRaffleShareMessage(raffle) {
-  const prizes = listRafflePrizes(raffle.id);
-  const prizeLines = prizes.length
-    ? prizes.map(p => `🎁 ${p.title}${p.gift_number ? ' #' + p.gift_number : ''}`).join('\n')
-    : (raffle.prize_description ? `🎁 Prize: ${raffle.prize_description}` : '');
-  const text = `🎉 <b>Giveaway!</b>\n\n🏆 <b>${raffle.title}</b>` +
-    (prizeLines ? `\n${prizeLines}` : '') +
-    `\n👥 Winners: ${raffle.winners_count}` +
-    (raffle.ticket_method === 'toman' && raffle.ticket_price_toman > 0
-      ? `\n🎟 Extra tickets: ${raffle.ticket_price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC each`
-      : raffle.ticket_method === 'referral' ? `\n🎟 Extra tickets: ${raffle.tickets_per_referral} per referral` : '') +
-    `\n\nTap the button below to join instantly 👇`;
-  const replyMarkup = { inline_keyboard: [
-    [{ text: '🎟 Join Giveaway', callback_data: `raffle_join:${raffle.id}` }],
-    [{ text: '🛍 Open in mini app', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }],
-  ] };
-  return { text, replyMarkup };
-}
 router.post('/raffles', (req, res) => {
   try {
     if (!req.body.title) return res.status(400).json({ error: 'Title is required' });
-    const isNew = !req.body.id;
     const id = req.body.id ? (updateRaffle(Number(req.body.id), req.body), Number(req.body.id)) : createRaffle(req.body);
-    if (isNew) {
-      // As soon as a giveaway is created, send the admin the ready-to-forward join message right
-      // away — no separate step needed, and still nothing is auto-posted to any channel.
-      const raffle = getRaffle(id);
-      const { text, replyMarkup } = buildRaffleShareMessage(raffle);
-      const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean).map(Number);
-      adminIds.forEach(aid => sendMessage(aid, text, { reply_markup: replyMarkup }).catch(() => {}));
-    }
     res.json({ ok: true, id });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 router.delete('/raffles/:id', (req, res) => { deleteRaffle(Number(req.params.id)); res.json({ ok: true }); });
-// Re-sends the same forwardable message on demand (e.g. the admin's original copy got buried in
-// their chat history, or they want to share it a second time). Deliberately NOT auto-posted to any
-// configured channel: that would require the bot to be an admin of a specific channel and (if
-// paired with a join requirement) a membership check per tap, which is exactly the kind of extra
-// Telegram-API round trip that slows the bot down. Joining via the button only ever touches the
-// local database (see the raffle_join callback in server.js) — no channel config, no membership
-// check, no external calls at all.
-router.post('/raffles/:id/share-message', async (req, res) => {
-  const raffle = getRaffle(Number(req.params.id));
-  if (!raffle) return res.status(404).json({ error: 'Raffle not found' });
-  const { text, replyMarkup } = buildRaffleShareMessage(raffle);
-  const targetId = req.body.targetTgId ? Number(req.body.targetTgId) : null;
-  const targets = targetId ? [targetId] : (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean).map(Number);
-  if (!targets.length) return res.status(400).json({ error: 'No admin Telegram ID is configured to send this to' });
-  let sent = 0;
-  for (const id of targets) {
-    const r = await sendMessage(id, text, { reply_markup: replyMarkup }).catch(() => ({ ok: false }));
-    if (r.ok) sent++;
-  }
-  if (!sent) return res.status(400).json({ error: 'Could not deliver the message — make sure the target has started the bot' });
-  res.json({ ok: true, sent });
-});
 router.post('/raffles/:id/cancel', (req, res) => { cancelRaffle(Number(req.params.id)); res.json({ ok: true }); });
 router.get('/raffles/:id/entries', (req, res) => res.json(listRaffleEntries(Number(req.params.id))));
 router.get('/raffles/:id/top-entries', (req, res) => res.json(getRaffleTopEntries(Number(req.params.id))));
