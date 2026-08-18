@@ -1731,22 +1731,12 @@ async function loadRafflesAdmin() {
       <td>
         <button class="btn secondary" onclick="viewRaffleEntries(${r.id}, '${r.title.replace(/'/g, "\\'")}')">Participants</button>
         <button class="btn secondary" onclick="managePrizes(${r.id}, '${r.title.replace(/'/g, "\\'")}')">🎁 Prizes</button>
-        ${r.status === 'open' ? `<button class="btn secondary" onclick="shareRaffleMessage(${r.id})">📤 Forwardable message</button>
-        <button class="btn secondary" onclick='editRaffleUI(${JSON.stringify(r)})'>Edit</button>
+        ${r.status === 'open' ? `<button class="btn secondary" onclick='editRaffleUI(${JSON.stringify(r)})'>Edit</button>
         <button class="btn gold" onclick="finishRaffleUI(${r.id})">🏁 End raffle</button>
         <button class="btn danger" onclick="cancelRaffleUI(${r.id})">Cancel</button>` : ''}
         <button class="btn danger" onclick="deleteRaffleUI(${r.id})">Delete</button>
       </td></tr>`).join('')}
     </table>` : '<p class="muted">You have not created any wheel yet.</p>';
-}
-// Sends the admin themselves a ready-to-forward "Join giveaway" message in their own chat with the
-// bot (see the /raffles/:id/share-message route) — they can then forward it anywhere: a channel, a
-// group, a DM. Deliberately not auto-posted anywhere by the bot itself.
-async function shareRaffleMessage(id) {
-  try {
-    const result = await api(`/raffles/${id}/share-message`, { method: 'POST', body: JSON.stringify({}) });
-    alert(`Sent to your Telegram chat with the bot (${result.sent} admin${result.sent > 1 ? 's' : ''}) — forward it from there to wherever you'd like.`);
-  } catch (e) { alert(e.message || 'Could not send the message'); }
 }
 function toggleRaffleTicketMethodFields() {
   const method = document.getElementById('rfTicketMethod').value;
