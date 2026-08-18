@@ -632,6 +632,10 @@
   .chest-prize-icon img { width:118px; height:118px; object-fit:cover; border-radius:20px; border:2px solid rgba(255,215,0,.6); box-shadow:0 0 30px rgba(255,215,0,.5); }
   .chest-prize-name { font-weight:900; font-size:19px; background:linear-gradient(90deg,#fff,#ffe9a8); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
   .chest-prize-sub { font-size:12px; color:var(--muted); }
+  .chest-prize-extra { display:flex; flex-direction:column; gap:6px; margin-top:10px; max-width:260px; }
+  .chest-prize-extra-row { display:flex; align-items:center; gap:8px; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:6px 10px; font-size:12px; }
+  .chest-prize-extra-row img { width:26px; height:26px; border-radius:6px; object-fit:cover; }
+  .chest-prize-extra-icon { font-size:16px; width:26px; text-align:center; }
   .chest-hint { font-weight:700; font-size:14px; color:var(--text); min-height:20px; text-align:center; }
   @media (prefers-reduced-motion: reduce) {
     .chest-box, .chest-glow, .chest-rays.burst, .chest-prize.reveal, .chest-prize-icon { animation:none !important; }
@@ -821,6 +825,7 @@
         <div class="chest-prize-icon" id="chestPrizeIcon">🎁</div>
         <div class="chest-prize-name" id="chestPrizeName"></div>
         <div class="chest-prize-sub" id="chestPrizeSub"></div>
+        <div class="chest-prize-extra" id="chestPrizeExtra" style="display:none;"></div>
       </div>
     </div>
     <p class="chest-hint" id="chestHint">Opening...</p>
@@ -976,6 +981,10 @@
     <h3 class="sec">📦 Chests</h3>
     <div id="chestList"></div>
   </div>
+  <div id="giftPackSection" style="display:none;">
+    <h3 class="sec">🎁 Gift packs</h3>
+    <div id="giftPackList"></div>
+  </div>
   <h3 class="sec">All products</h3>
   <div id="productList"><div class="skeleton"></div></div>
 </section>
@@ -1026,7 +1035,7 @@
       <input type="hidden" id="giftTitle">
       <input type="hidden" id="giftImage">
       <input type="hidden" id="giftSerial">
-      <label>Price (LNDC)</label><input type="number" id="giftPrice" placeholder="e.g. 5000">
+      <label>Price (LNDC)</label><input type="number" id="giftPrice" step="0.01" placeholder="e.g. 5000">
       <p class="muted" id="giftMinPriceHint" style="font-size:11px;margin-top:-6px;"></p>
       <button class="btn" id="giftSubmitBtn" onclick="listGift()">Post listing</button>
       <button class="btn ghost" id="giftCancelEditBtn" style="display:none;" onclick="resetGiftForm()">Cancel editing</button>
@@ -1046,7 +1055,7 @@
       </div>
       <div id="watchFetchedName" class="muted" style="margin:6px 0;"></div>
       <input type="hidden" id="watchTitle">
-      <label>Notify me at or under (LNDC)</label><input type="number" id="watchMaxPrice">
+      <label>Notify me at or under (LNDC)</label><input type="number" id="watchMaxPrice" step="0.01">
       <button class="btn gold" onclick="addWatchUI()">🔔 Add watch</button>
     </div>
     <h3 class="sec">Your watches</h3>
@@ -1109,7 +1118,7 @@
     <div class="card">
       <div id="manualTopupBox">
         <label>Amount (LNDC)</label>
-        <input type="number" id="topupAmount" placeholder="e.g. 100000" />
+        <input type="number" id="topupAmount" step="0.01" placeholder="e.g. 100000" />
         <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
           <p class="muted" style="margin:0 0 6px;">or card-to-card:</p>
           <div class="muted" id="cardInfo"></div>
@@ -1122,7 +1131,7 @@
   </div>
   <div class="card" id="lndcWithdrawSection">
     <h3 class="sec" style="margin-top:0;">LNDC withdrawal</h3>
-    <label>Amount (LNDC)</label><input type="number" id="withdrawAmount" />
+    <label>Amount (LNDC)</label><input type="number" id="withdrawAmount" step="0.01" />
     <label>Destination card number</label><input type="text" id="withdrawCard" />
     <button class="btn secondary" onclick="doWithdraw()">Submit withdrawal request</button>
   </div>
@@ -1134,7 +1143,7 @@
     <p class="muted" id="swapFeeNote" style="margin-top:-4px;"></p>
     <label>From</label><select id="swapFrom"></select>
     <label>To</label><select id="swapTo"></select>
-    <label>Amount</label><input type="number" id="swapAmount" />
+    <label>Amount</label><input type="number" id="swapAmount" step="0.01" />
     <button class="btn" onclick="doSwap()">Convert</button>
   </div>
   <div class="card">
@@ -1160,14 +1169,14 @@
     <h3 class="sec" style="margin-top:0;">Crypto deposit</h3>
     <label>Currency</label><select id="depCode" onchange="onDepCodeChange()"></select>
     <div id="depAddressBox" class="muted" style="margin-bottom:10px;"></div>
-    <label>Amount</label><input type="number" id="depAmount" />
+    <label>Amount</label><input type="number" id="depAmount" step="0.01" />
     <label>Transaction hash</label><input type="text" id="depTx" />
     <button class="btn" onclick="doCurrencyDeposit()">Submit deposit request</button>
   </div>
   <div class="card">
     <h3 class="sec" style="margin-top:0;">Crypto withdrawal</h3>
     <label>Currency</label><select id="wdCode"></select>
-    <label>Amount</label><input type="number" id="wdAmount" />
+    <label>Amount</label><input type="number" id="wdAmount" step="0.01" />
     <label>Destination address</label><input type="text" id="wdAddress" />
     <button class="btn secondary" onclick="doCurrencyWithdraw()">Submit withdrawal request</button>
   </div>
@@ -1181,7 +1190,7 @@
   <h3 class="sec">Gift to a friend</h3>
   <div class="card">
     <label>Recipient ID or username</label><input type="text" id="giftReceiver" placeholder="123456789 or @username">
-    <label>Amount (2% fee deducted)</label><input type="number" id="giftTomanAmount">
+    <label>Amount (2% fee deducted)</label><input type="number" id="giftTomanAmount" step="0.01">
     <button class="btn secondary" onclick="doGiftToman()">Send gift</button>
   </div>
 
@@ -1340,7 +1349,7 @@
       <select id="cmMyCardToList" onchange="onCmCardPick()"></select>
       <div id="cmPriceGuidance" class="muted" style="display:none;margin:8px 0;padding:10px 12px;border-radius:12px;background:var(--surface2);"></div>
       <label>Price (LNDC)</label>
-      <input type="number" id="cmListPrice" min="1" placeholder="e.g. 50000">
+      <input type="number" id="cmListPrice" min="0.01" step="0.01" placeholder="e.g. 50000">
       <button class="btn" onclick="createCardMarketListingUI()">➕ List for sale</button>
     </div>
     <h3 class="sec">My listings</h3>
@@ -1670,8 +1679,8 @@ function showLbTab(name) {
 async function loadMe() {
   try {
     const me = await api('/api/me');
-    document.getElementById('balanceLine').textContent = `Balance: ${me.balance_toman.toLocaleString('en-US')} LNDC`;
-    document.getElementById('walletHeroBalance').textContent = `${me.balance_toman.toLocaleString('en-US')} LNDC`;
+    document.getElementById('balanceLine').textContent = `Balance: ${me.balance_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`;
+    document.getElementById('walletHeroBalance').textContent = `${me.balance_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`;
     document.getElementById('profileName').textContent = me.first_name || me.username || 'User';
     document.getElementById('profileId').textContent = 'ID: ' + me.tg_id;
     return me;
@@ -1702,6 +1711,7 @@ async function loadGamesHub() {
 
 /* ================= Shop ================= */
 let CHEST_CACHE = {};
+let GIFTPACK_CACHE = {};
 async function loadChests() {
   const section = document.getElementById('chestSection');
   const list = document.getElementById('chestList');
@@ -1716,13 +1726,36 @@ async function loadChests() {
         <div class="shop-body">
           <div class="shop-name">${c.title}</div>
           ${c.description ? `<div class="shop-desc">${c.description}</div>` : ''}
-          <button class="shop-buy-pill" onclick="openChestUI(${c.id})">${c.price_toman > 0 ? c.price_toman.toLocaleString('en-US') + ' LNDC' : 'Free'}</button>
+          <button class="shop-buy-pill" onclick="openBoxUI('chest', ${c.id})">${c.price_toman > 0 ? c.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' LNDC' : 'Free'}</button>
         </div>
       </div>`).join('')}</div>`;
   } catch (e) { section.style.display = 'none'; }
 }
-async function openChestUI(id) {
-  const chest = CHEST_CACHE[id];
+async function loadGiftPacks() {
+  const section = document.getElementById('giftPackSection');
+  const list = document.getElementById('giftPackList');
+  try {
+    const packs = await api('/api/gift-packs');
+    if (!packs.length) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    packs.forEach(p => GIFTPACK_CACHE[p.id] = p);
+    list.innerHTML = `<div class="shop-grid">${packs.map((p, i) => `
+      <div class="shop-card" ${staggerStyle(i)}>
+        <div class="shop-imgwrap">${p.image_url ? `<img src="${p.image_url}">` : '<span class="ic-fallback">🎁</span>'}</div>
+        <div class="shop-body">
+          <div class="shop-name">${p.title}</div>
+          ${p.description ? `<div class="shop-desc">${p.description}</div>` : ''}
+          <button class="shop-buy-pill" onclick="openBoxUI('giftpack', ${p.id})">${p.price_toman > 0 ? p.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' LNDC' : 'Free'}</button>
+        </div>
+      </div>`).join('')}</div>`;
+  } catch (e) { section.style.display = 'none'; }
+}
+// Shared reveal flow for both chests (instant rewards) and gift packs (real NFT gifts — winning one
+// only queues it for manual delivery, so the copy makes clear it's on its way rather than already granted).
+async function openBoxUI(kind, id) {
+  const isChest = kind === 'chest';
+  const source = isChest ? CHEST_CACHE[id] : GIFTPACK_CACHE[id];
+  const endpoint = isChest ? `/api/chests/${id}/open` : `/api/gift-packs/${id}/open`;
   const modal = document.getElementById('chestModal');
   const box = document.getElementById('chestBox');
   const glow = document.getElementById('chestGlow');
@@ -1731,10 +1764,10 @@ async function openChestUI(id) {
   const hint = document.getElementById('chestHint');
   const closeBtn = document.getElementById('chestCloseBtn');
 
-  // Reset to a fresh "closed chest" state every time the modal opens
+  // Reset to a fresh "closed box" state every time the modal opens
   box.className = 'chest-box'; box.style.display = 'flex';
-  box.style.backgroundImage = chest?.image_url ? `url('${chest.image_url}')` : 'none';
-  box.textContent = chest?.image_url ? '' : '📦';
+  box.style.backgroundImage = source?.image_url ? `url('${source.image_url}')` : 'none';
+  box.textContent = source?.image_url ? '' : (isChest ? '📦' : '🎁');
   glow.style.display = 'block';
   rays.className = 'chest-rays';
   prize.className = 'chest-prize'; prize.style.display = 'none';
@@ -1746,7 +1779,7 @@ async function openChestUI(id) {
   const start = Date.now();
   let result;
   try {
-    result = await api(`/api/chests/${id}/open`, { method: 'POST' });
+    result = await api(endpoint, { method: 'POST' });
   } catch (e) {
     modal.classList.remove('show');
     return; // api() already showed the error toast
@@ -1762,28 +1795,52 @@ async function openChestUI(id) {
   setTimeout(() => {
     box.style.display = 'none';
     glow.style.display = 'none';
-    const won = result.won;
-    document.getElementById('chestPrizeIcon').innerHTML = won.image
-      ? `<img src="${won.image}">`
-      : (won.type === 'toman' ? '💰' : won.type === 'avatar' ? '🖼' : won.type === 'extra_games' ? '🎮' : '🎁');
-    document.getElementById('chestPrizeName').textContent = won.display;
-    document.getElementById('chestPrizeSub').textContent =
-      won.type === 'card' ? 'New card added to your collection' :
-      won.type === 'avatar' ? 'New avatar unlocked' :
-      won.type === 'extra_games' ? 'Added to your game plays' : 'Added to your wallet';
+    const wonAll = result.wonAll && result.wonAll.length ? result.wonAll : [result.won];
+    const won = wonAll[0];
+    const extra = wonAll.slice(1);
+    if (isChest) {
+      document.getElementById('chestPrizeIcon').innerHTML = won.image
+        ? `<img src="${won.image}">`
+        : (won.type === 'toman' ? '💰' : won.type === 'avatar' ? '🖼' : won.type === 'extra_games' ? '🎮' : '🎁');
+      document.getElementById('chestPrizeName').textContent = won.display;
+      document.getElementById('chestPrizeSub').textContent =
+        (won.type === 'card' ? 'New card added to your collection' :
+        won.type === 'avatar' ? 'New avatar unlocked' :
+        won.type === 'extra_games' ? 'Added to your game plays' : 'Added to your wallet') +
+        (wonAll.length > 1 ? ` — plus ${wonAll.length - 1} more prize${wonAll.length > 2 ? 's' : ''}!` : '');
+    } else {
+      document.getElementById('chestPrizeIcon').innerHTML = won.image ? `<img src="${won.image}">` : '🎁';
+      document.getElementById('chestPrizeName').textContent = won.title;
+      document.getElementById('chestPrizeSub').textContent =
+        'You won this gift! It will be sent to you on Telegram shortly.' +
+        (wonAll.length > 1 ? ` — plus ${wonAll.length - 1} more gift${wonAll.length > 2 ? 's' : ''}!` : '');
+    }
+    const extraEl = document.getElementById('chestPrizeExtra');
+    if (extra.length) {
+      extraEl.style.display = 'flex';
+      extraEl.innerHTML = extra.map(w => `
+        <div class="chest-prize-extra-row">
+          ${w.image ? `<img src="${w.image}">` : `<span class="chest-prize-extra-icon">${isChest ? (w.type === 'toman' ? '💰' : w.type === 'avatar' ? '🖼' : w.type === 'extra_games' ? '🎮' : '🎁') : '🎁'}</span>`}
+          <span>${isChest ? w.display : w.title}</span>
+        </div>`).join('');
+    } else {
+      extraEl.style.display = 'none';
+      extraEl.innerHTML = '';
+    }
     prize.style.display = 'flex';
     prize.classList.add('reveal');
-    hint.textContent = `🎉 ${chest?.title || 'Chest'}`;
+    hint.textContent = `🎉 ${source?.title || (isChest ? 'Chest' : 'Gift pack')}`;
     closeBtn.style.display = 'block';
     haptic('success');
   }, 460);
 
   loadMe();
-  loadMyCards();
+  if (isChest) loadMyCards();
 }
 function closeChestModal() { document.getElementById('chestModal').classList.remove('show'); }
 async function loadShop() {
   loadChests();
+  loadGiftPacks();
   const el = document.getElementById('productList');
   try {
     const products = await api('/api/products');
@@ -1795,12 +1852,12 @@ async function loadShop() {
           <div class="shop-name">${p.title}</div>
           ${p.description ? `<div class="shop-desc">${p.description}</div>` : ''}
           <input type="text" class="shop-note" id="note-${p.id}" placeholder="Destination/username (optional)">
-          <button class="shop-buy-pill" onclick="buyProduct(${p.id})">${p.price_toman.toLocaleString('en-US')} LNDC</button>
+          <button class="shop-buy-pill" onclick="buyProduct(${p.id})">${p.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</button>
         </div>
       </div>`).join('')}</div>`;
     document.getElementById('shopBestsellers').innerHTML = products.slice(0, 5).map(p => `
       <div class="mini-card" onclick="document.getElementById('note-${p.id}')?.scrollIntoView({behavior:'smooth'})">
-        <div class="ic">🎁</div><div class="t">${p.title}</div><div class="s">${p.price_toman.toLocaleString('en-US')} LNDC</div>
+        <div class="ic">🎁</div><div class="t">${p.title}</div><div class="s">${p.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</div>
       </div>`).join('');
   } catch (e) {
     el.innerHTML = `<p class="muted">⚠️ Shop failed to load — <a href="#" onclick="loadShop();return false;" style="color:#c9b3ff;">Try again</a></p>`;
@@ -1816,7 +1873,7 @@ async function buyProduct(id) {
 /* ================= Wallet ================= */
 let ledgerOffset = 0;
 function renderLedgerRow(l) {
-  return `<div class="row"><span>${l.reason || '-'}</span><span>${l.direction === 'in' ? '+' : '-'}${l.amount.toLocaleString('en-US')} ${l.currency_code}</span></div>`;
+  return `<div class="row"><span>${l.reason || '-'}</span><span>${l.direction === 'in' ? '+' : '-'}${l.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${l.currency_code}</span></div>`;
 }
 let STARS_RATE = 0;
 async function loadWallet() {
@@ -1843,7 +1900,7 @@ async function loadWallet() {
 document.addEventListener('input', (e) => {
   if (e.target?.id === 'starsAmount') {
     const n = Number(e.target.value) || 0;
-    document.getElementById('starsToTomanHint').textContent = n ? `≈ ${(n * STARS_RATE).toLocaleString('en-US')} LNDC` : '';
+    document.getElementById('starsToTomanHint').textContent = n ? `≈ ${(n * STARS_RATE).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC` : '';
   }
 });
 async function doStarsTopup() {
@@ -1883,7 +1940,7 @@ async function loadCurrency() {
   CURRENCIES = await api('/api/currencies');
   const balances = await api('/api/wallet/balances');
   document.getElementById('currencyBalances').innerHTML = CURRENCIES.length
-    ? CURRENCIES.map(c => `<div class="row"><span>${c.name} (${c.code})</span><span>${Math.round(balances[c.code] || 0).toLocaleString('en-US')} — Rate: ${c.rate_toman.toLocaleString('en-US')} LNDC</span></div>`).join('')
+    ? CURRENCIES.map(c => `<div class="row"><span>${c.name} (${c.code})</span><span>${Math.round(balances[c.code] || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} — Rate: ${c.rate_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</span></div>`).join('')
     : 'No currency has been enabled by the admin.';
   const codeOptions = CURRENCIES.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
   document.getElementById('depCode').innerHTML = codeOptions;
@@ -2027,7 +2084,7 @@ async function loadWatchlist() {
   const rows = await api('/api/watchlist');
   document.getElementById('watchList').innerHTML = rows.length ? rows.map(w => `
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;">
-      <div><b>${w.title}</b><div class="muted" style="font-size:12px;">at or under ${w.max_price.toLocaleString('en-US')} LNDC</div></div>
+      <div><b>${w.title}</b><div class="muted" style="font-size:12px;">at or under ${w.max_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</div></div>
       <button class="btn danger" style="padding:6px 12px;" onclick="removeWatchUI(${w.id})">Remove</button>
     </div>`).join('') : '<p class="muted">No watch added yet.</p>';
 }
@@ -2047,7 +2104,7 @@ function resetGiftForm() {
   document.getElementById('giftSubmitBtn').textContent = 'Post listing';
   document.getElementById('giftCancelEditBtn').style.display = 'none';
   const hint = document.getElementById('giftMinPriceHint');
-  if (hint) hint.textContent = CONFIG.giftMarketMinPrice ? `Minimum price: ${CONFIG.giftMarketMinPrice.toLocaleString('en-US')} LNDC` : '';
+  if (hint) hint.textContent = CONFIG.giftMarketMinPrice ? `Minimum price: ${CONFIG.giftMarketMinPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC` : '';
 }
 let MKT_OFFERS = [];
 let MKT_FEE_PERCENT = 5;
@@ -2077,7 +2134,7 @@ async function loadMarket() {
     ? mine.map(o => `
       <div class="card">
         <div class="row"><b>${o.title}${o.serial_number ? ` <span class="mkt-card-serial">${o.serial_number}</span>` : ''}</b><span class="tag">${statusLabel[o.status] || o.status}</span></div>
-        <p class="muted">${o.price_toman.toLocaleString('en-US')} LNDC</p>
+        <p class="muted">${o.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</p>
         ${o.link ? `<p class="muted">🔗 <a href="${o.link}" target="_blank" style="color:#c9b3ff;">Gift link</a></p>` : ''}
         ${(o.status === 'active' || o.status === 'pending') ? `<button class="btn secondary" onclick="editGiftUI(${o.id})">Edit</button> <button class="btn danger" onclick="cancelGift(${o.id})">Cancel listing</button>` : ''}
         ${o.status === 'reserved' ? `<button class="btn" onclick="confirmGift(${o.id})">Confirm gift received</button>` : ''}
@@ -2095,8 +2152,8 @@ function renderMarketGrid() {
   const fromEl = document.getElementById('mktFrom'), toEl = document.getElementById('mktTo');
   const from = Number(fromEl.value) || 0, to = Number(toEl.value) || Number(toEl.max) || 0;
   const max = Number(fromEl.max) || 1;
-  document.getElementById('mktFromLabel').textContent = 'From ' + from.toLocaleString('en-US') + ' LNDC';
-  document.getElementById('mktToLabel').textContent = 'to ' + to.toLocaleString('en-US') + ' LNDC';
+  document.getElementById('mktFromLabel').textContent = 'From ' + from.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' LNDC';
+  document.getElementById('mktToLabel').textContent = 'to ' + to.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' LNDC';
   const fill = document.getElementById('mktRangeFill');
   // The highlighted fill bar must span from the "from" thumb to the "to" thumb: its LEFT edge is
   // set by `from`, its RIGHT edge by `to`. These were swapped before — using `from` for `right` and
@@ -2120,7 +2177,7 @@ function renderMarketGrid() {
           <div class="mkt-card-name">${o.title}</div>
           ${o.serial_number ? `<span class="mkt-card-serial">${o.serial_number}</span>` : ''}
           ${o.link ? `<div><a href="${o.link}" target="_blank" style="color:#c9b3ff;font-size:11px;">🔗 View gift</a></div>` : ''}
-          <button class="mkt-price-pill" onclick="buyGift(${o.id})">${o.price_toman.toLocaleString('en-US')} LNDC</button>
+          <button class="mkt-price-pill" onclick="buyGift(${o.id})">${o.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</button>
         </div>
       </div>`).join('')}</div>`
     : '<div class="empty"><div class="eic">🎁</div>No listing matches this filter.</div>';
@@ -2176,7 +2233,7 @@ async function openAboutPage() {
   document.getElementById('infoPageContent').innerHTML = `
     <div class="row"><span class="muted">Name</span><b>${me.first_name || me.username || '-'}</b></div>
     <div class="row"><span class="muted">Numeric ID</span><b>${me.tg_id}</b></div>
-    <div class="row"><span class="muted">Wallet balance</span><b>${me.balance_toman.toLocaleString('en-US')} LNDC</b></div>
+    <div class="row"><span class="muted">Wallet balance</span><b>${me.balance_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</b></div>
     <button class="btn secondary" style="margin-top:14px;" onclick="openSupportChat()">🎧 Contact support</button>
   `;
 }
@@ -2192,7 +2249,7 @@ async function loadTasks() {
   document.getElementById('tasksList').innerHTML = tasks.length
     ? tasks.map((t, i) => `
       <div class="card" ${staggerStyle(i)}>
-        <div class="row"><b>${t.title}</b><span class="tag">${t.reward_toman.toLocaleString('en-US')} LNDC</span></div>
+        <div class="row"><b>${t.title}</b><span class="tag">${t.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</span></div>
         ${t.description ? `<p class="muted" style="margin:6px 0;">${t.description}</p>` : ''}
         ${t.kind === 'join_channel' && t.channel_username && !t.done ? `<button class="btn secondary" onclick="tg?.openTelegramLink ? tg.openTelegramLink('https://t.me/${t.channel_username.replace(/^@/, '')}') : window.open('https://t.me/${t.channel_username.replace(/^@/, '')}','_blank')">📢 Join the channel</button>` : ''}
         ${t.kind === 'custom' && t.link && !t.done ? `<button class="btn secondary" onclick="tg?.openLink ? tg.openLink('${t.link}') : window.open('${t.link}','_blank')">🔗 Open</button>` : ''}
@@ -2230,7 +2287,7 @@ async function loadGame() {
       <div class="gc-body">
         <div class="gc-name">${c.name}</div>
         ${c.edition && c.edition !== 'standard' ? `<span class="tag">${c.edition === 'gold' ? '🟡 Golden' : '✨ Radiant'}</span>` : rarityBadge(c.rarity_label, c.rarity_color)}
-        <div class="gc-price">Power ${c.base_power} — ${c.price_toman.toLocaleString('en-US')} LNDC</div>
+        <div class="gc-price">Power ${c.base_power} — ${c.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</div>
         <button class="gc-buy" onclick="buyGameCard(${c.id})">Buy</button>
       </div>
     </div>`).join('')}</div>` : 'No card in this category right now.';
@@ -2412,7 +2469,7 @@ async function loadGameLeaderboard() {
   const rankClass = (rank) => rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
   let html = leaderboard.map((p, i) => {
     const rank = i + 1, prize = prizeFor(rank);
-    return `<div class="lb-row" ${staggerStyle(i)}><div class="lb-rank">${rank}</div><div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}${prize ? ` <span class="tag">🎁 ${prize.reward_toman.toLocaleString('en-US')}</span>` : ''}</div><div class="lb-score">${p.score} Score</div></div>`;
+    return `<div class="lb-row" ${staggerStyle(i)}><div class="lb-rank">${rank}</div><div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}${prize ? ` <span class="tag">🎁 ${prize.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>` : ''}</div><div class="lb-score">${p.score} Score</div></div>`;
   }).join('');
   const inTop = leaderboard.some(p => p.tg_id === myRow.tg_id) || myRank <= leaderboard.length;
   if (!inTop) html += `<div style="border-top:1px dashed var(--border);margin:8px 0;"></div><div class="lb-row"><div class="lb-rank">${myRank}</div><div class="lb-name">Me</div><div class="lb-score">${myRow.score} Score</div></div>`;
@@ -2437,7 +2494,7 @@ async function loadGameHistory() {
 
 /* ================= Battle pass ================= */
 function bpIcon(type) {
-  return { toman: '💰', card: '🎴', extra_games: '🎮', avatar: '🖼️', product: '📦', none: '➖' }[type] || '➖';
+  return { toman: '💰', card: '🎴', extra_games: '🎮', avatar: '🖼️', product: '📦', gift_pack: '🎁', none: '➖' }[type] || '➖';
 }
 async function loadSeason() {
   const { config, progress, tiers, season } = await api('/api/season/status');
@@ -2463,7 +2520,7 @@ async function loadSeason() {
     <div class="row"><span>Current tier</span><b>${progress.currentTier} / ${progress.tierCount}</b></div>
     <div class="bp-progress"><div class="bp-progress-fill" style="width:${tierPct}%;"></div></div>
     <div class="muted">${xpIntoTier} / ${progress.xpPerTier} XP to next tier</div>
-    ${!progress.purchasedPremium ? `<button class="btn gold" onclick="buySeasonPremium()">Upgrade to Premium (${config.price_toman.toLocaleString('en-US')} LNDC)</button>` : '<div class="tag" style="margin-top:8px;">👑 Premium is active</div>'}
+    ${!progress.purchasedPremium ? `<button class="btn gold" onclick="buySeasonPremium()">Upgrade to Premium (${config.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC)</button>` : '<div class="tag" style="margin-top:8px;">👑 Premium is active</div>'}
     ${config.tier_skip_price_toman > 0 && progress.currentTier < progress.tierCount ? `
       <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
         <label>Buy tier (skip unfilled tiers)</label>
@@ -2471,7 +2528,7 @@ async function loadSeason() {
           <input type="number" id="buyTierTarget" min="${progress.currentTier + 1}" max="${progress.tierCount}" value="${progress.currentTier + 1}" oninput="updateBuyTierCost(${config.tier_skip_price_toman}, ${progress.currentTier})" style="margin:0;">
           <button class="btn secondary" style="width:auto;white-space:nowrap;" onclick="buySeasonTierUI()">Buy</button>
         </div>
-        <div class="muted" id="buyTierCostHint">Cost: ${config.tier_skip_price_toman.toLocaleString('en-US')} LNDC</div>
+        <div class="muted" id="buyTierCostHint">Cost: ${config.tier_skip_price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</div>
       </div>` : ''}
   `;
   const fillPct = tiers.length > 1 ? Math.min(100, ((progress.currentTier - 1) / (tiers.length - 1)) * 100) : 0;
@@ -2491,10 +2548,10 @@ async function loadSeason() {
     const reached = t.tier_number <= progress.currentTier;
     const freeClaimed = progress.claims.some(c => c.tier_number === t.tier_number && c.track === 'free');
     const premClaimed = progress.claims.some(c => c.tier_number === t.tier_number && c.track === 'premium');
-    const freeLabel = t.free_reward_type === 'toman' ? `${Number(t.free_reward_value || 0).toLocaleString('en-US')} LNDC`
+    const freeLabel = t.free_reward_type === 'toman' ? `${Number(t.free_reward_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`
       : t.free_reward_type === 'extra_games' ? `${t.free_reward_value} Extra game`
       : t.free_reward_type === 'none' ? 'No prize' : (t.free_reward_name || t.free_reward_type);
-    const premLabel = t.premium_reward_type === 'toman' ? `${Number(t.premium_reward_value || 0).toLocaleString('en-US')} LNDC`
+    const premLabel = t.premium_reward_type === 'toman' ? `${Number(t.premium_reward_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`
       : t.premium_reward_type === 'extra_games' ? `${t.premium_reward_value} Extra game`
       : t.premium_reward_type === 'none' ? 'No prize' : (t.premium_reward_name || t.premium_reward_type);
     return `<div class="bp-tier ${t.tier_number === progress.currentTier ? 'current' : ''}" id="bp-detail-${t.tier_number}">
@@ -2525,7 +2582,7 @@ async function buySeasonPremium() { await api('/api/season/buy-premium', { metho
 function updateBuyTierCost(pricePerTier, currentTier) {
   const target = Number(document.getElementById('buyTierTarget').value) || currentTier + 1;
   const tiers = Math.max(1, target - currentTier);
-  document.getElementById('buyTierCostHint').textContent = `Cost: ${(tiers * pricePerTier).toLocaleString('en-US')} LNDC (${tiers} tier(s))`;
+  document.getElementById('buyTierCostHint').textContent = `Cost: ${(tiers * pricePerTier).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC (${tiers} tier(s))`;
 }
 async function buySeasonTierUI() {
   const targetTier = Number(document.getElementById('buyTierTarget').value);
@@ -2533,7 +2590,11 @@ async function buySeasonTierUI() {
   await api('/api/season/buy-tier', { method: 'POST', body: JSON.stringify({ targetTier }) });
   toast('Tier purchased ✅'); loadMe(); loadSeason();
 }
-async function claimSeasonTier(tier, track) { await api('/api/season/claim', { method: 'POST', body: JSON.stringify({ tier, track }) }); toast('Reward claimed 🎉'); loadMe(); loadSeason(); }
+async function claimSeasonTier(tier, track) {
+  const result = await api('/api/season/claim', { method: 'POST', body: JSON.stringify({ tier, track }) });
+  toast(result.giftPackWin ? `🎁 You won "${result.giftPackWin.title}" — it'll be sent to you on Telegram shortly!` : 'Reward claimed 🎉');
+  loadMe(); loadSeason();
+}
 
 /* ================= Daily quest ================= */
 async function loadDailyQuests() {
@@ -2543,7 +2604,7 @@ async function loadDailyQuests() {
   el.innerHTML = quests.length ? quests.map((q, i) => `
     <div class="card" ${staggerStyle(i)}>
       <div class="row"><b>${q.title}</b><span class="tag">${q.progress}/${q.target_count}</span></div>
-      <p class="muted">Prize: ${q.reward_type === 'toman' ? Number(q.reward_value).toLocaleString('en-US') + ' LNDC' : q.reward_type}</p>
+      <p class="muted">Prize: ${q.reward_type === 'toman' ? Number(q.reward_value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' LNDC' : q.reward_type}</p>
       <button class="btn" ${q.done && !q.claimed ? '' : 'disabled'} onclick="claimQuestUI(${q.id})">${q.claimed ? 'Claimed ✅' : q.done ? 'Claim reward' : 'In progress...'}</button>
     </div>`).join('') : 'No quest defined for today.';
 }
@@ -2584,9 +2645,9 @@ function renderAuctionsList(auctions) {
     <div class="card" ${staggerStyle(i)}>
       ${a.image_url ? `<img src="${a.image_url}">` : ''}
       <div class="row"><b>${a.title}</b><span class="tag" id="auction-timer-${a.id}">${formatAuctionCountdown(a.ends_at)}</span></div>
-      <p class="muted">Current price: <b style="color:var(--gold);">${a.current_price.toLocaleString('en-US')}</b> LNDC (next bid: ${a.nextBidAmount.toLocaleString('en-US')}, +${a.bid_step_percent || 5}%)</p>
+      <p class="muted">Current price: <b style="color:var(--gold);">${a.current_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b> LNDC (next bid: ${a.nextBidAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, +${a.bid_step_percent || 5}%)</p>
       <p class="muted">Last bidder: <b style="color:#c4b0ff;">${a.bidder_first_name ? (a.bidder_first_name + (a.bidder_username ? ' @' + a.bidder_username : '')) : 'No one has bid yet'}</b></p>
-      <button class="btn gold" onclick="bidAuction(${a.id})">Place bid (${a.nextBidAmount.toLocaleString('en-US')} LNDC)</button>
+      <button class="btn gold" onclick="bidAuction(${a.id})">Place bid (${a.nextBidAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC)</button>
     </div>`).join('');
   document.getElementById('auctionsList').innerHTML = html;
   const el2 = document.getElementById('auctionsList2'); if (el2) el2.innerHTML = html;
@@ -2618,17 +2679,17 @@ async function loadClanMine() {
       <div class="row"><b>${clan.emblem.icon} ${clan.name}</b><span class="tag">#${clan.tag}</span></div>
       <div class="row">${clanEmblemChip(clan.emblem)}<b>${clan.score} pts</b></div>
       ${clan.emblem.nextThreshold ? `<div class="bp-progress"><div class="bp-progress-fill" style="width:${Math.min(100, Math.round(clan.score / clan.emblem.nextThreshold * 100))}%;"></div></div><p class="muted" style="font-size:11px;margin:4px 0 0;">${clan.emblem.nextThreshold - clan.score} pts to the next emblem</p>` : `<p class="muted" style="font-size:11px;">🏆 Highest emblem reached!</p>`}
-      <div class="row" id="clanBankSection"><span class="muted">Clan bank</span><b>${clan.bank_balance.toLocaleString('en-US')} LNDC</b></div>
+      <div class="row" id="clanBankSection"><span class="muted">Clan bank</span><b>${clan.bank_balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</b></div>
       <div class="row"><span class="muted">My role</span><b>${clan.myRole === 'owner' ? 'Leader' : clan.myRole === 'admin' ? 'Manager' : 'Member'}</b></div>
-      <label>Donate to clan bank</label><input type="number" id="donateAmount">
+      <label>Donate to clan bank</label><input type="number" id="donateAmount" step="0.01">
       <button class="btn gold" onclick="donateClanUI()">Donate</button>
       ${clan.myRole === 'owner' ? `
-      <div class="row" style="margin-top:6px;"><span class="muted">Withdrawable balance</span><b style="color:var(--gold);">${clan.myWithdrawableRemaining.toLocaleString('en-US')} LNDC</b></div>
-      <label style="margin-top:10px;">Withdraw from clan bank to your own wallet${cfg.withdraw_fee_percent > 0 ? ` (Fee ${cfg.withdraw_fee_percent}%)` : ''}</label><input type="number" id="clanWithdrawAmount">
+      <div class="row" style="margin-top:6px;"><span class="muted">Withdrawable balance</span><b style="color:var(--gold);">${clan.myWithdrawableRemaining.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</b></div>
+      <label style="margin-top:10px;">Withdraw from clan bank to your own wallet${cfg.withdraw_fee_percent > 0 ? ` (Fee ${cfg.withdraw_fee_percent}%)` : ''}</label><input type="number" id="clanWithdrawAmount" step="0.01">
       <button class="btn secondary" onclick="withdrawClanUI()">Withdraw</button>
       <label style="margin-top:10px;">Gift from clan bank to a member</label>
       <select id="giftMemberSelect">${members.filter(m => m.tg_id !== clan.owner_tg_id).map(m => `<option value="${m.tg_id}">${m.first_name || ''} ${m.username ? '@' + m.username : ''}</option>`).join('') || '<option value="">no member</option>'}</select>
-      <input type="number" id="giftAmount" placeholder="Amount (LNDC)">
+      <input type="number" id="giftAmount" step="0.01" placeholder="Amount (LNDC)">
       <button class="btn secondary" onclick="giftClanUI()">Send gift</button>` : ''}
       <button class="btn danger" onclick="leaveClanUI()">${clan.myRole === 'owner' ? 'Disband clan' : 'Leave clan'}</button>
       <button class="btn" style="margin-top:8px;background:linear-gradient(90deg,#ff5f6d,#ffc371);" onclick="showMView('clanwar')">⚔️ Clan vs clan war</button>
@@ -2648,7 +2709,7 @@ async function loadClanMine() {
     </div>
     ${clan.join_policy === 'request' ? `<div class="card"><h3 class="sec" style="margin-top:0;">📥 Pending join requests</h3><div id="clanJoinRequestsList" class="muted">Loading...</div></div>` : ''}` : ''}
     <h3 class="sec" id="clanMembersSection">Members</h3>
-    ${members.map(m => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${m.first_name || ''} ${m.username ? '@' + m.username : ''} ${m.role === 'owner' ? '👑' : ''}</span><span class="tag">Donate: ${m.donated_total.toLocaleString('en-US')}</span></div>
+    ${members.map(m => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${m.first_name || ''} ${m.username ? '@' + m.username : ''} ${m.role === 'owner' ? '👑' : ''}</span><span class="tag">Donate: ${m.donated_total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
       ${clan.myRole === 'owner' && m.tg_id !== clan.owner_tg_id ? `<button class="btn danger" style="margin-top:6px;" onclick="kickMemberUI(${m.tg_id})">Kick</button>` : ''}</div>`).join('')}`;
   if (clan.myRole === 'owner' && clan.join_policy === 'request') loadClanJoinRequests();
 }
@@ -2709,7 +2770,7 @@ async function withdrawClanUI() {
   const amount = Number(document.getElementById('clanWithdrawAmount').value);
   if (!amount || amount <= 0) { toast('Enter a valid amount'); return; }
   const r = await api('/api/clan/withdraw', { method: 'POST', body: JSON.stringify({ amount }) });
-  toast(r.fee > 0 ? `${r.net.toLocaleString('en-US')} LNDC came to your wallet (fee ${r.fee.toLocaleString('en-US')} LNDC) ✅` : 'Amount withdrawn to your wallet ✅');
+  toast(r.fee > 0 ? `${r.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC came to your wallet (fee ${r.fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC) ✅` : 'Amount withdrawn to your wallet ✅');
   loadMe(); loadClanMine();
 }
 async function giftClanUI() {
@@ -2718,7 +2779,7 @@ async function giftClanUI() {
   if (!targetTgId) { toast('Select a member'); return; }
   if (!amount || amount <= 0) { toast('Enter a valid amount'); return; }
   const r = await api('/api/clan/gift', { method: 'POST', body: JSON.stringify({ targetTgId, amount }) });
-  toast(r.fee > 0 ? `Gift sent (${r.net.toLocaleString('en-US')} LNDC, fee ${r.fee.toLocaleString('en-US')} LNDC) ✅` : 'Gift sent ✅');
+  toast(r.fee > 0 ? `Gift sent (${r.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC, fee ${r.fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC) ✅` : 'Gift sent ✅');
   loadMe(); loadClanMine();
 }
 async function kickMemberUI(tgId) { if (!confirm('be kicked?')) return; await api('/api/clan/kick', { method: 'POST', body: JSON.stringify({ targetTgId: tgId }) }); loadClanMine(); }
@@ -2808,7 +2869,7 @@ async function loadClanWar() {
     if (w.status === 'open') {
       html += `<div class="card">
         <h3 class="sec" style="margin-top:0;">⏳ Waiting for opponent...</h3>
-        <div class="row"><span class="muted">Entry fee</span><b>${w.entry_toman.toLocaleString('en-US')} LNDC</b></div>
+        <div class="row"><span class="muted">Entry fee</span><b>${w.entry_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</b></div>
         <p class="muted">This war shows up in other clans' "open wars" list so someone can challenge you.</p>
         ${isLeader ? `<button class="btn danger" onclick="cancelWarUI(${w.id})">Cancel war and reclaim entry fee</button>` : ''}
       </div>`;
@@ -2840,15 +2901,15 @@ async function loadClanWar() {
     if (isLeader) {
       html += `<div class="card">
         <h3 class="sec" style="margin-top:0;">🔥 Start new war</h3>
-        <p class="muted">The entry fee is deducted from the clan bank (donated funds). The winner takes both sides' total minus a ${st.config.fee_percent}% fee. Minimum entry is ${st.config.min_entry_toman.toLocaleString('en-US')} LNDC.</p>
-        <label>Entry amount (LNDC)</label><input type="number" id="warEntryAmount" min="${st.config.min_entry_toman}">
+        <p class="muted">The entry fee is deducted from the clan bank (donated funds). The winner takes both sides' total minus a ${st.config.fee_percent}% fee. Minimum entry is ${st.config.min_entry_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC.</p>
+        <label>Entry amount (LNDC)</label><input type="number" id="warEntryAmount" min="${st.config.min_entry_toman}" step="0.01">
         <button class="btn gold" onclick="createWarUI()">🚩 Create war and wait for opponent</button>
       </div>`;
     }
     html += `<h3 class="sec">Opponents' open wars</h3>` +
       (st.openWars.length ? st.openWars.map(w => `
         <div class="card" style="padding:10px 14px;">
-          <div class="row"><span>${w.clanAName}</span><span class="tag">${w.entry_toman.toLocaleString('en-US')} LNDC</span></div>
+          <div class="row"><span>${w.clanAName}</span><span class="tag">${w.entry_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</span></div>
           ${isLeader ? `<button class="btn" style="margin-top:6px;" onclick="joinWarUI(${w.id})">⚔️ Join this war</button>` : ''}
         </div>`).join('') : '<div class="card muted">No war right now.</div>');
   }
@@ -2859,7 +2920,7 @@ async function loadClanWar() {
       const won = w.winner_clan_id === st.myClan.id;
       return `<div class="card" style="padding:10px 14px;border-color:${won ? 'var(--success)' : 'var(--danger)'};">
         <div class="row"><span>${w.clanAName} vs ${w.clanBName}</span><b style="color:${won ? 'var(--success)' : 'var(--danger)'};">${won ? '🏆 Win' : '❌ Loss'}</b></div>
-        <div class="row"><span class="muted">Prize pool</span><span>${w.pot_toman.toLocaleString('en-US')} LNDC (fee ${w.fee_toman.toLocaleString('en-US')})</span></div>
+        <div class="row"><span class="muted">Prize pool</span><span>${w.pot_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC (fee ${w.fee_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span></div>
       </div>`;
     }).join('') : '<div class="card muted">No war finished yet.</div>');
 
@@ -2947,7 +3008,7 @@ async function loadRaffles() {
     return `<div class="card" style="cursor:pointer;" onclick="openRaffleDetail(${r.raffle.id})">
       <div class="row"><b>${r.raffle.title}</b><span class="tag">${r.entriesCount} joined</span></div>
       ${r.prizes.length ? `<div style="display:flex;gap:6px;margin:8px 0;">${giftThumbs(r.prizes)}</div>` : (r.raffle.prize_description ? `<p class="muted">${r.raffle.prize_description}</p>` : '')}
-      <div class="row"><span class="muted">🎫 Ticket pool</span><b>${r.ticketPool.toLocaleString('en-US')}</b></div>
+      <div class="row"><span class="muted">🎫 Ticket pool</span><b>${r.ticketPool.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></div>
       ${remain !== null ? `<div class="row"><span class="muted">⏱ Ends in</span><b style="color:${remain < 300000 ? 'var(--danger)' : 'var(--text)'};">${formatCountdown(remain)}</b></div>` : ''}
     </div>`;
   }).join('')}</div>` : '<div class="empty"><div class="eic">🎟</div>No giveaway right now.</div>';
@@ -2999,7 +3060,7 @@ async function refreshRaffleDetail() {
   document.getElementById('rdTitle').textContent = r.raffle.title;
   document.getElementById('rdParticipants').textContent = r.entriesCount;
   document.getElementById('rdGiftsCount').textContent = r.prizes.length || r.raffle.winners_count;
-  document.getElementById('rdTicketPool').textContent = r.ticketPool.toLocaleString('en-US');
+  document.getElementById('rdTicketPool').textContent = r.ticketPool.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const endsAt = r.raffle.ends_at ? new Date(r.raffle.ends_at.replace(' ', 'T') + 'Z').getTime() : null;
   document.getElementById('rdCountdown').textContent = endsAt ? formatCountdown(endsAt - Date.now()) : '—';
   document.getElementById('rdCountdownLabel').textContent = endsAt ? 'Ends in' : 'No deadline';
@@ -3031,7 +3092,7 @@ async function refreshRaffleDetail() {
   } else if (r.raffle.ticket_price_toman > 0 && r.myEntry.tickets < r.raffle.max_tickets_per_user) {
     stepper.style.display = 'flex';
     document.getElementById('rdQty').max = r.raffle.max_tickets_per_user - r.myEntry.tickets;
-    btn.textContent = `🎫 Buy ticket(s) (${r.raffle.ticket_price_toman.toLocaleString('en-US')} LNDC each)`;
+    btn.textContent = `🎫 Buy ticket(s) (${r.raffle.ticket_price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC each)`;
     btn.disabled = false;
   } else {
     stepper.style.display = 'none';
@@ -3075,7 +3136,7 @@ async function loadAlbums() {
 function albumPrizeText(a) {
   if (a.reward_type === 'card') return (a.rewardCards || []).map(rc => `${rc.name} (Lv.${rc.level})`).join(', ') || '-';
   if (a.reward_type === 'avatar') return 'Avatar';
-  return `${Number(a.reward_value || 0).toLocaleString('en-US')} LNDC`;
+  return `${Number(a.reward_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`;
 }
 async function claimAlbumUI(id) { await api(`/api/albums/${id}/claim`, { method: 'POST' }); toast('Reward claimed 🎉'); loadMe(); loadAlbums(); loadMyCards(); }
 
@@ -3100,7 +3161,7 @@ async function loadCardMarket() {
   document.getElementById('myCardMarketListings').innerHTML = openListings.length
     ? openListings.map(l => `
       <div class="card" style="padding:10px 14px;">
-        <div class="row"><span><b>${l.name}</b> (Lv${l.level}) — <span class="muted">${l.price_toman.toLocaleString('en-US')} LNDC</span></span>
+        <div class="row"><span><b>${l.name}</b> (Lv${l.level}) — <span class="muted">${l.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</span></span>
         <button class="btn danger" style="width:auto;" onclick="cancelCardMarketListingUI(${l.id})">Cancel</button></div>
       </div>`).join('')
     : 'You have no active listing.';
@@ -3122,8 +3183,8 @@ async function onCmCardPick() {
   try {
     const g = await api('/api/card-market/price-guidance/' + userCardId);
     box.style.display = 'block';
-    box.innerHTML = `💡 Recommended price: <b>${g.recommended.toLocaleString('en-US')} LNDC</b><br>
-      Allowed range: <b>${g.minPrice.toLocaleString('en-US')} – ${g.maxPrice.toLocaleString('en-US')} LNDC</b>
+    box.innerHTML = `💡 Recommended price: <b>${g.recommended.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</b><br>
+      Allowed range: <b>${g.minPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} – ${g.maxPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</b>
       <span style="opacity:.7;">(the system sets this range from the card's level/power, its market value setting, and recent market activity — you can price anywhere inside it)</span>`;
     const priceInput = document.getElementById('cmListPrice');
     priceInput.min = g.minPrice; priceInput.max = g.maxPrice;
@@ -3146,7 +3207,7 @@ function renderCardMarketBoard() {
         ${l.image_url ? `<img src="${l.image_url}">` : ''}
         <div class="row"><b>${l.name} (Lv${l.level})</b><span class="muted">${l.first_name || ''}</span></div>
         <div class="row"><span class="muted">Power</span><b>${cmCardPower(l)}</b></div>
-        <div class="row"><span class="muted">Price</span><b>${l.price_toman.toLocaleString('en-US')} LNDC</b></div>
+        <div class="row"><span class="muted">Price</span><b>${l.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</b></div>
         <button class="btn gold" onclick="buyCardMarketListingUI(${l.id})">🛒 Buy</button>
       </div>`).join('')
     : '<div class="empty"><div class="eic">🛒</div>No card listed for sale right now.</div>';
@@ -3195,7 +3256,7 @@ async function loadProfile() {
 }
 async function doCheckinUI() {
   const r = await api('/api/rank/checkin', { method: 'POST' });
-  toast(r.streakReward > 0 ? `+${r.xpGained} XP, and a ${r.streakReward.toLocaleString('en-US')} LNDC bonus for a ${r.streak}-day streak! 🔥` : `+${r.xpGained} XP — ${r.streak}-day streak 🔥`);
+  toast(r.streakReward > 0 ? `+${r.xpGained} XP, and a ${r.streakReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC bonus for a ${r.streak}-day streak! 🔥` : `+${r.xpGained} XP — ${r.streak}-day streak 🔥`);
   loadMe(); loadProfile();
 }
 /* ================= Achievements ================= */
@@ -3247,7 +3308,7 @@ async function loadAvatarsShop() {
   const mine = await api('/api/avatars/my');
   document.getElementById('myAvatarsList').innerHTML = mine.length ? mine.map(a => `<div class="card" style="padding:10px 14px;"><div class="row"><span>${a.name}</span><button class="btn" style="width:auto;" onclick="equipAvatarUI(${a.avatar_id})">Use</button></div></div>`).join('') : 'You do not have any avatars yet.';
   const shop = await api('/api/avatars');
-  document.getElementById('avatarShopList').innerHTML = shop.length ? shop.map((a, i) => `<div class="card" ${staggerStyle(i)}>${a.image_url ? `<img src="${a.image_url}">` : ''}<div class="row"><b>${a.name}</b><span class="tag">${a.price_toman.toLocaleString('en-US')} LNDC</span></div><button class="btn secondary" onclick="buyAvatarUI(${a.id})">Buy</button></div>`).join('') : 'No avatars in the shop yet.';
+  document.getElementById('avatarShopList').innerHTML = shop.length ? shop.map((a, i) => `<div class="card" ${staggerStyle(i)}>${a.image_url ? `<img src="${a.image_url}">` : ''}<div class="row"><b>${a.name}</b><span class="tag">${a.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</span></div><button class="btn secondary" onclick="buyAvatarUI(${a.id})">Buy</button></div>`).join('') : 'No avatars in the shop yet.';
 }
 async function buyAvatarUI(id) { await api('/api/avatars/buy', { method: 'POST', body: JSON.stringify({ avatarId: id }) }); toast('Purchased ✅'); loadMe(); loadAvatarsShop(); }
 async function equipAvatarUI(id) { await api('/api/avatars/equip', { method: 'POST', body: JSON.stringify({ avatarId: id }) }); toast('Activated ✅'); loadProfile(); loadAvatarsShop(); }
@@ -3260,7 +3321,7 @@ async function loadReferral() {
   if (r.signupBonusType === 'card' && r.signupBonusCardName) {
     bonusLine = `Gift for each new invite: card «${r.signupBonusCardName}»`;
   } else if (r.signupBonusType === 'currency' && r.signupBonus > 0) {
-    bonusLine = `Gift for each new invite: ${Number(r.signupBonus).toLocaleString('en-US')} ${r.signupBonusCurrency || 'LNDC'}`;
+    bonusLine = `Gift for each new invite: ${Number(r.signupBonus).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${r.signupBonusCurrency || 'LNDC'}`;
   }
   const subtitle = bonusLine || `Commission: ${r.percent}%`;
   document.getElementById('referralSubtitle').textContent = `${subtitle} — ${r.invitedCount} invited`;
@@ -3270,7 +3331,7 @@ async function loadReferral() {
     <p>Number invited: ${r.invitedCount}</p>
     <p>Purchase commission: ${r.percent}%</p>
     ${bonusLine ? `<p>${bonusLine}</p>` : ''}
-    <p>Total commission earned: ${r.totalEarned.toLocaleString('en-US')} LNDC</p>
+    <p>Total commission earned: ${r.totalEarned.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</p>
   `;
 }
 
@@ -3315,7 +3376,7 @@ async function loadLeaderboardPage() {
   document.getElementById('lbGameMine').innerHTML = gInTop ? '' : renderMineRow('My rank: #' + g.myRank + ' —', g.myRank, g.myRow.first_name, `${g.myRow.score} Score`);
   const gPrizes = (g.prizes || []).filter(p => p.reward_toman > 0);
   document.getElementById('lbGamePrizes').innerHTML = gPrizes.length
-    ? '🎁 Current prizes: ' + gPrizes.map(p => `Rank ${p.rank_from}${p.rank_to !== p.rank_from ? '-' + p.rank_to : ''}: ${p.reward_toman.toLocaleString('en-US')} LNDC`).join(' | ')
+    ? '🎁 Current prizes: ' + gPrizes.map(p => `Rank ${p.rank_from}${p.rank_to !== p.rank_from ? '-' + p.rank_to : ''}: ${p.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`).join(' | ')
     : '';
 
   const c = await api('/api/clan/leaderboard');
@@ -3324,7 +3385,7 @@ async function loadLeaderboardPage() {
   const cInTop = c.myClan && c.leaderboard.some(p => p.id === c.myClan.id);
   document.getElementById('lbClanMine').innerHTML = (c.myClan && !cInTop) ? renderMineRow('My clan rank: #' + c.myRank + ' —', c.myRank, `${c.myClan.name} #${c.myClan.tag}`, `${c.myClan.score} Score`) : '';
   document.getElementById('lbClanPrizes').innerHTML = c.prizeInfo && c.prizeInfo.reward_toman > 0
-    ? `🎁 Season prize: ${c.prizeInfo.reward_toman.toLocaleString('en-US')} LNDC among the top ${c.prizeInfo.winners_count} clans (${fmtDistribution(c.prizeInfo.distribution_method)}) — every ${c.prizeInfo.reset_days} days`
+    ? `🎁 Season prize: ${c.prizeInfo.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC among the top ${c.prizeInfo.winners_count} clans (${fmtDistribution(c.prizeInfo.distribution_method)}) — every ${c.prizeInfo.reset_days} days`
     : '';
 
   const l = await api('/api/rank/leaderboard');
@@ -3338,10 +3399,10 @@ async function loadLeaderboardPage() {
     <div class="row"><span class="muted">My league</span><b>${lg.me.leagueLabel}</b></div>
     <div class="row"><span class="muted">This week's rank</span><b>#${lg.me.rank}</b></div>
     <div class="row"><span class="muted">Win/loss this week</span><b>${lg.me.weeklyWins}/${lg.me.weeklyLosses} (${lg.me.score} Score)</b></div>
-    ${lg.myPrize ? `<div class="row"><span class="muted">🎁 Your current prize</span><b>${lg.myPrize.reward_type === 'card' ? (lg.myPrize.cardName || 'Card') : lg.myPrize.reward_toman.toLocaleString('en-US') + ' LNDC'}</b></div>` : ''}
+    ${lg.myPrize ? `<div class="row"><span class="muted">🎁 Your current prize</span><b>${lg.myPrize.reward_type === 'card' ? (lg.myPrize.cardName || 'Card') : lg.myPrize.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' LNDC'}</b></div>` : ''}
   `;
   document.getElementById('lbLeaguePrizes').innerHTML = (lg.prizes || []).length
-    ? '🎁 Prizes for this league: ' + lg.prizes.map(p => `Rank ${p.rank_from}${p.rank_to !== p.rank_from ? '-' + p.rank_to : ''}: ${p.reward_type === 'card' ? (p.cardName || 'Card') : p.reward_toman.toLocaleString('en-US') + ' LNDC'}`).join(' | ')
+    ? '🎁 Prizes for this league: ' + lg.prizes.map(p => `Rank ${p.rank_from}${p.rank_to !== p.rank_from ? '-' + p.rank_to : ''}: ${p.reward_type === 'card' ? (p.cardName || 'Card') : p.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' LNDC'}`).join(' | ')
     : '';
   document.getElementById('lbLeagueChips').innerHTML = lg.tiers.map(t =>
     `<div class="chip ${t.key === lg.me.league ? 'active' : ''}" data-league="${t.key}" onclick="loadLeagueBoard('${t.key}')">${t.icon || ''} ${t.label}</div>`).join('');
