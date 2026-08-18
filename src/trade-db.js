@@ -131,7 +131,7 @@ export function createTradeOffer(fromTgId, toTgId, fromUserCardId, toUserCardId,
     throw new Error(`Only level 1 to ${cfg.max_tradable_level} cards are tradeable`);
   }
   const user = getUser(fromTgId);
-  if (!user || user.balance_toman < cfg.trade_fee_toman) throw new Error(`A ${cfg.trade_fee_toman.toLocaleString()} LNDC fee is required to make a trade offer`);
+  if (!user || user.balance_toman < cfg.trade_fee_toman) throw new Error(`A ${cfg.trade_fee_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC fee is required to make a trade offer`);
 
   return db.prepare(`
     INSERT INTO trade_offers (from_tg_id, to_tg_id, from_user_card_id, to_user_card_id, listing_id) VALUES (?,?,?,?,?)

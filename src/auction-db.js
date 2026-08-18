@@ -1,4 +1,4 @@
-import db from './db.js';
+import db, { round2 } from './db.js';
 import { adjustToman, getUser, getProduct } from './db.js';
 import { getGameCard, grantCardInstance } from './game-db.js';
 
@@ -76,7 +76,7 @@ export function createAuctionFromProduct(productId) {
   const product = getProduct(productId);
   if (!product) throw new Error('Product not found');
   const cfg = getAuctionConfig();
-  const startPrice = Math.round(product.price_toman * (1 - cfg.discount_percent / 100));
+  const startPrice = round2(product.price_toman * (1 - cfg.discount_percent / 100));
   const endsAt = new Date(Date.now() + cfg.duration_minutes * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   return db.prepare(`
     INSERT INTO auctions (product_id, item_type, title, image_url, start_price, current_price, bid_step, bid_step_percent, anti_snipe, min_wallet_balance, ends_at)
@@ -88,7 +88,7 @@ export function createAuctionFromCard(cardId) {
   const card = getGameCard(cardId);
   if (!card) throw new Error('Card not found');
   const cfg = getAuctionConfig();
-  const startPrice = Math.round(card.price_toman * (1 - cfg.discount_percent / 100));
+  const startPrice = round2(card.price_toman * (1 - cfg.discount_percent / 100));
   const endsAt = new Date(Date.now() + cfg.duration_minutes * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   return db.prepare(`
     INSERT INTO auctions (product_id, item_type, card_id, title, image_url, start_price, current_price, bid_step, bid_step_percent, anti_snipe, min_wallet_balance, ends_at)
@@ -112,12 +112,14 @@ export function placeBid(tgId, auctionId) {
 
   const user = getUser(tgId);
   if (!user || user.balance_toman < auction.min_wallet_balance) {
-    throw new Error(`You need at least ${auction.min_wallet_balance.toLocaleString()} LNDC balance to participate`);
+    throw new Error(`You need at least ${auction.min_wallet_balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC balance to participate`);
   }
   // The next bid is a percentage of the current price (not a flat amount) so the step scales
-  // sensibly whether the item is currently worth 2,000 LNDC or 2,000,000 LNDC.
-  const step = Math.max(1, Math.ceil(auction.current_price * (auction.bid_step_percent || 5) / 100));
-  const newPrice = auction.current_price + step;
+  // sensibly whether the item is currently worth 2,000 LNDC or 2,000,000 LNDC. Rounded up to the
+  // nearest cent (not a whole unit) so the step is never zero for low-priced items now that the
+  // wallet supports 2 decimal places.
+  const step = Math.max(0.01, Math.ceil(auction.current_price * (auction.bid_step_percent || 5) / 100 * 100) / 100);
+  const newPrice = round2(auction.current_price + step);
   if (user.balance_toman < newPrice) throw new Error('Insufficient wallet balance for this bid');
 
   // Whoever held the top bid before this one is about to be outbid — captured before the UPDATE

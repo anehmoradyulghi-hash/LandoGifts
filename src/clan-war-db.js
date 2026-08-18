@@ -1,4 +1,4 @@
-import db from './db.js';
+import db, { round2 } from './db.js';
 import { getMyClan, getClanById, getClanMembers, addClanWinScore } from './clan-db.js';
 import { getUserCard, getUserCards } from './game-db.js';
 
@@ -97,7 +97,7 @@ export function createClanWar(leaderTgId, entryToman) {
   if (!cfg.enabled) throw new Error('Clan wars are currently disabled');
   const clan = requireLeader(leaderTgId);
   const entry = Number(entryToman);
-  if (!entry || entry < cfg.min_entry_toman) throw new Error(`Minimum entry is ${cfg.min_entry_toman.toLocaleString()} LNDC`);
+  if (!entry || entry < cfg.min_entry_toman) throw new Error(`Minimum entry is ${cfg.min_entry_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`);
   if (getMyActiveClanWar(clan.id)) throw new Error('Your clan already has an open war right now');
   if (clan.bank_balance < entry) throw new Error('Insufficient clan bank balance (donated funds)');
 
@@ -193,9 +193,9 @@ function resolveClanWar(war) {
   const rollA = war.clan_a_power * (1 + Math.random() * 0.15);
   const rollB = war.clan_b_power * (1 + Math.random() * 0.15);
   const winnerClanId = rollA >= rollB ? war.clan_a_id : war.clan_b_id;
-  const pot = war.entry_toman * 2;
-  const fee = Math.round(pot * cfg.fee_percent / 100);
-  const payout = pot - fee;
+  const pot = round2(war.entry_toman * 2);
+  const fee = round2(pot * cfg.fee_percent / 100);
+  const payout = round2(pot - fee);
 
   db.prepare('UPDATE clans SET bank_balance = bank_balance + ? WHERE id = ?').run(payout, winnerClanId);
   db.prepare(`

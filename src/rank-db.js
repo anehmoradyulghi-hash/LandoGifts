@@ -1,5 +1,4 @@
-import db from './db.js';
-import { adjustToman, getUser } from './db.js';
+import db, { round2, adjustToman, getUser } from './db.js';
 import { checkAchievements } from './achievements-db.js';
 
 db.exec(`
@@ -174,7 +173,7 @@ CREATE TABLE IF NOT EXISTS streak_rewards (
 export function listStreakRewards() { return db.prepare('SELECT * FROM streak_rewards ORDER BY streak_days ASC').all(); }
 export function setStreakReward(streakDays, rewardToman) {
   const days = Math.max(1, Number(streakDays) || 0);
-  const reward = Math.max(0, Math.round(Number(rewardToman) || 0));
+  const reward = Math.max(0, round2(rewardToman));
   db.prepare(`INSERT INTO streak_rewards (streak_days, reward_toman) VALUES (?,?) ON CONFLICT(streak_days) DO UPDATE SET reward_toman = excluded.reward_toman`).run(days, reward);
 }
 export function deleteStreakReward(streakDays) { db.prepare('DELETE FROM streak_rewards WHERE streak_days = ?').run(Number(streakDays)); }

@@ -339,6 +339,40 @@ function computeTotalPower(row) {
 
 // Single point where a card gets added to a user's cards — used everywhere (purchase, task reward, battle pass, auction)
 // used here so level-7 special cards (instant_level) behave correctly everywhere
+// Weighted-random pick of a single card level from a JSON string like [{level,weight}, ...] — shared
+// by anything that lets an admin configure "which level does this leveled card drop at" odds
+// (chests, battle pass tier rewards). Returns null (meaning "use the default level") if the JSON is
+// missing/empty/invalid, so callers can just pass it straight to grantCardInstance's level param.
+export function rollWeightedCardLevel(weightsJson) {
+  if (!weightsJson) return null;
+  let weights;
+  try { weights = typeof weightsJson === 'string' ? JSON.parse(weightsJson) : weightsJson; } catch (e) { return null; }
+  if (!Array.isArray(weights) || !weights.length) return null;
+  const total = weights.reduce((s, w) => s + w.weight, 0);
+  if (total <= 0) return null;
+  let roll = Math.random() * total;
+  for (const w of weights) {
+    if (roll < w.weight) return w.level;
+    roll -= w.weight;
+  }
+  return weights[weights.length - 1].level;
+}
+
+// Validates/normalizes an admin's per-level odds input into a clean JSON string (or null if unused)
+// — [{level, weight}, ...] with positive weights only, capped to the card's own max_level.
+export function normalizeCardLevelWeights(raw, cardId) {
+  if (!raw) return null;
+  let arr;
+  try { arr = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return null; }
+  if (!Array.isArray(arr)) return null;
+  const card = cardId ? getGameCard(cardId) : null;
+  const maxLevel = card?.max_level || 7;
+  const clean = arr
+    .map(w => ({ level: Math.max(1, Math.min(maxLevel, Math.round(Number(w.level)))), weight: Number(w.weight) }))
+    .filter(w => Number.isFinite(w.weight) && w.weight > 0);
+  return clean.length ? JSON.stringify(clean) : null;
+}
+
 export function grantCardInstance(tgId, cardId, level = null) {
   const card = getGameCard(cardId);
   let lvl = level ? Number(level) : (card?.instant_level || 1);
@@ -407,7 +441,7 @@ export function sacrificeCards(tgId, targetUserCardId, sacrificeUserCardIds) {
   const cfg = getGameConfig();
   const fee = cfg.sacrifice_fee_toman || 0;
   const user = getUser(tgId);
-  if (fee > 0 && (!user || user.balance_toman < fee)) throw new Error(`You need ${fee.toLocaleString()} LNDC to upgrade`);
+  if (fee > 0 && (!user || user.balance_toman < fee)) throw new Error(`You need ${fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC to upgrade`);
 
   const powerCap = getPowerCapForLevel(target.level);
   let room = powerCap != null ? powerCap - target.power : Infinity;
@@ -485,7 +519,7 @@ export function mutateCards(tgId, keepUserCardId, sacrificeUserCardId) {
 
   const cost = getMergeCost(keep.level);
   const user = getUser(tgId);
-  if (cost > 0 && (!user || user.balance_toman < cost)) throw new Error(`You need ${cost.toLocaleString()} LNDC to mutate`);
+  if (cost > 0 && (!user || user.balance_toman < cost)) throw new Error(`You need ${cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC to mutate`);
 
   const newLevelNum = keep.level + 1;
   const newRolledPower = rollPowerForLevel(newLevelNum);

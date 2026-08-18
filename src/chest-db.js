@@ -1,8 +1,15 @@
 import db from './db.js';
 import { adjustToman, getUser } from './db.js';
-import { grantCardInstance, getGameCard } from './game-db.js';
+import { grantCardInstance, getGameCard, rollWeightedCardLevel, normalizeCardLevelWeights } from './game-db.js';
 import { grantAvatar, getAvatar } from './rank-db.js';
 import { checkAchievements, logPlayerActivity } from './achievements-db.js';
+
+// We add new columns with ALTER (since the database might already exist);
+// if they were already added, we ignore the "duplicate column" error — completely safe to run repeatedly
+function safeAddColumn(table, columnDef) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
+  catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+}
 
 /* =========================================================================
  * Shop chests (loot boxes) — the admin defines any number of purchasable chest
@@ -21,6 +28,7 @@ CREATE TABLE IF NOT EXISTS chests (
   price_toman INTEGER NOT NULL DEFAULT 0,
   sort_order INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
+  rewards_count INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -35,6 +43,7 @@ CREATE TABLE IF NOT EXISTS chest_items (
   extra_games_count INTEGER DEFAULT 0,
   probability_percent REAL NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
+  card_level_weights TEXT,         -- JSON [{level, weight}, ...] — which level a leveled card is granted at (type='card' only). NULL = default (level 1, or the card's instant_level if set)
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -47,6 +56,8 @@ CREATE TABLE IF NOT EXISTS chest_openings (
   opened_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
+safeAddColumn('chests', 'rewards_count INTEGER NOT NULL DEFAULT 1');
+safeAddColumn('chest_items', 'card_level_weights TEXT');
 
 /* ---------- Admin: chests ---------- */
 export function listChests(onlyActive = false) {
@@ -56,20 +67,24 @@ export function listChests(onlyActive = false) {
 }
 export function getChest(id) { return db.prepare('SELECT * FROM chests WHERE id = ?').get(id); }
 export function upsertChest(c) {
+  const rewardsCount = Math.max(1, Number(c.rewards_count) || 1);
   if (c.id) {
     db.prepare(`
-      UPDATE chests SET title=?, description=?, image_url=?, price_toman=?, sort_order=?, active=? WHERE id=?
-    `).run(c.title, c.description || null, c.image_url || null, Number(c.price_toman) || 0, Number(c.sort_order) || 0, c.active ? 1 : 0, c.id);
+      UPDATE chests SET title=?, description=?, image_url=?, price_toman=?, sort_order=?, active=?, rewards_count=? WHERE id=?
+    `).run(c.title, c.description || null, c.image_url || null, Number(c.price_toman) || 0, Number(c.sort_order) || 0, c.active ? 1 : 0, rewardsCount, c.id);
     return c.id;
   }
   return db.prepare(`
-    INSERT INTO chests (title, description, image_url, price_toman, sort_order, active) VALUES (?,?,?,?,?,?)
-  `).run(c.title, c.description || null, c.image_url || null, Number(c.price_toman) || 0, Number(c.sort_order) || 0, c.active ? 1 : 0).lastInsertRowid;
+    INSERT INTO chests (title, description, image_url, price_toman, sort_order, active, rewards_count) VALUES (?,?,?,?,?,?,?)
+  `).run(c.title, c.description || null, c.image_url || null, Number(c.price_toman) || 0, Number(c.sort_order) || 0, c.active ? 1 : 0, rewardsCount).lastInsertRowid;
 }
 export function deleteChest(id) {
   db.prepare('DELETE FROM chest_items WHERE chest_id = ?').run(id);
   db.prepare('DELETE FROM chests WHERE id = ?').run(id);
 }
+
+// Validates/normalizes the admin's per-level odds for a leveled card reward — shared with the
+// battle pass, which supports the same per-level odds on card tier rewards (see game-db.js).
 
 /* ---------- Admin: items inside a chest ---------- */
 export function listChestItems(chestId, onlyActive = false) {
@@ -79,19 +94,20 @@ export function listChestItems(chestId, onlyActive = false) {
 }
 export function getChestItem(id) { return db.prepare('SELECT * FROM chest_items WHERE id = ?').get(id); }
 export function upsertChestItem(i) {
+  const levelWeights = i.type === 'card' ? normalizeCardLevelWeights(i.card_level_weights, i.card_id) : null;
   if (i.id) {
     db.prepare(`
-      UPDATE chest_items SET label=?, type=?, amount_toman=?, card_id=?, avatar_id=?, extra_games_count=?, probability_percent=?, active=?
+      UPDATE chest_items SET label=?, type=?, amount_toman=?, card_id=?, avatar_id=?, extra_games_count=?, probability_percent=?, active=?, card_level_weights=?
       WHERE id=?
     `).run(i.label || null, i.type, i.amount_toman || 0, i.card_id || null, i.avatar_id || null, i.extra_games_count || 0,
-      Number(i.probability_percent) || 0, i.active ? 1 : 0, i.id);
+      Number(i.probability_percent) || 0, i.active ? 1 : 0, levelWeights, i.id);
     return i.id;
   }
   return db.prepare(`
-    INSERT INTO chest_items (chest_id, label, type, amount_toman, card_id, avatar_id, extra_games_count, probability_percent, active)
-    VALUES (?,?,?,?,?,?,?,?,?)
+    INSERT INTO chest_items (chest_id, label, type, amount_toman, card_id, avatar_id, extra_games_count, probability_percent, active, card_level_weights)
+    VALUES (?,?,?,?,?,?,?,?,?,?)
   `).run(i.chest_id, i.label || null, i.type, i.amount_toman || 0, i.card_id || null, i.avatar_id || null, i.extra_games_count || 0,
-    Number(i.probability_percent) || 0, i.active ? 1 : 0).lastInsertRowid;
+    Number(i.probability_percent) || 0, i.active ? 1 : 0, levelWeights).lastInsertRowid;
 }
 export function deleteChestItem(id) { db.prepare('DELETE FROM chest_items WHERE id = ?').run(id); }
 
@@ -99,19 +115,24 @@ export function deleteChestItem(id) { db.prepare('DELETE FROM chest_items WHERE 
 // Attaches a human-readable display label to each item (falls back to a generated one when the
 // admin didn't set a custom label), so the frontend can show the prize pool / odds without having
 // to separately look up card or avatar names itself.
-function describeItem(item) {
+function describeItem(item, grantedLevel = null) {
   let display = item.label;
   let image = null;
-  if (item.type === 'card') { const c = getGameCard(item.card_id); image = c?.image_url || null; if (!display) display = c?.name || 'Card'; }
+  if (item.type === 'card') {
+    const c = getGameCard(item.card_id);
+    image = c?.image_url || null;
+    if (!display) display = c?.name || 'Card';
+    if (grantedLevel) display += ` (Level ${grantedLevel})`;
+  }
   else if (item.type === 'avatar') { const a = getAvatar(item.avatar_id); image = a?.image_url || null; if (!display) display = a?.name || 'Avatar'; }
-  else if (!display && item.type === 'toman') display = `${Number(item.amount_toman).toLocaleString('en-US')} Toman`;
+  else if (!display && item.type === 'toman') display = `${Number(item.amount_toman).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Toman`;
   else if (!display && item.type === 'extra_games') display = `${item.extra_games_count} extra game(s)`;
   return { ...item, display, image };
 }
 export function listChestsForClient() {
   return listChests(true).map(c => ({
     ...c,
-    items: listChestItems(c.id, true).map(describeItem),
+    items: listChestItems(c.id, true).map(it => describeItem(it)),
   }));
 }
 export function getChestHistory(tgId, limit = 20) {
@@ -122,9 +143,10 @@ export function getChestHistory(tgId, limit = 20) {
   `).all(tgId, limit);
 }
 
-// Buying + opening a chest happens atomically: pay -> weighted pick -> grant reward -> log.
-// If the chosen item pointed at a card/avatar that was deleted in the meantime, it's excluded from
-// the draw pool (same defensive filtering the daily wheel does) rather than crashing the purchase.
+// Buying + opening a chest happens atomically: pay -> weighted pick (repeated `rewards_count` times,
+// each draw independent, with replacement) -> grant each reward -> log each. If the chosen item
+// pointed at a card/avatar that was deleted in the meantime, it's excluded from the draw pool (same
+// defensive filtering the daily wheel does) rather than crashing the purchase.
 export function buyAndOpenChest(tgId, chestId) {
   const chest = getChest(chestId);
   if (!chest || !chest.active) throw new Error('This chest is not available');
@@ -140,29 +162,39 @@ export function buyAndOpenChest(tgId, chestId) {
   const totalWeight = items.reduce((s, it) => s + it.probability_percent, 0);
   if (totalWeight <= 0) throw new Error('This chest\'s prize odds are not configured yet');
 
-  let roll = Math.random() * totalWeight;
-  let chosen = items[items.length - 1];
-  for (const it of items) {
-    if (roll < it.probability_percent) { chosen = it; break; }
-    roll -= it.probability_percent;
-  }
+  const rewardsCount = Math.max(1, chest.rewards_count || 1);
+  const wonList = [];
 
   const tx = db.transaction(() => {
     if (chest.price_toman > 0) adjustToman(tgId, -chest.price_toman, `Chest purchase «${chest.title}»`);
-    if (chosen.type === 'toman' && chosen.amount_toman > 0) {
-      adjustToman(tgId, chosen.amount_toman, `Chest prize: ${chosen.label || 'Toman'}`);
-    } else if (chosen.type === 'card' && chosen.card_id) {
-      grantCardInstance(tgId, chosen.card_id);
-    } else if (chosen.type === 'avatar' && chosen.avatar_id) {
-      grantAvatar(tgId, chosen.avatar_id);
-    } else if (chosen.type === 'extra_games' && chosen.extra_games_count > 0) {
-      db.prepare(`
-        INSERT INTO game_extra_plays (tg_id, extra_plays) VALUES (?, ?)
-        ON CONFLICT(tg_id) DO UPDATE SET extra_plays = extra_plays + excluded.extra_plays
-      `).run(tgId, chosen.extra_games_count);
+
+    for (let n = 0; n < rewardsCount; n++) {
+      let roll = Math.random() * totalWeight;
+      let chosen = items[items.length - 1];
+      for (const it of items) {
+        if (roll < it.probability_percent) { chosen = it; break; }
+        roll -= it.probability_percent;
+      }
+
+      let grantedLevel = null;
+      if (chosen.type === 'toman' && chosen.amount_toman > 0) {
+        adjustToman(tgId, chosen.amount_toman, `Chest prize: ${chosen.label || 'Toman'}`);
+      } else if (chosen.type === 'card' && chosen.card_id) {
+        grantedLevel = rollWeightedCardLevel(chosen.card_level_weights);
+        grantCardInstance(tgId, chosen.card_id, grantedLevel);
+      } else if (chosen.type === 'avatar' && chosen.avatar_id) {
+        grantAvatar(tgId, chosen.avatar_id);
+      } else if (chosen.type === 'extra_games' && chosen.extra_games_count > 0) {
+        db.prepare(`
+          INSERT INTO game_extra_plays (tg_id, extra_plays) VALUES (?, ?)
+          ON CONFLICT(tg_id) DO UPDATE SET extra_plays = extra_plays + excluded.extra_plays
+        `).run(tgId, chosen.extra_games_count);
+      }
+      const described = describeItem(chosen, grantedLevel);
+      db.prepare('INSERT INTO chest_openings (tg_id, chest_id, item_id, result_label) VALUES (?,?,?,?)')
+        .run(tgId, chestId, chosen.id, described.display);
+      wonList.push(described);
     }
-    db.prepare('INSERT INTO chest_openings (tg_id, chest_id, item_id, result_label) VALUES (?,?,?,?)')
-      .run(tgId, chestId, chosen.id, chosen.label || describeItem(chosen).display);
   });
   tx();
 
@@ -171,9 +203,11 @@ export function buyAndOpenChest(tgId, chestId) {
   const opensCount = db.prepare('SELECT COUNT(*) c FROM chest_openings WHERE tg_id = ?').get(tgId).c;
   checkAchievements(tgId, 'chests_opened', opensCount, displayName);
   // A card/avatar win from a chest is exactly the kind of moment worth broadcasting to the whole app
-  if (chosen.type === 'card' || chosen.type === 'avatar') {
-    logPlayerActivity(displayName, `opened "${chest.title}" and got ${describeItem(chosen).display} 🎉`, '📦');
-  }
+  wonList.filter(w => w.type === 'card' || w.type === 'avatar').forEach(w => {
+    logPlayerActivity(displayName, `opened "${chest.title}" and got ${w.display} 🎉`, '📦');
+  });
 
-  return { won: describeItem(chosen), items: items.map(describeItem) };
+  // `won` stays as the first prize for backward compatibility with anything expecting a single
+  // result; `wonAll` carries every prize from this opening (always length 1 for single-reward chests).
+  return { won: wonList[0], wonAll: wonList, items: items.map(it => describeItem(it)) };
 }

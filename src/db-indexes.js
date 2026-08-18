@@ -45,8 +45,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_gift_offers_status ON gift_offers(status);
   CREATE INDEX IF NOT EXISTS idx_gift_offers_seller_tg_id ON gift_offers(seller_tg_id);
   CREATE INDEX IF NOT EXISTS idx_gift_offers_buyer_tg_id ON gift_offers(buyer_tg_id);
-  CREATE INDEX IF NOT EXISTS idx_card_gifts_log_sender ON card_gifts_log(sender_tg_id);
-  CREATE INDEX IF NOT EXISTS idx_card_gifts_log_receiver ON card_gifts_log(receiver_tg_id);
 
   -- Users / referrals
   CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by);
@@ -77,6 +75,9 @@ db.exec(`
 
   -- Chests / achievements / album rewards (added this session)
   CREATE INDEX IF NOT EXISTS idx_chest_openings_tg_id ON chest_openings(tg_id);
+  CREATE INDEX IF NOT EXISTS idx_gift_pack_items_pack_id ON gift_pack_items(gift_pack_id);
+  CREATE INDEX IF NOT EXISTS idx_gift_pack_openings_tg_id ON gift_pack_openings(tg_id);
+  CREATE INDEX IF NOT EXISTS idx_gift_pack_openings_status ON gift_pack_openings(status);
   CREATE INDEX IF NOT EXISTS idx_raffle_prizes_raffle_id ON raffle_prizes(raffle_id);
   CREATE INDEX IF NOT EXISTS idx_album_reward_cards_album_id ON album_reward_cards(album_id);
   CREATE INDEX IF NOT EXISTS idx_user_achievements_achievement_id ON user_achievements(achievement_id);

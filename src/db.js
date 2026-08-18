@@ -15,6 +15,15 @@ db.pragma('cache_size = -20000');    // ~20MB page cache in memory instead of SQ
 db.pragma('temp_store = MEMORY');    // scratch space (sorts, temp tables) in RAM instead of disk
 db.pragma('mmap_size = 268435456');  // memory-map the db file (256MB) so reads skip a syscall round trip
 
+// Every currency amount in the bot (LNDC and every other wallet currency) is rounded to 2 decimal
+// places instead of being truncated to a whole number. Used everywhere money is credited, debited,
+// converted, or displayed, so fees/percentages/rates don't silently get floored to 0 or lose cents.
+export function round2(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return 0;
+  return Math.round((num + Number.EPSILON) * 100) / 100;
+}
+
 /* =========================================================================
  * SCHEMA
  * Everything is designed to be manual: the admin sets currency prices from the panel, no request
@@ -199,7 +208,7 @@ CREATE TABLE IF NOT EXISTS star_payments (
 );
 `);
 export function createStarPaymentRequest(tgId, starsAmount, rateToman) {
-  const tomanCredited = Math.round(starsAmount * rateToman);
+  const tomanCredited = round2(starsAmount * rateToman);
   return db.prepare('INSERT INTO star_payments (tg_id, stars_amount, rate_toman, toman_credited) VALUES (?,?,?,?)')
     .run(tgId, starsAmount, rateToman, tomanCredited).lastInsertRowid;
 }
@@ -376,8 +385,9 @@ function logLedger(tgId, currencyCode, direction, amount, reason) {
 }
 
 export function adjustToman(tgId, amount, reason) {
-  db.prepare(`UPDATE users SET balance_toman = balance_toman + ? WHERE tg_id = ?`).run(amount, tgId);
-  logLedger(tgId, 'LNDC', amount >= 0 ? 'in' : 'out', Math.abs(amount), reason);
+  const amt = round2(amount);
+  db.prepare(`UPDATE users SET balance_toman = balance_toman + ? WHERE tg_id = ?`).run(amt, tgId);
+  logLedger(tgId, 'LNDC', amt >= 0 ? 'in' : 'out', Math.abs(amt), reason);
 }
 
 export function getLedger(tgId, limit = 15, offset = 0) {
@@ -389,7 +399,7 @@ export function getLedger(tgId, limit = 15, offset = 0) {
 export function payReferralBonus(tgId, purchaseAmountToman, percent) {
   const user = getUser(tgId);
   if (!user?.referred_by || !percent) return;
-  const bonus = Math.floor((purchaseAmountToman * percent) / 100);
+  const bonus = round2((purchaseAmountToman * percent) / 100);
   if (bonus <= 0) return;
   adjustToman(user.referred_by, bonus, `Referral commission from user purchase ${tgId}`);
 }
@@ -462,10 +472,11 @@ export function getCurrency(code) {
   return db.prepare('SELECT * FROM currencies WHERE code = ?').get(code);
 }
 export function upsertCurrency({ code, name, rate_toman, min_deposit, min_withdraw, active, deposit_address }) {
-  // Whole numbers only everywhere in the wallet system — including the admin-set rate and limits.
-  const rate = Math.round(Number(rate_toman) || 0);
-  const minDep = Math.round(Number(min_deposit) || 0);
-  const minWd = Math.round(Number(min_withdraw) || 0);
+  // 2-decimal precision everywhere — including the admin-set rate and deposit/withdraw limits —
+  // instead of forcing every currency setting to a whole number.
+  const rate = round2(rate_toman);
+  const minDep = round2(min_deposit);
+  const minWd = round2(min_withdraw);
   db.prepare(`
     INSERT INTO currencies (code, name, rate_toman, min_deposit, min_withdraw, active, deposit_address, updated_at)
     VALUES (@code, @name, @rate_toman, @min_deposit, @min_withdraw, @active, @deposit_address, datetime('now'))
@@ -487,15 +498,15 @@ export function getCurrencyBalance(tgId, code) {
   const row = db.prepare('SELECT amount FROM wallet_balances WHERE tg_id = ? AND currency_code = ?').get(tgId, code);
   return row?.amount || 0;
 }
-// Wallet amounts are always whole numbers — no currency in this bot supports decimals, so every
-// credit/debit is rounded to the nearest integer before it's stored.
+// Wallet amounts support 2 decimal places (the bot's standard currency precision) instead of being
+// forced to whole numbers, so fees/conversions/partial amounts aren't silently rounded away.
 export function adjustCurrencyBalance(tgId, code, amount, reason) {
-  const whole = Math.round(amount);
+  const amt = round2(amount);
   db.prepare(`
     INSERT INTO wallet_balances (tg_id, currency_code, amount) VALUES (?,?,?)
     ON CONFLICT(tg_id, currency_code) DO UPDATE SET amount = amount + excluded.amount
-  `).run(tgId, code, whole);
-  logLedger(tgId, code, whole >= 0 ? 'in' : 'out', Math.abs(whole), reason);
+  `).run(tgId, code, amt);
+  logLedger(tgId, code, amt >= 0 ? 'in' : 'out', Math.abs(amt), reason);
 }
 export function getWalletBalances(tgId) {
   const rows = db.prepare('SELECT currency_code, amount FROM wallet_balances WHERE tg_id = ?').all(tgId);
@@ -542,10 +553,10 @@ export function listPendingTomanWithdrawals() {
 
 /* ---- manual currency deposit / withdraw ---- */
 export function createCurrencyRequest(tgId, code, kind, amount, opts = {}) {
-  const whole = Math.round(amount); // whole numbers only, no decimals in the wallet
+  const amt = round2(amount); // 2-decimal precision, same as the rest of the wallet
   const info = db.prepare(`
     INSERT INTO currency_requests (tg_id, currency_code, kind, amount, tx_hash, address) VALUES (?,?,?,?,?,?)
-  `).run(tgId, code, kind, whole, opts.txHash || null, opts.address || null);
+  `).run(tgId, code, kind, amt, opts.txHash || null, opts.address || null);
   return info.lastInsertRowid;
 }
 export function getCurrencyRequest(id) { return db.prepare('SELECT * FROM currency_requests WHERE id = ?').get(id); }
@@ -660,8 +671,8 @@ export function reserveGiftOffer(buyerTgId, id) {
 export function confirmGiftReceived(buyerTgId, id, feePercent) {
   const offer = getGiftOffer(id);
   if (!offer || offer.status !== 'reserved' || offer.buyer_tg_id !== buyerTgId) throw new Error('This listing cannot be approved');
-  const fee = Math.floor((offer.price_toman * feePercent) / 100);
-  const sellerReceives = offer.price_toman - fee;
+  const fee = round2((offer.price_toman * feePercent) / 100);
+  const sellerReceives = round2(offer.price_toman - fee);
   adjustToman(offer.seller_tg_id, sellerReceives, `Sale of gift "${offer.title}" (consignment, after buyer confirmation)`);
   db.prepare(`UPDATE gift_offers SET status = 'completed', completed_at = datetime('now') WHERE id = ?`).run(id);
   return { ...offer, sellerReceives };

@@ -1,4 +1,4 @@
-import db from './db.js';
+import db, { round2 } from './db.js';
 import { adjustToman, getUser } from './db.js';
 import { getRankConfig } from './rank-db.js';
 import { getPinnedBadges } from './achievements-db.js';
@@ -143,7 +143,7 @@ export function createClan(tgId, name, tag, avatarUrl) {
   const exists = db.prepare('SELECT 1 FROM clans WHERE tag = ?').get(tag);
   if (exists) throw new Error('This tag is already in use');
   const user = getUser(tgId);
-  if (!user || user.balance_toman < cfg.creation_cost_toman) throw new Error(`${cfg.creation_cost_toman.toLocaleString()} LNDC is required to create a clan`);
+  if (!user || user.balance_toman < cfg.creation_cost_toman) throw new Error(`${cfg.creation_cost_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC is required to create a clan`);
 
   let clanId;
   const tx = db.transaction(() => {
@@ -274,12 +274,12 @@ export function withdrawFromClanBank(ownerTgId, amount) {
   const clan = getClanById(owner.clan_id);
   if (!clan || clan.bank_balance < amount) throw new Error('Insufficient clan bank balance');
   const cfg = getClanConfig();
-  const fee = Math.round(amount * (cfg.withdraw_fee_percent || 0) / 100);
-  const net = amount - fee;
+  const fee = round2(amount * (cfg.withdraw_fee_percent || 0) / 100);
+  const net = round2(amount - fee);
   const tx = db.transaction(() => {
     db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
     db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
-    adjustToman(ownerTgId, net, `Withdrawal from clan bank «${clan.name}»${fee > 0 ? ` (${fee.toLocaleString()} LNDC fee deducted)` : ''}`);
+    adjustToman(ownerTgId, net, `Withdrawal from clan bank «${clan.name}»${fee > 0 ? ` (${fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC fee deducted)` : ''}`);
   });
   tx();
   return { net, fee };
@@ -294,12 +294,12 @@ export function giftFromClanBank(ownerTgId, targetTgId, amount) {
   const clan = getClanById(owner.clan_id);
   if (!clan || clan.bank_balance < amount) throw new Error('Insufficient clan bank balance');
   const cfg = getClanConfig();
-  const fee = Math.round(amount * (cfg.withdraw_fee_percent || 0) / 100);
-  const net = amount - fee;
+  const fee = round2(amount * (cfg.withdraw_fee_percent || 0) / 100);
+  const net = round2(amount - fee);
   const tx = db.transaction(() => {
     db.prepare('UPDATE clans SET bank_balance = bank_balance - ? WHERE id = ?').run(amount, clan.id);
     db.prepare('UPDATE clan_members SET withdrawn_total = withdrawn_total + ? WHERE tg_id = ?').run(amount, ownerTgId);
-    adjustToman(targetTgId, net, `Gift from clan bank «${clan.name}»${fee > 0 ? ` (${fee.toLocaleString()} LNDC fee deducted)` : ''}`);
+    adjustToman(targetTgId, net, `Gift from clan bank «${clan.name}»${fee > 0 ? ` (${fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC fee deducted)` : ''}`);
   });
   tx();
   return { net, fee };
@@ -332,11 +332,11 @@ export function resetClanSeason(notifyFn) {
     if (cfg.distribution_method === 'donation_share') {
       const totalDonated = members.reduce((s, m) => s + m.donated_total, 0);
       for (const m of members) {
-        const share = totalDonated > 0 ? Math.floor((cfg.reward_toman * m.donated_total) / totalDonated) : Math.floor(cfg.reward_toman / members.length);
+        const share = totalDonated > 0 ? round2((cfg.reward_toman * m.donated_total) / totalDonated) : round2(cfg.reward_toman / members.length);
         if (share > 0) { adjustToman(m.tg_id, share, `Clan prize "${clan.name}" (based on donation share)`); if (notifyFn) notifyFn(m.tg_id, clan, share); }
       }
     } else {
-      const share = Math.floor(cfg.reward_toman / members.length);
+      const share = round2(cfg.reward_toman / members.length);
       for (const m of members) {
         if (share > 0) { adjustToman(m.tg_id, share, `Clan prize «${clan.name}»`); if (notifyFn) notifyFn(m.tg_id, clan, share); }
       }

@@ -1,7 +1,8 @@
 import db from './db.js';
 import { adjustToman, getUser, createOrder } from './db.js';
 import { grantAvatar } from './rank-db.js';
-import { grantCardInstance } from './game-db.js';
+import { grantCardInstance, rollWeightedCardLevel, normalizeCardLevelWeights } from './game-db.js';
+import { drawFromGiftPackForReward } from './giftpack-db.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS season_config (
@@ -27,7 +28,7 @@ INSERT OR IGNORE INTO current_season (id) VALUES (1);
 
 CREATE TABLE IF NOT EXISTS season_tiers (
   tier_number INTEGER PRIMARY KEY,
-  free_reward_type TEXT,      -- toman | card | extra_games | avatar | none
+  free_reward_type TEXT,      -- toman | card | extra_games | avatar | product | gift_pack | none
   free_reward_value TEXT,
   premium_reward_type TEXT,
   premium_reward_value TEXT
@@ -53,6 +54,10 @@ function safeAddColumn(table, columnDef) {
   catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
 }
 safeAddColumn('season_config', 'tier_skip_price_toman INTEGER NOT NULL DEFAULT 0');
+// Per-level odds for a leveled-card tier reward (same mechanism as chests — see game-db.js's
+// rollWeightedCardLevel/normalizeCardLevelWeights) — JSON [{level, weight}, ...], nullable.
+safeAddColumn('season_tiers', 'free_reward_level_weights TEXT');
+safeAddColumn('season_tiers', 'premium_reward_level_weights TEXT');
 export function getSeasonConfig() { return db.prepare('SELECT * FROM season_config WHERE id = 1').get(); }
 export function setSeasonConfig(c) {
   db.prepare(`
@@ -87,6 +92,7 @@ function enrichReward(type, value) {
   if (type === 'card') { const r = db.prepare('SELECT name, image_url FROM game_cards WHERE id = ?').get(value); return { image: r?.image_url || null, name: r?.name || null }; }
   if (type === 'avatar') { const r = db.prepare('SELECT name, image_url FROM avatars WHERE id = ?').get(value); return { image: r?.image_url || null, name: r?.name || null }; }
   if (type === 'product') { const r = db.prepare('SELECT title AS name, image_url FROM products WHERE id = ?').get(value); return { image: r?.image_url || null, name: r?.name || null }; }
+  if (type === 'gift_pack') { const r = db.prepare('SELECT title AS name, image_url FROM gift_packs WHERE id = ?').get(value); return { image: r?.image_url || null, name: r?.name || null }; }
   return { image: null, name: null };
 }
 export function listSeasonTiers() {
@@ -98,13 +104,17 @@ export function listSeasonTiers() {
 }
 export function getSeasonTier(n) { return db.prepare('SELECT * FROM season_tiers WHERE tier_number = ?').get(n); }
 export function upsertSeasonTier(t) {
+  // Per-level odds only make sense (and are only stored) for a card-type reward on that track.
+  const freeLevelWeights = t.free_reward_type === 'card' ? normalizeCardLevelWeights(t.free_reward_level_weights, t.free_reward_value) : null;
+  const premiumLevelWeights = t.premium_reward_type === 'card' ? normalizeCardLevelWeights(t.premium_reward_level_weights, t.premium_reward_value) : null;
   db.prepare(`
-    INSERT INTO season_tiers (tier_number, free_reward_type, free_reward_value, premium_reward_type, premium_reward_value)
-    VALUES (?,?,?,?,?)
+    INSERT INTO season_tiers (tier_number, free_reward_type, free_reward_value, premium_reward_type, premium_reward_value, free_reward_level_weights, premium_reward_level_weights)
+    VALUES (?,?,?,?,?,?,?)
     ON CONFLICT(tier_number) DO UPDATE SET
       free_reward_type=excluded.free_reward_type, free_reward_value=excluded.free_reward_value,
-      premium_reward_type=excluded.premium_reward_type, premium_reward_value=excluded.premium_reward_value
-  `).run(t.tier_number, t.free_reward_type || 'none', t.free_reward_value || '', t.premium_reward_type || 'none', t.premium_reward_value || '');
+      premium_reward_type=excluded.premium_reward_type, premium_reward_value=excluded.premium_reward_value,
+      free_reward_level_weights=excluded.free_reward_level_weights, premium_reward_level_weights=excluded.premium_reward_level_weights
+  `).run(t.tier_number, t.free_reward_type || 'none', t.free_reward_value || '', t.premium_reward_type || 'none', t.premium_reward_value || '', freeLevelWeights, premiumLevelWeights);
 }
 export function deleteSeasonTier(n) { db.prepare('DELETE FROM season_tiers WHERE tier_number = ?').run(n); }
 
@@ -171,12 +181,14 @@ export function claimSeasonTierReward(tgId, tierNumber, track) {
   if (!tier) throw new Error('This tier is not defined');
   const type = track === 'free' ? tier.free_reward_type : tier.premium_reward_type;
   const value = track === 'free' ? tier.free_reward_value : tier.premium_reward_value;
+  const levelWeights = track === 'free' ? tier.free_reward_level_weights : tier.premium_reward_level_weights;
 
+  let giftPackWin = null;
   const tx = db.transaction(() => {
     if (type === 'toman' && Number(value) > 0) {
       adjustToman(tgId, Number(value), `Battle pass tier ${tierNumber} reward (${track === 'free' ? 'Free' : 'Premium'})`);
     } else if (type === 'card' && value) {
-      grantCardInstance(tgId, Number(value));
+      grantCardInstance(tgId, Number(value), rollWeightedCardLevel(levelWeights));
     } else if (type === 'extra_games' && Number(value) > 0) {
       db.prepare(`
         INSERT INTO game_extra_plays (tg_id, extra_plays) VALUES (?, ?)
@@ -186,9 +198,13 @@ export function claimSeasonTierReward(tgId, tierNumber, track) {
       grantAvatar(tgId, Number(value));
     } else if (type === 'product' && value) {
       createOrder(tgId, Number(value), 1, 0, `Battle pass tier ${tierNumber} reward (${track === 'free' ? 'Free' : 'Premium'})`);
+    } else if (type === 'gift_pack' && value) {
+      // A real NFT gift can't be granted programmatically — this queues a pending delivery the same
+      // way opening a gift pack from the shop does (see giftpack-db.js).
+      giftPackWin = drawFromGiftPackForReward(tgId, Number(value), `Battle pass tier ${tierNumber} reward (${track === 'free' ? 'Free' : 'Premium'})`);
     }
     db.prepare('INSERT INTO season_tier_claims (tg_id, tier_number, track) VALUES (?,?,?)').run(tgId, tierNumber, track);
   });
   tx();
-  return { type, value };
+  return { type, value, giftPackWin };
 }

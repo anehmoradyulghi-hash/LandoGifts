@@ -1,4 +1,4 @@
-import db from './db.js';
+import db, { round2 } from './db.js';
 import { adjustToman, getUser } from './db.js';
 
 /* =========================================================================
@@ -99,7 +99,7 @@ export function getPriceGuidance(tgId, userCardId) {
   const openSupply = db.prepare(`SELECT COUNT(*) n FROM card_market_listings ml JOIN user_cards uc ON uc.id = ml.user_card_id WHERE uc.card_id = ? AND ml.status = 'open'`).get(card.card_id).n;
   const recentDemand = db.prepare(`SELECT COUNT(*) n FROM card_market_listings ml JOIN user_cards uc ON uc.id = ml.user_card_id WHERE uc.card_id = ? AND ml.status = 'sold' AND ml.resolved_at >= datetime('now', '-7 days')`).get(card.card_id).n;
   const sdFactor = 1 + clamp((recentDemand - openSupply) * 0.02, -0.15, 0.15);
-  recommended = Math.round(recommended * sdFactor);
+  recommended = round2(recommended * sdFactor);
   recommended = Math.max(1, recommended);
 
   // Volatility (coefficient of variation of recent sale prices) drives the range width: more
@@ -112,8 +112,8 @@ export function getPriceGuidance(tgId, userCardId) {
     volatility = mean > 0 ? Math.sqrt(variance) / mean : 0;
   }
   const halfWidthPct = clamp(0.15 / (1 + volatility * 2), 0.05, 0.25);
-  const minPrice = Math.max(1, Math.round(recommended * (1 - halfWidthPct)));
-  const maxPrice = Math.max(minPrice, Math.round(recommended * (1 + halfWidthPct)));
+  const minPrice = Math.max(1, round2(recommended * (1 - halfWidthPct)));
+  const maxPrice = Math.max(minPrice, round2(recommended * (1 + halfWidthPct)));
 
   return { recommended, minPrice, maxPrice, volatility, openSupply, recentDemand, recentSalesCount: recentSales.length };
 }
@@ -129,7 +129,7 @@ export function isCardListedForSale(userCardId) {
 export function createCardMarketListing(tgId, userCardId, priceToman) {
   const cfg = getCardMarketConfig();
   if (!cfg.enabled) throw new Error('The card marketplace is currently disabled');
-  const price = Math.round(Number(priceToman));
+  const price = round2(Number(priceToman));
   if (!Number.isFinite(price) || price <= 0) throw new Error('Invalid price');
   const card = findOwnedUserCard(tgId, userCardId);
   if (!card) throw new Error('This card was not found in your collection');
@@ -138,7 +138,7 @@ export function createCardMarketListing(tgId, userCardId, priceToman) {
   // currently computed allowed range for this exact card — never outside it.
   const guidance = getPriceGuidance(tgId, userCardId);
   if (price < guidance.minPrice || price > guidance.maxPrice) {
-    throw new Error(`Price must be between ${guidance.minPrice.toLocaleString('en-US')} and ${guidance.maxPrice.toLocaleString('en-US')} LNDC for this card right now`);
+    throw new Error(`Price must be between ${guidance.minPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} and ${guidance.maxPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC for this card right now`);
   }
   return db.prepare(`
     INSERT INTO card_market_listings (seller_tg_id, user_card_id, price_toman) VALUES (?,?,?)
@@ -202,8 +202,8 @@ export function buyCardMarketListing(buyerTgId, listingId) {
     const card = db.prepare('SELECT * FROM user_cards WHERE id = ? AND tg_id = ?').get(listing.user_card_id, listing.seller_tg_id);
     if (!card) throw new Error('The card is no longer with the seller');
 
-    const fee = Math.floor((listing.price_toman * cfg.fee_percent) / 100);
-    const sellerProceeds = listing.price_toman - fee;
+    const fee = round2((listing.price_toman * cfg.fee_percent) / 100);
+    const sellerProceeds = round2(listing.price_toman - fee);
     adjustToman(buyerTgId, -listing.price_toman, `Bought card on marketplace (listing #${listingId})`);
     adjustToman(listing.seller_tg_id, sellerProceeds, `Card sold on marketplace (listing #${listingId})${fee > 0 ? ` — ${fee} LNDC fee` : ''}`);
     db.prepare('UPDATE user_cards SET tg_id = ? WHERE id = ?').run(buyerTgId, listing.user_card_id);

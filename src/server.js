@@ -9,6 +9,7 @@ import {
   createStarsInvoiceLink, answerPreCheckoutQuery, fetchTelegramNftMeta,
 } from './telegram.js';
 import db, {
+  round2,
   getOrCreateUser, getUser, adjustToman, isBanned, getLedger, payReferralBonus, getReferralInfo, getReferralSettings, getSwapFeePercent,
   listCurrencies, getCurrency, getWalletBalances, getCurrencyBalance, adjustCurrencyBalance,
   createTomanTopup, createTomanWithdrawal,
@@ -59,8 +60,9 @@ import {
 import { getTodayQuestsForUser, incrementQuestProgress, claimQuestReward } from './quest-db.js';
 import { redeemPromoCode } from './promo-db.js';
 import { listChestsForClient, buyAndOpenChest, getChestHistory } from './chest-db.js';
+import { listGiftPacksForClient, buyAndOpenGiftPack, getGiftPackHistory, getGiftPack } from './giftpack-db.js';
 import { listAlbums, getAlbumProgress, claimAlbumReward, getAlbumRewardCards } from './album-db.js';
-import { getGiftConfig, giftToman, giftCard, getRemainingCardGifts } from './gift-db.js';
+import { getGiftConfig, giftToman } from './gift-db.js';
 import { checkExpiredSeasons } from './seasonal-db.js';
 import {
   getCardMarketConfig, createCardMarketListing, cancelCardMarketListing,
@@ -269,13 +271,13 @@ app.get('/api/wallet/ledger', requireTelegramAuth, (req, res) => {
 
 app.post('/api/wallet/toman-topup', requireTelegramAuth, (req, res) => {
   if (!getLndcWalletSettings().depositEnabled) return res.status(400).json({ error: 'Lando Coin deposit is currently disabled' });
-  const amount = Number(req.body.amount);
+  const amount = round2(Number(req.body.amount));
   const trackingCode = String(req.body.trackingCode || '').trim();
   if (!amount || amount < 1000) return res.status(400).json({ error: 'Minimum top-up amount is 1,000 LNDC' });
   if (!trackingCode) return res.status(400).json({ error: 'Enter the tracking code or last 4 digits of the card' });
   const id = createTomanTopup(req.dbUser.tg_id, amount, trackingCode);
   notifyAdmins(
-    `💳 Card-to-card top-up request\nUser: ${req.dbUser.first_name || ''} (${req.dbUser.tg_id})\nAmount: ${amount.toLocaleString()} LNDC\nTracking code: ${trackingCode}`,
+    `💳 Card-to-card top-up request\nUser: ${req.dbUser.first_name || ''} (${req.dbUser.tg_id})\nAmount: ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC\nTracking code: ${trackingCode}`,
     { reply_markup: { inline_keyboard: [[
       { text: '✅ Approve & top up', callback_data: `approve_topup:${id}` },
       { text: '❌ Reject', callback_data: `reject_topup:${id}` },
@@ -286,7 +288,7 @@ app.post('/api/wallet/toman-topup', requireTelegramAuth, (req, res) => {
 
 app.post('/api/wallet/toman-withdraw', requireTelegramAuth, (req, res) => {
   if (!getLndcWalletSettings().withdrawEnabled) return res.status(400).json({ error: 'Lando Coin withdrawal is currently disabled' });
-  const amount = Number(req.body.amount);
+  const amount = round2(Number(req.body.amount));
   const cardNumber = String(req.body.cardNumber || '').trim();
   if (!amount || amount < 10000) return res.status(400).json({ error: 'Minimum withdrawal amount is 10,000 LNDC' });
   if (!cardNumber) return res.status(400).json({ error: 'Enter the destination card number' });
@@ -296,7 +298,7 @@ app.post('/api/wallet/toman-withdraw', requireTelegramAuth, (req, res) => {
   adjustToman(user.tg_id, -amount, 'Withdrawal request (pending approval)');
   const id = createTomanWithdrawal(user.tg_id, amount, cardNumber);
   notifyAdmins(
-    `📤 LNDC withdrawal request\nUser: ${req.dbUser.first_name || ''} (${req.dbUser.tg_id})\nAmount: ${amount.toLocaleString()} LNDC\nCard number: ${cardNumber}`,
+    `📤 LNDC withdrawal request\nUser: ${req.dbUser.first_name || ''} (${req.dbUser.tg_id})\nAmount: ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC\nCard number: ${cardNumber}`,
     { reply_markup: { inline_keyboard: [[
       { text: '✅ Sent', callback_data: `approve_withdraw:${id}` },
       { text: '❌ Reject', callback_data: `reject_withdraw:${id}` },
@@ -328,7 +330,7 @@ app.post('/api/wallet/swap', requireTelegramAuth, (req, res) => {
   if (from === 'LNDC') {
     if (user.balance_toman < amt) return res.status(400).json({ error: 'Insufficient LNDC balance' });
     const gross = amt / currency.rate_toman;
-    outputAmount = Math.floor(gross * (1 - feePercent / 100)); // whole numbers only — no decimals anywhere in the wallet
+    outputAmount = round2(gross * (1 - feePercent / 100));
     if (outputAmount <= 0) return res.status(400).json({ error: 'Amount too small — it rounds down to 0' });
     adjustToman(req.dbUser.tg_id, -amt, `Convert LNDC to ${to}`);
     adjustCurrencyBalance(req.dbUser.tg_id, to, outputAmount, `Convert from LNDC`);
@@ -336,7 +338,8 @@ app.post('/api/wallet/swap', requireTelegramAuth, (req, res) => {
     const bal = getCurrencyBalance(req.dbUser.tg_id, from);
     if (bal < amt) return res.status(400).json({ error: `Insufficient ${from} balance` });
     const gross = amt * currency.rate_toman;
-    outputAmount = Math.floor(gross * (1 - feePercent / 100));
+    outputAmount = round2(gross * (1 - feePercent / 100));
+    if (outputAmount <= 0) return res.status(400).json({ error: 'Amount too small — it rounds down to 0' });
     adjustCurrencyBalance(req.dbUser.tg_id, from, -amt, `Convert to LNDC`);
     adjustToman(req.dbUser.tg_id, outputAmount, `Convert ${from} to LNDC`);
   }
@@ -347,7 +350,7 @@ app.post('/api/wallet/currency-deposit', requireTelegramAuth, (req, res) => {
   const { code, amount, txHash } = req.body;
   const currency = getCurrency(code);
   if (!currency || !currency.active) return res.status(404).json({ error: 'This currency is not active' });
-  const amt = Number(amount);
+  const amt = round2(Number(amount));
   if (!amt || amt < currency.min_deposit) return res.status(400).json({ error: `Minimum deposit amount is ${currency.min_deposit} ${code}` });
   if (!txHash) return res.status(400).json({ error: 'Enter the transaction hash or tracking code' });
 
@@ -373,7 +376,7 @@ app.post('/api/wallet/stars-invoice', requireTelegramAuth, async (req, res) => {
     }
     const id = createStarPaymentRequest(req.dbUser.tg_id, starsAmount, starsCurrency.rate_toman);
     const r = await createStarsInvoiceLink(
-      'Top up wallet', `Top-up ${starsAmount}⭐ = ${(starsAmount * starsCurrency.rate_toman).toLocaleString()} LNDC`,
+      'Top up wallet', `Top-up ${starsAmount}⭐ = ${(starsAmount * starsCurrency.rate_toman).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`,
       `star_topup_${id}`, starsAmount
     );
     if (!r.ok) return res.status(500).json({ error: 'Creating the payment invoice failed' });
@@ -385,8 +388,11 @@ app.post('/api/wallet/currency-withdraw', requireTelegramAuth, (req, res) => {
   const { code, amount, address } = req.body;
   const currency = getCurrency(code);
   if (!currency || !currency.active) return res.status(404).json({ error: 'This currency is not active' });
-  const amt = Number(amount);
+  const amt = round2(Number(amount));
   if (!amt || amt <= 0) return res.status(400).json({ error: 'Invalid amount' });
+  // Previously only min_deposit was enforced here — min_withdraw was stored and configurable from
+  // the admin panel but never actually checked, so it had no effect on withdrawals.
+  if (amt < currency.min_withdraw) return res.status(400).json({ error: `Minimum withdrawal amount is ${currency.min_withdraw} ${code}` });
   if (!address) return res.status(400).json({ error: 'Enter the destination address' });
   const balance = getCurrencyBalance(req.dbUser.tg_id, code);
   if (balance < amt) return res.status(400).json({ error: 'Insufficient balance' });
@@ -429,8 +435,8 @@ app.post('/api/checkout', requireTelegramAuth, (req, res) => {
   // ('buy_product') so it can never be confused with, or silently satisfy, a "buy game card" quest.
   incrementQuestProgress(user.tg_id, 'buy_product', 1);
 
-  sendMessage(user.tg_id, `✅ Your order has been placed.\nItem: ${product.title} ×${q}\nAmount: ${total.toLocaleString()} LNDC${note ? `\nDestination: ${note}` : ''}`).catch(() => {});
-  notifyAdmins(`🛒 New order\nUser: ${user.first_name || ''} (${user.tg_id})\nItem: ${product.title} ×${q}\nAmount: ${total.toLocaleString()} LNDC${note ? `\nDestination: ${note}` : ''}`);
+  sendMessage(user.tg_id, `✅ Your order has been placed.\nItem: ${product.title} ×${q}\nAmount: ${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC${note ? `\nDestination: ${note}` : ''}`).catch(() => {});
+  notifyAdmins(`🛒 New order\nUser: ${user.first_name || ''} (${user.tg_id})\nItem: ${product.title} ×${q}\nAmount: ${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC${note ? `\nDestination: ${note}` : ''}`);
   res.json({ ok: true, total });
 });
 
@@ -479,7 +485,7 @@ app.post('/api/gifts/list', requireTelegramAuth, (req, res) => {
     const { title, image_url, price, serial_number, link } = req.body;
     const p = Number(price);
     const minPrice = getGiftMarketMinPrice();
-    if (!title || !p || p < minPrice) return res.status(400).json({ error: `A valid title and price (minimum ${minPrice.toLocaleString('en-US')} LNDC) are required` });
+    if (!title || !p || p < minPrice) return res.status(400).json({ error: `A valid title and price (minimum ${minPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC) are required` });
     if (!serial_number || !String(serial_number).trim()) return res.status(400).json({ error: 'Serial/model number is required' });
     if (!link || !String(link).trim()) return res.status(400).json({ error: 'Gift link is required' });
     const id = createGiftOffer(req.dbUser.tg_id, title, image_url, p, serial_number, link);
@@ -491,7 +497,7 @@ app.post('/api/gifts/:id/edit', requireTelegramAuth, (req, res) => {
     const { title, image_url, price, serial_number, link } = req.body;
     const p = Number(price);
     const minPrice = getGiftMarketMinPrice();
-    if (!title || !p || p < minPrice) return res.status(400).json({ error: `A valid title and price (minimum ${minPrice.toLocaleString('en-US')} LNDC) are required` });
+    if (!title || !p || p < minPrice) return res.status(400).json({ error: `A valid title and price (minimum ${minPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC) are required` });
     if (!serial_number || !String(serial_number).trim()) return res.status(400).json({ error: 'Serial/model number is required' });
     if (!link || !String(link).trim()) return res.status(400).json({ error: 'Gift link is required' });
     updateGiftOffer(req.dbUser.tg_id, Number(req.params.id), { title, image_url, price_toman: p, serial_number, link });
@@ -514,7 +520,7 @@ app.post('/api/gifts/:id/buy', requireTelegramAuth, (req, res) => {
 app.post('/api/gifts/:id/confirm-received', requireTelegramAuth, (req, res) => {
   try {
     const result = confirmGiftReceived(req.dbUser.tg_id, Number(req.params.id), Number(process.env.GIFT_MARKET_FEE_PERCENT || 5));
-    sendMessage(result.seller_tg_id, `✅ The buyer confirmed receipt of gift "${result.title}".\n+${result.sellerReceives.toLocaleString()} LNDC added to your wallet.`).catch(() => {});
+    sendMessage(result.seller_tg_id, `✅ The buyer confirmed receipt of gift "${result.title}".\n+${result.sellerReceives.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC added to your wallet.`).catch(() => {});
     const sellerName = getUser(result.seller_tg_id);
     logPlayerActivity(sellerName?.username || sellerName?.first_name, `sold a "${result.title}" 💰`, '💰');
     checkAchievements(result.seller_tg_id, 'nft_sold', getCompletedSalesCount(result.seller_tg_id), sellerName?.username || sellerName?.first_name);
@@ -565,17 +571,35 @@ app.get('/api/chests', (req, res) => res.json(listChestsForClient()));
 app.post('/api/chests/:id/open', requireTelegramAuth, (req, res) => {
   try {
     const result = buyAndOpenChest(req.dbUser.tg_id, Number(req.params.id));
-    res.json({ ok: true, won: result.won, items: result.items });
+    res.json({ ok: true, won: result.won, wonAll: result.wonAll, items: result.items });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.get('/api/chests/history', requireTelegramAuth, (req, res) => res.json(getChestHistory(req.dbUser.tg_id)));
+
+/* =========================================================================
+ * Shop gift packs (mystery NFT gift boxes) — same purchase/weighted-draw flow as chests, but the
+ * prize is a real NFT gift that an admin must manually deliver afterward (see giftpack-db.js).
+ * ========================================================================= */
+app.get('/api/gift-packs', (req, res) => res.json(listGiftPacksForClient()));
+app.post('/api/gift-packs/:id/open', requireTelegramAuth, (req, res) => {
+  try {
+    const result = buyAndOpenGiftPack(req.dbUser.tg_id, Number(req.params.id));
+    notifyAdmins(
+      `🎁 Gift pack opened\nUser: ${req.dbUser.first_name || ''} (${req.dbUser.tg_id})\nPack: "${getGiftPack(Number(req.params.id))?.title || ''}"\n` +
+      result.wonAll.map(w => `• ${w.title}${w.serial ? ` #${w.serial}` : ''}${w.link ? ` — ${w.link}` : ''}`).join('\n') +
+      `\n\nDeliver these gifts manually in the "Gift pack deliveries" section of the admin panel.`
+    );
+    res.json({ ok: true, won: result.won, wonAll: result.wonAll, items: result.items });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/gift-packs/history', requireTelegramAuth, (req, res) => res.json(getGiftPackHistory(req.dbUser.tg_id)));
 
 /* =========================================================================
  * Flash auction
  * ========================================================================= */
 app.get('/api/auctions', (req, res) => {
   const auctions = listActiveAuctions().map(a => ({
-    ...a, nextBidAmount: a.current_price + Math.max(1, Math.ceil(a.current_price * (a.bid_step_percent || 5) / 100)),
+    ...a, nextBidAmount: round2(a.current_price + Math.max(0.01, Math.ceil(a.current_price * (a.bid_step_percent || 5) / 100 * 100) / 100)),
   }));
   res.json({ auctions, config: getAuctionConfig() });
 });
@@ -584,7 +608,7 @@ app.post('/api/auctions/:id/bid', requireTelegramAuth, (req, res) => {
   try {
     const result = placeBid(req.dbUser.tg_id, Number(req.params.id));
     if (result.outbidTgId) {
-      sendMessage(result.outbidTgId, `⚡ You've been outbid on "${result.title}"! The new price is ${result.newPrice.toLocaleString()} LNDC. Open the app to bid again before it ends.`).catch(() => {});
+      sendMessage(result.outbidTgId, `⚡ You've been outbid on "${result.title}"! The new price is ${result.newPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC. Open the app to bid again before it ends.`).catch(() => {});
     }
     res.json({ ok: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -608,8 +632,17 @@ app.post('/api/season/buy-premium', requireTelegramAuth, (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/season/claim', requireTelegramAuth, (req, res) => {
-  try { res.json({ ok: true, ...claimSeasonTierReward(req.dbUser.tg_id, Number(req.body.tier), req.body.track) }); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    const result = claimSeasonTierReward(req.dbUser.tg_id, Number(req.body.tier), req.body.track);
+    if (result.giftPackWin) {
+      notifyAdmins(
+        `🎁 Battle pass gift won\nUser: ${req.dbUser.first_name || ''} (${req.dbUser.tg_id})\nTier ${req.body.tier} (${req.body.track})\n` +
+        `${result.giftPackWin.title}${result.giftPackWin.serial ? ` #${result.giftPackWin.serial}` : ''}${result.giftPackWin.link ? ` — ${result.giftPackWin.link}` : ''}` +
+        `\n\nDeliver manually in the "Gift pack deliveries" section of the admin panel.`
+      );
+    }
+    res.json({ ok: true, ...result });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/season/buy-tier', requireTelegramAuth, (req, res) => {
   try { res.json({ ok: true, ...buySeasonTiers(req.dbUser.tg_id, Number(req.body.targetTier)) }); }
@@ -839,18 +872,11 @@ app.post('/api/albums/:id/claim', requireTelegramAuth, (req, res) => {
 /* =========================================================================
  * Gift to a friend
  * ========================================================================= */
-app.get('/api/gift/config', requireTelegramAuth, (req, res) => res.json({ ...getGiftConfig(), ...getRemainingCardGifts(req.dbUser.tg_id) }));
+app.get('/api/gift/config', requireTelegramAuth, (req, res) => res.json(getGiftConfig()));
 app.post('/api/gift/toman', requireTelegramAuth, (req, res) => {
   try {
     const result = giftToman(req.dbUser.tg_id, req.body.receiver, Number(req.body.amount));
-    sendMessage(result.receiverTgId, `🎁 ${req.dbUser.first_name || 'A user'} gifted you ${result.receiverGets.toLocaleString()} LNDC!`).catch(() => {});
-    res.json({ ok: true, ...result });
-  } catch (e) { res.status(400).json({ error: e.message }); }
-});
-app.post('/api/gift/card', requireTelegramAuth, (req, res) => {
-  try {
-    const result = giftCard(req.dbUser.tg_id, req.body.receiver, Number(req.body.userCardId));
-    sendMessage(result.receiverTgId, `🎁 ${req.dbUser.first_name || 'A user'} gifted you the card "${result.cardName}"!`).catch(() => {});
+    sendMessage(result.receiverTgId, `🎁 ${req.dbUser.first_name || 'A user'} gifted you ${result.receiverGets.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC!`).catch(() => {});
     res.json({ ok: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -892,7 +918,7 @@ app.get('/api/game/categories', (req, res) => res.json(listCardCategories(true))
 
 app.get('/api/game/status', requireTelegramAuth, (req, res) => {
   checkAndAutoResetLeaderboard((tgId, rank, reward) => {
-    sendMessage(tgId, `🏆 Congrats! You placed #${rank} on this week's leaderboard and got a ${reward.toLocaleString()} LNDC prize!`).catch(() => {});
+    sendMessage(tgId, `🏆 Congrats! You placed #${rank} on this week's leaderboard and got a ${reward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC prize!`).catch(() => {});
   });
   const cfg = getGameConfig();
   res.json({
@@ -1016,7 +1042,7 @@ async function handleTelegramUpdate(update) {
     if (m) {
       const sp = completeStarPayment(Number(m[1]), sPay.telegram_payment_charge_id);
       if (sp) {
-        await sendMessage(sp.tg_id, `⭐ Payment of ${sp.stars_amount} Stars succeeded and ${sp.toman_credited.toLocaleString()} LNDC was added to your wallet.`);
+        await sendMessage(sp.tg_id, `⭐ Payment of ${sp.stars_amount} Stars succeeded and ${sp.toman_credited.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC was added to your wallet.`);
       }
     }
     return;
@@ -1053,14 +1079,14 @@ async function handleTelegramUpdate(update) {
     const dbUser = getOrCreateUser(update.message.from);
     const cmd = update.message.text.trim();
     if (cmd === '/balance') {
-      await sendMessage(chatId, `💰 <b>Your wallet</b>\n${dbUser.balance_toman.toLocaleString()} LNDC`, {
+      await sendMessage(chatId, `💰 <b>Your wallet</b>\n${dbUser.balance_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`, {
         reply_markup: { inline_keyboard: [[{ text: '👛 Open wallet', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }]] },
       });
     } else if (cmd === '/profile') {
       const rank = getUserRankInfo(dbUser.tg_id);
       const ref = getReferralInfo(dbUser.tg_id);
       await sendMessage(chatId,
-        `👤 <b>Your profile</b>\n${rank.icon || ''} ${rank.title || '-'} — Level ${rank.level}\n💰 ${dbUser.balance_toman.toLocaleString()} LNDC\n👥 ${ref.invitedCount} people invited`,
+        `👤 <b>Your profile</b>\n${rank.icon || ''} ${rank.title || '-'} — Level ${rank.level}\n💰 ${dbUser.balance_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC\n👥 ${ref.invitedCount} people invited`,
         { reply_markup: { inline_keyboard: [[{ text: '📱 Open full profile', web_app: { url: process.env.PUBLIC_URL + '/miniapp' } }]] } });
     } else {
       await sendMessage(chatId,
@@ -1108,14 +1134,14 @@ async function handleTelegramUpdate(update) {
     if (kind === 'topup') {
       const row = decideTomanTopup(id, approve);
       if (row) {
-        await sendMessage(cq.message.chat.id, approve ? `✅ Approved, ${row.amount.toLocaleString()} LNDC added.` : '❌ Rejected.');
-        await sendMessage(row.tg_id, approve ? `✅ Your top-up was approved.\n+${row.amount.toLocaleString()} LNDC` : '❌ Your top-up was not approved.');
+        await sendMessage(cq.message.chat.id, approve ? `✅ Approved, ${row.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC added.` : '❌ Rejected.');
+        await sendMessage(row.tg_id, approve ? `✅ Your top-up was approved.\n+${row.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC` : '❌ Your top-up was not approved.');
       }
     } else if (kind === 'withdraw') {
       const row = decideTomanWithdrawal(id, approve);
       if (row) {
         await sendMessage(cq.message.chat.id, approve ? `✅ Withdrawal approved.` : '↩️ Rejected and the amount was refunded.');
-        await sendMessage(row.tg_id, approve ? `✅ Withdrawal of ${row.amount.toLocaleString()} LNDC deposited.` : '❌ Your withdrawal was rejected and the amount was refunded.');
+        await sendMessage(row.tg_id, approve ? `✅ Withdrawal of ${row.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC deposited.` : '❌ Your withdrawal was rejected and the amount was refunded.');
       }
     } else if (kind === 'cdep') {
       const row = decideCurrencyRequest(id, approve);
@@ -1150,8 +1176,8 @@ async function handleTelegramUpdate(update) {
         await sendMessage(chatId, '⚠️ Correct format: /addbalance numeric_id amount\nExample: /addbalance 123456789 50000');
       } else {
         adjustToman(targetIdNum, amountNum, 'Manual top-up by admin');
-        await sendMessage(chatId, `✅ ${amountNum.toLocaleString()} LNDC added to wallet ${targetIdNum}.`);
-        await sendMessage(targetIdNum, `💰 ${amountNum.toLocaleString()} LNDC was added to your wallet by support.`);
+        await sendMessage(chatId, `✅ ${amountNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC added to wallet ${targetIdNum}.`);
+        await sendMessage(targetIdNum, `💰 ${amountNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC was added to your wallet by support.`);
       }
     }
   }
@@ -1197,7 +1223,7 @@ process.on('uncaughtException', (err) => console.error('[uncaughtException] keep
 setInterval(() => {
   try {
     checkAndAutoResetLeaderboard((tgId, rank, reward) => {
-      sendMessage(tgId, `🏆 Congrats! You placed #${rank} on this week's leaderboard and got a ${reward.toLocaleString()} LNDC prize!`).catch(() => {});
+      sendMessage(tgId, `🏆 Congrats! You placed #${rank} on this week's leaderboard and got a ${reward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC prize!`).catch(() => {});
     });
   } catch (e) { console.error('[leaderboard auto-reset]', e); }
 }, 60 * 60 * 1000);
@@ -1207,7 +1233,7 @@ setInterval(() => {
   try {
     finalizeExpiredAuctions((tgId, auction, kind) => {
       const msg = kind === 'won'
-        ? `🎉 You won the auction "${auction.title}" for ${auction.current_price.toLocaleString()} LNDC and it was deducted from your wallet.`
+        ? `🎉 You won the auction "${auction.title}" for ${auction.current_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC and it was deducted from your wallet.`
         : `⚠️ You won the auction "${auction.title}" but your wallet balance was not enough. Contact support.`;
       sendMessage(tgId, msg).catch(() => {});
       if (kind === 'won') {
@@ -1223,7 +1249,7 @@ setInterval(() => {
   try { checkAutoResetSeason(); } catch (e) { console.error('[season auto-reset]', e); }
   try {
     checkAutoResetClanSeason((tgId, clan, reward) => {
-      sendMessage(tgId, `🏆 Your clan "${clan.name}" was on the top leaderboard and got a ${reward.toLocaleString()} LNDC prize!`).catch(() => {});
+      sendMessage(tgId, `🏆 Your clan "${clan.name}" was on the top leaderboard and got a ${reward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC prize!`).catch(() => {});
     });
   } catch (e) { console.error('[clan auto-reset]', e); }
   try { checkExpiredSeasons(); } catch (e) { console.error('[seasonal cards auto-expire]', e); }
@@ -1236,7 +1262,7 @@ setInterval(() => {
         sendMessage(g.tg_id, `🏆 League reward! You finished #${g.rank} in ${g.league_label} and won the card "${card?.name || ''}"! 🎉`).catch(() => {});
       });
       result.tomanGrants.forEach(g => {
-        sendMessage(g.tg_id, `🏆 League reward! You finished #${g.rank} in ${g.league_label} and won ${g.amount.toLocaleString()} LNDC! 🎉`).catch(() => {});
+        sendMessage(g.tg_id, `🏆 League reward! You finished #${g.rank} in ${g.league_label} and won ${g.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC! 🎉`).catch(() => {});
       });
     }
   } catch (e) { console.error('[league auto-reset]', e); }
@@ -1270,7 +1296,7 @@ setInterval(() => {
     const dueUserIds = findUsersDueForComebackReminder();
     for (const tgId of dueUserIds) {
       if (cfg.reward_toman > 0) adjustToman(tgId, cfg.reward_toman, 'Comeback reminder gift');
-      const text = cfg.reward_toman > 0 ? `${cfg.message}\n\n🎁 A ${cfg.reward_toman.toLocaleString()} LNDC gift is waiting in your wallet!` : cfg.message;
+      const text = cfg.reward_toman > 0 ? `${cfg.message}\n\n🎁 A ${cfg.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC gift is waiting in your wallet!` : cfg.message;
       sendMessage(tgId, text).catch(() => {});
       markComebackReminderSent(tgId);
     }

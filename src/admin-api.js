@@ -52,6 +52,10 @@ import {
 } from './rank-db.js';
 import { getQuestConfig, setQuestConfig, listQuestTemplates, upsertQuestTemplate, deleteQuestTemplate } from './quest-db.js';
 import { listChests, getChest, upsertChest, deleteChest, listChestItems, upsertChestItem, deleteChestItem } from './chest-db.js';
+import {
+  listGiftPacks, upsertGiftPack, deleteGiftPack, listGiftPackItems, upsertGiftPackItem, deleteGiftPackItem,
+  listPendingGiftPackDeliveries, markGiftPackDelivered, getGiftPackOpening,
+} from './giftpack-db.js';
 import { listPromoCodes, createPromoCode, deletePromoCode, listRedemptions } from './promo-db.js';
 import { listAlbums, upsertAlbum, deleteAlbum, getAlbumRequirements, getAlbumRewardCards } from './album-db.js';
 import { getGiftConfig, setGiftConfig } from './gift-db.js';
@@ -120,7 +124,7 @@ router.post('/users/:tgId/adjust-balance', (req, res) => {
   const amount = Number(req.body.amount);
   if (!amount) return res.status(400).json({ error: 'Invalid amount' });
   adjustToman(Number(req.params.tgId), amount, 'Manual balance adjustment by admin');
-  sendMessage(Number(req.params.tgId), `💰 Your wallet balance ${amount > 0 ? '+' : ''}${amount.toLocaleString()} LNDC changed by support.`).catch(() => {});
+  sendMessage(Number(req.params.tgId), `💰 Your wallet balance ${amount > 0 ? '+' : ''}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC changed by support.`).catch(() => {});
   res.json({ ok: true, user: getUser(Number(req.params.tgId)) });
 });
 router.post('/users/:tgId/adjust-currency', (req, res) => {
@@ -263,7 +267,7 @@ router.post('/toman-topups/:id/decide', (req, res) => {
   const row = decideTomanTopup(Number(req.params.id), !!req.body.approve);
   if (!row) return res.status(404).json({ error: 'Not found or already processed' });
   const msg = req.body.approve
-    ? `✅ Your card-to-card top-up was approved.\n+${row.amount.toLocaleString()} LNDC added to your wallet.`
+    ? `✅ Your card-to-card top-up was approved.\n+${row.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC added to your wallet.`
     : `❌ Unfortunately your card-to-card top-up was not approved. Please contact support.`;
   sendMessage(row.tg_id, msg).catch(() => {});
   res.json({ ok: true });
@@ -275,7 +279,7 @@ router.post('/toman-withdrawals/:id/decide', (req, res) => {
   const row = decideTomanWithdrawal(Number(req.params.id), !!req.body.approve);
   if (!row) return res.status(404).json({ error: 'Not found or already processed' });
   const msg = req.body.approve
-    ? `✅ Your withdrawal of ${row.amount.toLocaleString()} LNDC was completed and deposited to card ${row.card_number}.`
+    ? `✅ Your withdrawal of ${row.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC was completed and deposited to card ${row.card_number}.`
     : `❌ Your withdrawal was rejected and the amount was refunded to your wallet.`;
   sendMessage(row.tg_id, msg).catch(() => {});
   res.json({ ok: true });
@@ -350,7 +354,7 @@ router.post('/gift-offers/:id/approve', (req, res) => {
     const offer = getGiftOffer(Number(req.params.id));
     sendMessage(offer.seller_tg_id, `✅ Gift listing "${offer.title}" was approved and is now visible in the market.`).catch(() => {});
     findWatchersForOffer(offer).forEach(w => {
-      sendMessage(w.tg_id, `🔔 A "${offer.title}" just appeared in the market for ${offer.price_toman.toLocaleString()} LNDC (at or under your watch price of ${w.max_price.toLocaleString()}). Open the app to grab it before it's gone!`).catch(() => {});
+      sendMessage(w.tg_id, `🔔 A "${offer.title}" just appeared in the market for ${offer.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC (at or under your watch price of ${w.max_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}). Open the app to grab it before it's gone!`).catch(() => {});
     });
     res.json({ ok: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -499,7 +503,7 @@ router.delete('/game/leaderboard-prizes/:id', (req, res) => { deleteLeaderboardP
 router.post('/game/leaderboard-reset', (req, res) => {
   try {
     resetLeaderboard((tgId, rank, reward) => {
-      sendMessage(tgId, `🏆 Congrats! You placed #${rank} on the leaderboard and got a ${reward.toLocaleString()} LNDC prize!`).catch(() => {});
+      sendMessage(tgId, `🏆 Congrats! You placed #${rank} on the leaderboard and got a ${reward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC prize!`).catch(() => {});
     });
     res.json({ ok: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -563,6 +567,7 @@ router.post('/season/tiers', (req, res) => {
     tier_number: Number(b.tier_number),
     free_reward_type: b.free_reward_type, free_reward_value: b.free_reward_value,
     premium_reward_type: b.premium_reward_type, premium_reward_value: b.premium_reward_value,
+    free_reward_level_weights: b.free_reward_level_weights, premium_reward_level_weights: b.premium_reward_level_weights,
   });
   res.json({ ok: true });
 });
@@ -593,7 +598,7 @@ router.post('/clan/:id/adjust-bank', (req, res) => {
 });
 router.post('/clan/reset-season', (req, res) => {
   resetClanSeason((tgId, clan, reward) => {
-    sendMessage(tgId, `🏆 Your clan "${clan.name}" was on the top leaderboard and got a ${reward.toLocaleString()} LNDC prize!`).catch(() => {});
+    sendMessage(tgId, `🏆 Your clan "${clan.name}" was on the top leaderboard and got a ${reward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC prize!`).catch(() => {});
   });
   res.json({ ok: true });
 });
@@ -699,6 +704,27 @@ router.post('/chest-items', (req, res) => {
 });
 router.delete('/chest-items/:id', (req, res) => { deleteChestItem(Number(req.params.id)); res.json({ ok: true }); });
 
+/* ---------- Shop gift packs (mystery NFT gift boxes) ---------- */
+router.get('/gift-packs', (req, res) => res.json(listGiftPacks(false)));
+router.post('/gift-packs', (req, res) => {
+  try { res.json({ ok: true, id: upsertGiftPack(req.body) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/gift-packs/:id', (req, res) => { deleteGiftPack(Number(req.params.id)); res.json({ ok: true }); });
+router.get('/gift-packs/:id/items', (req, res) => res.json(listGiftPackItems(Number(req.params.id))));
+router.post('/gift-pack-items', (req, res) => {
+  try { res.json({ ok: true, id: upsertGiftPackItem(req.body) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/gift-pack-items/:id', (req, res) => { deleteGiftPackItem(Number(req.params.id)); res.json({ ok: true }); });
+router.get('/gift-pack-deliveries', (req, res) => res.json(listPendingGiftPackDeliveries()));
+router.post('/gift-pack-deliveries/:id/delivered', (req, res) => {
+  markGiftPackDelivered(Number(req.params.id));
+  const opening = getGiftPackOpening(Number(req.params.id));
+  if (opening) sendMessage(opening.tg_id, `🎁 Your gift "${opening.gift_title}" has been sent! Check your Telegram gifts.`).catch(() => {});
+  res.json({ ok: true });
+});
+
 /* ---------- Ranking, title, avatar ---------- */
 router.get('/rank/config', (req, res) => res.json(getRankConfig()));
 router.post('/rank/config', (req, res) => {
@@ -773,13 +799,12 @@ router.post('/albums', (req, res) => {
 });
 router.delete('/albums/:id', (req, res) => { deleteAlbum(Number(req.params.id)); res.json({ ok: true }); });
 
-/* ---------- Gift to a friend ---------- */
+/* ---------- Gift to a friend (LNDC only — card gifting was removed, it had no UI) ---------- */
 router.get('/gift/config', (req, res) => res.json(getGiftConfig()));
 router.post('/gift/config', (req, res) => {
   const b = req.body;
   setGiftConfig({
-    enabled: !!b.enabled, card_gift_min_referrals: Number(b.card_gift_min_referrals),
-    card_gift_max_per_month: Number(b.card_gift_max_per_month), card_gift_max_level: Number(b.card_gift_max_level),
+    enabled: !!b.enabled,
     toman_gift_fee_percent: Number(b.toman_gift_fee_percent),
   });
   res.json({ ok: true });
