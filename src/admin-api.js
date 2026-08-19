@@ -24,7 +24,7 @@ import {
   getMessageSettings, setMessageSettings, getAllUserIds,
 } from './db.js';
 import {
-  listGameCards, upsertGameCard, deleteGameCard, grantCardInstance,
+  listGameCards, upsertGameCard, deleteGameCard, grantCardInstance, getGameCard,
   getCardLevelPowerConfig, setCardLevelPower,
   getGameConfig, setGameConfig,
   listLeaderboardPrizes, upsertLeaderboardPrize, deleteLeaderboardPrize,
@@ -45,6 +45,7 @@ import { getLeagueConfig, setLeagueConfig, listLeagues, upsertLeagueTier, delete
 import {
   getWarConfig, setWarConfig, listWarLeagues, upsertWarLeagueTier, deleteWarLeagueTier,
   listWarLeaguePrizesAdmin, upsertWarLeaguePrize, deleteWarLeaguePrize, listRecentWarAttacksAdmin,
+  getWarMapStats, resetWarMapPositions, forceResolveWarSeason,
 } from './war-db.js';
 import {
   listRafflesAdmin, getRaffle, createRaffle, updateRaffle, deleteRaffle, cancelRaffle, listRaffleEntries, finishRaffle,
@@ -669,6 +670,25 @@ router.post('/war/prizes', (req, res) => {
 });
 router.delete('/war/prizes/:id', (req, res) => { deleteWarLeaguePrize(Number(req.params.id)); res.json({ ok: true }); });
 router.get('/war/attacks', (req, res) => res.json(listRecentWarAttacksAdmin(50)));
+router.get('/war/map-stats', (req, res) => res.json(getWarMapStats()));
+router.post('/war/reset-map-positions', (req, res) => {
+  try { res.json({ ok: true, ...resetWarMapPositions() }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.post('/war/resolve-season', (req, res) => {
+  try {
+    const result = forceResolveWarSeason();
+    result.cardGrants.forEach(g => {
+      grantCardInstance(g.tg_id, g.card_id);
+      const card = getGameCard(g.card_id);
+      sendMessage(g.tg_id, `⚔️ Tower War season reward! You finished #${g.rank} in ${g.league_label} and won the card "${card?.name || ''}"! 🎉`).catch(() => {});
+    });
+    result.tomanGrants.forEach(g => {
+      sendMessage(g.tg_id, `⚔️ Tower War season reward! You finished #${g.rank} in ${g.league_label} and won ${g.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC! 🎉`).catch(() => {});
+    });
+    res.json({ ok: true, cardCount: result.cardGrants.length, tomanCount: result.tomanGrants.length });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 
 /* ---------- Big wheel (raffle / giveaway) ---------- */
 router.get('/raffles', (req, res) => res.json(listRafflesAdmin()));

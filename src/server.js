@@ -72,6 +72,7 @@ import { logActivity, logPlayerActivity, checkAchievements, getActivityFeed, lis
 import {
   getWarConfig, getMyWarStatus, setDefenseDeck, upgradeTower, listAttackTargets, attackTower,
   getWarAttackHistory, getWarLeaderboard, listWarLeagues, checkAutoResetWarSeason,
+  getWarMap, getWarTowerDetail,
 } from './war-db.js';
 import adminApi from './admin-api.js';
 import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
@@ -825,6 +826,10 @@ app.post('/api/war/upgrade-tower', requireTelegramAuth, (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.get('/api/war/targets', requireTelegramAuth, (req, res) => res.json(listAttackTargets(req.dbUser.tg_id, 10)));
+// The interactive map — one optimized query for the whole league (see getWarMap in war-db.js), no
+// per-tower requests. Full detail for a single tapped tower is a separate, on-demand call.
+app.get('/api/war/map', requireTelegramAuth, (req, res) => res.json(getWarMap(req.dbUser.tg_id)));
+app.get('/api/war/tower/:tgId', requireTelegramAuth, (req, res) => res.json(getWarTowerDetail(Number(req.params.tgId))));
 app.post('/api/war/attack', requireTelegramAuth, (req, res) => {
   try {
     const result = attackTower(req.dbUser.tg_id, Number(req.body.defenderTgId), req.body.cardIds);

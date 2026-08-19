@@ -91,6 +91,13 @@ CREATE TABLE IF NOT EXISTS war_attacks (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
+// Reused an existing table (war_towers) for map position instead of a parallel table — adds only the
+// 3 columns actually needed (x, y, and a cached league key to detect league changes cheaply).
+try { db.exec(`ALTER TABLE war_towers ADD COLUMN map_x REAL`); } catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+try { db.exec(`ALTER TABLE war_towers ADD COLUMN map_y REAL`); } catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+try { db.exec(`ALTER TABLE war_towers ADD COLUMN league_key TEXT`); } catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+db.exec(`CREATE INDEX IF NOT EXISTS idx_war_towers_league_key ON war_towers(league_key)`);
+
 // Seed a reasonable default set of tiers once, on a fresh install only.
 if (!db.prepare('SELECT 1 FROM war_leagues LIMIT 1').get()) {
   const seed = db.prepare('INSERT INTO war_leagues (key, label, icon, min_trophies, sort_order) VALUES (?,?,?,?,?)');
@@ -160,10 +167,52 @@ function leagueForTrophies(trophies) {
 }
 
 /* ---------- Tower ---------- */
+// Fixed world-space size the map is laid out in (frontend scales/pans within this — not admin
+// configurable, only the tower COUNT per league is, via war_config.map_capacity).
+export const WAR_MAP_SIZE = 1000;
+
+// Places a tower at a free grid cell within its league's map so towers don't overlap, with a little
+// random jitter inside the cell so it doesn't look like a rigid grid. Grid size scales with the
+// configured map capacity (e.g. capacity 100 -> a 10x10 grid). Only ever called when a tower is
+// created or changes league (or on an admin-triggered reset) — never on a normal map load — so it
+// stays a rare, cheap, bounded (<= map_capacity rows) query, not a per-request cost.
+function assignMapPosition(tgId, leagueKey) {
+  const cfg = getWarConfig();
+  const gridSize = Math.max(4, Math.ceil(Math.sqrt(cfg.map_capacity)));
+  const cell = WAR_MAP_SIZE / gridSize;
+  const occupied = new Set(
+    db.prepare('SELECT map_x, map_y FROM war_towers WHERE league_key = ? AND tg_id != ? AND map_x IS NOT NULL')
+      .all(leagueKey, tgId)
+      .map(r => `${Math.floor(r.map_x / cell)},${Math.floor(r.map_y / cell)}`)
+  );
+  let gx = 0, gy = 0, tries = 0;
+  const maxTries = gridSize * gridSize * 2;
+  do {
+    gx = Math.floor(Math.random() * gridSize);
+    gy = Math.floor(Math.random() * gridSize);
+    tries++;
+  } while (occupied.has(`${gx},${gy}`) && tries < maxTries);
+  const jitter = cell * 0.15;
+  const x = Math.round((gx * cell + cell / 2 + (Math.random() * 2 - 1) * jitter) * 100) / 100;
+  const y = Math.round((gy * cell + cell / 2 + (Math.random() * 2 - 1) * jitter) * 100) / 100;
+  db.prepare('UPDATE war_towers SET map_x = ?, map_y = ?, league_key = ? WHERE tg_id = ?').run(x, y, leagueKey, tgId);
+  return { x, y };
+}
+
+// Creates the tower row if needed, and (only when actually necessary — first creation, a league
+// change since last touch, or after an admin map-position reset) assigns it a permanent map
+// position. A normal reload/re-entry does nothing here beyond the cheap initial SELECT — the
+// position is NOT reassigned "just because" the player opened the app again.
 export function getOrCreateWarTower(tgId) {
   const cfg = getWarConfig();
   db.prepare('INSERT OR IGNORE INTO war_towers (tg_id, trophies) VALUES (?, ?)').run(tgId, cfg.starting_trophies);
-  return db.prepare('SELECT * FROM war_towers WHERE tg_id = ?').get(tgId);
+  let tower = db.prepare('SELECT * FROM war_towers WHERE tg_id = ?').get(tgId);
+  const currentLeagueKey = leagueForTrophies(tower.trophies).key;
+  if (tower.league_key !== currentLeagueKey || tower.map_x == null) {
+    assignMapPosition(tgId, currentLeagueKey);
+    tower = db.prepare('SELECT * FROM war_towers WHERE tg_id = ?').get(tgId);
+  }
+  return tower;
 }
 function isShielded(tower) {
   return !!(tower.shield_until && new Date(tower.shield_until.replace(' ', 'T') + 'Z').getTime() > Date.now());
@@ -250,6 +299,73 @@ export function listAttackTargets(tgId, limit = 10) {
       tgId: r.tg_id, name: r.first_name || r.username || `Player ${r.tg_id}`,
       trophies: r.trophies, towerLevel: r.tower_level,
     }));
+}
+
+// One optimized query for the whole league map — everything the frontend needs to render every
+// tower as a dot (id, name, position, trophies, level, shield) and nothing more (no card/wallet/user
+// data), so this stays cheap even with the map at full capacity. Positions are read as-is — this
+// does NOT touch/reassign anyone's position, it only ensures the CALLER's own tower position is
+// current (via getOrCreateWarTower, a single cheap row check) before picking which league's map to load.
+export function getWarMap(tgId) {
+  const cfg = getWarConfig();
+  const myTower = getOrCreateWarTower(tgId);
+  const league = leagueForTrophies(myTower.trophies);
+  const now = Date.now();
+  const rows = db.prepare(`
+    SELECT wt.tg_id, wt.trophies, wt.tower_level, wt.map_x, wt.map_y, wt.shield_until
+    FROM war_towers wt
+    WHERE wt.league_key = ? AND wt.map_x IS NOT NULL
+    ORDER BY wt.tg_id ASC LIMIT ?
+  `).all(league.key, Math.max(cfg.map_capacity * 2, 100));
+  // Names come from the same `users` table lookup the rest of the bot already keeps hot in cache —
+  // still a single extra indexed query, not one per tower.
+  const tgIds = rows.map(r => r.tg_id);
+  const names = {};
+  if (tgIds.length) {
+    const placeholders = tgIds.map(() => '?').join(',');
+    db.prepare(`SELECT tg_id, first_name, username FROM users WHERE tg_id IN (${placeholders})`).all(...tgIds)
+      .forEach(u => { names[u.tg_id] = u.first_name || u.username || `Player ${u.tg_id}`; });
+  }
+  return {
+    league: { key: league.key, label: league.label, icon: league.icon },
+    mapSize: WAR_MAP_SIZE,
+    capacity: cfg.map_capacity,
+    shieldHours: cfg.shield_hours,
+    myTgId: tgId,
+    towers: rows.map(r => ({
+      tgId: r.tg_id,
+      name: names[r.tg_id] || `Player ${r.tg_id}`,
+      x: r.map_x, y: r.map_y,
+      trophies: r.trophies,
+      towerLevel: r.tower_level,
+      shielded: !!(r.shield_until && new Date(r.shield_until.replace(' ', 'T') + 'Z').getTime() > now),
+      isMe: r.tg_id === tgId,
+    })),
+  };
+}
+
+// Full detail for ONE tower, fetched only when the player taps it on the map (never for the whole
+// map at once) — the map payload above already carries name/position/trophies/shield, so this only
+// adds what that payload deliberately leaves out: defense power and whether attacking is even
+// possible. A plain read — never assigns/changes the target's position as a side effect of someone
+// else looking at them.
+export function getWarTowerDetail(targetTgId) {
+  const cfg = getWarConfig();
+  let tower = db.prepare('SELECT * FROM war_towers WHERE tg_id = ?').get(targetTgId);
+  if (!tower) tower = getOrCreateWarTower(targetTgId); // target has never opened Tower War yet
+  const league = leagueForTrophies(tower.trophies);
+  const defenseCards = enrichCardIds(targetTgId, JSON.parse(tower.defense_card_ids || '[]'));
+  const defensePower = Math.round(computeDeckPower(defenseCards) * towerDefenseMultiplier(tower, cfg));
+  return {
+    tgId: targetTgId,
+    trophies: tower.trophies,
+    towerLevel: tower.tower_level,
+    league: { key: league.key, label: league.label, icon: league.icon },
+    defensePower,
+    hasDefenseSet: tower.defense_card_ids !== '[]',
+    shielded: isShielded(tower),
+    shieldUntil: tower.shield_until,
+  };
 }
 
 export function getWarAttackHistory(tgId, limit = 20) {
@@ -371,6 +487,9 @@ function resolveWarSeason() {
     db.prepare(`UPDATE war_state SET period_started_at = datetime('now') WHERE id = 1`).run();
   });
   tx();
+  // Positions get a fresh layout at season boundaries too (per spec: reassigned on join OR season
+  // reset) — separate from the prize/counter transaction since it's its own batch of per-league writes.
+  resetWarMapPositions();
   return { cardGrants, tomanGrants };
 }
 export function checkAutoResetWarSeason() {
@@ -380,6 +499,40 @@ export function checkAutoResetWarSeason() {
   const startedAt = new Date(state.period_started_at.replace(' ', 'T') + 'Z').getTime();
   if (Date.now() >= startedAt + cfg.season_days * 24 * 60 * 60 * 1000) return resolveWarSeason();
   return null;
+}
+// Manual "resolve season now" for the admin panel — same logic the automatic hourly check uses.
+export function forceResolveWarSeason() { return resolveWarSeason(); }
+
+/* ---------- Map administration ---------- */
+// Per-league occupancy, for the admin panel's "map status" view — a handful of GROUP BY rows, not a
+// per-tower query.
+export function getWarMapStats() {
+  const tiers = listWarLeagues();
+  const counts = db.prepare('SELECT league_key, COUNT(*) c FROM war_towers WHERE league_key IS NOT NULL GROUP BY league_key').all();
+  const countByKey = {};
+  counts.forEach(c => { countByKey[c.league_key] = c.c; });
+  const cfg = getWarConfig();
+  return tiers.map(t => ({ key: t.key, label: t.label, icon: t.icon, count: countByKey[t.key] || 0, capacity: cfg.map_capacity }));
+}
+// Re-lays-out every tower currently on a map — a fresh, non-overlapping position per league, in one
+// batch per league (bounded by that league's member count, not a global per-tower loop across the
+// whole player base). Does not touch trophies, wallet, cards, defense deck, or anything else.
+export function resetWarMapPositions() {
+  const tiers = listWarLeagues();
+  let reassigned = 0;
+  const tx = db.transaction(() => {
+    for (const tier of tiers) {
+      const idx = tiers.findIndex(t => t.key === tier.key);
+      const nextThreshold = idx < tiers.length - 1 ? tiers[idx + 1].min_trophies : Infinity;
+      const members = db.prepare('SELECT tg_id FROM war_towers WHERE trophies >= ? AND trophies < ?').all(tier.min_trophies, nextThreshold);
+      // Clear this league's positions first so assignMapPosition's occupancy check starts fresh
+      // instead of every tower avoiding its OWN previous spot as if it were taken by someone else.
+      db.prepare('UPDATE war_towers SET map_x = NULL, map_y = NULL WHERE trophies >= ? AND trophies < ?').run(tier.min_trophies, nextThreshold);
+      for (const m of members) { assignMapPosition(m.tg_id, tier.key); reassigned++; }
+    }
+  });
+  tx();
+  return { reassigned };
 }
 
 /* ---------- Admin visibility ---------- */
