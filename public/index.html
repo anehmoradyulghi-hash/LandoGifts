@@ -861,6 +861,7 @@
 
     <div class="grid2">
       <div class="gcard blue" onclick="showGView('cardgame')" id="hubTile-cardgame"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t">Card game</span><span class="s">Collection, mutation & battles</span></div>
+      <div class="gcard orange" onclick="showGView('war')" id="hubTile-war"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l7-7M14 4l6 6-9 9-6-6z"/><path d="M14 4l3 3M6 21l-2-2 3-3"/></svg></span><span class="t">Tower War</span><span class="s">Defend & raid other towers</span></div>
       <div class="gcard teal" onclick="showGView('battlepass')" id="hubTile-battlepass"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 12.3 7 21l5-3 5 3-2-8.7"/></svg></span><span class="t">Battle pass</span><span class="s">Seasonal rewards track</span></div>
       <div class="gcard pink" onclick="showPage('market')" id="hubTile-market"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8.5" width="17" height="11" rx="1.5"/><path d="M3.5 12.5h17"/><path d="M12 8.5v11"/><path d="M12 8.5C9 8.5 7.8 4 10.2 4c1.8 0 1.8 3 1.8 4.5zM12 8.5c3 0 4.2-4.5 1.8-4.5-1.8 0-1.8 3-1.8 4.5z"/></svg></span><span class="t">Gift market</span><span class="s">Consignment buy/sell</span></div>
       <div class="gcard green" onclick="showPage('wallet')" id="hubTile-wallet"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h8l5 6.2-9 10.8-9-10.8z"/><path d="M6 3.5l3 6.2-3.9.2M14 3.5l-3 6.2M9 3.5l3 6.2 3-6.2M2.1 9.7h19.6"/></svg></span><span class="t">Currency wallet</span><span class="s">Top up & convert currency</span></div>
@@ -936,6 +937,49 @@
     </div>
     <div class="view" id="gsub-tasks">
       <div id="cardTasksList" class="muted">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Tower War -->
+  <div class="view" id="gview-war">
+    <div class="gamehub-stats">
+      <div class="gamehub-stat"><div class="gamehub-stat-ic">🏆</div><div class="gamehub-stat-val" id="warTrophies">-</div><div class="gamehub-stat-label">Trophies</div></div>
+      <div class="gamehub-stat"><div class="gamehub-stat-ic">🏰</div><div class="gamehub-stat-val" id="warTowerLevel">-</div><div class="gamehub-stat-label">Tower level</div></div>
+      <div class="gamehub-stat"><div class="gamehub-stat-ic">🎮</div><div class="gamehub-stat-val" id="warPlaysLeft">-</div><div class="gamehub-stat-label">Games left</div></div>
+    </div>
+    <div class="gamehub-nav" id="warPills">
+      <div class="gamehub-tile active" data-wsub="tower" onclick="showWarSub('tower')"><div class="gamehub-tile-ic">🏰</div><div class="gamehub-tile-label">My tower</div></div>
+      <div class="gamehub-tile" data-wsub="attack" onclick="showWarSub('attack')"><div class="gamehub-tile-ic">⚔️</div><div class="gamehub-tile-label">Attack</div></div>
+      <div class="gamehub-tile" data-wsub="leaderboard" onclick="showWarSub('leaderboard')"><div class="gamehub-tile-ic">🏆</div><div class="gamehub-tile-label">Map</div></div>
+      <div class="gamehub-tile" data-wsub="history" onclick="showWarSub('history')"><div class="gamehub-tile-ic">📜</div><div class="gamehub-tile-label">History</div></div>
+    </div>
+    <div class="view active" id="wsub-tower">
+      <div class="card" id="warTowerCard">Loading...</div>
+      <h3 class="sec">Defense deck</h3>
+      <p class="muted">These cards defend your tower automatically whenever someone attacks you.</p>
+      <div id="warDefensePicker" class="muted">Loading cards...</div>
+      <button class="btn" style="margin-top:10px;width:100%;" onclick="saveWarDefenseDeck()">💾 Save defense deck</button>
+    </div>
+    <div class="view" id="wsub-attack">
+      <p class="muted">Opponents in your own league — pick a target, then choose your attack deck.</p>
+      <div id="warTargetsList" class="muted">Loading...</div>
+    </div>
+    <div class="view" id="wsub-leaderboard">
+      <div id="warLeaderboardList" class="muted">Loading...</div>
+    </div>
+    <div class="view" id="wsub-history">
+      <div id="warHistoryList" class="muted">Loading...</div>
+    </div>
+  </div>
+  <div id="warAttackPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;padding:16px;overflow-y:auto;">
+    <div class="card" style="max-width:480px;margin:40px auto 24px;">
+      <div class="row" style="margin-bottom:8px;">
+        <h3 style="margin:0;" id="warAttackTargetTitle">⚔️ Attack</h3>
+        <button class="btn secondary" style="padding:6px 14px;" onclick="closeWarAttackPanel()">‹ Back</button>
+      </div>
+      <p class="muted">Pick your attack deck:</p>
+      <div id="warAttackDeckPicker" class="game-card-grid"></div>
+      <button class="btn gold" style="margin-top:12px;width:100%;" onclick="confirmWarAttack()">⚔️ Launch attack</button>
     </div>
   </div>
 
@@ -1608,8 +1652,9 @@ function showGView(name) {
   if (name === 'hub') NAV_STACK = []; // back at the section hub — nothing left to step back through
   document.querySelectorAll('#page-games .view').forEach(v => v.classList.remove('active'));
   document.getElementById('gview-' + name).classList.add('active');
-  document.getElementById('headerTitle').textContent = name === 'hub' ? 'Lando Gifts' : { cardgame:'Card game', battlepass:'Battle pass', events:'Events' }[name];
+  document.getElementById('headerTitle').textContent = name === 'hub' ? 'Lando Gifts' : { cardgame:'Card game', war:'⚔️ Tower War', battlepass:'Battle pass', events:'Events' }[name];
   if (name === 'cardgame') { showGameSub('shop'); loadGame(); }
+  if (name === 'war') { showWarSub('tower'); loadWar(); }
   if (name === 'battlepass') loadSeason();
   if (name === 'events') { showEventsSub('quests'); loadDailyQuests(); loadAuctions(); }
 }
@@ -2491,6 +2536,137 @@ async function loadGameHistory() {
     const won = m.winner_tg_id === meId;
     return `<div class="card" style="padding:10px 14px;" ${staggerStyle(i)}><span>${won ? '🏆 Win' : '❌ Loss'} — My power: ${m.player_a === meId ? m.power_a : m.power_b} / Opponent: ${m.player_a === meId ? m.power_b : m.power_a}</span></div>`;
   }).join('') : 'You have not had a match yet.';
+}
+
+/* ================= Tower War ================= */
+let WAR_STATUS = null, WAR_DEFENSE_SELECTED = [], WAR_ATTACK_TARGET = null, WAR_ATTACK_SELECTED = [];
+function showWarSub(name) {
+  document.querySelectorAll('#gview-war .view').forEach(v => v.classList.remove('active'));
+  document.getElementById('wsub-' + name).classList.add('active');
+  document.querySelectorAll('#warPills .gamehub-tile').forEach(b => b.classList.toggle('active', b.dataset.wsub === name));
+  if (name === 'attack') loadWarTargets();
+  if (name === 'leaderboard') loadWarLeaderboardTab();
+  if (name === 'history') loadWarHistory();
+}
+async function loadWar() {
+  const status = await api('/api/war/status');
+  WAR_STATUS = status;
+  WAR_DEFENSE_SELECTED = status.defenseCards.map(c => c.id);
+  document.getElementById('warTrophies').textContent = status.trophies;
+  document.getElementById('warTowerLevel').textContent = status.towerLevel;
+  document.getElementById('warPlaysLeft').textContent = status.playsRemaining;
+  renderWarTowerCard(status);
+  renderWarDefensePicker(status.myCards, status.config.deck_size);
+}
+function renderWarTowerCard(status) {
+  const shieldLine = status.shielded
+    ? `<div class="row"><span class="muted">🛡 Shield</span><b>Protected until ${status.shieldUntil}</b></div>`
+    : '';
+  document.getElementById('warTowerCard').innerHTML = `
+    <div class="row"><span class="muted">League</span><b>${status.league.icon || ''} ${status.league.label}</b></div>
+    <div class="row"><span class="muted">Trophies</span><b>🏆 ${status.trophies}</b></div>
+    <div class="row"><span class="muted">Global rank</span><b>#${status.globalRank}</b> <span class="muted">(#${status.leagueRank} in league)</span></div>
+    <div class="row"><span class="muted">Tower level</span><b>${status.towerLevel}${status.upgradeCost == null ? ' (max)' : ''}</b></div>
+    <div class="row"><span class="muted">Defense power</span><b>${status.defensePower}⚡</b></div>
+    ${shieldLine}
+    ${status.upgradeCost != null ? `<button class="btn gold" style="width:100%;margin-top:10px;" onclick="upgradeWarTower()">🏰 Upgrade tower (${status.upgradeCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC)</button>` : ''}
+  `;
+}
+function renderWarDefensePicker(cards, deckSize) {
+  const el = document.getElementById('warDefensePicker');
+  if (!el) return;
+  el.innerHTML = (cards && cards.length) ? `
+    <div class="row" style="margin-bottom:6px;"><span class="muted">Selected</span><b>${WAR_DEFENSE_SELECTED.length}/${deckSize}</b></div>
+    <div class="hscroll">${cards.map(c => `
+      <div class="mini-card ${WAR_DEFENSE_SELECTED.includes(c.id) ? 'gold' : ''}" style="cursor:pointer;${WAR_DEFENSE_SELECTED.includes(c.id) ? 'border:2px solid var(--gold);' : ''}" onclick="toggleWarDefenseCard(${c.id})">
+        <div class="ic">${WAR_DEFENSE_SELECTED.includes(c.id) ? '✅' : '🎴'}</div>
+        <div class="t">${c.name}</div>
+        <div class="s">Lv${c.level} · ${c.power}</div>
+      </div>`).join('')}</div>
+  ` : 'You do not have any cards yet, buy some from the shop.';
+}
+function toggleWarDefenseCard(id) {
+  const deckSize = WAR_STATUS?.config.deck_size || 4;
+  if (WAR_DEFENSE_SELECTED.includes(id)) WAR_DEFENSE_SELECTED = WAR_DEFENSE_SELECTED.filter(x => x !== id);
+  else { if (WAR_DEFENSE_SELECTED.length >= deckSize) return toast(`You can only pick ${deckSize} cards`); WAR_DEFENSE_SELECTED.push(id); }
+  renderWarDefensePicker(WAR_STATUS.myCards, deckSize);
+}
+async function saveWarDefenseDeck() {
+  try {
+    await api('/api/war/defense-deck', { method: 'POST', body: JSON.stringify({ cardIds: WAR_DEFENSE_SELECTED }) });
+    toast('Defense deck saved 🛡');
+    loadWar();
+  } catch (e) {}
+}
+async function upgradeWarTower() {
+  try { await api('/api/war/upgrade-tower', { method: 'POST' }); toast('Tower upgraded 🏰'); loadMe(); loadWar(); } catch (e) {}
+}
+async function loadWarTargets() {
+  const targets = await api('/api/war/targets');
+  document.getElementById('warTargetsList').innerHTML = targets.length ? targets.map((t, i) => `
+    <div class="card" ${staggerStyle(i)}>
+      <div class="row"><b>${t.name}</b><span class="tag">🏆 ${t.trophies}</span></div>
+      <div class="row muted" style="font-size:12px;">Tower level ${t.towerLevel}</div>
+      <button class="btn gold" style="width:100%;margin-top:8px;" onclick="openWarAttackPanel(${t.tgId}, '${t.name.replace(/'/g, "\\'")}')">⚔️ Attack</button>
+    </div>`).join('') : '<p class="muted">No available targets in your league right now — check back later.</p>';
+}
+function openWarAttackPanel(tgId, name) {
+  WAR_ATTACK_TARGET = tgId;
+  WAR_ATTACK_SELECTED = [];
+  document.getElementById('warAttackTargetTitle').textContent = `⚔️ Attack ${name}`;
+  renderWarAttackDeckPicker();
+  document.getElementById('warAttackPanel').style.display = 'block';
+}
+function closeWarAttackPanel() {
+  document.getElementById('warAttackPanel').style.display = 'none';
+  WAR_ATTACK_TARGET = null;
+  WAR_ATTACK_SELECTED = [];
+}
+function renderWarAttackDeckPicker() {
+  const cards = WAR_STATUS?.myCards || [];
+  const deckSize = WAR_STATUS?.config.deck_size || 4;
+  document.getElementById('warAttackDeckPicker').innerHTML = cards.length ? cards.map(c => `
+    <div class="mini-card ${WAR_ATTACK_SELECTED.includes(c.id) ? 'gold' : ''}" style="cursor:pointer;${WAR_ATTACK_SELECTED.includes(c.id) ? 'border:2px solid var(--gold);' : ''}" onclick="toggleWarAttackCard(${c.id})">
+      <div class="ic">${WAR_ATTACK_SELECTED.includes(c.id) ? '✅' : '🎴'}</div>
+      <div class="t">${c.name}</div>
+      <div class="s">Lv${c.level} · ${c.power}</div>
+    </div>`).join('') : '<p class="muted">You have no cards to attack with.</p>';
+}
+function toggleWarAttackCard(id) {
+  const deckSize = WAR_STATUS?.config.deck_size || 4;
+  if (WAR_ATTACK_SELECTED.includes(id)) WAR_ATTACK_SELECTED = WAR_ATTACK_SELECTED.filter(x => x !== id);
+  else { if (WAR_ATTACK_SELECTED.length >= deckSize) return toast(`You can only pick ${deckSize} cards`); WAR_ATTACK_SELECTED.push(id); }
+  renderWarAttackDeckPicker();
+}
+async function confirmWarAttack() {
+  if (!WAR_ATTACK_SELECTED.length) return toast('Pick at least one card');
+  try {
+    const r = await api('/api/war/attack', { method: 'POST', body: JSON.stringify({ defenderTgId: WAR_ATTACK_TARGET, cardIds: WAR_ATTACK_SELECTED }) });
+    closeWarAttackPanel();
+    toast(r.won
+      ? `🏆 Victory! Looted ${r.lootAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC (+${r.trophyChangeAttacker} 🏆)`
+      : `😢 Defeat (${r.trophyChangeAttacker} 🏆)`);
+    loadMe(); loadWar(); loadWarTargets();
+  } catch (e) {}
+}
+async function loadWarLeaderboardTab() {
+  if (!WAR_STATUS) await loadWar();
+  const rows = await api(`/api/war/leaderboard/${WAR_STATUS.league.key}`);
+  document.getElementById('warLeaderboardList').innerHTML = rows.length ? rows.map((p, i) => `
+    <div class="lb-row" ${staggerStyle(i)}><div class="lb-rank">${i + 1}</div><div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">🏆 ${p.trophies}</div></div>
+  `).join('') : '<p class="muted">No one in this league yet.</p>';
+}
+async function loadWarHistory() {
+  const rows = await api('/api/war/history');
+  const meId = (await api('/api/me')).tg_id;
+  document.getElementById('warHistoryList').innerHTML = rows.length ? rows.map((a, i) => {
+    const iAttacked = a.attacker_tg_id === meId;
+    const won = a.result === 'win';
+    const iWon = iAttacked ? won : !won;
+    return `<div class="card" style="padding:10px 14px;" ${staggerStyle(i)}>
+      <span>${iAttacked ? '⚔️ You attacked' : '🛡 You were attacked'} — ${iWon ? '🏆 Win' : '❌ Loss'}${a.loot_amount ? ` — ${a.loot_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC` : ''}</span>
+    </div>`;
+  }).join('') : '<p class="muted">No attacks yet.</p>';
 }
 
 /* ================= Battle pass ================= */
