@@ -636,6 +636,39 @@
   .chest-prize-extra-row { display:flex; align-items:center; gap:8px; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:6px 10px; font-size:12px; }
   .chest-prize-extra-row img { width:26px; height:26px; border-radius:6px; object-fit:cover; }
   .chest-prize-extra-icon { font-size:16px; width:26px; text-align:center; }
+
+  /* ---------- Tower War interactive map ---------- */
+  .warmap-viewport {
+    position:relative; width:100%; height:min(58vh, 480px); border-radius:16px; overflow:hidden;
+    background:
+      radial-gradient(1200px 600px at 20% 10%, rgba(120,90,220,.18), transparent 60%),
+      linear-gradient(160deg,#161225,#0d0b18);
+    border:1px solid var(--border); touch-action:none; -webkit-user-select:none; user-select:none;
+  }
+  .warmap-viewport::before {
+    content:''; position:absolute; inset:0; opacity:.35; pointer-events:none;
+    background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+    background-size:40px 40px;
+  }
+  .warmap-world { position:absolute; top:0; left:0; width:1000px; height:1000px; transform-origin:0 0; will-change:transform; }
+  .warmap-tower {
+    position:absolute; width:46px; height:46px; margin-left:-23px; margin-top:-23px;
+    display:flex; flex-direction:column; align-items:center; cursor:pointer; z-index:1;
+  }
+  .warmap-tower .icon { font-size:26px; filter:drop-shadow(0 2px 4px rgba(0,0,0,.6)); line-height:1; }
+  .warmap-tower .name { font-size:8.5px; color:#fff; background:rgba(0,0,0,.55); padding:1px 5px; border-radius:5px; white-space:nowrap; max-width:70px; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+  .warmap-tower .trophy-badge { font-size:8px; color:#ffe9a8; margin-top:1px; }
+  .warmap-tower.me { z-index:2; }
+  .warmap-tower.me .icon { filter:drop-shadow(0 0 8px rgba(255,215,0,.85)); }
+  .warmap-tower.shielded .icon { opacity:.75; }
+  .warmap-overlay { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; gap:8px; pointer-events:none; z-index:3; }
+  .warmap-badge { background:rgba(10,8,20,.7); backdrop-filter:blur(4px); border:1px solid var(--border); border-radius:10px; padding:5px 10px; font-size:11px; font-weight:700; }
+  .warmap-zoom-controls { position:absolute; bottom:10px; right:10px; display:flex; flex-direction:column; gap:6px; z-index:3; }
+  .warmap-zoom-btn { width:34px; height:34px; border-radius:50%; background:rgba(10,8,20,.75); border:1px solid var(--border); color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; }
+  .warsheet { position:fixed; left:0; right:0; bottom:0; z-index:1000; background:var(--surface); border-radius:20px 20px 0 0; border:1px solid var(--border); padding:16px; transform:translateY(110%); transition:transform .25s ease; }
+  .warsheet.show { transform:translateY(0); }
+  .warsheet-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:999; display:none; }
+  .warsheet-backdrop.show { display:block; }
   .chest-hint { font-weight:700; font-size:14px; color:var(--text); min-height:20px; text-align:center; }
   @media (prefers-reduced-motion: reduce) {
     .chest-box, .chest-glow, .chest-rays.burst, .chest-prize.reveal, .chest-prize-icon { animation:none !important; }
@@ -949,8 +982,8 @@
     </div>
     <div class="gamehub-nav" id="warPills">
       <div class="gamehub-tile active" data-wsub="tower" onclick="showWarSub('tower')"><div class="gamehub-tile-ic">🏰</div><div class="gamehub-tile-label">My tower</div></div>
-      <div class="gamehub-tile" data-wsub="attack" onclick="showWarSub('attack')"><div class="gamehub-tile-ic">⚔️</div><div class="gamehub-tile-label">Attack</div></div>
-      <div class="gamehub-tile" data-wsub="leaderboard" onclick="showWarSub('leaderboard')"><div class="gamehub-tile-ic">🏆</div><div class="gamehub-tile-label">Map</div></div>
+      <div class="gamehub-tile" data-wsub="attack" onclick="showWarSub('attack')"><div class="gamehub-tile-ic">🗺️</div><div class="gamehub-tile-label">Map</div></div>
+      <div class="gamehub-tile" data-wsub="leaderboard" onclick="showWarSub('leaderboard')"><div class="gamehub-tile-ic">🏆</div><div class="gamehub-tile-label">Leaderboard</div></div>
       <div class="gamehub-tile" data-wsub="history" onclick="showWarSub('history')"><div class="gamehub-tile-ic">📜</div><div class="gamehub-tile-label">History</div></div>
     </div>
     <div class="view active" id="wsub-tower">
@@ -961,8 +994,19 @@
       <button class="btn" style="margin-top:10px;width:100%;" onclick="saveWarDefenseDeck()">💾 Save defense deck</button>
     </div>
     <div class="view" id="wsub-attack">
-      <p class="muted">Opponents in your own league — pick a target, then choose your attack deck.</p>
-      <div id="warTargetsList" class="muted">Loading...</div>
+      <div class="warmap-viewport" id="warMapViewport">
+        <div class="warmap-world" id="warMapWorld"></div>
+        <div class="warmap-overlay">
+          <div class="warmap-badge" id="warMapLeagueBadge">-</div>
+          <div class="warmap-badge" id="warMapCount">-/-</div>
+        </div>
+        <div class="warmap-zoom-controls">
+          <div class="warmap-zoom-btn" onclick="warMapZoomBy(1.25)">+</div>
+          <div class="warmap-zoom-btn" onclick="warMapZoomBy(0.8)">−</div>
+          <div class="warmap-zoom-btn" onclick="warMapFitInitial()">⟲</div>
+        </div>
+      </div>
+      <p class="muted" style="font-size:11px;margin-top:6px;">👑 Your tower · 🏰 Others · 🛡 Shielded — pinch or drag to explore, tap a tower to view & attack.</p>
     </div>
     <div class="view" id="wsub-leaderboard">
       <div id="warLeaderboardList" class="muted">Loading...</div>
@@ -970,6 +1014,19 @@
     <div class="view" id="wsub-history">
       <div id="warHistoryList" class="muted">Loading...</div>
     </div>
+  </div>
+  <div class="warsheet-backdrop" id="warSheetBackdrop" onclick="closeWarTowerSheet()"></div>
+  <div class="warsheet" id="warTowerSheet">
+    <div class="row" style="margin-bottom:10px;">
+      <h3 style="margin:0;" id="warSheetName">-</h3>
+      <button class="btn secondary" style="padding:6px 14px;" onclick="closeWarTowerSheet()">✕</button>
+    </div>
+    <div class="row"><span class="muted">League</span><b id="warSheetLeague">-</b></div>
+    <div class="row"><span class="muted">Trophies</span><b id="warSheetTrophies">-</b></div>
+    <div class="row"><span class="muted">Defense power</span><b id="warSheetDefense">-</b></div>
+    <div class="row"><span class="muted" id="warSheetShield">-</span></div>
+    <p class="muted" id="warSheetNote" style="font-size:12px;"></p>
+    <button class="btn gold" id="warSheetAttackBtn" style="width:100%;margin-top:10px;">⚔️ Attack</button>
   </div>
   <div id="warAttackPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;padding:16px;overflow-y:auto;">
     <div class="card" style="max-width:480px;margin:40px auto 24px;">
@@ -2544,7 +2601,7 @@ function showWarSub(name) {
   document.querySelectorAll('#gview-war .view').forEach(v => v.classList.remove('active'));
   document.getElementById('wsub-' + name).classList.add('active');
   document.querySelectorAll('#warPills .gamehub-tile').forEach(b => b.classList.toggle('active', b.dataset.wsub === name));
-  if (name === 'attack') loadWarTargets();
+  if (name === 'attack') loadWarMap();
   if (name === 'leaderboard') loadWarLeaderboardTab();
   if (name === 'history') loadWarHistory();
 }
@@ -2601,14 +2658,153 @@ async function saveWarDefenseDeck() {
 async function upgradeWarTower() {
   try { await api('/api/war/upgrade-tower', { method: 'POST' }); toast('Tower upgraded 🏰'); loadMe(); loadWar(); } catch (e) {}
 }
-async function loadWarTargets() {
-  const targets = await api('/api/war/targets');
-  document.getElementById('warTargetsList').innerHTML = targets.length ? targets.map((t, i) => `
-    <div class="card" ${staggerStyle(i)}>
-      <div class="row"><b>${t.name}</b><span class="tag">🏆 ${t.trophies}</span></div>
-      <div class="row muted" style="font-size:12px;">Tower level ${t.towerLevel}</div>
-      <button class="btn gold" style="width:100%;margin-top:8px;" onclick="openWarAttackPanel(${t.tgId}, '${t.name.replace(/'/g, "\\'")}')">⚔️ Attack</button>
-    </div>`).join('') : '<p class="muted">No available targets in your league right now — check back later.</p>';
+
+/* ---- Interactive map: everything below runs client-side only for pan/zoom/drag — no network
+   calls happen while the map is being moved, per the performance requirement. A network call only
+   happens to (a) load the map once, (b) fetch one tower's detail on tap, (c) send an attack. ---- */
+let WARMAP_DATA = null;
+let warMapScale = 1, warMapX = 0, warMapY = 0;
+const warMapPointers = new Map();
+let warMapLastDist = null, warMapDragging = false, warMapDragStart = null, warMapMoved = false;
+async function loadWarMap() {
+  const vp = document.getElementById('warMapViewport');
+  if (!vp._warMapBound) { warMapBindEvents(vp); vp._warMapBound = true; }
+  const data = await api('/api/war/map');
+  WARMAP_DATA = data;
+  document.getElementById('warMapLeagueBadge').textContent = `${data.league.icon || ''} ${data.league.label}`;
+  document.getElementById('warMapCount').textContent = `${data.towers.length}/${data.capacity}`;
+  renderWarMapTowers();
+  warMapFitInitial();
+}
+function renderWarMapTowers() {
+  const world = document.getElementById('warMapWorld');
+  world.style.width = WARMAP_DATA.mapSize + 'px';
+  world.style.height = WARMAP_DATA.mapSize + 'px';
+  world.innerHTML = WARMAP_DATA.towers.map(t => `
+    <div class="warmap-tower ${t.isMe ? 'me' : ''} ${t.shielded ? 'shielded' : ''}" id="warmapTower-${t.tgId}" style="left:${t.x}px;top:${t.y}px;" onclick="onWarMapTowerTap(${t.tgId})">
+      <div class="icon">${t.isMe ? '👑' : t.shielded ? '🛡' : '🏰'}</div>
+      <div class="name">${(t.name || '').replace(/</g, '')}</div>
+      <div class="trophy-badge">🏆${t.trophies}</div>
+    </div>`).join('');
+}
+function updateWarMapTowerEl(t) {
+  const el = document.getElementById(`warmapTower-${t.tgId}`);
+  if (!el) return;
+  el.className = `warmap-tower ${t.isMe ? 'me' : ''} ${t.shielded ? 'shielded' : ''}`;
+  el.querySelector('.icon').textContent = t.isMe ? '👑' : t.shielded ? '🛡' : '🏰';
+  el.querySelector('.trophy-badge').textContent = `🏆${t.trophies}`;
+}
+function warMapClamp() {
+  const vp = document.getElementById('warMapViewport');
+  if (!vp || !WARMAP_DATA) return;
+  const worldSize = WARMAP_DATA.mapSize * warMapScale;
+  const minX = Math.min(0, vp.clientWidth - worldSize), minY = Math.min(0, vp.clientHeight - worldSize);
+  warMapX = Math.max(minX, Math.min(0, warMapX));
+  warMapY = Math.max(minY, Math.min(0, warMapY));
+}
+function warMapApplyTransform() {
+  const world = document.getElementById('warMapWorld');
+  if (world) world.style.transform = `translate(${warMapX}px, ${warMapY}px) scale(${warMapScale})`;
+}
+function warMapFitInitial() {
+  const vp = document.getElementById('warMapViewport');
+  if (!vp || !WARMAP_DATA) return;
+  const size = WARMAP_DATA.mapSize;
+  warMapScale = Math.max(0.35, Math.min(1.4, Math.max(vp.clientWidth, vp.clientHeight) / size * 1.15));
+  const me = WARMAP_DATA.towers.find(t => t.isMe);
+  const cx = me ? me.x : size / 2, cy = me ? me.y : size / 2;
+  warMapX = vp.clientWidth / 2 - cx * warMapScale;
+  warMapY = vp.clientHeight / 2 - cy * warMapScale;
+  warMapClamp();
+  warMapApplyTransform();
+}
+function warMapZoomBy(factor, clientX, clientY) {
+  const vp = document.getElementById('warMapViewport');
+  if (!vp || !WARMAP_DATA) return;
+  const rect = vp.getBoundingClientRect();
+  const cx = clientX != null ? clientX - rect.left : vp.clientWidth / 2;
+  const cy = clientY != null ? clientY - rect.top : vp.clientHeight / 2;
+  const worldX = (cx - warMapX) / warMapScale, worldY = (cy - warMapY) / warMapScale;
+  warMapScale = Math.max(0.25, Math.min(3, warMapScale * factor));
+  warMapX = cx - worldX * warMapScale;
+  warMapY = cy - worldY * warMapScale;
+  warMapClamp();
+  warMapApplyTransform();
+}
+function warMapBindEvents(vp) {
+  vp.addEventListener('pointerdown', e => {
+    vp.setPointerCapture(e.pointerId);
+    warMapPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    warMapMoved = false;
+    if (warMapPointers.size === 1) {
+      warMapDragging = true;
+      warMapDragStart = { x: e.clientX, y: e.clientY, mapX: warMapX, mapY: warMapY };
+    } else if (warMapPointers.size === 2) {
+      warMapDragging = false;
+      const pts = [...warMapPointers.values()];
+      warMapLastDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    }
+  });
+  vp.addEventListener('pointermove', e => {
+    if (!warMapPointers.has(e.pointerId)) return;
+    warMapPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (warMapPointers.size === 2) {
+      const pts = [...warMapPointers.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      if (warMapLastDist) warMapZoomBy(dist / warMapLastDist, mid.x, mid.y);
+      warMapLastDist = dist;
+      warMapMoved = true;
+    } else if (warMapDragging && warMapDragStart) {
+      warMapX = warMapDragStart.mapX + (e.clientX - warMapDragStart.x);
+      warMapY = warMapDragStart.mapY + (e.clientY - warMapDragStart.y);
+      if (Math.abs(e.clientX - warMapDragStart.x) > 4 || Math.abs(e.clientY - warMapDragStart.y) > 4) warMapMoved = true;
+      warMapClamp();
+      warMapApplyTransform();
+    }
+  });
+  const endPointer = e => {
+    warMapPointers.delete(e.pointerId);
+    if (warMapPointers.size < 2) warMapLastDist = null;
+    if (warMapPointers.size === 0) { warMapDragging = false; warMapDragStart = null; }
+  };
+  vp.addEventListener('pointerup', endPointer);
+  vp.addEventListener('pointercancel', endPointer);
+  vp.addEventListener('wheel', e => { e.preventDefault(); warMapZoomBy(e.deltaY < 0 ? 1.12 : 0.89, e.clientX, e.clientY); }, { passive: false });
+}
+function onWarMapTowerTap(tgId) {
+  if (warMapMoved) return; // a drag/pinch that ended over a tower shouldn't register as a tap
+  const t = WARMAP_DATA?.towers.find(x => x.tgId === tgId);
+  if (!t) return;
+  if (t.isMe) { showWarSub('tower'); return; }
+  openWarTowerSheet(t);
+}
+async function openWarTowerSheet(t) {
+  document.getElementById('warSheetName').textContent = t.name;
+  document.getElementById('warSheetTrophies').textContent = '🏆 ' + t.trophies;
+  document.getElementById('warSheetShield').textContent = t.shielded ? '🛡 Currently shielded' : 'No shield';
+  document.getElementById('warSheetDefense').textContent = 'Loading...';
+  document.getElementById('warSheetLeague').textContent = '-';
+  document.getElementById('warSheetNote').textContent = '';
+  const attackBtn = document.getElementById('warSheetAttackBtn');
+  attackBtn.disabled = true;
+  document.getElementById('warSheetBackdrop').classList.add('show');
+  document.getElementById('warTowerSheet').classList.add('show');
+  try {
+    const detail = await api(`/api/war/tower/${t.tgId}`);
+    document.getElementById('warSheetDefense').textContent = detail.defensePower + '⚡';
+    document.getElementById('warSheetLeague').textContent = `${detail.league.icon || ''} ${detail.league.label}`;
+    const canAttack = detail.hasDefenseSet && !detail.shielded;
+    attackBtn.disabled = !canAttack;
+    attackBtn.onclick = () => { closeWarTowerSheet(); openWarAttackPanel(t.tgId, t.name); };
+    document.getElementById('warSheetNote').textContent = !detail.hasDefenseSet
+      ? 'This player has not set up a defense deck yet.'
+      : detail.shielded ? 'This tower is currently protected by a shield.' : '';
+  } catch (e) {}
+}
+function closeWarTowerSheet() {
+  document.getElementById('warSheetBackdrop').classList.remove('show');
+  document.getElementById('warTowerSheet').classList.remove('show');
 }
 function openWarAttackPanel(tgId, name) {
   WAR_ATTACK_TARGET = tgId;
@@ -2624,7 +2820,6 @@ function closeWarAttackPanel() {
 }
 function renderWarAttackDeckPicker() {
   const cards = WAR_STATUS?.myCards || [];
-  const deckSize = WAR_STATUS?.config.deck_size || 4;
   document.getElementById('warAttackDeckPicker').innerHTML = cards.length ? cards.map(c => `
     <div class="mini-card ${WAR_ATTACK_SELECTED.includes(c.id) ? 'gold' : ''}" style="cursor:pointer;${WAR_ATTACK_SELECTED.includes(c.id) ? 'border:2px solid var(--gold);' : ''}" onclick="toggleWarAttackCard(${c.id})">
       <div class="ic">${WAR_ATTACK_SELECTED.includes(c.id) ? '✅' : '🎴'}</div>
@@ -2642,11 +2837,23 @@ async function confirmWarAttack() {
   if (!WAR_ATTACK_SELECTED.length) return toast('Pick at least one card');
   try {
     const r = await api('/api/war/attack', { method: 'POST', body: JSON.stringify({ defenderTgId: WAR_ATTACK_TARGET, cardIds: WAR_ATTACK_SELECTED }) });
+    const defenderId = WAR_ATTACK_TARGET;
     closeWarAttackPanel();
     toast(r.won
       ? `🏆 Victory! Looted ${r.lootAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC (+${r.trophyChangeAttacker} 🏆)`
       : `😢 Defeat (${r.trophyChangeAttacker} 🏆)`);
-    loadMe(); loadWar(); loadWarTargets();
+    loadMe(); loadWar();
+    // Patch just the two affected dots instead of reloading the whole map, per the performance rule.
+    if (WARMAP_DATA) {
+      const me = WARMAP_DATA.towers.find(t => t.isMe);
+      if (me) { me.trophies = Math.max(0, me.trophies + r.trophyChangeAttacker); updateWarMapTowerEl(me); }
+      const def = WARMAP_DATA.towers.find(t => t.tgId === defenderId);
+      if (def) {
+        def.trophies = Math.max(0, def.trophies + r.trophyChangeDefender);
+        def.shielded = true;
+        updateWarMapTowerEl(def);
+      }
+    }
   } catch (e) {}
 }
 async function loadWarLeaderboardTab() {
