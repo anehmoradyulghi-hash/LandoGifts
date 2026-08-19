@@ -866,6 +866,16 @@
         <div id="warPrizesTable" style="margin-top:12px;"></div>
       </div>
       <div class="card">
+        <h3>🗺️ Map status</h3>
+        <p class="muted">Towers currently placed on each league's map, out of the configured capacity.</p>
+        <div id="warMapStatsTable"></div>
+        <div class="row2" style="margin-top:12px;">
+          <button class="btn secondary" onclick="resetWarMapPositionsUI()">🔀 Reset map positions</button>
+          <button class="btn gold" onclick="resolveWarSeasonUI()">🏁 Resolve season now</button>
+        </div>
+        <p class="muted" style="font-size:11px;margin-top:6px;">Resetting positions only re-lays-out towers on the map — it never touches trophies, wallet, cards, or defense decks. Resolving the season grants rank prizes immediately and resets win/loss counters (trophies persist), same as the automatic end-of-season check.</p>
+      </div>
+      <div class="card">
         <h3>Recent attacks</h3>
         <div id="warAttacksTable"></div>
       </div>
@@ -2673,7 +2683,27 @@ async function loadWarAdmin() {
   document.getElementById('warSeasonDays').value = cfg.season_days;
   await loadWarLeagueTiersTable();
   await loadWarPrizesTable();
+  await loadWarMapStatsTable();
   await loadWarAttacksTable();
+}
+async function loadWarMapStatsTable() {
+  const rows = await api('/war/map-stats');
+  document.getElementById('warMapStatsTable').innerHTML = rows.length ? `
+    <table><tr><th>League</th><th>Towers on map</th></tr>
+    ${rows.map(r => `<tr><td>${r.icon || ''} ${r.label}</td><td>${r.count} / ${r.capacity}</td></tr>`).join('')}
+    </table>` : '<p class="muted">No league tiers defined.</p>';
+}
+async function resetWarMapPositionsUI() {
+  if (!confirm('Re-lay-out every tower currently on a map with a fresh position? This does not affect trophies, wallet, or cards.')) return;
+  const result = await api('/war/reset-map-positions', { method: 'POST' });
+  alert(`${result.reassigned} tower(s) repositioned.`);
+  loadWarMapStatsTable();
+}
+async function resolveWarSeasonUI() {
+  if (!confirm('Resolve the Tower War season now? Rank prizes will be granted immediately and win/loss counters reset (trophies persist).')) return;
+  const result = await api('/war/resolve-season', { method: 'POST' });
+  alert(`Season resolved — ${result.tomanCount} LNDC prize(s) and ${result.cardCount} card prize(s) granted.`);
+  loadWarMapStatsTable();
 }
 async function saveWarConfig() {
   await api('/war/config', { method: 'POST', body: JSON.stringify({
