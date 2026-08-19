@@ -149,6 +149,7 @@
     <button data-tab="raffles" onclick="showTab('raffles')">🎟 Big wheel</button>
     <button data-tab="chests" onclick="showTab('chests')">📦 Chests</button>
     <button data-tab="giftpacks" onclick="showTab('giftpacks')">🎁 Gift packs</button>
+    <button data-tab="war" onclick="showTab('war')">⚔️ Tower War</button>
     <button data-tab="achievements" onclick="showTab('achievements')">🏅 Achievements</button>
     <button data-tab="auction" onclick="showTab('auction')">Auction</button>
     <button data-tab="season" onclick="showTab('season')">Battle pass</button>
@@ -794,6 +795,82 @@
       </div>
     </section>
 
+    <section class="tab" id="tab-war">
+      <div class="card">
+        <h3>⚔️ Tower War settings</h3>
+        <p class="muted">A separate PvP mode from the card-battle queue — everyone has a tower with a defense deck (used automatically when attacked) and can raid other towers with an attack deck for a cut of their LNDC. Uses the exact same card power (level + upgrades) as card battles, and attacks draw from the same daily plays pool.</p>
+        <select id="warEnabled"><option value="1">Active</option><option value="0">Inactive</option></select>
+        <div class="row2">
+          <div><label>Cards per deck (defense & attack)</label><input type="number" id="warDeckSize" min="1"></div>
+          <div><label>Plunder on win (% of defender's LNDC)</label><input type="number" id="warPlunderPercent" min="0"></div>
+        </div>
+        <div class="row2">
+          <div><label>Shield duration after being attacked (hours)</label><input type="number" id="warShieldHours" min="0"></div>
+          <div><label>Starting trophies for new towers</label><input type="number" id="warStartingTrophies" min="0"></div>
+        </div>
+        <div class="row2">
+          <div><label>Trophies gained — attacker wins</label><input type="number" id="warTrophyWinAttacker" min="0"></div>
+          <div><label>Trophies lost — attacker loses</label><input type="number" id="warTrophyLoseAttacker" min="0"></div>
+        </div>
+        <div class="row2">
+          <div><label>Trophies lost — defender loses</label><input type="number" id="warTrophyLoseDefender" min="0"></div>
+          <div><label>Trophies gained — defender successfully defends</label><input type="number" id="warTrophyWinDefender" min="0"></div>
+        </div>
+        <div class="row2">
+          <div><label>Tower upgrade base cost (LNDC, × current level)</label><input type="number" id="warUpgradeCost" step="0.01" min="0"></div>
+          <div><label>Tower defense bonus per level (%)</label><input type="number" id="warUpgradePercent" min="0"></div>
+        </div>
+        <div class="row2">
+          <div><label>Max tower level</label><input type="number" id="warMaxLevel" min="1"></div>
+          <div><label>Map capacity per league (for the leaderboard view)</label><input type="number" id="warMapCapacity" min="1"></div>
+        </div>
+        <label>Season length (days) — rank prizes granted, win/loss counters reset (trophies persist)</label>
+        <input type="number" id="warSeasonDays" min="1">
+        <button class="btn" onclick="saveWarConfig()">Save Tower War settings</button>
+      </div>
+      <div class="card">
+        <h3>League tiers (trophy thresholds)</h3>
+        <p class="muted">Placement is by trophy count directly (like a trophy road) — a tower's league is whichever tier's threshold it has reached. Add as many tiers as you like, lowest to highest.</p>
+        <input type="hidden" id="wlTierOriginalKey">
+        <div class="row2">
+          <div><label>Key (unique, no spaces)</label><input id="wlTierKey" placeholder="e.g. diamond"></div>
+          <div><label>Display name</label><input id="wlTierLabel" placeholder="e.g. Diamond"></div>
+        </div>
+        <div class="row2">
+          <div><label>Icon (emoji)</label><input id="wlTierIcon" placeholder="💎"></div>
+          <div><label>Order (0 = lowest tier)</label><input type="number" id="wlTierOrder" value="0"></div>
+        </div>
+        <label>Minimum trophies to enter this tier</label><input type="number" id="wlTierMinTrophies" value="0" min="0">
+        <button class="btn" onclick="saveWarLeagueTier()">Save tier</button>
+        <div id="warLeagueTiersTable" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <h3>🏆 Season rank prizes</h3>
+        <p class="muted">Reward towers that finish in a given rank range within a specific league when the season resets — card or LNDC. Granted automatically.</p>
+        <input type="hidden" id="wpId">
+        <div class="row2">
+          <div><label>League</label><select id="wpLeagueKey"></select></div>
+          <div><label>Rank range (e.g. 1 to 3)</label>
+            <div style="display:flex;gap:6px;">
+              <input type="number" id="wpRankFrom" value="1" style="margin:4px 0;">
+              <input type="number" id="wpRankTo" value="1" style="margin:4px 0;">
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <div><label>Prize type</label><select id="wpRewardType" onchange="toggleWarPrizeFields()"><option value="toman">LNDC</option><option value="card">Card</option></select></div>
+          <div id="wpTomanWrap"><label>Amount (LNDC)</label><input type="number" id="wpRewardToman" step="0.01"></div>
+          <div id="wpCardWrap" style="display:none;"><label>Card</label><select id="wpCardId"></select></div>
+        </div>
+        <button class="btn" onclick="saveWarPrize()">Save prize</button>
+        <div id="warPrizesTable" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <h3>Recent attacks</h3>
+        <div id="warAttacksTable"></div>
+      </div>
+    </section>
+
     <section class="tab" id="tab-achievements">
       <div class="card">
         <h3>Create / edit achievement</h3>
@@ -812,6 +889,7 @@
               <option value="nft_sold">Gifts sold on the market</option>
               <option value="checkin_streak">Daily check-in streak</option>
               <option value="chests_opened">Chests opened</option>
+              <option value="war_wins">Tower War wins</option>
             </select>
           </div>
           <div><label>Threshold</label><input type="number" id="achThreshold" value="1"></div>
@@ -1257,7 +1335,7 @@ function showTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: loadReferralSettings, design: loadUiImages, retention: () => { loadComebackConfig(); loadBackupConfig(); }, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
-    cardcategories: loadCategories, mergecosts: loadMergeCosts, chests: loadChestsAdmin, giftpacks: loadGiftPacksAdmin, achievements: loadAchievementsAdmin,
+    cardcategories: loadCategories, mergecosts: loadMergeCosts, chests: loadChestsAdmin, giftpacks: loadGiftPacksAdmin, war: loadWarAdmin, achievements: loadAchievementsAdmin,
     auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
     giftcfg: loadGiftConfigAdmin, seasons: loadSeasonsAdmin, cardmarket: loadCardMarketConfigAdmin,
@@ -2385,7 +2463,7 @@ async function markGiftDelivered(id) {
 /* ---------- Achievements ---------- */
 const ACHIEVEMENT_METRIC_LABELS = {
   battle_wins: 'Battle wins', legendary_cards: 'Legendary+ cards owned', nft_sold: 'Gifts sold',
-  checkin_streak: 'Check-in streak', chests_opened: 'Chests opened',
+  checkin_streak: 'Check-in streak', chests_opened: 'Chests opened', war_wins: 'Tower War wins',
 };
 async function loadAchievementsAdmin() {
   const rows = await api('/achievements');
@@ -2574,6 +2652,143 @@ async function deleteLeaguePrizeUI(id) {
   if (!confirm('Delete this prize?')) return;
   await api(`/league/prizes/${id}`, { method: 'DELETE' });
   loadLeaguePrizesTable();
+}
+
+/* ---------- Tower War ---------- */
+async function loadWarAdmin() {
+  const cfg = await api('/war/config');
+  document.getElementById('warEnabled').value = cfg.enabled ? '1' : '0';
+  document.getElementById('warDeckSize').value = cfg.deck_size;
+  document.getElementById('warPlunderPercent').value = cfg.plunder_percent;
+  document.getElementById('warShieldHours').value = cfg.shield_hours;
+  document.getElementById('warStartingTrophies').value = cfg.starting_trophies;
+  document.getElementById('warTrophyWinAttacker').value = cfg.trophy_win_attacker;
+  document.getElementById('warTrophyLoseAttacker').value = cfg.trophy_lose_attacker;
+  document.getElementById('warTrophyLoseDefender').value = cfg.trophy_lose_defender;
+  document.getElementById('warTrophyWinDefender').value = cfg.trophy_win_defender;
+  document.getElementById('warUpgradeCost').value = cfg.upgrade_base_cost_toman;
+  document.getElementById('warUpgradePercent').value = cfg.upgrade_power_percent;
+  document.getElementById('warMaxLevel').value = cfg.max_tower_level;
+  document.getElementById('warMapCapacity').value = cfg.map_capacity;
+  document.getElementById('warSeasonDays').value = cfg.season_days;
+  await loadWarLeagueTiersTable();
+  await loadWarPrizesTable();
+  await loadWarAttacksTable();
+}
+async function saveWarConfig() {
+  await api('/war/config', { method: 'POST', body: JSON.stringify({
+    enabled: document.getElementById('warEnabled').value === '1',
+    deck_size: document.getElementById('warDeckSize').value,
+    plunder_percent: document.getElementById('warPlunderPercent').value,
+    shield_hours: document.getElementById('warShieldHours').value,
+    starting_trophies: document.getElementById('warStartingTrophies').value,
+    trophy_win_attacker: document.getElementById('warTrophyWinAttacker').value,
+    trophy_lose_attacker: document.getElementById('warTrophyLoseAttacker').value,
+    trophy_lose_defender: document.getElementById('warTrophyLoseDefender').value,
+    trophy_win_defender: document.getElementById('warTrophyWinDefender').value,
+    upgrade_base_cost_toman: document.getElementById('warUpgradeCost').value,
+    upgrade_power_percent: document.getElementById('warUpgradePercent').value,
+    max_tower_level: document.getElementById('warMaxLevel').value,
+    map_capacity: document.getElementById('warMapCapacity').value,
+    season_days: document.getElementById('warSeasonDays').value,
+  }) });
+  alert('Saved');
+}
+async function loadWarLeagueTiersTable() {
+  const tiers = await api('/war/leagues');
+  document.getElementById('warLeagueTiersTable').innerHTML = tiers.length ? `
+    <table><tr><th>Order</th><th>Tier</th><th>Min trophies</th><th>Actions</th></tr>
+    ${tiers.map(t => `<tr><td>${t.sort_order}</td><td>${t.icon || ''} ${t.label}</td><td>${t.min_trophies}</td>
+      <td><button class="btn secondary" onclick='editWarLeagueTier(${JSON.stringify(t)})'>Edit</button>
+      <button class="btn danger" onclick="deleteWarLeagueTierUI('${t.key}')">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No tier defined.</p>';
+}
+function editWarLeagueTier(t) {
+  document.getElementById('wlTierOriginalKey').value = t.key;
+  document.getElementById('wlTierKey').value = t.key;
+  document.getElementById('wlTierLabel').value = t.label;
+  document.getElementById('wlTierIcon').value = t.icon || '';
+  document.getElementById('wlTierOrder').value = t.sort_order;
+  document.getElementById('wlTierMinTrophies').value = t.min_trophies;
+}
+async function saveWarLeagueTier() {
+  const originalKey = document.getElementById('wlTierOriginalKey').value;
+  await api('/war/leagues', { method: 'POST', body: JSON.stringify({
+    originalKey: originalKey || null,
+    key: document.getElementById('wlTierKey').value.trim(),
+    label: document.getElementById('wlTierLabel').value.trim(),
+    icon: document.getElementById('wlTierIcon').value.trim(),
+    sort_order: document.getElementById('wlTierOrder').value,
+    min_trophies: document.getElementById('wlTierMinTrophies').value,
+  }) });
+  document.getElementById('wlTierOriginalKey').value = '';
+  document.getElementById('wlTierKey').value = '';
+  document.getElementById('wlTierLabel').value = '';
+  document.getElementById('wlTierIcon').value = '';
+  loadWarLeagueTiersTable();
+}
+async function deleteWarLeagueTierUI(key) {
+  if (!confirm('Delete this tier? Its members fall back to whichever tier their trophies now qualify for.')) return;
+  await api(`/war/leagues/${key}`, { method: 'DELETE' });
+  loadWarLeagueTiersTable();
+}
+function toggleWarPrizeFields() {
+  const type = document.getElementById('wpRewardType').value;
+  document.getElementById('wpTomanWrap').style.display = type === 'toman' ? 'block' : 'none';
+  document.getElementById('wpCardWrap').style.display = type === 'card' ? 'block' : 'none';
+}
+async function loadWarPrizesTable() {
+  const tiers = await api('/war/leagues');
+  document.getElementById('wpLeagueKey').innerHTML = tiers.map(t => `<option value="${t.key}">${t.icon || ''} ${t.label}</option>`).join('');
+  const cards = await api('/game/cards');
+  document.getElementById('wpCardId').innerHTML = cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const tierLabel = {};
+  tiers.forEach(t => tierLabel[t.key] = `${t.icon || ''} ${t.label}`);
+  const prizes = await api('/war/prizes');
+  document.getElementById('warPrizesTable').innerHTML = prizes.length ? `
+    <table><tr><th>League</th><th>Rank</th><th>Prize</th><th>Actions</th></tr>
+    ${prizes.map(p => `<tr><td>${tierLabel[p.league_key] || p.league_key}</td><td>${p.rank_from}${p.rank_from !== p.rank_to ? '–' + p.rank_to : ''}</td>
+      <td>${p.reward_type === 'card' ? (cards.find(c => c.id === p.card_id)?.name || 'Card') : p.reward_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' LNDC'}</td>
+      <td><button class="btn secondary" onclick='editWarPrize(${JSON.stringify(p)})'>Edit</button>
+      <button class="btn danger" onclick="deleteWarPrizeUI(${p.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No prize registered yet.</p>';
+}
+function editWarPrize(p) {
+  document.getElementById('wpId').value = p.id;
+  document.getElementById('wpLeagueKey').value = p.league_key;
+  document.getElementById('wpRankFrom').value = p.rank_from;
+  document.getElementById('wpRankTo').value = p.rank_to;
+  document.getElementById('wpRewardType').value = p.reward_type;
+  document.getElementById('wpRewardToman').value = p.reward_toman || '';
+  document.getElementById('wpCardId').value = p.card_id || '';
+  toggleWarPrizeFields();
+}
+async function saveWarPrize() {
+  await api('/war/prizes', { method: 'POST', body: JSON.stringify({
+    id: document.getElementById('wpId').value || null,
+    league_key: document.getElementById('wpLeagueKey').value,
+    rank_from: document.getElementById('wpRankFrom').value,
+    rank_to: document.getElementById('wpRankTo').value,
+    reward_type: document.getElementById('wpRewardType').value,
+    reward_toman: document.getElementById('wpRewardToman').value,
+    card_id: document.getElementById('wpCardId').value || null,
+  }) });
+  document.getElementById('wpId').value = '';
+  loadWarPrizesTable();
+}
+async function deleteWarPrizeUI(id) {
+  if (!confirm('Delete this prize?')) return;
+  await api(`/war/prizes/${id}`, { method: 'DELETE' });
+  loadWarPrizesTable();
+}
+async function loadWarAttacksTable() {
+  const rows = await api('/war/attacks');
+  document.getElementById('warAttacksTable').innerHTML = rows.length ? `
+    <table><tr><th>Attacker</th><th>Defender</th><th>Result</th><th>Loot</th><th>When</th></tr>
+    ${rows.map(a => `<tr><td>${a.attacker_name || a.attacker_tg_id}</td><td>${a.defender_name || a.defender_tg_id}</td>
+      <td>${a.result === 'win' ? '✅ Win' : '❌ Loss'}</td><td>${a.loot_amount ? a.loot_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' LNDC' : '—'}</td>
+      <td>${a.created_at}</td></tr>`).join('')}
+    </table>` : '<p class="muted">No attacks yet.</p>';
 }
 async function saveLeaderboardPrize() {
   await api('/game/leaderboard-prizes', { method: 'POST', body: JSON.stringify({
