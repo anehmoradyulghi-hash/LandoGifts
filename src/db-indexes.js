@@ -75,6 +75,9 @@ db.exec(`
 
   -- Chests / achievements / album rewards (added this session)
   CREATE INDEX IF NOT EXISTS idx_chest_openings_tg_id ON chest_openings(tg_id);
+  CREATE INDEX IF NOT EXISTS idx_war_towers_trophies ON war_towers(trophies);
+  CREATE INDEX IF NOT EXISTS idx_war_attacks_attacker ON war_attacks(attacker_tg_id);
+  CREATE INDEX IF NOT EXISTS idx_war_attacks_defender ON war_attacks(defender_tg_id);
   CREATE INDEX IF NOT EXISTS idx_gift_pack_items_pack_id ON gift_pack_items(gift_pack_id);
   CREATE INDEX IF NOT EXISTS idx_gift_pack_openings_tg_id ON gift_pack_openings(tg_id);
   CREATE INDEX IF NOT EXISTS idx_gift_pack_openings_status ON gift_pack_openings(status);

@@ -43,6 +43,10 @@ import { getClanConfig, setClanConfig, getClanLeaderboard, resetClanSeason, admi
 import { getClanWarConfig, setClanWarConfig } from './clan-war-db.js';
 import { getLeagueConfig, setLeagueConfig, listLeagues, upsertLeagueTier, deleteLeagueTier, listLeaguePrizesAdmin, upsertLeaguePrize, deleteLeaguePrize } from './league-db.js';
 import {
+  getWarConfig, setWarConfig, listWarLeagues, upsertWarLeagueTier, deleteWarLeagueTier,
+  listWarLeaguePrizesAdmin, upsertWarLeaguePrize, deleteWarLeaguePrize, listRecentWarAttacksAdmin,
+} from './war-db.js';
+import {
   listRafflesAdmin, getRaffle, createRaffle, updateRaffle, deleteRaffle, cancelRaffle, listRaffleEntries, finishRaffle,
   listRafflePrizes, upsertRafflePrize, deleteRafflePrize, getRaffleTopEntries, listFinishedRaffles,
 } from './raffle-db.js';
@@ -640,6 +644,31 @@ router.post('/league/prizes', (req, res) => {
   res.json({ ok: true, id });
 });
 router.delete('/league/prizes/:id', (req, res) => { deleteLeaguePrize(Number(req.params.id)); res.json({ ok: true }); });
+
+/* ---------- Tower War ---------- */
+router.get('/war/config', (req, res) => res.json(getWarConfig()));
+router.post('/war/config', (req, res) => {
+  setWarConfig(req.body);
+  res.json({ ok: true });
+});
+router.get('/war/leagues', (req, res) => res.json(listWarLeagues()));
+router.post('/war/leagues', (req, res) => {
+  if (!req.body.key || !req.body.label) return res.status(400).json({ error: 'Key and name are required' });
+  try { const id = upsertWarLeagueTier(req.body); res.json({ ok: true, id }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/war/leagues/:key', (req, res) => {
+  try { deleteWarLeagueTier(req.params.key); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.get('/war/prizes', (req, res) => res.json(listWarLeaguePrizesAdmin()));
+router.post('/war/prizes', (req, res) => {
+  if (!req.body.league_key) return res.status(400).json({ error: 'League is required' });
+  const id = upsertWarLeaguePrize(req.body);
+  res.json({ ok: true, id });
+});
+router.delete('/war/prizes/:id', (req, res) => { deleteWarLeaguePrize(Number(req.params.id)); res.json({ ok: true }); });
+router.get('/war/attacks', (req, res) => res.json(listRecentWarAttacksAdmin(50)));
 
 /* ---------- Big wheel (raffle / giveaway) ---------- */
 router.get('/raffles', (req, res) => res.json(listRafflesAdmin()));

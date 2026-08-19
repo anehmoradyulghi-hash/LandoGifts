@@ -594,7 +594,10 @@ export function buyExtraPlays(tgId) {
   `).run(tgId, cfg.extra_play_count);
   return getPlaysRemaining(tgId);
 }
-function consumePlay(tgId) {
+// Exported so other battle-style modes (e.g. the tower war system) can consume from the exact same
+// shared daily-plays pool instead of maintaining a separate counter — "remaining games today" means
+// the same thing everywhere in the bot, regardless of which battle mode used them up.
+export function consumePlay(tgId) {
   db.prepare('INSERT INTO game_play_log (tg_id) VALUES (?)').run(tgId);
   const extra = getExtraPlays(tgId);
   const cfg = getGameConfig();

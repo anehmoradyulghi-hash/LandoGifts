@@ -69,6 +69,10 @@ import {
   listCardMarketOffers, getMyCardMarketListings, buyCardMarketListing, getPriceGuidance,
 } from './card-market-db.js';
 import { logActivity, logPlayerActivity, checkAchievements, getActivityFeed, listAchievementsForUser, setPinnedBadges, getPinnedBadges } from './achievements-db.js';
+import {
+  getWarConfig, getMyWarStatus, setDefenseDeck, upgradeTower, listAttackTargets, attackTower,
+  getWarAttackHistory, getWarLeaderboard, listWarLeagues, checkAutoResetWarSeason,
+} from './war-db.js';
 import adminApi from './admin-api.js';
 import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
 import { startBackupScheduler } from './backup.js';
@@ -803,6 +807,36 @@ app.get('/api/league/leaderboard/:league', requireTelegramAuth, (req, res) => {
   res.json(getLeagueLeaderboard(req.params.league, 10));
 });
 
+/* =========================================================================
+ * Tower War — separate PvP mode from the card-battle queue; same card power
+ * formula (level + upgrades via getUserCard), same shared daily-plays pool.
+ * ========================================================================= */
+app.get('/api/war/status', requireTelegramAuth, (req, res) => {
+  const status = getMyWarStatus(req.dbUser.tg_id);
+  const tiers = listWarLeagues().map(t => ({ key: t.key, label: t.label, icon: t.icon, min_trophies: t.min_trophies }));
+  res.json({ ...status, tiers, myCards: getUserCards(req.dbUser.tg_id) });
+});
+app.post('/api/war/defense-deck', requireTelegramAuth, (req, res) => {
+  try { setDefenseDeck(req.dbUser.tg_id, req.body.cardIds); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/war/upgrade-tower', requireTelegramAuth, (req, res) => {
+  try { res.json({ ok: true, ...upgradeTower(req.dbUser.tg_id) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/war/targets', requireTelegramAuth, (req, res) => res.json(listAttackTargets(req.dbUser.tg_id, 10)));
+app.post('/api/war/attack', requireTelegramAuth, (req, res) => {
+  try {
+    const result = attackTower(req.dbUser.tg_id, Number(req.body.defenderTgId), req.body.cardIds);
+    if (result.lootAmount > 0) {
+      sendMessage(result.defenderTgId, `⚔️ Your tower was raided! You lost ${result.lootAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC. A shield is now protecting you.`).catch(() => {});
+    }
+    res.json({ ok: true, ...result });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/war/history', requireTelegramAuth, (req, res) => res.json(getWarAttackHistory(req.dbUser.tg_id)));
+app.get('/api/war/leaderboard/:league', requireTelegramAuth, (req, res) => res.json(getWarLeaderboard(req.params.league, 20)));
+
 /* ---------- Big wheel (raffle / giveaway) ---------- */
 app.get('/api/raffle/list', requireTelegramAuth, (req, res) => {
   const raffles = listOpenRaffles().map(r => getRaffleStatusForUser(r.id, req.dbUser.tg_id));
@@ -1269,6 +1303,19 @@ setInterval(() => {
       });
     }
   } catch (e) { console.error('[league auto-reset]', e); }
+  try {
+    const warResult = checkAutoResetWarSeason();
+    if (warResult) {
+      warResult.cardGrants.forEach(g => {
+        grantCardInstance(g.tg_id, g.card_id);
+        const card = getGameCard(g.card_id);
+        sendMessage(g.tg_id, `⚔️ Tower War season reward! You finished #${g.rank} in ${g.league_label} and won the card "${card?.name || ''}"! 🎉`).catch(() => {});
+      });
+      warResult.tomanGrants.forEach(g => {
+        sendMessage(g.tg_id, `⚔️ Tower War season reward! You finished #${g.rank} in ${g.league_label} and won ${g.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC! 🎉`).catch(() => {});
+      });
+    }
+  } catch (e) { console.error('[war season auto-reset]', e); }
   try { cleanupAllOldClanMessages(); } catch (e) { console.error('[clan chat cleanup]', e); }
 }, 60 * 60 * 1000);
 
