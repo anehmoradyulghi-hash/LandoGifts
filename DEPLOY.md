@@ -92,7 +92,7 @@ BOT_TOKEN=...                      # از BotFather
 PUBLIC_URL=https://bot.yourdomain.com
 WEBHOOK_SECRET=یه-رشته-رندوم-طولانی
 PORT=3000
-ADMIN_IDS=123456789
+ADMIN_IDS=123456789,987654321
 ADMIN_PANEL_PASSWORD=یه-رمز-قوی
 ```
 
