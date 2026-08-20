@@ -296,6 +296,9 @@
         <label>Clan (quick-access tile)</label>
         <input type="file" accept="image/*" id="uiImgHubClan_file" onchange="uploadImageTo('uiImgHubClan_file','uiImgHubClan','uiImgHubClan_prev')">
         <input type="hidden" id="uiImgHubClan"><img id="uiImgHubClan_prev" class="admin-img-preview">
+        <label>Tower War</label>
+        <input type="file" accept="image/*" id="uiImgHubWar_file" onchange="uploadImageTo('uiImgHubWar_file','uiImgHubWar','uiImgHubWar_prev')">
+        <input type="hidden" id="uiImgHubWar"><img id="uiImgHubWar_prev" class="admin-img-preview">
       </div>
       <div class="card">
         <h3>🖼 Section banner images</h3>
@@ -318,6 +321,10 @@
         <label>Loading screen logo (shown while the app first opens)</label>
         <input type="file" accept="image/*" id="uiImgLoadingScreen_file" onchange="uploadImageTo('uiImgLoadingScreen_file','uiImgLoadingScreen','uiImgLoadingScreen_prev')">
         <input type="hidden" id="uiImgLoadingScreen"><img id="uiImgLoadingScreen_prev" class="admin-img-preview">
+        <label>Tower War map background</label>
+        <p class="muted" style="font-size:11px;margin-top:-6px;">Shown behind the towers on the interactive Tower War map — pans and zooms together with them. Recommended: a large square-ish image (at least 1000×1000) so it covers the map cleanly at every zoom level.</p>
+        <input type="file" accept="image/*" id="uiImgWarMap_file" onchange="uploadImageTo('uiImgWarMap_file','uiImgWarMap','uiImgWarMap_prev')">
+        <input type="hidden" id="uiImgWarMap"><img id="uiImgWarMap_prev" class="admin-img-preview">
         <button class="btn" onclick="saveUiImages()">Save</button>
         <p class="muted" id="uiImagesSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
@@ -1479,10 +1486,11 @@ async function saveReferralSettings() {
 /* ---------- App design (hub tile + section banner images) ---------- */
 const UI_IMAGE_FIELD_MAP = {
   hub_shop: 'uiImgHubShop', hub_cardgame: 'uiImgHubCardgame', hub_battlepass: 'uiImgHubBattlepass',
-  hub_market: 'uiImgHubMarket', hub_wallet: 'uiImgHubWallet', hub_clan: 'uiImgHubClan',
+  hub_market: 'uiImgHubMarket', hub_wallet: 'uiImgHubWallet', hub_clan: 'uiImgHubClan', hub_war: 'uiImgHubWar',
   banner_clan: 'uiImgBannerClan', banner_battlepass: 'uiImgBannerBattlepass',
   banner_events: 'uiImgBannerEvents',
   card_missions: 'uiImgCardMissions', card_leaderboard: 'uiImgCardLeaderboard', loading_screen: 'uiImgLoadingScreen',
+  war_map: 'uiImgWarMap',
 };
 async function loadUiImages() {
   const images = await api('/ui-images');
@@ -2882,9 +2890,107 @@ async function loadUsers() {
         <button class="btn secondary" onclick="adjustBalance(${u.tg_id})">Adjust LNDC balance</button>
         <button class="btn secondary" onclick="adjustCurrencyBalanceUI(${u.tg_id})">Adjust currency balance</button>
         <button class="btn secondary" onclick="messageUser(${u.tg_id})">Message</button>
+        <button class="btn secondary" onclick="openUserLedger(${u.tg_id}, '${(u.first_name || u.tg_id).toString().replace(/'/g, "\\'")}')">📜 Wallet history</button>
+        <button class="btn secondary" onclick="openUserReferralReq(${u.tg_id}, '${(u.first_name || u.tg_id).toString().replace(/'/g, "\\'")}')">🔒 Referral requirement</button>
         ${u.is_banned ? `<button class="btn" onclick="unbanUser(${u.tg_id})">Unban</button>` : `<button class="btn danger" onclick="banUser(${u.tg_id})">Ban</button>`}
       </td></tr>`).join('')}
-    </table>`;
+    </table>
+    <div class="card" id="userLedgerBox" style="display:none;">
+      <div class="row" style="margin-bottom:8px;">
+        <h3 style="margin:0;" id="userLedgerTitle">Wallet history</h3>
+        <button class="btn secondary" style="padding:6px 14px;" onclick="document.getElementById('userLedgerBox').style.display='none';">✕ Close</button>
+      </div>
+      <div id="userLedgerTable"></div>
+      <button class="btn secondary" id="userLedgerMoreBtn" style="display:none;margin-top:8px;" onclick="loadMoreUserLedger()">Show earlier transactions</button>
+    </div>
+    <div class="card" id="userReferralReqBox" style="display:none;">
+      <div class="row" style="margin-bottom:8px;">
+        <h3 style="margin:0;" id="userReferralReqTitle">Referral withdrawal requirement</h3>
+        <button class="btn secondary" style="padding:6px 14px;" onclick="document.getElementById('userReferralReqBox').style.display='none';">✕ Close</button>
+      </div>
+      <div id="userReferralReqStatus" class="muted" style="margin-bottom:10px;">Loading...</div>
+      <div class="row2">
+        <div><label>Battle type</label>
+          <select id="urReqType"><option value="tower_war">Tower War</option><option value="card_game">Card Game</option></select>
+        </div>
+        <div><label>Required battles</label><input type="number" id="urReqCount" value="1" min="1"></div>
+      </div>
+      <button class="btn" onclick="saveUserReferralReq()">Set / update requirement</button>
+      <button class="btn danger" onclick="removeUserReferralReq()">Remove requirement (unlock immediately)</button>
+    </div>`;
+}
+let USER_LEDGER_TG_ID = null, USER_LEDGER_OFFSET = 0;
+function renderUserLedgerRow(l) {
+  // Same fields the user themselves sees in their own Wallet tab: type (in/out), amount, currency,
+  // description, date/time. Every row here is an already-settled ledger entry (pending top-ups/
+  // withdrawals/requests have their own separate approve/reject admin views), so status is always
+  // "Completed" — no new transaction/status system invented for this.
+  return `<div class="row" style="border-bottom:1px solid var(--border);padding:6px 0;">
+    <span>${l.direction === 'in' ? '⬆️ In' : '⬇️ Out'} — ${l.reason || '-'}</span>
+    <span style="text-align:right;">
+      <b style="color:${l.direction === 'in' ? '#7ee787' : '#ff8a8a'};">${l.direction === 'in' ? '+' : '-'}${l.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${l.currency_code}</b>
+      <br><span class="muted" style="font-size:11px;">${l.created_at} · Completed</span>
+    </span>
+  </div>`;
+}
+async function openUserLedger(tgId, name) {
+  USER_LEDGER_TG_ID = tgId;
+  USER_LEDGER_OFFSET = 0;
+  document.getElementById('userLedgerTitle').textContent = `📜 Wallet history — ${name} (${tgId})`;
+  document.getElementById('userLedgerTable').innerHTML = 'Loading...';
+  document.getElementById('userLedgerBox').style.display = 'block';
+  const data = await api(`/users/${tgId}/ledger?limit=50&offset=0`);
+  document.getElementById('userLedgerTable').innerHTML = data.rows.length
+    ? data.rows.map(renderUserLedgerRow).join('') : '<p class="muted">No transactions yet.</p>';
+  USER_LEDGER_OFFSET = data.rows.length;
+  document.getElementById('userLedgerMoreBtn').style.display = data.hasMore ? 'block' : 'none';
+  document.getElementById('userLedgerBox').scrollIntoView({ behavior: 'smooth' });
+}
+async function loadMoreUserLedger() {
+  const data = await api(`/users/${USER_LEDGER_TG_ID}/ledger?limit=50&offset=${USER_LEDGER_OFFSET}`);
+  document.getElementById('userLedgerTable').insertAdjacentHTML('beforeend', data.rows.map(renderUserLedgerRow).join(''));
+  USER_LEDGER_OFFSET += data.rows.length;
+  document.getElementById('userLedgerMoreBtn').style.display = data.hasMore ? 'block' : 'none';
+}
+let USER_REFERRAL_REQ_TG_ID = null;
+const BATTLE_TYPE_LABELS = { tower_war: 'Tower War', card_game: 'Card Game' };
+async function openUserReferralReq(tgId, name) {
+  USER_REFERRAL_REQ_TG_ID = tgId;
+  document.getElementById('userReferralReqTitle').textContent = `🔒 Referral requirement — ${name} (${tgId})`;
+  document.getElementById('userReferralReqStatus').textContent = 'Loading...';
+  document.getElementById('userReferralReqBox').style.display = 'block';
+  const req = await api(`/users/${tgId}/referral-requirement`);
+  if (!req) {
+    document.getElementById('userReferralReqStatus').innerHTML = '<i>No requirement set — this user\'s referral earnings go straight to their spendable balance (default behavior).</i>';
+    document.getElementById('urReqType').value = 'tower_war';
+    document.getElementById('urReqCount').value = 1;
+  } else {
+    document.getElementById('userReferralReqStatus').innerHTML = `
+      Type: <b>${BATTLE_TYPE_LABELS[req.battleType]}</b><br>
+      Required battles: <b>${req.requiredBattles}</b><br>
+      Completed: <b>${req.completedBattles} / ${req.requiredBattles}</b><br>
+      Status: <b style="color:${req.unlocked ? '#7ee787' : '#ffb454'};">${req.unlocked ? '✅ Unlocked' : '🔒 Locked'}</b><br>
+      Locked balance: <b>${req.lockedBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</b>
+    `;
+    document.getElementById('urReqType').value = req.battleType;
+    document.getElementById('urReqCount').value = req.requiredBattles;
+  }
+  document.getElementById('userReferralReqBox').scrollIntoView({ behavior: 'smooth' });
+}
+async function saveUserReferralReq() {
+  await api(`/users/${USER_REFERRAL_REQ_TG_ID}/referral-requirement`, { method: 'POST', body: JSON.stringify({
+    battleType: document.getElementById('urReqType').value,
+    requiredBattles: document.getElementById('urReqCount').value,
+  }) });
+  alert('Requirement saved — any currently locked balance stays locked until the new requirement is met.');
+  const name = document.getElementById('userReferralReqTitle').textContent;
+  openUserReferralReq(USER_REFERRAL_REQ_TG_ID, name);
+}
+async function removeUserReferralReq() {
+  if (!confirm('Remove this requirement? Any locked referral balance will be released immediately.')) return;
+  await api(`/users/${USER_REFERRAL_REQ_TG_ID}/referral-requirement`, { method: 'DELETE' });
+  document.getElementById('userReferralReqBox').style.display = 'none';
+  loadUsers();
 }
 async function adjustBalance(tgId) {
   const amount = prompt('Amount (negative to deduct):');
