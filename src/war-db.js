@@ -1,5 +1,5 @@
 import db, { round2 } from './db.js';
-import { adjustToman, getUser } from './db.js';
+import { adjustToman, getUser, checkAndUnlockReferralBalance } from './db.js';
 import { getUserCard, getPlaysRemaining, consumePlay } from './game-db.js';
 import { isCardListedForSale } from './card-market-db.js';
 import { checkAchievements, logPlayerActivity } from './achievements-db.js';
@@ -445,6 +445,11 @@ export function attackTower(attackerTgId, defenderTgId, attackUserCardIds) {
     `).run(attackerTgId, defenderTgId, attackerPower, defenderPower, attackerWon ? 'win' : 'loss', lootAmount, trophyChangeAttacker, trophyChangeDefender);
   });
   tx();
+
+  // A battle just happened for both sides — check whether it satisfies either one's referral
+  // withdrawal requirement (a no-op for the vast majority who don't have one configured).
+  checkAndUnlockReferralBalance(attackerTgId);
+  checkAndUnlockReferralBalance(defenderTgId);
 
   const attacker = getUser(attackerTgId);
   const attackerName = attacker?.username || attacker?.first_name;

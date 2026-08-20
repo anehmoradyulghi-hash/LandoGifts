@@ -401,7 +401,113 @@ export function payReferralBonus(tgId, purchaseAmountToman, percent) {
   if (!user?.referred_by || !percent) return;
   const bonus = round2((purchaseAmountToman * percent) / 100);
   if (bonus <= 0) return;
-  adjustToman(user.referred_by, bonus, `Referral commission from user purchase ${tgId}`);
+  creditReferralEarnings(user.referred_by, bonus, `Referral commission from user purchase ${tgId}`);
+}
+
+/* =========================================================================
+ * Conditional referral withdrawal — an admin can require a specific user to
+ * complete a number of real battles (Tower War or Card Game) before their
+ * referral earnings become spendable. Reuses the existing battle tables
+ * (game_matches, war_attacks) to count progress — no parallel battle-logging
+ * system. Users with no requirement configured keep the original behavior:
+ * referral earnings land directly in their spendable balance immediately.
+ * ========================================================================= */
+db.exec(`
+CREATE TABLE IF NOT EXISTS referral_withdrawal_requirements (
+  tg_id INTEGER PRIMARY KEY,
+  battle_type TEXT NOT NULL DEFAULT 'tower_war', -- tower_war | card_game
+  required_battles INTEGER NOT NULL DEFAULT 1,
+  unlocked INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  unlocked_at TEXT
+);
+`);
+
+// Routes a referral payout to the locked pool (if this user has an unmet requirement) or straight to
+// the spendable balance (no requirement, or already unlocked) — used by both the signup bonus and
+// the ongoing commission, so neither can bypass the gate.
+function creditReferralEarnings(tgId, amount, reason) {
+  const req = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(tgId);
+  if (!req || req.unlocked) {
+    adjustToman(tgId, amount, reason);
+    return;
+  }
+  const amt = round2(amount);
+  db.prepare('UPDATE users SET referral_locked_toman = referral_locked_toman + ? WHERE tg_id = ?').run(amt, tgId);
+  logLedger(tgId, 'LNDC', 'in', amt, `${reason} (locked — pending battle requirement)`);
+  checkAndUnlockReferralBalance(tgId); // in case they already met the requirement before this payout
+}
+
+// Counts real battles the user took part in (either side), for whichever battle type the requirement
+// specifies — the exact same match/attack rows already used for history, matches, and stats
+// elsewhere, so nothing new is logged just for this.
+function countUserBattles(tgId, battleType) {
+  if (battleType === 'card_game') {
+    return db.prepare('SELECT COUNT(*) c FROM game_matches WHERE player_a = ? OR player_b = ?').get(tgId, tgId).c;
+  }
+  return db.prepare('SELECT COUNT(*) c FROM war_attacks WHERE attacker_tg_id = ? OR defender_tg_id = ?').get(tgId, tgId).c;
+}
+
+export function getReferralWithdrawalRequirement(tgId) {
+  const req = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(tgId);
+  if (!req) return null;
+  const completed = Math.min(req.required_battles, countUserBattles(tgId, req.battle_type));
+  const lockedBalance = getUser(tgId)?.referral_locked_toman || 0;
+  return {
+    battleType: req.battle_type, requiredBattles: req.required_battles,
+    completedBattles: completed, unlocked: !!req.unlocked, lockedBalance,
+  };
+}
+export function listReferralWithdrawalRequirementsAdmin() {
+  const rows = db.prepare(`
+    SELECT r.*, u.first_name, u.username, u.referral_locked_toman
+    FROM referral_withdrawal_requirements r JOIN users u ON u.tg_id = r.tg_id
+    ORDER BY r.unlocked ASC, r.created_at DESC
+  `).all();
+  return rows.map(r => ({
+    ...r,
+    completedBattles: Math.min(r.required_battles, countUserBattles(r.tg_id, r.battle_type)),
+  }));
+}
+// Setting/changing a requirement always (re)locks — an admin explicitly choosing a condition for a
+// user is expected to gate whatever they currently have and whatever they earn next, until met again.
+export function setReferralWithdrawalRequirement(tgId, battleType, requiredBattles) {
+  const type = battleType === 'card_game' ? 'card_game' : 'tower_war';
+  const required = Math.max(1, Number(requiredBattles) || 1);
+  db.prepare(`
+    INSERT INTO referral_withdrawal_requirements (tg_id, battle_type, required_battles, unlocked, unlocked_at)
+    VALUES (?, ?, ?, 0, NULL)
+    ON CONFLICT(tg_id) DO UPDATE SET battle_type=excluded.battle_type, required_battles=excluded.required_battles, unlocked=0, unlocked_at=NULL
+  `).run(tgId, type, required);
+  checkAndUnlockReferralBalance(tgId); // covers the case where they already meet the new requirement
+}
+// Removing the requirement entirely releases whatever was held — there's no condition left to gate it.
+export function deleteReferralWithdrawalRequirement(tgId) {
+  const req = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(tgId);
+  if (!req) return;
+  db.prepare('DELETE FROM referral_withdrawal_requirements WHERE tg_id = ?').run(tgId);
+  releaseLockedReferralBalance(tgId);
+}
+function releaseLockedReferralBalance(tgId) {
+  const user = getUser(tgId);
+  const locked = user?.referral_locked_toman || 0;
+  if (locked <= 0) return;
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE users SET referral_locked_toman = 0 WHERE tg_id = ?').run(tgId);
+    adjustToman(tgId, locked, 'Referral earnings unlocked');
+  });
+  tx();
+}
+// Called after every relevant battle (Tower War attack, card battle) and after a referral payout —
+// cheap (a handful of indexed COUNT queries), and a no-op for the vast majority of users who have no
+// requirement configured at all.
+export function checkAndUnlockReferralBalance(tgId) {
+  const req = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(tgId);
+  if (!req || req.unlocked) return;
+  const completed = countUserBattles(tgId, req.battle_type);
+  if (completed < req.required_battles) return;
+  db.prepare(`UPDATE referral_withdrawal_requirements SET unlocked = 1, unlocked_at = datetime('now') WHERE tg_id = ?`).run(tgId);
+  releaseLockedReferralBalance(tgId);
 }
 
 // Referral settings — fully changeable from the admin panel (no longer just .env)
@@ -434,7 +540,7 @@ export function payReferralSignupBonus(referrerTgId, newUserTgId) {
     return;
   }
   if (!bonus || bonus <= 0) return;
-  if (!currency || currency === 'LNDC') adjustToman(referrerTgId, bonus, reason);
+  if (!currency || currency === 'LNDC') creditReferralEarnings(referrerTgId, bonus, reason);
   else adjustCurrencyBalance(referrerTgId, currency, bonus, reason);
 }
 // Grants one copy of a game card as the referral reward. Mirrors game-db.js's grantCardInstance logic
@@ -457,7 +563,7 @@ function grantReferralCardReward(tgId, cardId) {
 export function getReferralInfo(tgId) {
   const invited = db.prepare('SELECT tg_id, username, first_name, created_at FROM users WHERE referred_by = ? ORDER BY created_at DESC').all(tgId);
   const totalEarned = db.prepare(`SELECT COALESCE(SUM(amount),0) s FROM ledger WHERE tg_id = ? AND direction = 'in' AND reason LIKE 'Commission%'`).get(tgId).s;
-  return { invited, invitedCount: invited.length, totalEarned };
+  return { invited, invitedCount: invited.length, totalEarned, withdrawalRequirement: getReferralWithdrawalRequirement(tgId) };
 }
 
 /* =========================================================================
@@ -629,12 +735,29 @@ export function createGiftOffer(sellerTgId, title, imageUrl, priceToman, serialN
   return db.prepare(`INSERT INTO gift_offers (seller_tg_id, title, image_url, price_toman, serial_number, link, status) VALUES (?,?,?,?,?,?,'pending')`)
     .run(sellerTgId, title, imageUrl || null, priceToman, serialNumber || null, link || null).lastInsertRowid;
 }
-export function getGiftOffer(id) { return db.prepare('SELECT * FROM gift_offers WHERE id = ?').get(id); }
+// COALESCE falls back to the gift's category artwork whenever a specific listing's own image_url is
+// empty (e.g. an older listing from before the image-required flow, or a one-off manual entry) —
+// so a gift is never shown with no image at all as long as its category has one.
+export function getGiftOffer(id) {
+  return db.prepare(`
+    SELECT go.*, COALESCE(go.image_url, gc.image_url) AS image_url
+    FROM gift_offers go LEFT JOIN gift_categories gc ON gc.name = go.title
+    WHERE go.id = ?
+  `).get(id);
+}
 export function listMyGiftOffers(tgId) {
-  return db.prepare('SELECT * FROM gift_offers WHERE seller_tg_id = ? OR buyer_tg_id = ? ORDER BY created_at DESC').all(tgId, tgId);
+  return db.prepare(`
+    SELECT go.*, COALESCE(go.image_url, gc.image_url) AS image_url
+    FROM gift_offers go LEFT JOIN gift_categories gc ON gc.name = go.title
+    WHERE go.seller_tg_id = ? OR go.buyer_tg_id = ? ORDER BY go.created_at DESC
+  `).all(tgId, tgId);
 }
 export function listMarketGiftOffers(excludeTgId) {
-  return db.prepare(`SELECT * FROM gift_offers WHERE status = 'active' AND seller_tg_id != ? ORDER BY created_at DESC`).all(excludeTgId);
+  return db.prepare(`
+    SELECT go.*, COALESCE(go.image_url, gc.image_url) AS image_url
+    FROM gift_offers go LEFT JOIN gift_categories gc ON gc.name = go.title
+    WHERE go.status = 'active' AND go.seller_tg_id != ? ORDER BY go.created_at DESC
+  `).all(excludeTgId);
 }
 export function cancelGiftOffer(tgId, id) {
   const offer = getGiftOffer(id);
@@ -795,10 +918,11 @@ export function setGiftMarketMinPrice(price) {
 // UI_IMAGE_KEYS covers hub shortcut cards (small tile background), full section banners, and a few
 // other Game Hub cards/teasers that logically support artwork.
 const UI_IMAGE_KEYS = [
-  'hub_shop', 'hub_wallet', 'hub_market', 'hub_cardgame', 'hub_battlepass', 'hub_clan', // hub shortcut tiles
+  'hub_shop', 'hub_wallet', 'hub_market', 'hub_cardgame', 'hub_battlepass', 'hub_clan', 'hub_war', // hub shortcut tiles
   'banner_clan', 'banner_battlepass', 'banner_events', 'banner_wheel', // full-width banners at the top of a section's own page
   'card_missions', 'card_leaderboard', // Game Hub quick-access card artwork
   'loading_screen', // shown centered above the boot progress bar while the app first loads
+  'war_map', // Tower War interactive map background — tiled/stretched behind the towers
 ];
 export function getUiImages() {
   const out = {};
@@ -850,15 +974,22 @@ export function setInfoPage(key, content) { setSetting('info_' + key, content ||
 
 const DEFAULT_WELCOME = 'Welcome to <b>Lando Gifts</b> 🎁\nUse the button below to open the shop:';
 const DEFAULT_JOIN_PROMPT = 'To use the bot, first join our channel:';
+// Cached in memory since /start reads this on every single invocation — a plain object with a
+// version counter invalidated by setMessageSettings, so we don't hit SQLite twice per /start for
+// text that changes maybe once a year.
+let messageSettingsCache = null;
 export function getMessageSettings() {
-  return {
+  if (messageSettingsCache) return messageSettingsCache;
+  messageSettingsCache = {
     welcomeMessage: getSetting('welcome_message', DEFAULT_WELCOME),
     joinPromptMessage: getSetting('join_prompt_message', DEFAULT_JOIN_PROMPT),
   };
+  return messageSettingsCache;
 }
 export function setMessageSettings({ welcomeMessage, joinPromptMessage }) {
   setSetting('welcome_message', welcomeMessage || DEFAULT_WELCOME);
   setSetting('join_prompt_message', joinPromptMessage || DEFAULT_JOIN_PROMPT);
+  messageSettingsCache = null;
 }
 
 // Zarinpal integration has been fully removed. Drop its table so no leftover payment records or
@@ -888,6 +1019,11 @@ export function getAllUserIds() {
  * server.js calls findUsersDueForComebackReminder() periodically and sends to whoever qualifies.
  * ========================================================================= */
 safeAddColumn('users', 'last_comeback_reminder_at TEXT'); // when we last sent this user a comeback reminder — prevents repeat spam
+// Referral earnings held back from the spendable balance until a per-user battle requirement (set
+// from the admin panel) is met — see the referral withdrawal requirement functions below. Money
+// here is NOT part of balance_toman and can't be touched by any withdraw/spend endpoint until it's
+// released into balance_toman by checkAndUnlockReferralBalance.
+safeAddColumn('users', 'referral_locked_toman REAL NOT NULL DEFAULT 0');
 db.exec(`
 CREATE TABLE IF NOT EXISTS comeback_config (
   id INTEGER PRIMARY KEY CHECK (id = 1),

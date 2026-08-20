@@ -4,7 +4,8 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import {
-  getStats, listUsers, banUser, unbanUser, getUser, adjustToman, adjustCurrencyBalance,
+  getStats, listUsers, banUser, unbanUser, getUser, adjustToman, adjustCurrencyBalance, getLedger,
+  getReferralWithdrawalRequirement, listReferralWithdrawalRequirementsAdmin, setReferralWithdrawalRequirement, deleteReferralWithdrawalRequirement,
   listCurrencies, upsertCurrency, deleteCurrency,
   listPendingTomanTopups, decideTomanTopup,
   listPendingTomanWithdrawals, decideTomanWithdrawal,
@@ -123,6 +124,24 @@ router.get('/stats', (req, res) => res.json(getStats()));
 
 /* ---------- Users ---------- */
 router.get('/users', (req, res) => res.json(listUsers(req.query.q)));
+// Same ledger the user sees in their own Wallet tab (getLedger from db.js) — no separate/duplicate
+// transaction system, just exposing the existing one for admin visibility.
+router.get('/users/:tgId/ledger', (req, res) => {
+  const limit = Math.min(200, Number(req.query.limit) || 50);
+  const offset = Number(req.query.offset) || 0;
+  res.json(getLedger(Number(req.params.tgId), limit, offset));
+});
+/* ---- Conditional referral withdrawal — per-user battle requirement before referral earnings unlock ---- */
+router.get('/referral-requirements', (req, res) => res.json(listReferralWithdrawalRequirementsAdmin()));
+router.get('/users/:tgId/referral-requirement', (req, res) => res.json(getReferralWithdrawalRequirement(Number(req.params.tgId))));
+router.post('/users/:tgId/referral-requirement', (req, res) => {
+  setReferralWithdrawalRequirement(Number(req.params.tgId), req.body.battleType, req.body.requiredBattles);
+  res.json({ ok: true });
+});
+router.delete('/users/:tgId/referral-requirement', (req, res) => {
+  deleteReferralWithdrawalRequirement(Number(req.params.tgId));
+  res.json({ ok: true });
+});
 router.post('/users/:tgId/ban', (req, res) => { banUser(Number(req.params.tgId), req.body.reason); res.json({ ok: true }); });
 router.post('/users/:tgId/unban', (req, res) => { unbanUser(Number(req.params.tgId)); res.json({ ok: true }); });
 router.post('/users/:tgId/adjust-balance', (req, res) => {

@@ -1,5 +1,5 @@
 import db from './db.js';
-import { adjustToman, getUser } from './db.js';
+import { adjustToman, getUser, checkAndUnlockReferralBalance } from './db.js';
 import { getOrCreateUserLeague, pickQueueOpponentInLeague, recordLeagueResult } from './league-db.js';
 import { getUserRankInfo } from './rank-db.js';
 import { isCardListedForSale } from './card-market-db.js';
@@ -675,6 +675,10 @@ export function joinQueue(tgId, userCardIds) {
     recordLeagueResult(loser, false);
     const winnerWins = db.prepare('SELECT wins FROM game_scores WHERE tg_id = ?').get(winner)?.wins || 0;
     checkAchievements(winner, 'battle_wins', winnerWins, displayNameFor(winner));
+    // A battle just happened for both sides — check whether it satisfies either one's referral
+    // withdrawal requirement (a no-op for the vast majority who don't have one configured).
+    checkAndUnlockReferralBalance(tgId);
+    checkAndUnlockReferralBalance(opponent.tg_id);
 
     return {
       matched: true,

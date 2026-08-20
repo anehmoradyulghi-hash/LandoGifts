@@ -1,7 +1,13 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 const API = () => `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 const TIMEOUT_MS = 8000; // if Telegram does not respond within this time, we stop waiting
+// Same directory server.js/admin-api.js already serve at /uploads — reused here so a re-hosted NFT
+// gift image is just another file in the one upload folder the app already exposes statically.
+const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 async function call(method, payload) {
   try {
@@ -195,9 +201,36 @@ export async function fetchTelegramNftMeta(link) {
   });
 
   return {
-    title, image_url: image,
+    title, image_url: await rehostImage(image),
     name: title.replace(/\s*#\d+\s*$/, '').trim(),
     number: numberMatch ? numberMatch[1] : null,
     model: attrs.Model || null, backdrop: attrs.Backdrop || null, symbol: attrs.Symbol || null,
   };
+}
+
+// Root cause of gift images sometimes not showing in the market: the raw og:image URL Telegram's
+// t.me/nft/... preview page returns is served from Telegram's own CDN, which is not guaranteed to
+// stay hotlink-able from an arbitrary origin indefinitely (referrer checks, cache eviction, etc.) —
+// so an image that loaded fine right after listing could silently break later for buyers. Instead of
+// storing that URL directly, we download the bytes once, right when the listing is created, and
+// re-host them under our own /uploads/ (the same static folder every other uploaded image in the
+// app already uses) — from then on the listing depends on nothing but our own server. If the
+// download itself fails for any reason, we fall back to the original Telegram URL rather than
+// blocking the whole listing on an image-hosting hiccup.
+async function rehostImage(sourceUrl) {
+  try {
+    const res = await fetch(sourceUrl, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (!res.ok) return sourceUrl;
+    const contentType = res.headers.get('content-type') || '';
+    const extFromType = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' }[contentType.split(';')[0].trim()];
+    const ext = extFromType || (path.extname(new URL(sourceUrl).pathname) || '.jpg');
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (!buffer.length) return sourceUrl;
+    const filename = `nft-${crypto.randomBytes(12).toString('hex')}${ext}`;
+    fs.writeFileSync(path.join(UPLOAD_DIR, filename), buffer);
+    return `/uploads/${filename}`;
+  } catch (e) {
+    console.error('[fetchTelegramNftMeta] could not re-host image, falling back to the original URL', e.message || e);
+    return sourceUrl;
+  }
 }
