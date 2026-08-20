@@ -369,7 +369,9 @@
   .mkt-card { background:var(--surface); border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 10px 22px -14px rgba(0,0,0,.55); transition:transform .12s ease; }
   .mkt-card:active { transform:scale(.97); }
   .mkt-imgwrap { position:relative; aspect-ratio:1/1; background:linear-gradient(135deg,#2a2140,var(--surface2)); }
-  .mkt-imgwrap img { width:100%; height:100%; object-fit:cover; }
+  .mkt-imgwrap img { width:100%; height:100%; object-fit:cover; position:relative; z-index:1; opacity:0; transition:opacity .2s ease; }
+  .mkt-imgwrap img.loaded { opacity:1; }
+  .mkt-img-placeholder { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:34px; opacity:.35; }
   .mkt-badge-tl, .mkt-badge-tr { position:absolute; top:8px; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; box-shadow:0 4px 10px rgba(0,0,0,.35); }
   .mkt-badge-tl { right:8px; background:#d9f65a; }
   .mkt-badge-tr { left:8px; background:#ffb020; }
@@ -2314,7 +2316,7 @@ async function loadMarket() {
       <div class="card">
         <div class="row"><b>${o.title}${o.serial_number ? ` <span class="mkt-card-serial">${o.serial_number}</span>` : ''}</b><span class="tag">${statusLabel[o.status] || o.status}</span></div>
         <p class="muted">${o.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</p>
-        ${o.link ? `<p class="muted">🔗 <a href="${o.link}" target="_blank" style="color:#c9b3ff;">Gift link</a></p>` : ''}
+        ${o.link ? `<p class="muted">🔗 <a href="javascript:void(0)" onclick="openNftLink('${o.link.replace(/'/g, "\\'")}')" style="color:#c9b3ff;">Gift link</a></p>` : ''}
         ${(o.status === 'active' || o.status === 'pending') ? `<button class="btn secondary" onclick="editGiftUI(${o.id})">Edit</button> <button class="btn danger" onclick="cancelGift(${o.id})">Cancel listing</button>` : ''}
         ${o.status === 'reserved' ? `<button class="btn" onclick="confirmGift(${o.id})">Confirm gift received</button>` : ''}
       </div>`).join('')
@@ -2348,18 +2350,32 @@ function renderMarketGrid() {
     ? `<div class="mkt-grid">${filtered.map((o, i) => `
       <div class="mkt-card" ${staggerStyle(i)}>
         <div class="mkt-imgwrap">
-          ${o.image_url ? `<img src="${o.image_url}">` : ''}
+          <div class="mkt-img-placeholder">🎁</div>
+          ${o.image_url ? `<img src="${o.image_url}" loading="lazy" onload="this.classList.add('loaded')" onerror="this.remove()">` : ''}
           <div class="mkt-badge-tl">🎁</div>
           <div class="mkt-badge-tr">⭐</div>
         </div>
         <div class="mkt-card-body">
           <div class="mkt-card-name">${o.title}</div>
           ${o.serial_number ? `<span class="mkt-card-serial">${o.serial_number}</span>` : ''}
-          ${o.link ? `<div><a href="${o.link}" target="_blank" style="color:#c9b3ff;font-size:11px;">🔗 View gift</a></div>` : ''}
+          ${o.link ? `<div><a href="javascript:void(0)" onclick="openNftLink('${o.link.replace(/'/g, "\\'")}')" style="color:#c9b3ff;font-size:11px;">🔗 View gift</a></div>` : ''}
           <button class="mkt-price-pill" onclick="buyGift(${o.id})">${o.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</button>
         </div>
       </div>`).join('')}</div>`
     : '<div class="empty"><div class="eic">🎁</div>No listing matches this filter.</div>';
+}
+// NFT gift links (t.me/nft/...) must stay inside Telegram instead of bouncing the user out to an
+// external browser — Telegram's WebApp bridge opens t.me links natively via openTelegramLink; any
+// other https link goes through openLink (still opened by the Telegram client itself, not a plain
+// tab). window.open()/target="_blank" is what was causing the external-browser jump, so neither is
+// used here. Falls back to window.open only outside the Telegram WebView (e.g. testing in a normal
+// browser), where these bridge methods don't exist at all.
+function openNftLink(url) {
+  if (!url) return;
+  const isTelegramLink = /^(https?:\/\/)?t\.me\//i.test(url) || url.startsWith('tg://');
+  if (isTelegramLink && tg?.openTelegramLink) tg.openTelegramLink(url.startsWith('tg://') ? url : (url.startsWith('http') ? url : 'https://' + url));
+  else if (tg?.openLink) tg.openLink(url.startsWith('http') ? url : 'https://' + url);
+  else window.open(url.startsWith('http') ? url : 'https://' + url, '_blank');
 }
 let MY_GIFTS_CACHE = [];
 async function listGift() {
@@ -2764,6 +2780,14 @@ function renderWarMapTowers() {
   const world = document.getElementById('warMapWorld');
   world.style.width = WARMAP_DATA.mapSize + 'px';
   world.style.height = WARMAP_DATA.mapSize + 'px';
+  // Custom map background (from App Design in the admin panel) — pulled from the config already
+  // loaded once at boot (CONFIG.uiImages), so applying it here costs zero extra network requests.
+  // Applied to the world layer itself (not the viewport) so it pans/zooms together with the towers,
+  // and falls back to the built-in dark battlefield gradient (plain CSS on .warmap-viewport) when unset.
+  const bgUrl = CONFIG.uiImages?.war_map;
+  world.style.backgroundImage = bgUrl ? `url('${bgUrl}')` : 'none';
+  world.style.backgroundSize = 'cover';
+  world.style.backgroundPosition = 'center';
   world.innerHTML = WARMAP_DATA.towers.map(t => `
     <div class="warmap-tower ${t.isMe ? 'me' : ''} ${t.shielded ? 'shielded' : ''}" id="warmapTower-${t.tgId}" style="left:${t.x}px;top:${t.y}px;" onclick="onWarMapTowerTap(${t.tgId})">
       <div class="glow"></div>
@@ -3817,6 +3841,20 @@ async function loadReferral() {
   }
   const subtitle = bonusLine || `Commission: ${r.percent}%`;
   document.getElementById('referralSubtitle').textContent = `${subtitle} — ${r.invitedCount} invited`;
+  let lockLine = '';
+  if (r.withdrawalRequirement) {
+    const wr = r.withdrawalRequirement;
+    const typeLabel = wr.battleType === 'card_game' ? 'Card Game' : 'Tower War';
+    lockLine = `
+      <div class="card" style="margin-top:10px;border:1px solid ${wr.unlocked ? 'rgba(126,231,135,.4)' : 'rgba(255,180,84,.4)'};">
+        <p style="margin:0 0 6px;font-weight:700;">${wr.unlocked ? '✅' : '🔒'} Referral Withdrawal Requirement</p>
+        <p class="muted" style="margin:2px 0;font-size:12.5px;">Type: ${typeLabel}</p>
+        <p class="muted" style="margin:2px 0;font-size:12.5px;">Required battles: ${wr.requiredBattles}</p>
+        <p class="muted" style="margin:2px 0;font-size:12.5px;">Completed: ${wr.completedBattles} / ${wr.requiredBattles}</p>
+        <p style="margin:2px 0;font-size:12.5px;">Status: <b style="color:${wr.unlocked ? '#7ee787' : '#ffb454'};">${wr.unlocked ? 'Unlocked' : 'Locked'}</b></p>
+        ${!wr.unlocked ? `<p class="muted" style="margin:6px 0 0;font-size:12.5px;">${wr.lockedBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC held until this is met — play a ${typeLabel} battle to make progress.</p>` : ''}
+      </div>`;
+  }
   document.getElementById('referralCard').innerHTML = `
     <p>Your referral code: <b>${r.ref_code}</b></p>
     <input readonly value="${link}" onclick="this.select()">
@@ -3824,6 +3862,7 @@ async function loadReferral() {
     <p>Purchase commission: ${r.percent}%</p>
     ${bonusLine ? `<p>${bonusLine}</p>` : ''}
     <p>Total commission earned: ${r.totalEarned.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</p>
+    ${lockLine}
   `;
 }
 
@@ -3918,7 +3957,7 @@ function loadMoreHub() { /* static, no action needed */ }
 // simply keeps its default appearance.
 function applyUiImages() {
   const images = CONFIG.uiImages || {};
-  const tileMap = { hub_shop: 'hubTile-shop', hub_wallet: 'hubTile-wallet', hub_market: 'hubTile-market', hub_cardgame: 'hubTile-cardgame', hub_battlepass: 'hubTile-battlepass', hub_clan: 'hubTile-clan' };
+  const tileMap = { hub_shop: 'hubTile-shop', hub_wallet: 'hubTile-wallet', hub_market: 'hubTile-market', hub_cardgame: 'hubTile-cardgame', hub_battlepass: 'hubTile-battlepass', hub_clan: 'hubTile-clan', hub_war: 'hubTile-war' };
   for (const [key, elId] of Object.entries(tileMap)) {
     const el = document.getElementById(elId);
     const url = images[key];
