@@ -274,15 +274,25 @@
       </div>
       <div class="card">
         <h3>🔒 Conditional referral withdrawal</h3>
-        <p class="muted">Off by default for everyone — referral earnings go straight to the user's spendable balance immediately (the "flat reward" and "commission" above still apply as normal). Turning this ON for a specific user changes that: their referral earnings are held in a separate locked pool until they personally play a required number of real battles (Tower War or Card Game). Once they hit the target, the held amount is released into their spendable balance automatically — no admin action needed at that point.</p>
-        <p class="muted">This is set per user, not globally — there is no single "enable for everyone" switch. To turn it on for someone, add them below with the battle type and count you want. To turn it back off for someone, click "Disable" in their row — this immediately releases whatever was being held for them.</p>
+        <p class="muted">When active, every user's referral earnings (the "flat reward" and "commission" above) are held in a separate locked pool until they personally play the required number of real battles — then it's released to their spendable balance automatically, no admin action needed. Off by default: earnings go straight to the spendable balance immediately, same as before this feature existed.</p>
+        <select id="rcGlobalEnabled"><option value="1">Active for everyone</option><option value="0">Inactive</option></select>
+        <div class="row2">
+          <div><label>Battle type required</label><select id="rcGlobalBattleType"><option value="tower_war">Tower War</option><option value="card_game">Card Game</option></select></div>
+          <div><label>Required battles</label><input type="number" id="rcGlobalRequiredBattles" value="1" min="1"></div>
+        </div>
+        <button class="btn" onclick="saveReferralConditionGlobal()">Save</button>
+        <p class="muted" id="rcGlobalSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
+      </div>
+      <div class="card">
+        <h3>Per-user exceptions</h3>
+        <p class="muted">Optional — overrides the global rule above for one specific user only (a different requirement, or exempting them entirely by disabling their row below). Most of the time you won't need this; the global switch above already applies to everyone.</p>
         <div class="row2">
           <div><label>Telegram user ID</label><input type="number" id="rcTgId" placeholder="e.g. 123456789"></div>
           <div><label>Battle type</label><select id="rcBattleType"><option value="tower_war">Tower War</option><option value="card_game">Card Game</option></select></div>
         </div>
         <label>Required battles</label>
         <input type="number" id="rcRequiredBattles" value="1" min="1">
-        <button class="btn" onclick="saveReferralConditionUI()">Enable / update for this user</button>
+        <button class="btn" onclick="saveReferralConditionUI()">Add / update exception for this user</button>
         <div id="referralConditionsTable" style="margin-top:14px;"></div>
       </div>
     </section>
@@ -1364,7 +1374,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: () => { loadReferralSettings(); loadReferralConditionsTable(); }, design: loadUiImages, retention: () => { loadComebackConfig(); loadBackupConfig(); }, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
+  const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: () => { loadReferralSettings(); loadReferralConditionGlobal(); loadReferralConditionsTable(); }, design: loadUiImages, retention: () => { loadComebackConfig(); loadBackupConfig(); }, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
     cardcategories: loadCategories, mergecosts: loadMergeCosts, chests: loadChestsAdmin, giftpacks: loadGiftPacksAdmin, war: loadWarAdmin, achievements: loadAchievementsAdmin,
     auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
@@ -1496,8 +1506,25 @@ async function saveReferralSettings() {
   setTimeout(() => msg.style.display = 'none', 2500);
 }
 
-/* ---------- Conditional referral withdrawal (per-user, off by default) ---------- */
+/* ---------- Conditional referral withdrawal — global switch + per-user exceptions ---------- */
 const BATTLE_TYPE_LABELS = { tower_war: 'Tower War', card_game: 'Card Game' };
+async function loadReferralConditionGlobal() {
+  const cfg = await api('/referral-condition-config');
+  document.getElementById('rcGlobalEnabled').value = cfg.enabled ? '1' : '0';
+  document.getElementById('rcGlobalBattleType').value = cfg.battle_type;
+  document.getElementById('rcGlobalRequiredBattles').value = cfg.required_battles;
+}
+async function saveReferralConditionGlobal() {
+  await api('/referral-condition-config', { method: 'POST', body: JSON.stringify({
+    enabled: document.getElementById('rcGlobalEnabled').value === '1',
+    battleType: document.getElementById('rcGlobalBattleType').value,
+    requiredBattles: document.getElementById('rcGlobalRequiredBattles').value,
+  }) });
+  const msg = document.getElementById('rcGlobalSavedMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
+  loadReferralConditionsTable();
+}
 async function loadReferralConditionsTable() {
   const rows = await api('/referral-requirements');
   document.getElementById('referralConditionsTable').innerHTML = rows.length ? `
@@ -1508,9 +1535,9 @@ async function loadReferralConditionsTable() {
       <td>${r.completedBattles} / ${r.required_battles}</td>
       <td><b style="color:${r.unlocked ? '#7ee787' : '#ffb454'};">${r.unlocked ? '✅ Unlocked' : '🔒 Locked'}</b></td>
       <td>${(r.referral_locked_toman || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-      <td><button class="btn danger" onclick="disableReferralConditionUI(${r.tg_id})">Disable</button></td>
+      <td><button class="btn danger" onclick="disableReferralConditionUI(${r.tg_id})">Remove exception</button></td>
     </tr>`).join('')}
-    </table>` : '<p class="muted">No user currently has a condition set — everyone\'s referral earnings go straight to their spendable balance.</p>';
+    </table>` : '<p class="muted">No per-user exceptions — everyone follows the global rule above.</p>';
 }
 async function saveReferralConditionUI() {
   const tgId = document.getElementById('rcTgId').value;
@@ -1524,7 +1551,7 @@ async function saveReferralConditionUI() {
   loadReferralConditionsTable();
 }
 async function disableReferralConditionUI(tgId) {
-  if (!confirm('Disable this condition? Whatever is currently locked for this user will be released to their spendable balance immediately.')) return;
+  if (!confirm('Remove this exception? This user will go back to following the global rule (if one is active). If the global rule is currently off, or they already meet it, their locked balance is released immediately.')) return;
   await api(`/users/${tgId}/referral-requirement`, { method: 'DELETE' });
   loadReferralConditionsTable();
 }
@@ -3011,6 +3038,7 @@ async function openUserReferralReq(tgId, name) {
     document.getElementById('urReqCount').value = 1;
   } else {
     document.getElementById('userReferralReqStatus').innerHTML = `
+      ${req.isOverride ? '<i>Per-user exception (overrides the global rule)</i><br>' : '<i>Following the global rule</i><br>'}
       Type: <b>${BATTLE_TYPE_LABELS[req.battleType]}</b><br>
       Required battles: <b>${req.requiredBattles}</b><br>
       Completed: <b>${req.completedBattles} / ${req.requiredBattles}</b><br>
