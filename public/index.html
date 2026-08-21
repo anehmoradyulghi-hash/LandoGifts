@@ -23,7 +23,25 @@
     --danger:#fb7185; --success:#34d399;
     --surface:#141824; --surface2:#1c2233;
     --aura-p: 168,85,247; --aura-b: 42,171,238; --aura-k: 236,72,153;
+    /* ---- Design tokens: spacing/radius scale, used going forward so new UI stays consistent
+       instead of every component picking its own numbers. Existing components keep their current
+       values untouched — nothing here overrides anything, it's purely available for reuse. ---- */
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px;
+    --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:26px; --r-pill:999px;
   }
+  /* ---- Typography scale: Heading / Subheading / Body / Caption / Numbers / Prices — a shared
+     vocabulary so the same kind of text reads the same size/weight everywhere it appears, instead of
+     each screen inventing its own font-size. Purely additive utility classes; nothing existing was
+     changed, so nothing that already renders is affected until a class is explicitly applied. ---- */
+  .tg-h1 { font-size:22px; font-weight:900; letter-spacing:.1px; line-height:1.25; }
+  .tg-h2 { font-size:17px; font-weight:800; letter-spacing:.1px; line-height:1.3; }
+  .tg-subhead { font-size:13.5px; font-weight:700; color:var(--muted); line-height:1.4; }
+  .tg-body { font-size:13.5px; font-weight:500; line-height:1.5; }
+  .tg-caption { font-size:11px; font-weight:600; color:var(--muted); line-height:1.4; }
+  .tg-num { font-weight:900; font-variant-numeric:tabular-nums; letter-spacing:.2px; }
+  .tg-num-lg { font-size:26px; }
+  .tg-num-md { font-size:18px; }
+  .tg-price { font-weight:900; font-variant-numeric:tabular-nums; color:var(--gold); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { background:var(--bg); }
   body {
@@ -961,16 +979,29 @@
       <span class="s">Newest gift cards & products</span>
     </div>
 
+    <!-- Games: the two core game modes get equal, primary billing — the same visual weight,
+         side by side, since they're both first-class ways to play (was previously mixed in with
+         wallet/marketplace tiles at identical weight; now those have their own grouped section). -->
+    <h3 class="sec">Games</h3>
     <div class="grid2">
       <div class="gcard blue" onclick="showGView('cardgame')" id="hubTile-cardgame"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t">Card game</span><span class="s">Collection, mutation & battles</span></div>
       <div class="gcard orange" onclick="showGView('war')" id="hubTile-war"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l7-7M14 4l6 6-9 9-6-6z"/><path d="M14 4l3 3M6 21l-2-2 3-3"/></svg></span><span class="t">Tower War</span><span class="s">Defend & raid other towers</span></div>
-      <div class="gcard teal" onclick="showGView('battlepass')" id="hubTile-battlepass"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 12.3 7 21l5-3 5 3-2-8.7"/></svg></span><span class="t">Battle pass</span><span class="s">Seasonal rewards track</span></div>
+    </div>
+
+    <!-- Marketplace: buying/selling and the wallet that funds it, grouped together — a separate
+         visual identity from "play a game" above. -->
+    <h3 class="sec">Marketplace</h3>
+    <div class="grid2">
       <div class="gcard pink" onclick="showPage('market')" id="hubTile-market"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8.5" width="17" height="11" rx="1.5"/><path d="M3.5 12.5h17"/><path d="M12 8.5v11"/><path d="M12 8.5C9 8.5 7.8 4 10.2 4c1.8 0 1.8 3 1.8 4.5zM12 8.5c3 0 4.2-4.5 1.8-4.5-1.8 0-1.8 3-1.8 4.5z"/></svg></span><span class="t">Gift market</span><span class="s">Consignment buy/sell</span></div>
       <div class="gcard green" onclick="showPage('wallet')" id="hubTile-wallet"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h8l5 6.2-9 10.8-9-10.8z"/><path d="M6 3.5l3 6.2-3.9.2M14 3.5l-3 6.2M9 3.5l3 6.2 3-6.2M2.1 9.7h19.6"/></svg></span><span class="t">Currency wallet</span><span class="s">Top up & convert currency</span></div>
     </div>
 
-    <h3 class="sec">Quick access</h3>
+    <!-- Rewards & more: secondary/optional destinations — smaller horizontal-scroll cards rather
+         than full-size tiles, so they read as "worth a glance" without competing with Games/Marketplace
+         for attention. -->
+    <h3 class="sec">Rewards & more</h3>
     <div class="hscroll">
+      <div class="mini-card" onclick="showGView('battlepass')" id="hubTile-battlepass"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 12.3 7 21l5-3 5 3-2-8.7"/></svg></div><div class="t">Battle pass</div><div class="s">Seasonal rewards</div></div>
       <div class="mini-card" onclick="showGView('events')"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></div><div class="t">Daily tasks</div><div class="s" id="questsQuickStat">...</div></div>
       <div class="mini-card" id="hubTile-clan" onclick="showPage('more');showMView('clan')"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9.5l2.5-2v3l2.5-2.5v3L12 8l3 3V8l2.5 3v-3l2.5 2.5v3l2.5-2V21z"/><path d="M4 21h16M10 21v-5a2 2 0 0 1 4 0v5"/></svg></div><div class="t">Clan</div><div class="s" id="clanQuickStat">...</div></div>
     </div>
@@ -1283,8 +1314,8 @@
 <!-- ============ Wallet ============ -->
 <section class="page" id="page-wallet">
   <div class="gcard purple" style="margin-top:8px;">
-    <div class="s">Total balance</div>
-    <div style="font-size:26px;font-weight:800;margin-top:4px;" class="stat-hero" id="walletHeroBalance">0 LNDC</div>
+    <div class="tg-caption">Total balance</div>
+    <div class="tg-num tg-num-lg stat-hero" style="margin-top:4px;" id="walletHeroBalance">0 LNDC</div>
     <div class="btn3" style="margin-top:12px;">
       <button class="btn outline" id="walletTopupShortcut" onclick="document.getElementById('topupAmount').scrollIntoView({behavior:'smooth'})">⬇️ Top up</button>
       <button class="btn outline" id="walletWithdrawShortcut" onclick="document.getElementById('withdrawAmount').scrollIntoView({behavior:'smooth'})">⬆️ Withdraw</button>
