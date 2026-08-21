@@ -6,6 +6,7 @@ import path from 'path';
 import {
   getStats, listUsers, banUser, unbanUser, getUser, adjustToman, adjustCurrencyBalance, getLedger,
   getReferralWithdrawalRequirement, listReferralWithdrawalRequirementsAdmin, setReferralWithdrawalRequirement, deleteReferralWithdrawalRequirement,
+  getReferralConditionGlobalConfig, setReferralConditionGlobalConfig,
   listCurrencies, upsertCurrency, deleteCurrency,
   listPendingTomanTopups, decideTomanTopup,
   listPendingTomanWithdrawals, decideTomanWithdrawal,
@@ -133,6 +134,11 @@ router.get('/users/:tgId/ledger', (req, res) => {
 });
 /* ---- Conditional referral withdrawal — per-user battle requirement before referral earnings unlock ---- */
 router.get('/referral-requirements', (req, res) => res.json(listReferralWithdrawalRequirementsAdmin()));
+router.get('/referral-condition-config', (req, res) => res.json(getReferralConditionGlobalConfig()));
+router.post('/referral-condition-config', (req, res) => {
+  setReferralConditionGlobalConfig(req.body.enabled, req.body.battleType, req.body.requiredBattles);
+  res.json({ ok: true });
+});
 router.get('/users/:tgId/referral-requirement', (req, res) => res.json(getReferralWithdrawalRequirement(Number(req.params.tgId))));
 router.post('/users/:tgId/referral-requirement', (req, res) => {
   setReferralWithdrawalRequirement(Number(req.params.tgId), req.body.battleType, req.body.requiredBattles);

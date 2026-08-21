@@ -405,14 +405,25 @@ export function payReferralBonus(tgId, purchaseAmountToman, percent) {
 }
 
 /* =========================================================================
- * Conditional referral withdrawal — an admin can require a specific user to
- * complete a number of real battles (Tower War or Card Game) before their
- * referral earnings become spendable. Reuses the existing battle tables
- * (game_matches, war_attacks) to count progress — no parallel battle-logging
- * system. Users with no requirement configured keep the original behavior:
- * referral earnings land directly in their spendable balance immediately.
+ * Conditional referral withdrawal — a global switch (set once, applies to
+ * everyone going forward) that requires a user to complete a number of real
+ * battles (Tower War or Card Game) before their referral earnings become
+ * spendable. A per-user override table still exists underneath for the rare
+ * case an admin wants a different rule for one specific person, but the
+ * global switch is the primary, everyday control. Reuses the existing
+ * battle tables (game_matches, war_attacks) to count progress — no parallel
+ * battle-logging system. Off by default: referral earnings land directly in
+ * the spendable balance immediately, exactly like before this feature existed.
  * ========================================================================= */
 db.exec(`
+CREATE TABLE IF NOT EXISTS referral_condition_config (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  enabled INTEGER NOT NULL DEFAULT 0,
+  battle_type TEXT NOT NULL DEFAULT 'tower_war', -- tower_war | card_game
+  required_battles INTEGER NOT NULL DEFAULT 1
+);
+INSERT OR IGNORE INTO referral_condition_config (id) VALUES (1);
+
 CREATE TABLE IF NOT EXISTS referral_withdrawal_requirements (
   tg_id INTEGER PRIMARY KEY,
   battle_type TEXT NOT NULL DEFAULT 'tower_war', -- tower_war | card_game
@@ -423,12 +434,39 @@ CREATE TABLE IF NOT EXISTS referral_withdrawal_requirements (
 );
 `);
 
-// Routes a referral payout to the locked pool (if this user has an unmet requirement) or straight to
-// the spendable balance (no requirement, or already unlocked) — used by both the signup bonus and
-// the ongoing commission, so neither can bypass the gate.
+export function getReferralConditionGlobalConfig() {
+  return db.prepare('SELECT * FROM referral_condition_config WHERE id = 1').get();
+}
+export function setReferralConditionGlobalConfig(enabled, battleType, requiredBattles) {
+  db.prepare('UPDATE referral_condition_config SET enabled=?, battle_type=?, required_battles=? WHERE id = 1')
+    .run(enabled ? 1 : 0, battleType === 'card_game' ? 'card_game' : 'tower_war', Math.max(1, Number(requiredBattles) || 1));
+  // Turning the global rule off releases everyone's held balance immediately — there's no condition
+  // left to gate it. Turning it on/changing it does NOT retroactively re-lock anyone's already-
+  // spendable balance (only new earnings from that point on are affected), consistent with how
+  // per-user overrides already work.
+  if (!enabled) {
+    db.prepare('SELECT tg_id FROM users WHERE referral_locked_toman > 0').all().forEach(u => releaseLockedReferralBalance(u.tg_id));
+  }
+}
+
+// Resolves the effective requirement for a given user: their own override if one exists, otherwise
+// the global rule (if enabled), otherwise no requirement at all.
+function resolveEffectiveRequirement(tgId) {
+  const override = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(tgId);
+  if (override) return { battleType: override.battle_type, requiredBattles: override.required_battles, isOverride: true, overrideUnlocked: !!override.unlocked };
+  const global = getReferralConditionGlobalConfig();
+  if (global.enabled) return { battleType: global.battle_type, requiredBattles: global.required_battles, isOverride: false };
+  return null;
+}
+
+// Routes a referral payout to the locked pool (if this user has an unmet requirement, whether from
+// their own override or the global rule) or straight to the spendable balance (no requirement
+// applies, or it's already met) — used by both the signup bonus and the ongoing commission, so
+// neither can bypass the gate.
 function creditReferralEarnings(tgId, amount, reason) {
-  const req = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(tgId);
-  if (!req || req.unlocked) {
+  const effective = resolveEffectiveRequirement(tgId);
+  const alreadyMet = effective && (effective.isOverride ? effective.overrideUnlocked : countUserBattles(tgId, effective.battleType) >= effective.requiredBattles);
+  if (!effective || alreadyMet) {
     adjustToman(tgId, amount, reason);
     return;
   }
@@ -449,13 +487,14 @@ function countUserBattles(tgId, battleType) {
 }
 
 export function getReferralWithdrawalRequirement(tgId) {
-  const req = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(tgId);
-  if (!req) return null;
-  const completed = Math.min(req.required_battles, countUserBattles(tgId, req.battle_type));
+  const effective = resolveEffectiveRequirement(tgId);
+  if (!effective) return null;
+  const completed = Math.min(effective.requiredBattles, countUserBattles(tgId, effective.battleType));
+  const unlocked = effective.isOverride ? effective.overrideUnlocked : completed >= effective.requiredBattles;
   const lockedBalance = getUser(tgId)?.referral_locked_toman || 0;
   return {
-    battleType: req.battle_type, requiredBattles: req.required_battles,
-    completedBattles: completed, unlocked: !!req.unlocked, lockedBalance,
+    battleType: effective.battleType, requiredBattles: effective.requiredBattles,
+    completedBattles: completed, unlocked, lockedBalance, isOverride: effective.isOverride,
   };
 }
 export function listReferralWithdrawalRequirementsAdmin() {
@@ -469,8 +508,9 @@ export function listReferralWithdrawalRequirementsAdmin() {
     completedBattles: Math.min(r.required_battles, countUserBattles(r.tg_id, r.battle_type)),
   }));
 }
-// Setting/changing a requirement always (re)locks — an admin explicitly choosing a condition for a
-// user is expected to gate whatever they currently have and whatever they earn next, until met again.
+// Setting/changing a per-user override always (re)locks — an admin explicitly choosing a condition
+// for a user is expected to gate whatever they currently have and whatever they earn next, until met
+// again. This OVERRIDES the global rule for this one user (in either direction — stricter or looser).
 export function setReferralWithdrawalRequirement(tgId, battleType, requiredBattles) {
   const type = battleType === 'card_game' ? 'card_game' : 'tower_war';
   const required = Math.max(1, Number(requiredBattles) || 1);
@@ -481,12 +521,13 @@ export function setReferralWithdrawalRequirement(tgId, battleType, requiredBattl
   `).run(tgId, type, required);
   checkAndUnlockReferralBalance(tgId); // covers the case where they already meet the new requirement
 }
-// Removing the requirement entirely releases whatever was held — there's no condition left to gate it.
+// Removing the override falls the user back to whatever the global rule says (if any) rather than
+// necessarily releasing their balance outright.
 export function deleteReferralWithdrawalRequirement(tgId) {
   const req = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(tgId);
   if (!req) return;
   db.prepare('DELETE FROM referral_withdrawal_requirements WHERE tg_id = ?').run(tgId);
-  releaseLockedReferralBalance(tgId);
+  checkAndUnlockReferralBalance(tgId);
 }
 function releaseLockedReferralBalance(tgId) {
   const user = getUser(tgId);
@@ -499,14 +540,16 @@ function releaseLockedReferralBalance(tgId) {
   tx();
 }
 // Called after every relevant battle (Tower War attack, card battle) and after a referral payout —
-// cheap (a handful of indexed COUNT queries), and a no-op for the vast majority of users who have no
-// requirement configured at all.
+// cheap (a handful of indexed COUNT queries), and a no-op for the vast majority of users nothing
+// applies to at all (global rule off and no personal override).
 export function checkAndUnlockReferralBalance(tgId) {
-  const req = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(tgId);
-  if (!req || req.unlocked) return;
-  const completed = countUserBattles(tgId, req.battle_type);
-  if (completed < req.required_battles) return;
-  db.prepare(`UPDATE referral_withdrawal_requirements SET unlocked = 1, unlocked_at = datetime('now') WHERE tg_id = ?`).run(tgId);
+  const effective = resolveEffectiveRequirement(tgId);
+  if (!effective) { releaseLockedReferralBalance(tgId); return; } // nothing gates them (anymore) — release whatever was held
+  const completed = countUserBattles(tgId, effective.battleType);
+  if (completed < effective.requiredBattles) return;
+  if (effective.isOverride) {
+    db.prepare(`UPDATE referral_withdrawal_requirements SET unlocked = 1, unlocked_at = datetime('now') WHERE tg_id = ?`).run(tgId);
+  }
   releaseLockedReferralBalance(tgId);
 }
 
