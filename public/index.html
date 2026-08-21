@@ -3878,14 +3878,19 @@ async function loadReferral() {
   if (r.withdrawalRequirement) {
     const wr = r.withdrawalRequirement;
     const typeLabel = wr.battleType === 'card_game' ? 'Card Game' : 'Tower War';
+    const remaining = Math.max(0, wr.requiredBattles - wr.completedBattles);
+    const goAction = wr.battleType === 'card_game' ? "showPage('games');showGView('cardgame');" : "showPage('games');showGView('war');";
     lockLine = `
       <div class="card" style="margin-top:10px;border:1px solid ${wr.unlocked ? 'rgba(126,231,135,.4)' : 'rgba(255,180,84,.4)'};">
         <p style="margin:0 0 6px;font-weight:700;">${wr.unlocked ? '✅' : '🔒'} Referral Withdrawal Requirement</p>
-        <p class="muted" style="margin:2px 0;font-size:12.5px;">Type: ${typeLabel}</p>
-        <p class="muted" style="margin:2px 0;font-size:12.5px;">Required battles: ${wr.requiredBattles}</p>
-        <p class="muted" style="margin:2px 0;font-size:12.5px;">Completed: ${wr.completedBattles} / ${wr.requiredBattles}</p>
-        <p style="margin:2px 0;font-size:12.5px;">Status: <b style="color:${wr.unlocked ? '#7ee787' : '#ffb454'};">${wr.unlocked ? 'Unlocked' : 'Locked'}</b></p>
-        ${!wr.unlocked ? `<p class="muted" style="margin:6px 0 0;font-size:12.5px;">${wr.lockedBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC held until this is met — play a ${typeLabel} battle to make progress.</p>` : ''}
+        ${wr.unlocked ? `
+        <p style="margin:2px 0;font-size:12.5px;">You've met the requirement — your referral earnings are fully unlocked and spendable.</p>
+        ` : `
+        <p style="margin:2px 0 8px;font-size:13px;font-weight:700;color:#ffb454;">👉 You need to play ${remaining} more ${typeLabel} battle${remaining === 1 ? '' : 's'} to unlock this.</p>
+        <p class="muted" style="margin:2px 0;font-size:12.5px;">Progress: ${wr.completedBattles} / ${wr.requiredBattles} battles</p>
+        <p class="muted" style="margin:2px 0 8px;font-size:12.5px;">${wr.lockedBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC is held until then — it's already yours, just not withdrawable yet.</p>
+        <button class="btn gold" style="width:100%;" onclick="${goAction}">⚔️ Go play ${typeLabel}</button>
+        `}
       </div>`;
   }
   document.getElementById('referralCard').innerHTML = `
