@@ -737,25 +737,27 @@ export function createGiftOffer(sellerTgId, title, imageUrl, priceToman, serialN
 }
 // COALESCE falls back to the gift's category artwork whenever a specific listing's own image_url is
 // empty (e.g. an older listing from before the image-required flow, or a one-off manual entry) —
-// so a gift is never shown with no image at all as long as its category has one.
+// so a gift is never shown with no image at all as long as its category has one. Also surfaces the
+// seller's existing display name (was already stored as seller_tg_id, just never joined to a
+// name before) purely so the UI can show "who's selling this" — no new data captured.
 export function getGiftOffer(id) {
   return db.prepare(`
-    SELECT go.*, COALESCE(go.image_url, gc.image_url) AS image_url
-    FROM gift_offers go LEFT JOIN gift_categories gc ON gc.name = go.title
+    SELECT go.*, COALESCE(go.image_url, gc.image_url) AS image_url, u.first_name AS seller_first_name, u.username AS seller_username
+    FROM gift_offers go LEFT JOIN gift_categories gc ON gc.name = go.title LEFT JOIN users u ON u.tg_id = go.seller_tg_id
     WHERE go.id = ?
   `).get(id);
 }
 export function listMyGiftOffers(tgId) {
   return db.prepare(`
-    SELECT go.*, COALESCE(go.image_url, gc.image_url) AS image_url
-    FROM gift_offers go LEFT JOIN gift_categories gc ON gc.name = go.title
+    SELECT go.*, COALESCE(go.image_url, gc.image_url) AS image_url, u.first_name AS seller_first_name, u.username AS seller_username
+    FROM gift_offers go LEFT JOIN gift_categories gc ON gc.name = go.title LEFT JOIN users u ON u.tg_id = go.seller_tg_id
     WHERE go.seller_tg_id = ? OR go.buyer_tg_id = ? ORDER BY go.created_at DESC
   `).all(tgId, tgId);
 }
 export function listMarketGiftOffers(excludeTgId) {
   return db.prepare(`
-    SELECT go.*, COALESCE(go.image_url, gc.image_url) AS image_url
-    FROM gift_offers go LEFT JOIN gift_categories gc ON gc.name = go.title
+    SELECT go.*, COALESCE(go.image_url, gc.image_url) AS image_url, u.first_name AS seller_first_name, u.username AS seller_username
+    FROM gift_offers go LEFT JOIN gift_categories gc ON gc.name = go.title LEFT JOIN users u ON u.tg_id = go.seller_tg_id
     WHERE go.status = 'active' AND go.seller_tg_id != ? ORDER BY go.created_at DESC
   `).all(excludeTgId);
 }
