@@ -396,6 +396,7 @@
   .mkt-card-body { padding:10px 12px 12px; }
   .mkt-card-name { font-weight:800; font-size:13px; }
   .mkt-card-serial { color:var(--muted); font-size:11px; margin-right:4px; }
+  .mkt-card-seller { color:var(--muted); font-size:11px; margin-top:3px; display:flex; align-items:center; gap:3px; }
   .mkt-price-pill { display:block; width:100%; margin-top:8px; background:linear-gradient(90deg,var(--p1),var(--b1)); border:none; border-radius:14px; padding:10px; color:#fff; font-weight:800; font-size:13px; text-align:center; box-shadow:0 6px 16px -8px rgba(168,85,247,.55); }
 
   /* ---------- Pills ---------- */
@@ -2389,6 +2390,7 @@ function renderMarketGrid() {
         <div class="mkt-card-body">
           <div class="mkt-card-name">${o.title}</div>
           ${o.serial_number ? `<span class="mkt-card-serial">${o.serial_number}</span>` : ''}
+          <div class="mkt-card-seller">👤 ${o.seller_first_name || (o.seller_username ? '@' + o.seller_username : 'Seller')}</div>
           ${o.link ? `<div><a href="javascript:void(0)" onclick="openNftLink('${o.link.replace(/'/g, "\\'")}')" style="color:#c9b3ff;font-size:11px;">🔗 View gift</a></div>` : ''}
           <button class="mkt-price-pill" onclick="buyGift(${o.id})">${o.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</button>
         </div>
