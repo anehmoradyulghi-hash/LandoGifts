@@ -401,19 +401,23 @@ export function payReferralBonus(tgId, purchaseAmountToman, percent) {
   if (!user?.referred_by || !percent) return;
   const bonus = round2((purchaseAmountToman * percent) / 100);
   if (bonus <= 0) return;
-  creditReferralEarnings(user.referred_by, bonus, `Referral commission from user purchase ${tgId}`);
+  creditReferralEarnings(user.referred_by, bonus, `Referral commission from user purchase ${tgId}`, tgId);
 }
 
 /* =========================================================================
- * Conditional referral withdrawal — a global switch (set once, applies to
- * everyone going forward) that requires a user to complete a number of real
- * battles (Tower War or Card Game) before their referral earnings become
- * spendable. A per-user override table still exists underneath for the rare
- * case an admin wants a different rule for one specific person, but the
- * global switch is the primary, everyday control. Reuses the existing
- * battle tables (game_matches, war_attacks) to count progress — no parallel
- * battle-logging system. Off by default: referral earnings land directly in
- * the spendable balance immediately, exactly like before this feature existed.
+ * Conditional referral withdrawal — the INVITED person (not the inviter) is
+ * who has to complete the battle requirement. Every referral-derived payment
+ * (signup bonus, purchase commission) is tied to exactly one invited user —
+ * whoever's action generated it. If a requirement applies to that invited
+ * user and they haven't met it yet, the earning is held in a per-referral
+ * ledger instead of landing in the inviter's spendable balance; the moment
+ * that specific invited user's battle count reaches the target, everything
+ * held because of them (and only them) is released to the inviter
+ * automatically. A global switch (set once) is the everyday control; a
+ * per-invited-user override exists for edge cases. Reuses the existing
+ * battle tables (game_matches, war_attacks) — no parallel battle-logging
+ * system. Off by default: referral earnings land directly in the inviter's
+ * spendable balance immediately, exactly like before this feature existed.
  * ========================================================================= */
 db.exec(`
 CREATE TABLE IF NOT EXISTS referral_condition_config (
@@ -424,13 +428,28 @@ CREATE TABLE IF NOT EXISTS referral_condition_config (
 );
 INSERT OR IGNORE INTO referral_condition_config (id) VALUES (1);
 
+-- Per-invited-user override — the rare case an admin wants a different rule (or an exemption) for
+-- one specific invited person, regardless of the global switch above. Keyed by the INVITED user.
 CREATE TABLE IF NOT EXISTS referral_withdrawal_requirements (
   tg_id INTEGER PRIMARY KEY,
-  battle_type TEXT NOT NULL DEFAULT 'tower_war', -- tower_war | card_game
+  battle_type TEXT NOT NULL DEFAULT 'tower_war',
   required_battles INTEGER NOT NULL DEFAULT 1,
   unlocked INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   unlocked_at TEXT
+);
+
+-- Each row is one held referral payment, tied to which invited user's battle progress releases it
+-- (and to which inviter it's owed to). A pooled per-user number can't represent "earned because of
+-- invitee A, still waiting on A" separately from "earned because of invitee B, still waiting on B" —
+-- this ledger keeps that straight so unlocking one invitee never releases money tied to another.
+CREATE TABLE IF NOT EXISTS referral_locked_earnings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  referrer_tg_id INTEGER NOT NULL,
+  referred_tg_id INTEGER NOT NULL,
+  amount REAL NOT NULL,
+  reason TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
 
@@ -440,40 +459,39 @@ export function getReferralConditionGlobalConfig() {
 export function setReferralConditionGlobalConfig(enabled, battleType, requiredBattles) {
   db.prepare('UPDATE referral_condition_config SET enabled=?, battle_type=?, required_battles=? WHERE id = 1')
     .run(enabled ? 1 : 0, battleType === 'card_game' ? 'card_game' : 'tower_war', Math.max(1, Number(requiredBattles) || 1));
-  // Turning the global rule off releases everyone's held balance immediately — there's no condition
-  // left to gate it. Turning it on/changing it does NOT retroactively re-lock anyone's already-
-  // spendable balance (only new earnings from that point on are affected), consistent with how
-  // per-user overrides already work.
+  // Turning the global rule off releases everything currently held — there's no condition left to
+  // gate it. Turning it on/changing it does NOT retroactively re-lock anything already spendable.
   if (!enabled) {
-    db.prepare('SELECT tg_id FROM users WHERE referral_locked_toman > 0').all().forEach(u => releaseLockedReferralBalance(u.tg_id));
+    db.prepare('SELECT DISTINCT referred_tg_id FROM referral_locked_earnings').all()
+      .forEach(r => releaseEarningsForReferredUser(r.referred_tg_id));
   }
 }
 
-// Resolves the effective requirement for a given user: their own override if one exists, otherwise
-// the global rule (if enabled), otherwise no requirement at all.
-function resolveEffectiveRequirement(tgId) {
-  const override = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(tgId);
+// Resolves the effective requirement gating a given INVITED user's referral earnings: their own
+// override if one exists, otherwise the global rule (if enabled), otherwise no requirement at all.
+function resolveEffectiveRequirement(referredTgId) {
+  const override = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(referredTgId);
   if (override) return { battleType: override.battle_type, requiredBattles: override.required_battles, isOverride: true, overrideUnlocked: !!override.unlocked };
   const global = getReferralConditionGlobalConfig();
   if (global.enabled) return { battleType: global.battle_type, requiredBattles: global.required_battles, isOverride: false };
   return null;
 }
 
-// Routes a referral payout to the locked pool (if this user has an unmet requirement, whether from
-// their own override or the global rule) or straight to the spendable balance (no requirement
-// applies, or it's already met) — used by both the signup bonus and the ongoing commission, so
-// neither can bypass the gate.
-function creditReferralEarnings(tgId, amount, reason) {
-  const effective = resolveEffectiveRequirement(tgId);
-  const alreadyMet = effective && (effective.isOverride ? effective.overrideUnlocked : countUserBattles(tgId, effective.battleType) >= effective.requiredBattles);
+// Every referral-derived payment (signup bonus, purchase commission) is caused by exactly one
+// invited user's action — referredTgId. Whether it's held or paid out immediately depends on THAT
+// person's battle progress, never the inviter's own.
+function creditReferralEarnings(referrerTgId, amount, reason, referredTgId) {
+  const effective = resolveEffectiveRequirement(referredTgId);
+  const alreadyMet = effective && (effective.isOverride ? effective.overrideUnlocked : countUserBattles(referredTgId, effective.battleType) >= effective.requiredBattles);
   if (!effective || alreadyMet) {
-    adjustToman(tgId, amount, reason);
+    adjustToman(referrerTgId, amount, reason);
     return;
   }
   const amt = round2(amount);
-  db.prepare('UPDATE users SET referral_locked_toman = referral_locked_toman + ? WHERE tg_id = ?').run(amt, tgId);
-  logLedger(tgId, 'LNDC', 'in', amt, `${reason} (locked — pending battle requirement)`);
-  checkAndUnlockReferralBalance(tgId); // in case they already met the requirement before this payout
+  db.prepare('INSERT INTO referral_locked_earnings (referrer_tg_id, referred_tg_id, amount, reason) VALUES (?,?,?,?)')
+    .run(referrerTgId, referredTgId, amt, reason);
+  logLedger(referrerTgId, 'LNDC', 'in', amt, `${reason} (held — waiting on the invited user's battle requirement)`);
+  checkAndUnlockReferralBalance(referredTgId); // in case they already met the requirement before this payout
 }
 
 // Counts real battles the user took part in (either side), for whichever battle type the requirement
@@ -486,71 +504,104 @@ function countUserBattles(tgId, battleType) {
   return db.prepare('SELECT COUNT(*) c FROM war_attacks WHERE attacker_tg_id = ? OR defender_tg_id = ?').get(tgId, tgId).c;
 }
 
-export function getReferralWithdrawalRequirement(tgId) {
-  const effective = resolveEffectiveRequirement(tgId);
+function sumLockedForReferredUser(referredTgId) {
+  return db.prepare('SELECT COALESCE(SUM(amount),0) s FROM referral_locked_earnings WHERE referred_tg_id = ?').get(referredTgId).s;
+}
+
+// Status as seen from the INVITED user's own side — "you personally need to do this," matching the
+// requirement to whoever the app is actually asking to act.
+export function getReferralWithdrawalRequirement(referredTgId) {
+  const effective = resolveEffectiveRequirement(referredTgId);
   if (!effective) return null;
-  const completed = Math.min(effective.requiredBattles, countUserBattles(tgId, effective.battleType));
+  const completed = Math.min(effective.requiredBattles, countUserBattles(referredTgId, effective.battleType));
   const unlocked = effective.isOverride ? effective.overrideUnlocked : completed >= effective.requiredBattles;
-  const lockedBalance = getUser(tgId)?.referral_locked_toman || 0;
+  const lockedBalance = sumLockedForReferredUser(referredTgId); // held on their inviter's behalf, because of them
   return {
     battleType: effective.battleType, requiredBattles: effective.requiredBattles,
     completedBattles: completed, unlocked, lockedBalance, isOverride: effective.isOverride,
   };
 }
+
+// Status as seen from the REFERRER's own side — they may have several invited users, each gating
+// their own slice of held earnings, so this returns one entry per invited user with money pending.
+export function getReferrerLockedSummary(referrerTgId) {
+  const rows = db.prepare(`
+    SELECT rle.referred_tg_id, SUM(rle.amount) AS locked, u.first_name, u.username
+    FROM referral_locked_earnings rle JOIN users u ON u.tg_id = rle.referred_tg_id
+    WHERE rle.referrer_tg_id = ? GROUP BY rle.referred_tg_id
+  `).all(referrerTgId);
+  return rows.map(r => {
+    const effective = resolveEffectiveRequirement(r.referred_tg_id);
+    const completed = effective ? Math.min(effective.requiredBattles, countUserBattles(r.referred_tg_id, effective.battleType)) : 0;
+    return {
+      referredTgId: r.referred_tg_id, referredName: r.first_name || (r.username ? '@' + r.username : `User ${r.referred_tg_id}`),
+      lockedAmount: r.locked,
+      battleType: effective?.battleType || null, requiredBattles: effective?.requiredBattles || null, completedBattles: completed,
+    };
+  });
+}
+
 export function listReferralWithdrawalRequirementsAdmin() {
   const rows = db.prepare(`
-    SELECT r.*, u.first_name, u.username, u.referral_locked_toman
+    SELECT r.*, u.first_name, u.username
     FROM referral_withdrawal_requirements r JOIN users u ON u.tg_id = r.tg_id
     ORDER BY r.unlocked ASC, r.created_at DESC
   `).all();
   return rows.map(r => ({
     ...r,
     completedBattles: Math.min(r.required_battles, countUserBattles(r.tg_id, r.battle_type)),
+    lockedForThisUser: sumLockedForReferredUser(r.tg_id),
   }));
 }
-// Setting/changing a per-user override always (re)locks — an admin explicitly choosing a condition
-// for a user is expected to gate whatever they currently have and whatever they earn next, until met
-// again. This OVERRIDES the global rule for this one user (in either direction — stricter or looser).
-export function setReferralWithdrawalRequirement(tgId, battleType, requiredBattles) {
+// Setting/changing a per-invited-user override always (re)locks — an admin explicitly choosing a
+// condition is expected to gate whatever is currently held because of this person and whatever gets
+// earned because of them next, until met again. This OVERRIDES the global rule for this one invited
+// user (in either direction — stricter or looser).
+export function setReferralWithdrawalRequirement(referredTgId, battleType, requiredBattles) {
   const type = battleType === 'card_game' ? 'card_game' : 'tower_war';
   const required = Math.max(1, Number(requiredBattles) || 1);
   db.prepare(`
     INSERT INTO referral_withdrawal_requirements (tg_id, battle_type, required_battles, unlocked, unlocked_at)
     VALUES (?, ?, ?, 0, NULL)
     ON CONFLICT(tg_id) DO UPDATE SET battle_type=excluded.battle_type, required_battles=excluded.required_battles, unlocked=0, unlocked_at=NULL
-  `).run(tgId, type, required);
-  checkAndUnlockReferralBalance(tgId); // covers the case where they already meet the new requirement
+  `).run(referredTgId, type, required);
+  checkAndUnlockReferralBalance(referredTgId); // covers the case where they already meet the new requirement
 }
-// Removing the override falls the user back to whatever the global rule says (if any) rather than
-// necessarily releasing their balance outright.
-export function deleteReferralWithdrawalRequirement(tgId) {
-  const req = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(tgId);
+// Removing the override falls the invited user back to whatever the global rule says (if any) rather
+// than necessarily releasing held earnings outright.
+export function deleteReferralWithdrawalRequirement(referredTgId) {
+  const req = db.prepare('SELECT * FROM referral_withdrawal_requirements WHERE tg_id = ?').get(referredTgId);
   if (!req) return;
-  db.prepare('DELETE FROM referral_withdrawal_requirements WHERE tg_id = ?').run(tgId);
-  checkAndUnlockReferralBalance(tgId);
+  db.prepare('DELETE FROM referral_withdrawal_requirements WHERE tg_id = ?').run(referredTgId);
+  checkAndUnlockReferralBalance(referredTgId);
 }
-function releaseLockedReferralBalance(tgId) {
-  const user = getUser(tgId);
-  const locked = user?.referral_locked_toman || 0;
-  if (locked <= 0) return;
+// Pays out every locked earning that was waiting on this specific invited user, to whichever
+// inviter(s) it was held for (normally just one — a user has a single referrer).
+function releaseEarningsForReferredUser(referredTgId) {
+  const rows = db.prepare('SELECT * FROM referral_locked_earnings WHERE referred_tg_id = ?').all(referredTgId);
+  if (!rows.length) return;
+  const byReferrer = new Map();
+  rows.forEach(r => byReferrer.set(r.referrer_tg_id, (byReferrer.get(r.referrer_tg_id) || 0) + r.amount));
   const tx = db.transaction(() => {
-    db.prepare('UPDATE users SET referral_locked_toman = 0 WHERE tg_id = ?').run(tgId);
-    adjustToman(tgId, locked, 'Referral earnings unlocked');
+    db.prepare('DELETE FROM referral_locked_earnings WHERE referred_tg_id = ?').run(referredTgId);
+    for (const [referrerTgId, amount] of byReferrer) {
+      adjustToman(referrerTgId, round2(amount), 'Referral earnings unlocked (invited user completed the battle requirement)');
+    }
   });
   tx();
 }
-// Called after every relevant battle (Tower War attack, card battle) and after a referral payout —
-// cheap (a handful of indexed COUNT queries), and a no-op for the vast majority of users nothing
-// applies to at all (global rule off and no personal override).
-export function checkAndUnlockReferralBalance(tgId) {
-  const effective = resolveEffectiveRequirement(tgId);
-  if (!effective) { releaseLockedReferralBalance(tgId); return; } // nothing gates them (anymore) — release whatever was held
-  const completed = countUserBattles(tgId, effective.battleType);
+// Called after every relevant battle (Tower War attack, card battle) by ANY user — cheap (a couple
+// of indexed queries), and a no-op for the vast majority who have no locked earnings sitting on
+// their name at all (global rule off and no personal override, or nobody invited them via this app).
+export function checkAndUnlockReferralBalance(referredTgId) {
+  const effective = resolveEffectiveRequirement(referredTgId);
+  if (!effective) { releaseEarningsForReferredUser(referredTgId); return; } // nothing gates them (anymore) — release whatever was held
+  const completed = countUserBattles(referredTgId, effective.battleType);
   if (completed < effective.requiredBattles) return;
   if (effective.isOverride) {
-    db.prepare(`UPDATE referral_withdrawal_requirements SET unlocked = 1, unlocked_at = datetime('now') WHERE tg_id = ?`).run(tgId);
+    db.prepare(`UPDATE referral_withdrawal_requirements SET unlocked = 1, unlocked_at = datetime('now') WHERE tg_id = ?`).run(referredTgId);
   }
-  releaseLockedReferralBalance(tgId);
+  releaseEarningsForReferredUser(referredTgId);
 }
 
 // Referral settings — fully changeable from the admin panel (no longer just .env)
@@ -583,7 +634,7 @@ export function payReferralSignupBonus(referrerTgId, newUserTgId) {
     return;
   }
   if (!bonus || bonus <= 0) return;
-  if (!currency || currency === 'LNDC') creditReferralEarnings(referrerTgId, bonus, reason);
+  if (!currency || currency === 'LNDC') creditReferralEarnings(referrerTgId, bonus, reason, newUserTgId);
   else adjustCurrencyBalance(referrerTgId, currency, bonus, reason);
 }
 // Grants one copy of a game card as the referral reward. Mirrors game-db.js's grantCardInstance logic
@@ -606,7 +657,15 @@ function grantReferralCardReward(tgId, cardId) {
 export function getReferralInfo(tgId) {
   const invited = db.prepare('SELECT tg_id, username, first_name, created_at FROM users WHERE referred_by = ? ORDER BY created_at DESC').all(tgId);
   const totalEarned = db.prepare(`SELECT COALESCE(SUM(amount),0) s FROM ledger WHERE tg_id = ? AND direction = 'in' AND reason LIKE 'Commission%'`).get(tgId).s;
-  return { invited, invitedCount: invited.length, totalEarned, withdrawalRequirement: getReferralWithdrawalRequirement(tgId) };
+  // lockedSummary: this user's OWN pending earnings, one entry per invited person still gating a
+  // slice of it. myOwnRequirement: only relevant if this user was themselves invited by someone else
+  // (whether THEIR battle activity is what some other inviter's payout is waiting on) — shown mainly
+  // so a referred user understands why they personally might see a "go battle" prompt.
+  return {
+    invited, invitedCount: invited.length, totalEarned,
+    lockedSummary: getReferrerLockedSummary(tgId),
+    myOwnRequirement: getReferralWithdrawalRequirement(tgId),
+  };
 }
 
 /* =========================================================================
@@ -1068,7 +1127,7 @@ safeAddColumn('users', 'last_comeback_reminder_at TEXT'); // when we last sent t
 // from the admin panel) is met — see the referral withdrawal requirement functions below. Money
 // here is NOT part of balance_toman and can't be touched by any withdraw/spend endpoint until it's
 // released into balance_toman by checkAndUnlockReferralBalance.
-safeAddColumn('users', 'referral_locked_toman REAL NOT NULL DEFAULT 0');
+safeAddColumn('users', 'referral_locked_toman REAL NOT NULL DEFAULT 0'); // legacy column, no longer written to — locked referral amounts are now tracked per invited user in referral_locked_earnings (see below) so unlocking one invitee never releases money tied to a different one
 db.exec(`
 CREATE TABLE IF NOT EXISTS comeback_config (
   id INTEGER PRIMARY KEY CHECK (id = 1),
