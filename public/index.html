@@ -3874,25 +3874,42 @@ async function loadReferral() {
   }
   const subtitle = bonusLine || `Commission: ${r.percent}%`;
   document.getElementById('referralSubtitle').textContent = `${subtitle} — ${r.invitedCount} invited`;
-  let lockLine = '';
-  if (r.withdrawalRequirement) {
-    const wr = r.withdrawalRequirement;
+
+  // "Money waiting on people I invited" — one entry per invited person still gating a slice of what
+  // this user (the inviter) has earned. The invited person is the one who needs to act, not this user.
+  let pendingBlock = '';
+  if (r.lockedSummary && r.lockedSummary.length) {
+    pendingBlock = `
+      <div class="card" style="margin-top:10px;border:1px solid rgba(255,180,84,.4);">
+        <p style="margin:0 0 8px;font-weight:700;">🔒 Pending referral earnings</p>
+        <p class="muted" style="margin:0 0 8px;font-size:12px;">Held until the invited person plays enough battles — once they do, it's released to you automatically.</p>
+        ${r.lockedSummary.map(s => {
+          const typeLabel = s.battleType === 'card_game' ? 'Card Game' : 'Tower War';
+          return `<div class="row" style="padding:6px 0;border-top:1px solid var(--border);">
+            <span>${s.referredName}<br><span class="muted" style="font-size:11px;">${s.completedBattles}/${s.requiredBattles} ${typeLabel} battles</span></span>
+            <b style="color:#ffb454;">${s.lockedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</b>
+          </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  // "What I personally need to do" — only relevant if THIS user was themselves invited by someone,
+  // and their own battle activity is what that inviter's payout is waiting on.
+  let myRequirementBlock = '';
+  if (r.myOwnRequirement && !r.myOwnRequirement.unlocked) {
+    const wr = r.myOwnRequirement;
     const typeLabel = wr.battleType === 'card_game' ? 'Card Game' : 'Tower War';
     const remaining = Math.max(0, wr.requiredBattles - wr.completedBattles);
     const goAction = wr.battleType === 'card_game' ? "showPage('games');showGView('cardgame');" : "showPage('games');showGView('war');";
-    lockLine = `
-      <div class="card" style="margin-top:10px;border:1px solid ${wr.unlocked ? 'rgba(126,231,135,.4)' : 'rgba(255,180,84,.4)'};">
-        <p style="margin:0 0 6px;font-weight:700;">${wr.unlocked ? '✅' : '🔒'} Referral Withdrawal Requirement</p>
-        ${wr.unlocked ? `
-        <p style="margin:2px 0;font-size:12.5px;">You've met the requirement — your referral earnings are fully unlocked and spendable.</p>
-        ` : `
-        <p style="margin:2px 0 8px;font-size:13px;font-weight:700;color:#ffb454;">👉 You need to play ${remaining} more ${typeLabel} battle${remaining === 1 ? '' : 's'} to unlock this.</p>
-        <p class="muted" style="margin:2px 0;font-size:12.5px;">Progress: ${wr.completedBattles} / ${wr.requiredBattles} battles</p>
-        <p class="muted" style="margin:2px 0 8px;font-size:12.5px;">${wr.lockedBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC is held until then — it's already yours, just not withdrawable yet.</p>
+    myRequirementBlock = `
+      <div class="card" style="margin-top:10px;border:1px solid rgba(255,180,84,.4);">
+        <p style="margin:0 0 6px;font-weight:700;">🔒 Action needed</p>
+        <p style="margin:2px 0 8px;font-size:13px;font-weight:700;color:#ffb454;">👉 Whoever invited you is waiting on you: play ${remaining} more ${typeLabel} battle${remaining === 1 ? '' : 's'} to release their reward.</p>
+        <p class="muted" style="margin:2px 0 8px;font-size:12.5px;">Progress: ${wr.completedBattles} / ${wr.requiredBattles} battles</p>
         <button class="btn gold" style="width:100%;" onclick="${goAction}">⚔️ Go play ${typeLabel}</button>
-        `}
       </div>`;
   }
+
   document.getElementById('referralCard').innerHTML = `
     <p>Your referral code: <b>${r.ref_code}</b></p>
     <input readonly value="${link}" onclick="this.select()">
@@ -3900,7 +3917,8 @@ async function loadReferral() {
     <p>Purchase commission: ${r.percent}%</p>
     ${bonusLine ? `<p>${bonusLine}</p>` : ''}
     <p>Total commission earned: ${r.totalEarned.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</p>
-    ${lockLine}
+    ${pendingBlock}
+    ${myRequirementBlock}
   `;
 }
 
