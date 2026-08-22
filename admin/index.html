@@ -274,25 +274,25 @@
       </div>
       <div class="card">
         <h3>🔒 Conditional referral withdrawal</h3>
-        <p class="muted">When active, every user's referral earnings (the "flat reward" and "commission" above) are held in a separate locked pool until they personally play the required number of real battles — then it's released to their spendable balance automatically, no admin action needed. Off by default: earnings go straight to the spendable balance immediately, same as before this feature existed.</p>
+        <p class="muted">Important: this condition is met by the <b>invited person</b>, not the inviter. When active, every referral payout (the "flat reward" and "commission" above) is held until the specific person who caused it — the one who signed up or made the purchase — personally plays the required number of real battles. The moment that invited person hits the target, whatever was held because of them is released to their inviter automatically, no admin action needed. Off by default: payouts go straight to the inviter's spendable balance immediately, same as before this feature existed.</p>
         <select id="rcGlobalEnabled"><option value="1">Active for everyone</option><option value="0">Inactive</option></select>
         <div class="row2">
-          <div><label>Battle type required</label><select id="rcGlobalBattleType"><option value="tower_war">Tower War</option><option value="card_game">Card Game</option></select></div>
+          <div><label>Battle type required (from the invited person)</label><select id="rcGlobalBattleType"><option value="tower_war">Tower War</option><option value="card_game">Card Game</option></select></div>
           <div><label>Required battles</label><input type="number" id="rcGlobalRequiredBattles" value="1" min="1"></div>
         </div>
         <button class="btn" onclick="saveReferralConditionGlobal()">Save</button>
         <p class="muted" id="rcGlobalSavedMsg" style="display:none;color:#7ee787;">Saved ✅</p>
       </div>
       <div class="card">
-        <h3>Per-user exceptions</h3>
-        <p class="muted">Optional — overrides the global rule above for one specific user only (a different requirement, or exempting them entirely by disabling their row below). Most of the time you won't need this; the global switch above already applies to everyone.</p>
+        <h3>Per-invited-user exceptions</h3>
+        <p class="muted">Optional — overrides the global rule above for one specific invited person only (a different requirement, or exempting them entirely by removing their row below). Most of the time you won't need this; the global switch above already applies to everyone who was invited by someone.</p>
         <div class="row2">
-          <div><label>Telegram user ID</label><input type="number" id="rcTgId" placeholder="e.g. 123456789"></div>
+          <div><label>Invited user's Telegram ID</label><input type="number" id="rcTgId" placeholder="e.g. 123456789"></div>
           <div><label>Battle type</label><select id="rcBattleType"><option value="tower_war">Tower War</option><option value="card_game">Card Game</option></select></div>
         </div>
         <label>Required battles</label>
         <input type="number" id="rcRequiredBattles" value="1" min="1">
-        <button class="btn" onclick="saveReferralConditionUI()">Add / update exception for this user</button>
+        <button class="btn" onclick="saveReferralConditionUI()">Add / update exception for this invited user</button>
         <div id="referralConditionsTable" style="margin-top:14px;"></div>
       </div>
     </section>
@@ -1528,16 +1528,16 @@ async function saveReferralConditionGlobal() {
 async function loadReferralConditionsTable() {
   const rows = await api('/referral-requirements');
   document.getElementById('referralConditionsTable').innerHTML = rows.length ? `
-    <table><tr><th>User</th><th>Battle type</th><th>Progress</th><th>Status</th><th>Locked LNDC</th><th>Actions</th></tr>
+    <table><tr><th>Invited user</th><th>Battle type</th><th>Progress</th><th>Status</th><th>Held for their inviter</th><th>Actions</th></tr>
     ${rows.map(r => `<tr>
       <td>${r.first_name || r.username || r.tg_id} (${r.tg_id})</td>
       <td>${BATTLE_TYPE_LABELS[r.battle_type]}</td>
       <td>${r.completedBattles} / ${r.required_battles}</td>
       <td><b style="color:${r.unlocked ? '#7ee787' : '#ffb454'};">${r.unlocked ? '✅ Unlocked' : '🔒 Locked'}</b></td>
-      <td>${(r.referral_locked_toman || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      <td>${(r.lockedForThisUser || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</td>
       <td><button class="btn danger" onclick="disableReferralConditionUI(${r.tg_id})">Remove exception</button></td>
     </tr>`).join('')}
-    </table>` : '<p class="muted">No per-user exceptions — everyone follows the global rule above.</p>';
+    </table>` : '<p class="muted">No per-invited-user exceptions — everyone follows the global rule above.</p>';
 }
 async function saveReferralConditionUI() {
   const tgId = document.getElementById('rcTgId').value;
@@ -2964,7 +2964,7 @@ async function loadUsers() {
         <button class="btn secondary" onclick="adjustCurrencyBalanceUI(${u.tg_id})">Adjust currency balance</button>
         <button class="btn secondary" onclick="messageUser(${u.tg_id})">Message</button>
         <button class="btn secondary" onclick="openUserLedger(${u.tg_id}, '${(u.first_name || u.tg_id).toString().replace(/'/g, "\\'")}')">📜 Wallet history</button>
-        <button class="btn secondary" onclick="openUserReferralReq(${u.tg_id}, '${(u.first_name || u.tg_id).toString().replace(/'/g, "\\'")}')">🔒 Referral requirement</button>
+        <button class="btn secondary" onclick="openUserReferralReq(${u.tg_id}, '${(u.first_name || u.tg_id).toString().replace(/'/g, "\\'")}')">🔒 Referral requirement (as invited user)</button>
         ${u.is_banned ? `<button class="btn" onclick="unbanUser(${u.tg_id})">Unban</button>` : `<button class="btn danger" onclick="banUser(${u.tg_id})">Ban</button>`}
       </td></tr>`).join('')}
     </table>
@@ -3028,22 +3028,21 @@ async function loadMoreUserLedger() {
 let USER_REFERRAL_REQ_TG_ID = null;
 async function openUserReferralReq(tgId, name) {
   USER_REFERRAL_REQ_TG_ID = tgId;
-  document.getElementById('userReferralReqTitle').textContent = `🔒 Referral requirement — ${name} (${tgId})`;
+  document.getElementById('userReferralReqTitle').textContent = `🔒 Referral requirement (as invited user) — ${name} (${tgId})`;
   document.getElementById('userReferralReqStatus').textContent = 'Loading...';
   document.getElementById('userReferralReqBox').style.display = 'block';
   const req = await api(`/users/${tgId}/referral-requirement`);
   if (!req) {
-    document.getElementById('userReferralReqStatus').innerHTML = '<i>No requirement set — this user\'s referral earnings go straight to their spendable balance (default behavior).</i>';
+    document.getElementById('userReferralReqStatus').innerHTML = '<i>No requirement applies to this user as an invited person — whoever invited them gets paid immediately (default behavior).</i>';
     document.getElementById('urReqType').value = 'tower_war';
     document.getElementById('urReqCount').value = 1;
   } else {
     document.getElementById('userReferralReqStatus').innerHTML = `
-      ${req.isOverride ? '<i>Per-user exception (overrides the global rule)</i><br>' : '<i>Following the global rule</i><br>'}
-      Type: <b>${BATTLE_TYPE_LABELS[req.battleType]}</b><br>
-      Required battles: <b>${req.requiredBattles}</b><br>
+      ${req.isOverride ? '<i>Per-invited-user exception (overrides the global rule)</i><br>' : '<i>Following the global rule</i><br>'}
+      This user must complete: <b>${req.requiredBattles} ${BATTLE_TYPE_LABELS[req.battleType]} battle(s)</b><br>
       Completed: <b>${req.completedBattles} / ${req.requiredBattles}</b><br>
       Status: <b style="color:${req.unlocked ? '#7ee787' : '#ffb454'};">${req.unlocked ? '✅ Unlocked' : '🔒 Locked'}</b><br>
-      Locked balance: <b>${req.lockedBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</b>
+      Held for their inviter: <b>${req.lockedBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</b>
     `;
     document.getElementById('urReqType').value = req.battleType;
     document.getElementById('urReqCount').value = req.requiredBattles;
