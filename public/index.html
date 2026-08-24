@@ -19,6 +19,7 @@
     --b1:#2AABEE; --b2:#155E9C;
     --t1:#14B8A6; --t2:#115E59;
     --gold:#FFD700; --silver:#C0C0C0; --bronze:#CD7F32;
+    --v1:#8B5CF6; --v2:#4C1D95; --c1:#22D3EE; --c2:#0E7490; --am1:#F5C542; --am2:#B8860B;
     --text:#F5F6FA; --muted:#8B93A9; --border: rgba(255,255,255,.08);
     --danger:#fb7185; --success:#34d399;
     --surface:#141824; --surface2:#1c2233;
@@ -122,6 +123,36 @@
   .gcard.orange { background:linear-gradient(150deg,var(--o1),var(--o2)); }
   .gcard.blue   { background:linear-gradient(150deg,var(--b1),var(--b2)); }
   .gcard.teal   { background:linear-gradient(150deg,var(--t1),var(--t2)); }
+  .gcard.violet { background:linear-gradient(150deg,var(--v1),var(--v2)); }
+  .gcard.cyan   { background:linear-gradient(150deg,var(--c1),var(--c2)); }
+  .gcard.amber  { background:linear-gradient(150deg,var(--am1),var(--am2)); }
+  .gcard.gold   { background:linear-gradient(150deg,var(--gold),var(--am2)); }
+  /* ---- Hub landing pages (Rewards/Market/Shop/Game/Leaderboard/Wallet/Profile) share this header:
+     a small accent-colored icon badge + title + one-line subtitle, so every tab opens on the same
+     "visual category hub" pattern instead of a bare list. Purely additive — existing .section-banner
+     usage elsewhere is untouched. ---- */
+  .hub-head { display:flex; align-items:center; gap:12px; margin:2px 0 16px; }
+  .hub-head-ic { width:46px; height:46px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:22px; flex:none; box-shadow:0 6px 18px -6px rgba(0,0,0,.5); }
+  .hub-head.gold .hub-head-ic, .hub-head.amber .hub-head-ic { background:linear-gradient(150deg,var(--am1),var(--am2)); }
+  .hub-head.purple .hub-head-ic { background:linear-gradient(150deg,var(--p1),var(--p2)); }
+  .hub-head.pink .hub-head-ic { background:linear-gradient(150deg,var(--pk1),var(--pk2)); }
+  .hub-head.orange .hub-head-ic { background:linear-gradient(150deg,var(--o1),var(--o2)); }
+  .hub-head.blue .hub-head-ic { background:linear-gradient(150deg,var(--b1),var(--b2)); }
+  .hub-head.cyan .hub-head-ic { background:linear-gradient(150deg,var(--c1),var(--c2)); }
+  .hub-head.violet .hub-head-ic { background:linear-gradient(150deg,var(--v1),var(--v2)); }
+  .hub-head-t { font-size:18px; font-weight:900; line-height:1.25; }
+  .hub-head-s { font-size:12px; color:var(--muted); margin-top:2px; }
+  /* ---- Section header used inside every hub: Title + short subtitle, optional "View all". ---- */
+  .hub-sec { display:flex; align-items:baseline; justify-content:space-between; margin:18px 0 2px; }
+  .hub-sec-t { font-size:14.5px; font-weight:800; }
+  .hub-sec-s { font-size:11px; color:var(--muted); font-weight:600; margin-top:1px; }
+  .hub-sec-more { font-size:11px; font-weight:700; color:var(--p1); cursor:pointer; white-space:nowrap; }
+  .gcard .status { position:absolute; top:10px; left:10px; font-size:10px; font-weight:800; padding:3px 9px; border-radius:999px; background:rgba(0,0,0,.4); backdrop-filter:blur(4px); z-index:1; }
+  .grid2.grid3 { grid-template-columns:1fr 1fr 1fr; }
+  .grid2.grid3 .gcard { aspect-ratio:1/1.15; }
+  .grid2.grid3 .gcard .ic svg { width:24px; height:24px; }
+  .grid2.grid3 .gcard .t { font-size:12px; }
+  .grid2.grid3 .gcard .s { display:none; }
   /* When the admin sets a custom design image (from the panel) for a hub tile, it replaces the flat
      gradient with real artwork, cover-fit and centered, plus a bottom-up dark scrim so the title/
      subtitle text stays legible over any image. */
@@ -973,38 +1004,41 @@
     <div id="activityFeedWrap" style="display:none;margin-bottom:14px;">
       <div class="activity-feed-marquee" id="activityFeed"></div>
     </div>
-    <div class="gcard purple featured" onclick="showPage('shop')" style="margin-top:14px;" id="hubTile-shop">
-      <span class="badge-hot">Best-seller 🔥</span>
-      <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-4.6A2 2 0 0 1 7.3 3h9.4a2 2 0 0 1 1.9 1.4L20 9"/><path d="M4 9h16v1.5a3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3V9z"/><path d="M6 13.5V20a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-6.5"/><path d="M10 21v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"/></svg></span>
-      <span class="t">Shop</span>
-      <span class="s">Newest gift cards & products</span>
+    <div class="hub-head orange">
+      <div class="hub-head-ic">🎮</div>
+      <div>
+        <div class="hub-head-t">Game Hub</div>
+        <div class="hub-head-s">Choose your battlefield</div>
+      </div>
     </div>
 
-    <!-- Games: the two core game modes get equal, primary billing — the same visual weight,
-         side by side, since they're both first-class ways to play (was previously mixed in with
-         wallet/marketplace tiles at identical weight; now those have their own grouped section). -->
-    <h3 class="sec">Games</h3>
+    <!-- Featured game: Tower War gets the big, full-width entry point. -->
+    <div class="gcard orange featured" onclick="showGView('war')" style="margin-top:2px;" id="hubTile-war">
+      <span class="badge-hot">Featured 🔥</span>
+      <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l7-7M14 4l6 6-9 9-6-6z"/><path d="M14 4l3 3M6 21l-2-2 3-3"/></svg></span>
+      <span class="t">Tower War</span>
+      <span class="s">Defend your tower. Raid your rivals. — Enter Tower War</span>
+    </div>
+
+    <div class="hub-sec"><div><div class="hub-sec-t">Games</div><div class="hub-sec-s">Two ways to play</div></div></div>
     <div class="grid2">
-      <div class="gcard blue" onclick="showGView('cardgame')" id="hubTile-cardgame"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t">Card game</span><span class="s">Collection, mutation & battles</span></div>
-      <div class="gcard orange" onclick="showGView('war')" id="hubTile-war"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l7-7M14 4l6 6-9 9-6-6z"/><path d="M14 4l3 3M6 21l-2-2 3-3"/></svg></span><span class="t">Tower War</span><span class="s">Defend & raid other towers</span></div>
+      <div class="gcard orange" onclick="showGView('war')"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l7-7M14 4l6 6-9 9-6-6z"/><path d="M14 4l3 3M6 21l-2-2 3-3"/></svg></span><span class="t">Tower War</span><span class="s">Map, attack, defense, league & trophies</span></div>
+      <div class="gcard blue" onclick="showGView('cardgame')" id="hubTile-cardgame"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t">Card Game</span><span class="s">Collection, mutation, battles & cards</span></div>
     </div>
 
-    <!-- Marketplace: buying/selling and the wallet that funds it, grouped together — a separate
-         visual identity from "play a game" above. -->
-    <h3 class="sec">Marketplace</h3>
-    <div class="grid2">
-      <div class="gcard pink" onclick="showPage('market')" id="hubTile-market"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8.5" width="17" height="11" rx="1.5"/><path d="M3.5 12.5h17"/><path d="M12 8.5v11"/><path d="M12 8.5C9 8.5 7.8 4 10.2 4c1.8 0 1.8 3 1.8 4.5zM12 8.5c3 0 4.2-4.5 1.8-4.5-1.8 0-1.8 3-1.8 4.5z"/></svg></span><span class="t">Gift market</span><span class="s">Consignment buy/sell</span></div>
-      <div class="gcard green" onclick="showPage('wallet')" id="hubTile-wallet"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h8l5 6.2-9 10.8-9-10.8z"/><path d="M6 3.5l3 6.2-3.9.2M14 3.5l-3 6.2M9 3.5l3 6.2 3-6.2M2.1 9.7h19.6"/></svg></span><span class="t">Currency wallet</span><span class="s">Top up & convert currency</span></div>
+    <div class="hub-sec"><div><div class="hub-sec-t">Clan</div><div class="hub-sec-s">Team up and compete together</div></div></div>
+    <div class="gcard violet has-img" style="margin-top:14px;" id="hubTile-clan" onclick="showPage('more');showMView('clan')">
+      <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9.5l2.5-2v3l2.5-2.5v3L12 8l3 3V8l2.5 3v-3l2.5 2.5v3l2.5-2V21z"/><path d="M4 21h16M10 21v-5a2 2 0 0 1 4 0v5"/></svg></span>
+      <span class="t">Clan</span>
+      <span class="s" id="clanQuickStat">My clan · members · clan war · ranking</span>
     </div>
 
-    <!-- Rewards & more: secondary/optional destinations — smaller horizontal-scroll cards rather
-         than full-size tiles, so they read as "worth a glance" without competing with Games/Marketplace
-         for attention. -->
-    <h3 class="sec">Rewards & more</h3>
-    <div class="hscroll">
-      <div class="mini-card" onclick="showGView('battlepass')" id="hubTile-battlepass"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 12.3 7 21l5-3 5 3-2-8.7"/></svg></div><div class="t">Battle pass</div><div class="s">Seasonal rewards</div></div>
-      <div class="mini-card" onclick="showGView('events')"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></div><div class="t">Daily tasks</div><div class="s" id="questsQuickStat">...</div></div>
-      <div class="mini-card" id="hubTile-clan" onclick="showPage('more');showMView('clan')"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9.5l2.5-2v3l2.5-2.5v3L12 8l3 3V8l2.5 3v-3l2.5 2.5v3l2.5-2V21z"/><path d="M4 21h16M10 21v-5a2 2 0 0 1 4 0v5"/></svg></div><div class="t">Clan</div><div class="s" id="clanQuickStat">...</div></div>
+    <div class="hub-sec"><div><div class="hub-sec-t">Game Progress</div><div class="hub-sec-s">Cards, pass, history & stats</div></div></div>
+    <div class="grid2 grid3" style="grid-template-columns:1fr 1fr;">
+      <div class="gcard blue" onclick="showGView('cardgame');setTimeout(()=>showGameSub('mycards'),50);"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="12" height="15" rx="2" transform="rotate(-8 9 14)"/><rect x="8" y="4" width="12" height="15" rx="2"/></svg></span><span class="t">My Cards</span><span class="s">Your collection</span></div>
+      <div class="gcard teal" onclick="showGView('battlepass')" id="hubTile-battlepass"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 12.3 7 21l5-3 5 3-2-8.7"/></svg></span><span class="t">Battle Pass</span><span class="s">Seasonal rewards</span></div>
+      <div class="gcard blue" onclick="showGView('cardgame');setTimeout(()=>showGameSub('battle'),50);"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.2A2 2 0 0 1 5.5 5h12a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2V7.2z"/><path d="M3.5 8.7h13.5"/></svg></span><span class="t">Game History</span><span class="s">Match history</span></div>
+      <div class="gcard orange" onclick="showPage('leaderboard')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z"/><path d="M12 13.5V16M9.5 21h5M10 17.5h4V19a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-1.5z"/></svg></span><span class="t">Game Stats</span><span class="s">Ranks & scores</span></div>
     </div>
   </div>
 
@@ -1184,31 +1218,168 @@
   </div>
 </section>
 
+<!-- ============ Rewards (Visual Category Hub) ============ -->
+<section class="page" id="page-rewards">
+  <div class="hub-head amber">
+    <div class="hub-head-ic">🎁</div>
+    <div>
+      <div class="hub-head-t">Reward Center</div>
+      <div class="hub-head-s">Everything you can claim, spin, or earn today</div>
+    </div>
+  </div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Daily</div><div class="hub-sec-s">Fresh activities, reset every day</div></div></div>
+  <div class="grid2">
+    <div class="gcard amber has-img" onclick="showPage('games');showGView('events');showEventsSub('quests');">
+      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+      <span class="t">Daily Tasks</span>
+      <span class="s" id="rewardsQuestsStat">Complete activities and earn</span>
+    </div>
+    <div class="gcard gold has-img" onclick="showPage('more');showMView('raffle');">
+      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span>
+      <span class="t">Daily Wheel</span>
+      <span class="s">Spin & Win</span>
+    </div>
+  </div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Earn</div><div class="hub-sec-s">Bring friends, complete quests</div></div></div>
+  <div class="grid2">
+    <div class="gcard orange has-img" onclick="showPage('tasks');">
+      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6"/></svg></span>
+      <span class="t">Tasks</span>
+      <span class="s">Do it and get a reward</span>
+    </div>
+    <div class="gcard pink has-img" onclick="showPage('profile');setTimeout(()=>document.getElementById('referralCard')?.scrollIntoView({behavior:'smooth'}),300);">
+      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.8 19a6.2 6.2 0 0 1 12.4 0"/><path d="M16 8.2a3 3 0 1 1 3.6 4.4M18 14.5c2 .5 3.3 1.9 3.6 4"/></svg></span>
+      <span class="t">Referral</span>
+      <span class="s">Invite & Earn</span>
+    </div>
+  </div>
+  <div class="hscroll">
+    <div class="mini-card" onclick="showPage('profile');setTimeout(()=>document.getElementById('referralCard')?.scrollIntoView({behavior:'smooth'}),300);"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2M11 10.5a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2z"/></svg></div><div class="t">Invite Friends</div><div class="s">Share your link</div></div>
+  </div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Events</div><div class="hub-sec-s">Limited-time giveaways & auctions</div></div></div>
+  <div class="grid2">
+    <div class="gcard violet has-img" onclick="showPage('more');showMView('raffle');">
+      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7z"/></svg></span>
+      <span class="t">Giveaways & Raffles</span>
+      <span class="s">Join the ticket pool to win</span>
+    </div>
+    <div class="gcard blue has-img" onclick="showPage('more');showMView('auction');">
+      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l5 5M14.5 3l6.5 6.5-2 2L12 5zM3 21l6-1.5L18 10 14 6 4.5 15z"/></svg></span>
+      <span class="t">Special Events</span>
+      <span class="s">Time-limited flash auctions</span>
+    </div>
+  </div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Codes</div><div class="hub-sec-s">Have a promo code?</div></div></div>
+  <div class="gcard gold has-img featured" style="margin-top:14px;" onclick="showPage('wallet');setTimeout(()=>document.getElementById('promoCodeSection')?.scrollIntoView({behavior:'smooth'}),300);">
+    <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/><path d="M7 14h4"/></svg></span>
+    <span class="t">Gift Code / Promo Code</span>
+    <span class="s">Redeem a code for rewards</span>
+  </div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Progress</div><div class="hub-sec-s">Track how far you've come</div></div></div>
+  <div class="grid2">
+    <div class="gcard purple has-img" onclick="showPage('achievements');">
+      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="5.5"/><path d="M9 13.2 7.3 20l4.7-2.5 4.7 2.5-1.7-6.8"/></svg></span>
+      <span class="t">Achievements</span>
+      <span class="s">Pin your top badges</span>
+    </div>
+    <div class="gcard teal has-img" onclick="showPage('games');showGView('battlepass');">
+      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 12.3 7 21l5-3 5 3-2-8.7"/></svg></span>
+      <span class="t">Battle Pass</span>
+      <span class="s" id="rewardsBpStat">Seasonal reward track</span>
+    </div>
+  </div>
+</section>
+
 <!-- ============ Shop ============ -->
 <section class="page" id="page-shop">
-  <h3 class="sec" style="margin-top:0;">🔥 Best-sellers</h3>
-  <div class="hscroll" id="shopBestsellers"></div>
-  <div id="chestSection" style="display:none;">
-    <h3 class="sec">📦 Chests</h3>
-    <div id="chestList"></div>
+  <div class="hub-head amber">
+    <div class="hub-head-ic">🏪</div>
+    <div>
+      <div class="hub-head-t">Lando Gifts Store</div>
+      <div class="hub-head-s">The official shop — buy directly from Lando Gifts</div>
+    </div>
   </div>
+
+  <div class="gcard amber featured has-img" id="hubTile-shop" style="margin-top:2px;" onclick="document.getElementById('shopBestsellers')?.scrollIntoView({behavior:'smooth'})">
+    <span class="badge-hot">Best-seller 🔥</span>
+    <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-4.6A2 2 0 0 1 7.3 3h9.4a2 2 0 0 1 1.9 1.4L20 9"/><path d="M4 9h16v1.5a3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3V9z"/><path d="M6 13.5V20a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-6.5"/><path d="M10 21v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"/></svg></span>
+    <span class="t">Featured Products</span>
+    <span class="s">Limited offers, updated regularly</span>
+  </div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Gifts</div><div class="hub-sec-s">Telegram gifts & bundles</div></div></div>
+  <div class="hscroll" id="shopBestsellers"></div>
   <div id="giftPackSection" style="display:none;">
     <h3 class="sec">🎁 Gift packs</h3>
     <div id="giftPackList"></div>
   </div>
-  <h3 class="sec">All products</h3>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Game</div><div class="hub-sec-s">Cards, boosts, shields & extra plays</div></div></div>
+  <div id="chestSection" style="display:none;">
+    <h3 class="sec">📦 Chests</h3>
+    <div id="chestList"></div>
+  </div>
   <div id="productList"><div class="skeleton"></div></div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Customization</div><div class="hub-sec-s">Avatars & profile items</div></div></div>
+  <div class="gcard pink has-img" style="margin-top:14px;" onclick="showPage('more');showMView('avatars')">
+    <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.2 8.2 0 1 0 0 16.4c1.3 0 1.9-1 1.2-2-.5-.7-.1-1.7.8-1.7h1.7A4.3 4.3 0 0 0 20 12a8.4 8.4 0 0 0-8-8.5z"/><circle cx="8" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+    <span class="t">Avatars</span>
+    <span class="s">Profile items</span>
+  </div>
 </section>
 
 <!-- ============ Market (P2P gift) ============ -->
 <section class="page" id="page-market">
-  <div class="toptabs">
+  <div class="view active" id="mtab-hub">
+    <div class="hub-head pink">
+      <div class="hub-head-ic">🛒</div>
+      <div>
+        <div class="hub-head-t">Market</div>
+        <div class="hub-head-s">Buy & sell with players — user to user</div>
+      </div>
+    </div>
+
+    <div class="hub-sec"><div><div class="hub-sec-t">Gifts</div><div class="hub-sec-s">Telegram NFT gift consignments</div></div></div>
+    <div class="gcard pink featured has-img" id="hubTile-market" style="margin-top:2px;" onclick="showMarketTab('buy')">
+      <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8.5" width="17" height="11" rx="1.5"/><path d="M3.5 12.5h17"/><path d="M12 8.5v11"/><path d="M12 8.5C9 8.5 7.8 4 10.2 4c1.8 0 1.8 3 1.8 4.5zM12 8.5c3 0 4.2-4.5 1.8-4.5-1.8 0-1.8 3-1.8 4.5z"/></svg></span>
+      <span class="t">Gift Market</span>
+      <span class="s">Browse, buy & post consignments</span>
+    </div>
+    <div class="grid2">
+      <div class="gcard pink" onclick="showMarketTab('mine')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span class="t">My Gift Listings</span><span class="s">Your consignments</span></div>
+      <div class="gcard pink" onclick="showMarketTab('watch')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><span class="t">Price Watch</span><span class="s">Get notified on new listings</span></div>
+    </div>
+
+    <div class="hub-sec"><div><div class="hub-sec-t">Cards</div><div class="hub-sec-s">Trade collectible game cards</div></div></div>
+    <div class="grid2">
+      <div class="gcard violet" onclick="showPage('more');showMView('cardmarket')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t">Card Marketplace</span><span class="s">Browse other players' cards</span></div>
+      <div class="gcard violet" onclick="showPage('more');showMView('cardmarket');setTimeout(()=>document.getElementById('cmMyCardToList')?.scrollIntoView({behavior:'smooth'}),300);"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5v15M4.5 12h15"/></svg></span><span class="t">Sell Cards</span><span class="s">List one of your cards</span></div>
+    </div>
+    <div class="hscroll">
+      <div class="mini-card" onclick="showPage('more');showMView('cardmarket');setTimeout(()=>document.getElementById('myCardMarketListings')?.scrollIntoView({behavior:'smooth'}),300);"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div><div class="t">My Card Listings</div><div class="s">Cards you're selling</div></div>
+    </div>
+
+    <div class="hub-sec"><div><div class="hub-sec-t">Auctions</div><div class="hub-sec-s">Bid before time runs out</div></div></div>
+    <div class="gcard blue has-img" style="margin-top:14px;" onclick="showPage('more');showMView('auction')">
+      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l5 5M14.5 3l6.5 6.5-2 2L12 5zM3 21l6-1.5L18 10 14 6 4.5 15z"/></svg></span>
+      <span class="t">Live Auctions</span>
+      <span class="s">Flash auctions — place your bid</span>
+    </div>
+  </div>
+
+  <div class="toptabs" style="display:none;">
     <button class="active" data-mtab="buy" onclick="showMarketTab('buy')">Buy</button>
     <button data-mtab="sell" onclick="showMarketTab('sell')">Sell</button>
     <button data-mtab="mine" onclick="showMarketTab('mine')">My consignments</button>
     <button data-mtab="watch" onclick="showMarketTab('watch')">🔔 Watch</button>
   </div>
-  <div class="view active" id="mtab-buy">
+  <div class="view" id="mtab-buy">
     <div class="mkt-filterbar">
       <select class="mkt-select" id="mktCategoryFilter" onchange="renderMarketGrid()"><option value="">All categories</option></select>
     </div>
@@ -1276,17 +1447,52 @@
 
 <!-- ============ Leaderboard ============ -->
 <section class="page" id="page-leaderboard">
-  <div class="section-banner" id="leaderboardBanner">
+  <div class="view active" id="ltab-hub">
+    <div class="hub-head amber">
+      <div class="hub-head-ic">🏆</div>
+      <div>
+        <div class="hub-head-t">Leaderboard</div>
+        <div class="hub-head-s">See how you stack up</div>
+      </div>
+    </div>
+
+    <div class="hub-sec"><div><div class="hub-sec-t">Main Rankings</div><div class="hub-sec-s">Top players by game</div></div></div>
+    <div class="gcard amber featured" style="margin-top:2px;" onclick="showLbTab('game')">
+      <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span>
+      <span class="t">Card Game</span>
+      <span class="s">Battle score rankings</span>
+    </div>
+    <div class="grid2">
+      <div class="gcard orange" onclick="showPage('games');setTimeout(()=>{showGView('war');showWarSub('leaderboard');},50);"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l7-7M14 4l6 6-9 9-6-6z"/></svg></span><span class="t">Tower War</span><span class="s">Trophy rankings</span></div>
+      <div class="gcard violet" onclick="showLbTab('level')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span><span class="t">Global</span><span class="s">Level rankings</span></div>
+    </div>
+
+    <div class="hub-sec"><div><div class="hub-sec-t">Community</div><div class="hub-sec-s">Team & social rankings</div></div></div>
+    <div class="gcard pink has-img" style="margin-top:14px;" onclick="showLbTab('clan')">
+      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9.5l2.5-2v3l2.5-2.5v3L12 8l3 3V8l2.5 3v-3l2.5 2.5v3l2.5-2V21z"/><path d="M4 21h16M10 21v-5a2 2 0 0 1 4 0v5"/></svg></span>
+      <span class="t">Clan Ranking</span>
+      <span class="s">Top clans</span>
+    </div>
+
+    <div class="hub-sec"><div><div class="hub-sec-t">Time</div><div class="hub-sec-s">Seasonal league standings</div></div></div>
+    <div class="gcard blue has-img" style="margin-top:14px;" onclick="showLbTab('league')">
+      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z"/><path d="M12 13.5V16M9.5 21h5"/></svg></span>
+      <span class="t">League</span>
+      <span class="s">Seasonal tier standings</span>
+    </div>
+  </div>
+
+  <div class="section-banner" id="leaderboardBanner" style="display:none;">
     <div class="section-banner-ribbon">🏆 Leaderboard</div>
     <div class="section-banner-desc">See how you stack up — by game score, clan, level, or league.</div>
   </div>
-  <div class="toptabs">
+  <div class="toptabs" style="display:none;">
     <button class="active" data-ltab="game" onclick="showLbTab('game')">🎮 Game score</button>
     <button data-ltab="clan" onclick="showLbTab('clan')">🏰 Clan</button>
     <button data-ltab="level" onclick="showLbTab('level')">⭐ Level</button>
     <button data-ltab="league" onclick="showLbTab('league')">⚔️ League</button>
   </div>
-  <div class="view active" id="ltab-game">
+  <div class="view" id="ltab-game">
     <div id="lbGamePrizes" class="muted" style="font-size:13px;margin-bottom:8px;"></div>
     <div id="lbGamePodium"></div>
     <div id="lbGameList" class="card muted">Loading...</div>
@@ -1314,7 +1520,16 @@
 
 <!-- ============ Wallet ============ -->
 <section class="page" id="page-wallet">
-  <div class="gcard purple" style="margin-top:8px;">
+  <div class="hub-head cyan">
+    <div class="hub-head-ic">💳</div>
+    <div>
+      <div class="hub-head-t">Wallet</div>
+      <div class="hub-head-s">Balances, deposits & transfers — premium & secure</div>
+    </div>
+  </div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Assets</div><div class="hub-sec-s">Your balances at a glance</div></div></div>
+  <div class="gcard purple featured" id="hubTile-wallet" style="margin-top:2px;">
     <div class="tg-caption">Total balance</div>
     <div class="tg-num tg-num-lg stat-hero" style="margin-top:4px;" id="walletHeroBalance">0 LNDC</div>
     <div class="btn3" style="margin-top:12px;">
@@ -1324,6 +1539,7 @@
     </div>
   </div>
 
+  <div class="hub-sec"><div><div class="hub-sec-t">Money</div><div class="hub-sec-s">Deposit, withdraw, transfer & swap</div></div></div>
   <div id="lndcTopupSection">
     <h3 class="sec">Top up wallet</h3>
     <div class="card">
@@ -1392,7 +1608,7 @@
     <button class="btn secondary" onclick="doCurrencyWithdraw()">Submit withdrawal request</button>
   </div>
 
-  <h3 class="sec">Gift code</h3>
+  <h3 class="sec" id="promoCodeSection">Gift code</h3>
   <div class="card">
     <input type="text" id="promoCodeInput" placeholder="e.g. SPRING1404" style="text-transform:uppercase;">
     <button class="btn gold" onclick="redeemPromo()">Redeem code</button>
@@ -1422,29 +1638,44 @@
   </div>
   <div id="rankCard" class="card">Loading...</div>
 
-  <h3 class="sec">Quick access</h3>
-  <div class="hscroll">
-    <div class="mini-card" onclick="showPage('games');showGView('cardgame');"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="12" height="15" rx="2" transform="rotate(-8 9 14)"/><rect x="8" y="4" width="12" height="15" rx="2"/></svg></div><div class="t">My cards</div></div>
-    <div class="mini-card" onclick="showPage('market');showMarketTab('mine');"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div><div class="t">My listings</div></div>
-    <div class="mini-card" onclick="showPage('wallet');setTimeout(()=>document.getElementById('ledgerList')?.scrollIntoView({behavior:'smooth'}),300);"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h9l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M14.5 3.5V8h4"/><path d="M8.5 12.5h6M8.5 15.5h6M8.5 9.5h2.5"/></svg></div><div class="t">Transactions</div></div>
-    <div class="mini-card" onclick="showPage('more');showMView('avatars')"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.2 8.2 0 1 0 0 16.4c1.3 0 1.9-1 1.2-2-.5-.7-.1-1.7.8-1.7h1.7A4.3 4.3 0 0 0 20 12a8.4 8.4 0 0 0-8-8.5z"/><circle cx="8" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg></div><div class="t">My avatars</div></div>
-    <div class="mini-card" onclick="showPage('achievements')"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="5.5"/><path d="M9 13.2 7.3 20l4.7-2.5 4.7 2.5-1.7-6.8"/></svg></div><div class="t">Achievements</div></div>
+  <div class="hub-sec" style="margin-top:20px;"><div><div class="hub-sec-t">My Collection</div><div class="hub-sec-s">Everything you own</div></div></div>
+  <div class="grid2">
+    <div class="gcard blue" onclick="showPage('games');showGView('cardgame');setTimeout(()=>showGameSub('mycards'),50);"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="12" height="15" rx="2" transform="rotate(-8 9 14)"/><rect x="8" y="4" width="12" height="15" rx="2"/></svg></span><span class="t">My Cards</span><span class="s">Your card collection</span></div>
+    <div class="gcard pink" onclick="showPage('market');showMarketTab('mine');"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span class="t">My Gifts</span><span class="s">Your listings</span></div>
+    <div class="gcard violet" onclick="showPage('more');showMView('avatars')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.2 8.2 0 1 0 0 16.4c1.3 0 1.9-1 1.2-2-.5-.7-.1-1.7.8-1.7h1.7A4.3 4.3 0 0 0 20 12a8.4 8.4 0 0 0-8-8.5z"/><circle cx="8" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg></span><span class="t">My Avatars</span><span class="s">Owned & shop</span></div>
+    <div class="gcard teal" onclick="showPage('more');showMView('album')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 15l4.5-4.5 3 3 5.5-5.5 4 4"/></svg></span><span class="t">Collection</span><span class="s">Album progress</span></div>
   </div>
 
-  <h3 class="sec">Menu</h3>
+  <div class="hub-sec"><div><div class="hub-sec-t">Progress</div><div class="hub-sec-s">Achievements & stats</div></div></div>
+  <div class="grid2">
+    <div class="gcard purple" onclick="showPage('achievements')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="5.5"/><path d="M9 13.2 7.3 20l4.7-2.5 4.7 2.5-1.7-6.8"/></svg></span><span class="t">Achievements</span><span class="s">Pin your badges</span></div>
+    <div class="gcard orange" onclick="showPage('leaderboard')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z"/><path d="M12 13.5V16M9.5 21h5"/></svg></span><span class="t">Statistics</span><span class="s">Ranks & scores</span></div>
+  </div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Earn</div><div class="hub-sec-s">Invite friends & claim tasks</div></div></div>
   <div class="menu-row" onclick="showPage('games');showGView('events');">
     <span class="mic">🎁</span><div class="mtxt"><div class="mt">Daily tasks</div><div class="ms">Claim quest rewards</div></div><span class="arrow">‹</span>
   </div>
-  <div class="menu-row" onclick="document.getElementById('referralCard').scrollIntoView()">
+  <div class="menu-row" onclick="document.getElementById('referralCard').scrollIntoView({behavior:'smooth'})">
     <span class="mic">👥</span><div class="mtxt"><div class="mt">Invite friends</div><div class="ms" id="referralSubtitle">Referral commission</div></div><span class="arrow">‹</span>
   </div>
   <div class="card" id="referralCard">Loading...</div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Account</div><div class="hub-sec-s">Your account details</div></div></div>
+  <div class="menu-row" onclick="openAboutPage()">
+    <span class="mic">⚙️</span><div class="mtxt"><div class="mt">Account Settings</div><div class="ms">ID, connection status</div></div><span class="arrow">‹</span>
+  </div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t">Help</div><div class="hub-sec-s">Guides, support & rules</div></div></div>
   <div class="menu-row" onclick="openSupportChat()">
     <span class="mic">🎧</span><div class="mtxt"><div class="mt">Support</div><div class="ms">Direct contact with admin</div></div><span class="arrow">‹</span>
   </div>
-  <div class="menu-row" onclick="openAboutPage()">
-    <span class="mic">⚙️</span><div class="mtxt"><div class="mt">About my account</div><div class="ms">ID, connection status</div></div><span class="arrow">‹</span>
-  </div>
+  <div class="menu-row" onclick="openInfoPage('guide','📖 Guide')"><span class="mic">📖</span><div class="mtxt"><div class="mt">Guide</div></div><span class="arrow">‹</span></div>
+  <div class="menu-row" onclick="openInfoPage('faq','❓ FAQ')"><span class="mic">❓</span><div class="mtxt"><div class="mt">FAQ</div></div><span class="arrow">‹</span></div>
+  <div class="menu-row" onclick="openInfoPage('rules','📋 Rules & terms')"><span class="mic">📋</span><div class="mtxt"><div class="mt">Rules & Terms</div></div><span class="arrow">‹</span></div>
+  <div class="menu-row" onclick="toast('No news right now')"><span class="mic">📢</span><div class="mtxt"><div class="mt">Announcements</div></div><span class="arrow">‹</span></div>
+  <div class="menu-row" onclick="toast('Thanks for your support 🙏')"><span class="mic">⭐</span><div class="mtxt"><div class="mt">Rate the app</div></div><span class="arrow">‹</span></div>
+
   <button class="btn danger" style="margin-top:16px;" onclick="tg?.close && tg.close()">Exit mini app</button>
 </section>
 
@@ -1609,11 +1840,14 @@
 
 <!-- ---------- bottom navigation ---------- -->
 <nav class="bottomnav">
-  <button class="navitem" data-page="shop" onclick="showPage('shop')">
-    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-4.6A2 2 0 0 1 7.3 3h9.4a2 2 0 0 1 1.9 1.4L20 9"/><path d="M4 9h16v1.5a3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3V9z"/><path d="M6 13.5V20a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-6.5"/><path d="M10 21v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"/></svg></span><span>Shop</span><span class="label-underline"></span>
+  <button class="navitem" data-page="rewards" onclick="showPage('rewards')">
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9.5" width="17" height="10.5" rx="1.8"/><path d="M3.5 13.5h17"/><path d="M12 9.5v10.5"/><path d="M12 9.5c-3 0-4.2-4.5-1.8-4.5 1.8 0 1.8 3 1.8 4.5zM12 9.5c3 0 4.2-4.5 1.8-4.5-1.8 0-1.8 3-1.8 4.5z"/></svg></span><span>Rewards</span><span class="label-underline"></span>
   </button>
   <button class="navitem" data-page="market" onclick="showPage('market')">
     <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/><path d="M3 4h2l2.3 11a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.2L20 8H6.2"/></svg></span><span>Market</span><span class="label-underline"></span>
+  </button>
+  <button class="navitem" data-page="shop" onclick="showPage('shop')">
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-4.6A2 2 0 0 1 7.3 3h9.4a2 2 0 0 1 1.9 1.4L20 9"/><path d="M4 9h16v1.5a3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3V9z"/><path d="M6 13.5V20a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-6.5"/><path d="M10 21v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"/></svg></span><span>Shop</span><span class="label-underline"></span>
   </button>
   <div class="navcenter" onclick="showPage('games')"><span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="11" rx="4.5"/><path d="M7 10.3v4.4M4.9 12.5h4.2"/><circle cx="16" cy="10.6" r="1" fill="currentColor" stroke="none"/><circle cx="18.5" cy="13.1" r="1" fill="currentColor" stroke="none"/></svg></span></div>
   <button class="navitem" data-page="leaderboard" onclick="showPage('leaderboard')">
@@ -1624,9 +1858,6 @@
   </button>
   <button class="navitem" data-page="profile" onclick="showPage('profile')">
     <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></span><span>Profile</span><span class="label-underline"></span>
-  </button>
-  <button class="navitem" data-page="more" onclick="showPage('more')">
-    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg></span><span>More</span><span class="label-underline"></span>
   </button>
 </nav>
 
@@ -1781,7 +2012,7 @@ async function uploadImage(file) {
 }
 
 /* ================= page navigation ================= */
-const PAGE_TITLES = { games:'Lando Gifts', shop:'Shop', market:'User market', leaderboard:'Leaderboard', wallet:'Wallet', profile:'Profile', more:'More', tasks:'Tasks', achievements:'My achievements' };
+const PAGE_TITLES = { games:'Lando Gifts', rewards:'Rewards', shop:'Shop', market:'User market', leaderboard:'Leaderboard', wallet:'Wallet', profile:'Profile', more:'More', tasks:'Tasks', achievements:'My achievements' };
 function showPage(name) {
   haptic('light');
   if (name !== 'more') stopClanChat(); // leaving the "more" section entirely — no reason to keep polling clan chat in the background
@@ -1798,12 +2029,13 @@ function showPage(name) {
   CURRENT_PAGE = name;
   window.scrollTo(0, 0);
   if (name === 'shop') loadShop();
-  if (name === 'market') loadMarket();
-  if (name === 'leaderboard') loadLeaderboardPage();
+  if (name === 'market') { showMarketTab('hub'); loadMarket(); }
+  if (name === 'leaderboard') { showLbTab('hub'); loadLeaderboardPage(); }
   if (name === 'wallet') { loadWallet(); loadCurrency(); }
   if (name === 'profile') loadProfile();
   if (name === 'games') loadGamesHub();
   if (name === 'more') loadMoreHub();
+  if (name === 'rewards') loadRewardsHub();
   if (name === 'tasks') loadTasks();
   if (name === 'achievements') loadAchievements();
 }
@@ -1868,6 +2100,14 @@ function headerBack() {
   }
   if (CURRENT_PAGE === 'games') showGView('hub');
   else if (CURRENT_PAGE === 'more') showMView('hub');
+  else if (CURRENT_PAGE === 'market') {
+    const active = document.querySelector('#page-market .view.active');
+    if (active && active.id !== 'mtab-hub') showMarketTab('hub'); else showPage('games');
+  }
+  else if (CURRENT_PAGE === 'leaderboard') {
+    const active = document.querySelector('#page-leaderboard .view.active');
+    if (active && active.id !== 'ltab-hub') showLbTab('hub'); else showPage('games');
+  }
   else if (CURRENT_PAGE === 'tasks' || CURRENT_PAGE === 'info') showPage(PAGE_BEFORE_SUBPAGE || 'more');
   else showPage('games');
 }
@@ -1877,6 +2117,10 @@ function showMarketTab(name) {
   document.querySelectorAll('#page-market .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mtab-' + name).classList.add('active');
   document.querySelectorAll('#page-market .toptabs button').forEach(b => b.classList.toggle('active', b.dataset.mtab === name));
+  // The Gift Market's own Buy/Sell/My consignments/Watch tab bar only makes sense once you're
+  // inside the Gift Market feature — on the Market Hub landing screen it stays hidden.
+  const tabs = document.querySelector('#page-market .toptabs');
+  if (tabs) tabs.style.display = name === 'hub' ? 'none' : 'flex';
   if (name === 'buy') loadMarket();
   if (name === 'mine') loadMarket();
   if (name === 'sell') resetGiftForm();
@@ -1887,6 +2131,10 @@ function showLbTab(name) {
   document.querySelectorAll('#page-leaderboard .view').forEach(v => v.classList.remove('active'));
   document.getElementById('ltab-' + name).classList.add('active');
   document.querySelectorAll('#page-leaderboard .toptabs button').forEach(b => b.classList.toggle('active', b.dataset.ltab === name));
+  const tabs = document.querySelector('#page-leaderboard .toptabs');
+  const banner = document.getElementById('leaderboardBanner');
+  if (tabs) tabs.style.display = name === 'hub' ? 'none' : 'flex';
+  if (banner) banner.style.display = name === 'hub' ? 'none' : 'block';
 }
 
 async function loadMe() {
@@ -4007,6 +4255,21 @@ async function loadLeagueBoard(league) {
 
 /* ================= More: hub ================= */
 function loadMoreHub() { /* static, no action needed */ }
+
+/* ================= Rewards hub (Visual Category Hub) ================= */
+async function loadRewardsHub() {
+  try {
+    const q = await api('/api/quests/today');
+    const done = q.quests.filter(x => x.claimed).length;
+    const el = document.getElementById('rewardsQuestsStat');
+    if (el) el.textContent = q.enabled ? `${done}/${q.quests.length} done today` : 'Complete activities and earn';
+  } catch (e) {}
+  try {
+    const s = await api('/api/season/status');
+    const el = document.getElementById('rewardsBpStat');
+    if (el) el.textContent = s.config.enabled ? `Tier ${s.progress.currentTier} — claim your track` : 'Seasonal reward track';
+  } catch (e) {}
+}
 
 // Applies admin-set custom design images (hub shortcut tiles + section banners) on top of the
 // default icon/gradient look — purely visual, no behavior changes. A tile/banner with no image set
