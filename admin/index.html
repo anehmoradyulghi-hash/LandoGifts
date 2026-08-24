@@ -324,6 +324,28 @@
         <input type="hidden" id="uiImgHubWar"><img id="uiImgHubWar_prev" class="admin-img-preview">
       </div>
       <div class="card">
+        <h3>🖼 Hub page header images</h3>
+        <p class="muted">Optional banner photo behind each hub tab's own header bar (the icon + title + subtitle row at the top of Rewards, Market, Shop, Game, Leaderboard and Wallet). Leave empty to keep the plain color icon look. Recommended: a wide image (at least 800×300).</p>
+        <label>Rewards header</label>
+        <input type="file" accept="image/*" id="uiImgHeadRewards_file" onchange="uploadImageTo('uiImgHeadRewards_file','uiImgHeadRewards','uiImgHeadRewards_prev')">
+        <input type="hidden" id="uiImgHeadRewards"><img id="uiImgHeadRewards_prev" class="admin-img-preview">
+        <label>Market header</label>
+        <input type="file" accept="image/*" id="uiImgHeadMarket_file" onchange="uploadImageTo('uiImgHeadMarket_file','uiImgHeadMarket','uiImgHeadMarket_prev')">
+        <input type="hidden" id="uiImgHeadMarket"><img id="uiImgHeadMarket_prev" class="admin-img-preview">
+        <label>Shop header</label>
+        <input type="file" accept="image/*" id="uiImgHeadShop_file" onchange="uploadImageTo('uiImgHeadShop_file','uiImgHeadShop','uiImgHeadShop_prev')">
+        <input type="hidden" id="uiImgHeadShop"><img id="uiImgHeadShop_prev" class="admin-img-preview">
+        <label>Game Hub header</label>
+        <input type="file" accept="image/*" id="uiImgHeadGame_file" onchange="uploadImageTo('uiImgHeadGame_file','uiImgHeadGame','uiImgHeadGame_prev')">
+        <input type="hidden" id="uiImgHeadGame"><img id="uiImgHeadGame_prev" class="admin-img-preview">
+        <label>Leaderboard header</label>
+        <input type="file" accept="image/*" id="uiImgHeadLeaderboard_file" onchange="uploadImageTo('uiImgHeadLeaderboard_file','uiImgHeadLeaderboard','uiImgHeadLeaderboard_prev')">
+        <input type="hidden" id="uiImgHeadLeaderboard"><img id="uiImgHeadLeaderboard_prev" class="admin-img-preview">
+        <label>Wallet header</label>
+        <input type="file" accept="image/*" id="uiImgHeadWallet_file" onchange="uploadImageTo('uiImgHeadWallet_file','uiImgHeadWallet','uiImgHeadWallet_prev')">
+        <input type="hidden" id="uiImgHeadWallet"><img id="uiImgHeadWallet_prev" class="admin-img-preview">
+      </div>
+      <div class="card">
         <h3>🖼 Section banner images</h3>
         <p class="muted">Optional wide banner artwork shown at the top of a section's own page. Recommended: a wide image (at least 800×300).</p>
         <label>Clan banner</label>
@@ -1560,6 +1582,8 @@ async function disableReferralConditionUI(tgId) {
 const UI_IMAGE_FIELD_MAP = {
   hub_shop: 'uiImgHubShop', hub_cardgame: 'uiImgHubCardgame', hub_battlepass: 'uiImgHubBattlepass',
   hub_market: 'uiImgHubMarket', hub_wallet: 'uiImgHubWallet', hub_clan: 'uiImgHubClan', hub_war: 'uiImgHubWar',
+  hub_head_rewards: 'uiImgHeadRewards', hub_head_market: 'uiImgHeadMarket', hub_head_shop: 'uiImgHeadShop',
+  hub_head_game: 'uiImgHeadGame', hub_head_leaderboard: 'uiImgHeadLeaderboard', hub_head_wallet: 'uiImgHeadWallet',
   banner_clan: 'uiImgBannerClan', banner_battlepass: 'uiImgBannerBattlepass',
   banner_events: 'uiImgBannerEvents',
   card_missions: 'uiImgCardMissions', card_leaderboard: 'uiImgCardLeaderboard', loading_screen: 'uiImgLoadingScreen',
