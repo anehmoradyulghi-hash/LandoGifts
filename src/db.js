@@ -1023,6 +1023,7 @@ export function setGiftMarketMinPrice(price) {
 // other Game Hub cards/teasers that logically support artwork.
 const UI_IMAGE_KEYS = [
   'hub_shop', 'hub_wallet', 'hub_market', 'hub_cardgame', 'hub_battlepass', 'hub_clan', 'hub_war', // hub shortcut tiles
+  'hub_head_rewards', 'hub_head_market', 'hub_head_shop', 'hub_head_game', 'hub_head_leaderboard', 'hub_head_wallet', // banner photo behind each hub page's header bar
   'banner_clan', 'banner_battlepass', 'banner_events', 'banner_wheel', // full-width banners at the top of a section's own page
   'card_missions', 'card_leaderboard', // Game Hub quick-access card artwork
   'loading_screen', // shown centered above the boot progress bar while the app first loads
