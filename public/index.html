@@ -142,6 +142,12 @@
   .hub-head.violet .hub-head-ic { background:linear-gradient(150deg,var(--v1),var(--v2)); }
   .hub-head-t { font-size:18px; font-weight:900; line-height:1.25; }
   .hub-head-s { font-size:12px; color:var(--muted); margin-top:2px; }
+  /* Optional admin-chosen banner photo behind a hub header (Rewards/Market/Shop/Game/Leaderboard/Wallet) —
+     falls back to the plain icon+text bar above when no image has been set for that hub. */
+  .hub-head.has-img { position:relative; background-size:cover; background-position:center; border-radius:20px; padding:16px 14px; overflow:hidden; box-shadow:0 14px 32px -10px rgba(0,0,0,.55); }
+  .hub-head.has-img::before { content:''; position:absolute; inset:0; background:linear-gradient(120deg, rgba(8,10,18,.78), rgba(8,10,18,.32)); pointer-events:none; }
+  .hub-head.has-img .hub-head-ic { position:relative; z-index:1; box-shadow:0 0 0 2px rgba(255,255,255,.22), 0 6px 18px -6px rgba(0,0,0,.5); }
+  .hub-head.has-img .hub-head-t, .hub-head.has-img .hub-head-s { position:relative; z-index:1; }
   /* ---- Section header used inside every hub: Title + short subtitle, optional "View all". ---- */
   .hub-sec { display:flex; align-items:baseline; justify-content:space-between; margin:18px 0 2px; }
   .hub-sec-t { font-size:14.5px; font-weight:800; }
@@ -1004,7 +1010,7 @@
     <div id="activityFeedWrap" style="display:none;margin-bottom:14px;">
       <div class="activity-feed-marquee" id="activityFeed"></div>
     </div>
-    <div class="hub-head orange">
+    <div class="hub-head orange" id="hubHead-game">
       <div class="hub-head-ic">🎮</div>
       <div>
         <div class="hub-head-t">Game Hub</div>
@@ -1017,17 +1023,14 @@
       <span class="badge-hot">Featured 🔥</span>
       <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l7-7M14 4l6 6-9 9-6-6z"/><path d="M14 4l3 3M6 21l-2-2 3-3"/></svg></span>
       <span class="t">Tower War</span>
-      <span class="s">Defend your tower. Raid your rivals. — Enter Tower War</span>
+      <span class="s">Defend your tower. Raid your rivals. — Map, attack, defense, league & trophies</span>
     </div>
 
-    <div class="hub-sec"><div><div class="hub-sec-t">Games</div><div class="hub-sec-s">Two ways to play</div></div></div>
-    <div class="grid2">
-      <div class="gcard orange" onclick="showGView('war')"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l7-7M14 4l6 6-9 9-6-6z"/><path d="M14 4l3 3M6 21l-2-2 3-3"/></svg></span><span class="t">Tower War</span><span class="s">Map, attack, defense, league & trophies</span></div>
-      <div class="gcard blue" onclick="showGView('cardgame')" id="hubTile-cardgame"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t">Card Game</span><span class="s">Collection, mutation, battles & cards</span></div>
-    </div>
+    <div class="hub-sec"><div><div class="hub-sec-t">Games</div><div class="hub-sec-s">Another way to play</div></div></div>
+    <div class="gcard blue" style="margin-top:2px;" onclick="showGView('cardgame')" id="hubTile-cardgame"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t">Card Game</span><span class="s">Collection, mutation, battles & cards</span></div>
 
     <div class="hub-sec"><div><div class="hub-sec-t">Clan</div><div class="hub-sec-s">Team up and compete together</div></div></div>
-    <div class="gcard violet has-img" style="margin-top:14px;" id="hubTile-clan" onclick="showPage('more');showMView('clan')">
+    <div class="gcard violet has-img" style="margin-top:14px;" id="hubTile-clan" onclick="showMView('clan')">
       <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9.5l2.5-2v3l2.5-2.5v3L12 8l3 3V8l2.5 3v-3l2.5 2.5v3l2.5-2V21z"/><path d="M4 21h16M10 21v-5a2 2 0 0 1 4 0v5"/></svg></span>
       <span class="t">Clan</span>
       <span class="s" id="clanQuickStat">My clan · members · clan war · ranking</span>
@@ -1040,6 +1043,49 @@
       <div class="gcard blue" onclick="showGView('cardgame');setTimeout(()=>showGameSub('battle'),50);"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.2A2 2 0 0 1 5.5 5h12a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2V7.2z"/><path d="M3.5 8.7h13.5"/></svg></span><span class="t">Game History</span><span class="s">Match history</span></div>
       <div class="gcard orange" onclick="showPage('leaderboard')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z"/><path d="M12 13.5V16M9.5 21h5M10 17.5h4V19a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-1.5z"/></svg></span><span class="t">Game Stats</span><span class="s">Ranks & scores</span></div>
     </div>
+  </div>
+
+
+  <!-- Clan (moved here from the old More hub) -->
+  <div class="view" id="mview-clan">
+    <div class="section-banner" id="clanBanner">
+      <div class="section-banner-ribbon">🏰 Clans</div>
+      <div class="section-banner-desc">Join a clan or build one of your own — team up in clan wars and compete together.</div>
+    </div>
+    <div class="icon-grid">
+      <div class="icon-grid-item" onclick="showMView('clanmine')"><div class="icon-grid-ic">🏰</div><div class="icon-grid-t">My clan</div></div>
+      <div class="icon-grid-item" onclick="showMView('clanbrowse')"><div class="icon-grid-ic">🔎</div><div class="icon-grid-t">Browse & join</div></div>
+      <div class="icon-grid-item" onclick="showMView('clanwar')"><div class="icon-grid-ic">⚔️</div><div class="icon-grid-t">Clan war</div></div>
+      <div class="icon-grid-item" onclick="showMView('clanchat')"><div class="icon-grid-ic">💬</div><div class="icon-grid-t">Chat</div></div>
+    </div>
+    <div id="clanQuickPreview" class="muted">Loading...</div>
+  </div>
+
+  <!-- My clan: dedicated profile screen (info, bank, members) — only for the clan you're already in -->
+  <div class="view" id="mview-clanmine">
+    <div id="clanMineContent" class="muted">Loading...</div>
+  </div>
+
+  <!-- Browse & join: dedicated search/create screen + clan leaderboard -->
+  <div class="view" id="mview-clanbrowse">
+    <div class="card"><h3 class="sec" style="margin-top:0;">Create new clan</h3><label>Clan name</label><input id="newClanName"><label>Tag (unique)</label><input id="newClanTag"><button class="btn" onclick="createClanUI()">Create</button></div>
+    <div class="card"><h3 class="sec" style="margin-top:0;">Search clan</h3><input id="clanSearchQ" placeholder="Name or tag"><button class="btn secondary" onclick="searchClanUI()">Search</button><div id="clanSearchResults"></div></div>
+    <h3 class="sec">Top clans leaderboard</h3>
+    <div id="clanLeaderboard" class="muted"></div>
+  </div>
+
+  <div class="view" id="mview-clanchat">
+    <div class="card" style="display:flex;flex-direction:column;height:calc(100vh - 190px);padding:10px;">
+      <div id="clanChatMessages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px;"></div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <input type="text" id="clanChatInput" placeholder="Message..." style="flex:1;margin:0;" onkeydown="if(event.key==='Enter')sendClanChatMessage()">
+        <button class="btn" style="width:auto;padding:0 18px;" onclick="sendClanChatMessage()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="view" id="mview-clanwar">
+    <div id="clanWarContent" class="muted">Loading...</div>
   </div>
 
   <!-- Card game -->
@@ -1220,7 +1266,8 @@
 
 <!-- ============ Rewards (Visual Category Hub) ============ -->
 <section class="page" id="page-rewards">
-  <div class="hub-head amber">
+  <div class="view active" id="rtab-hub">
+  <div class="hub-head amber" id="hubHead-rewards">
     <div class="hub-head-ic">🎁</div>
     <div>
       <div class="hub-head-t">Reward Center</div>
@@ -1229,44 +1276,33 @@
   </div>
 
   <div class="hub-sec"><div><div class="hub-sec-t">Daily</div><div class="hub-sec-s">Fresh activities, reset every day</div></div></div>
-  <div class="grid2">
-    <div class="gcard amber has-img" onclick="showPage('games');showGView('events');showEventsSub('quests');">
-      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span>
-      <span class="t">Daily Tasks</span>
-      <span class="s" id="rewardsQuestsStat">Complete activities and earn</span>
-    </div>
-    <div class="gcard gold has-img" onclick="showPage('more');showMView('raffle');">
-      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span>
-      <span class="t">Daily Wheel</span>
-      <span class="s">Spin & Win</span>
-    </div>
+  <div class="gcard amber has-img featured" style="margin-top:2px;" onclick="showPage('games');showGView('events');showEventsSub('quests');">
+    <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+    <span class="t">Daily Tasks</span>
+    <span class="s" id="rewardsQuestsStat">Complete activities and earn</span>
   </div>
 
   <div class="hub-sec"><div><div class="hub-sec-t">Earn</div><div class="hub-sec-s">Bring friends, complete quests</div></div></div>
-  <div class="grid2">
-    <div class="gcard orange has-img" onclick="showPage('tasks');">
-      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6"/></svg></span>
-      <span class="t">Tasks</span>
-      <span class="s">Do it and get a reward</span>
-    </div>
-    <div class="gcard pink has-img" onclick="showPage('profile');setTimeout(()=>document.getElementById('referralCard')?.scrollIntoView({behavior:'smooth'}),300);">
-      <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.8 19a6.2 6.2 0 0 1 12.4 0"/><path d="M16 8.2a3 3 0 1 1 3.6 4.4M18 14.5c2 .5 3.3 1.9 3.6 4"/></svg></span>
-      <span class="t">Referral</span>
-      <span class="s">Invite & Earn</span>
-    </div>
+  <div class="gcard orange has-img" style="margin-top:2px;" onclick="showPage('tasks');">
+    <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6"/></svg></span>
+    <span class="t">Tasks</span>
+    <span class="s">Do it and get a reward</span>
   </div>
-  <div class="hscroll">
-    <div class="mini-card" onclick="showPage('profile');setTimeout(()=>document.getElementById('referralCard')?.scrollIntoView({behavior:'smooth'}),300);"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2M11 10.5a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2z"/></svg></div><div class="t">Invite Friends</div><div class="s">Share your link</div></div>
+  <div class="card" style="margin-top:12px;">
+    <div class="row" style="align-items:center;">
+      <span class="muted" style="display:flex;align-items:center;gap:8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.8 19a6.2 6.2 0 0 1 12.4 0"/><path d="M16 8.2a3 3 0 1 1 3.6 4.4M18 14.5c2 .5 3.3 1.9 3.6 4"/></svg> Referral — <span id="referralSubtitle">Invite & Earn</span></span>
+    </div>
+    <div id="referralCard" style="margin-top:8px;">Loading...</div>
   </div>
 
   <div class="hub-sec"><div><div class="hub-sec-t">Events</div><div class="hub-sec-s">Limited-time giveaways & auctions</div></div></div>
   <div class="grid2">
-    <div class="gcard violet has-img" onclick="showPage('more');showMView('raffle');">
+    <div class="gcard violet has-img" onclick="showMView('raffle');">
       <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7z"/></svg></span>
       <span class="t">Giveaways & Raffles</span>
       <span class="s">Join the ticket pool to win</span>
     </div>
-    <div class="gcard blue has-img" onclick="showPage('more');showMView('auction');">
+    <div class="gcard blue has-img" onclick="showPage('market');showMarketTab('auction');">
       <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l5 5M14.5 3l6.5 6.5-2 2L12 5zM3 21l6-1.5L18 10 14 6 4.5 15z"/></svg></span>
       <span class="t">Special Events</span>
       <span class="s">Time-limited flash auctions</span>
@@ -1293,11 +1329,51 @@
       <span class="s" id="rewardsBpStat">Seasonal reward track</span>
     </div>
   </div>
+  </div>
+
+  <!-- Big wheel / raffle (moved here from the old More hub) -->
+  <div class="view" id="mview-raffle">
+    <div id="raffleListBox">
+      <div id="raffleContent" class="muted">Loading...</div>
+      <h3 class="sec">🏆 Recent winners</h3>
+      <div id="raffleWinnersLog" class="muted">Loading...</div>
+    </div>
+    <div id="raffleDetailBox" style="display:none;">
+      <button class="btn secondary" onclick="closeRaffleDetail()">‹ Back</button>
+      <h3 class="sec" id="rdTitle" style="margin-top:10px;"></h3>
+      <div class="card" style="display:flex;gap:8px;text-align:center;">
+        <div style="flex:1;"><div style="font-size:19px;font-weight:800;" id="rdParticipants">0</div><div class="muted" style="font-size:11px;">Participants</div></div>
+        <div style="flex:1;"><div style="font-size:19px;font-weight:800;" id="rdGiftsCount">0</div><div class="muted" style="font-size:11px;">Gifts</div></div>
+        <div style="flex:1;"><div style="font-size:15px;font-weight:800;" id="rdCountdown">—</div><div class="muted" style="font-size:11px;" id="rdCountdownLabel">Ends in</div></div>
+      </div>
+      <div class="card"><div class="row"><span class="muted">🎫 Total ticket pool</span><b id="rdTicketPool">0</b></div></div>
+      <div id="rdGiftsRow" class="hscroll"></div>
+      <div id="rdWinnersBox" style="display:none;">
+        <h3 class="sec">🏆 Winners</h3>
+        <div id="rdWinnersList"></div>
+      </div>
+      <div id="rdJoinBox" class="card" style="display:none;">
+        <div id="rdRequirement" class="muted" style="margin-bottom:8px;"></div>
+        <div class="row"><span class="muted">Your tickets</span><b id="rdMyTickets">0</b></div>
+        <div id="rdReferralRow" class="row muted" style="display:none;font-size:12px;"><span id="rdReferralText"></span></div>
+        <div id="rdStepperRow" style="display:flex;align-items:center;gap:10px;margin:10px 0;">
+          <button class="btn secondary" style="padding:8px 16px;" onclick="rdStep(-1)">−</button>
+          <input type="number" id="rdQty" value="1" min="1" style="text-align:center;flex:1;">
+          <button class="btn secondary" style="padding:8px 16px;" onclick="rdStep(1)">+</button>
+        </div>
+        <button class="btn gold" style="width:100%;" id="rdJoinBtn" onclick="rdJoinOrBuy()">🎟 Join giveaway</button>
+      </div>
+      <h3 class="sec">👥 Top entries</h3>
+      <div id="rdTopEntries" class="muted">Loading...</div>
+      <p class="muted" id="rdSeedHash" style="margin-top:10px;font-size:10px;word-break:break-all;"></p>
+    </div>
+  </div>
 </section>
 
 <!-- ============ Shop ============ -->
 <section class="page" id="page-shop">
-  <div class="hub-head amber">
+  <div class="view active" id="stab-hub">
+  <div class="hub-head amber" id="hubHead-shop">
     <div class="hub-head-ic">🏪</div>
     <div>
       <div class="hub-head-t">Lando Gifts Store</div>
@@ -1327,17 +1403,26 @@
   <div id="productList"><div class="skeleton"></div></div>
 
   <div class="hub-sec"><div><div class="hub-sec-t">Customization</div><div class="hub-sec-s">Avatars & profile items</div></div></div>
-  <div class="gcard pink has-img" style="margin-top:14px;" onclick="showPage('more');showMView('avatars')">
+  <div class="gcard pink has-img" style="margin-top:14px;" onclick="showMView('avatars')">
     <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.2 8.2 0 1 0 0 16.4c1.3 0 1.9-1 1.2-2-.5-.7-.1-1.7.8-1.7h1.7A4.3 4.3 0 0 0 20 12a8.4 8.4 0 0 0-8-8.5z"/><circle cx="8" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg></span>
     <span class="t">Avatars</span>
     <span class="s">Profile items</span>
+  </div>
+  </div>
+
+  <!-- Avatar shop (moved here from the old More hub) -->
+  <div class="view" id="mview-avatars">
+    <h3 class="sec" style="margin-top:0;">My avatars</h3>
+    <div id="myAvatarsList" class="muted">Loading...</div>
+    <h3 class="sec">Avatar shop</h3>
+    <div id="avatarShopList" class="muted">Loading...</div>
   </div>
 </section>
 
 <!-- ============ Market (P2P gift) ============ -->
 <section class="page" id="page-market">
   <div class="view active" id="mtab-hub">
-    <div class="hub-head pink">
+    <div class="hub-head pink" id="hubHead-market">
       <div class="hub-head-ic">🛒</div>
       <div>
         <div class="hub-head-t">Market</div>
@@ -1358,15 +1443,15 @@
 
     <div class="hub-sec"><div><div class="hub-sec-t">Cards</div><div class="hub-sec-s">Trade collectible game cards</div></div></div>
     <div class="grid2">
-      <div class="gcard violet" onclick="showPage('more');showMView('cardmarket')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t">Card Marketplace</span><span class="s">Browse other players' cards</span></div>
-      <div class="gcard violet" onclick="showPage('more');showMView('cardmarket');setTimeout(()=>document.getElementById('cmMyCardToList')?.scrollIntoView({behavior:'smooth'}),300);"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5v15M4.5 12h15"/></svg></span><span class="t">Sell Cards</span><span class="s">List one of your cards</span></div>
+      <div class="gcard violet" onclick="showMarketTab('cardmarket')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t">Card Marketplace</span><span class="s">Browse other players' cards</span></div>
+      <div class="gcard violet" onclick="showMarketTab('cardmarket');setTimeout(()=>document.getElementById('cmMyCardToList')?.scrollIntoView({behavior:'smooth'}),300);"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5v15M4.5 12h15"/></svg></span><span class="t">Sell Cards</span><span class="s">List one of your cards</span></div>
     </div>
     <div class="hscroll">
-      <div class="mini-card" onclick="showPage('more');showMView('cardmarket');setTimeout(()=>document.getElementById('myCardMarketListings')?.scrollIntoView({behavior:'smooth'}),300);"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div><div class="t">My Card Listings</div><div class="s">Cards you're selling</div></div>
+      <div class="mini-card" onclick="showMarketTab('cardmarket');setTimeout(()=>document.getElementById('myCardMarketListings')?.scrollIntoView({behavior:'smooth'}),300);"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div><div class="t">My Card Listings</div><div class="s">Cards you're selling</div></div>
     </div>
 
     <div class="hub-sec"><div><div class="hub-sec-t">Auctions</div><div class="hub-sec-s">Bid before time runs out</div></div></div>
-    <div class="gcard blue has-img" style="margin-top:14px;" onclick="showPage('more');showMView('auction')">
+    <div class="gcard blue has-img" style="margin-top:14px;" onclick="showMarketTab('auction')">
       <span class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l5 5M14.5 3l6.5 6.5-2 2L12 5zM3 21l6-1.5L18 10 14 6 4.5 15z"/></svg></span>
       <span class="t">Live Auctions</span>
       <span class="s">Flash auctions — place your bid</span>
@@ -1443,12 +1528,50 @@
     <h3 class="sec">Your watches</h3>
     <div id="watchList" class="muted">Loading...</div>
   </div>
+
+  <!-- Live Auctions (moved here from the old More hub) -->
+  <div class="view" id="mview-auction">
+    <div id="auctionsList2" class="muted">Loading...</div>
+  </div>
+
+  <!-- Card Marketplace (moved here from the old More hub) -->
+  <div class="view" id="mview-cardmarket">
+    <div class="card">
+      <h3 class="sec" style="margin-top:0;">List a card for sale</h3>
+      <p class="muted">Pick one of your cards. While it's listed, this card can't be used in battle, upgraded, or gifted.</p>
+      <select id="cmMyCardToList" onchange="onCmCardPick()"></select>
+      <div id="cmPriceGuidance" class="muted" style="display:none;margin:8px 0;padding:10px 12px;border-radius:12px;background:var(--surface2);"></div>
+      <label>Price (LNDC)</label>
+      <input type="number" id="cmListPrice" min="0.01" step="0.01" placeholder="e.g. 50000">
+      <button class="btn" onclick="createCardMarketListingUI()">➕ List for sale</button>
+    </div>
+    <h3 class="sec">My listings</h3>
+    <div id="myCardMarketListings" class="muted">Loading...</div>
+    <h3 class="sec">Marketplace (other players' cards)</h3>
+    <div class="card" style="padding:10px 12px;">
+      <div class="row2">
+        <div><label style="font-size:11px;">Sort by</label>
+          <select id="cmSort" onchange="renderCardMarketBoard()">
+            <option value="new_desc">Newest first</option>
+            <option value="new_asc">Oldest first</option>
+            <option value="price_asc">Price: low to high</option>
+            <option value="price_desc">Price: high to low</option>
+            <option value="power_asc">Power: low to high</option>
+            <option value="power_desc">Power: high to low</option>
+          </select>
+        </div>
+        <div><label style="font-size:11px;">Card</label><select id="cmFilterCard" onchange="renderCardMarketBoard()"><option value="">All cards</option></select></div>
+      </div>
+    </div>
+    <div id="cardMarketBoard" class="muted">Loading...</div>
+  </div>
+
 </section>
 
 <!-- ============ Leaderboard ============ -->
 <section class="page" id="page-leaderboard">
   <div class="view active" id="ltab-hub">
-    <div class="hub-head amber">
+    <div class="hub-head amber" id="hubHead-leaderboard">
       <div class="hub-head-ic">🏆</div>
       <div>
         <div class="hub-head-t">Leaderboard</div>
@@ -1520,7 +1643,7 @@
 
 <!-- ============ Wallet ============ -->
 <section class="page" id="page-wallet">
-  <div class="hub-head cyan">
+  <div class="hub-head cyan" id="hubHead-wallet">
     <div class="hub-head-ic">💳</div>
     <div>
       <div class="hub-head-t">Wallet</div>
@@ -1630,6 +1753,7 @@
 
 <!-- ============ Profile ============ -->
 <section class="page" id="page-profile">
+  <div class="view active" id="ptab-hub">
   <div class="card" style="text-align:center;">
     <div style="width:76px;height:76px;border-radius:50%;background:#1c2233;display:flex;align-items:center;justify-content:center;font-size:30px;margin:4px auto 8px;border:3px solid var(--p1);" id="profileAvatarCircle">🙂</div>
     <div style="font-weight:800;font-size:15px;" id="profileName">-</div>
@@ -1642,8 +1766,8 @@
   <div class="grid2">
     <div class="gcard blue" onclick="showPage('games');showGView('cardgame');setTimeout(()=>showGameSub('mycards'),50);"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="12" height="15" rx="2" transform="rotate(-8 9 14)"/><rect x="8" y="4" width="12" height="15" rx="2"/></svg></span><span class="t">My Cards</span><span class="s">Your card collection</span></div>
     <div class="gcard pink" onclick="showPage('market');showMarketTab('mine');"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span class="t">My Gifts</span><span class="s">Your listings</span></div>
-    <div class="gcard violet" onclick="showPage('more');showMView('avatars')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.2 8.2 0 1 0 0 16.4c1.3 0 1.9-1 1.2-2-.5-.7-.1-1.7.8-1.7h1.7A4.3 4.3 0 0 0 20 12a8.4 8.4 0 0 0-8-8.5z"/><circle cx="8" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg></span><span class="t">My Avatars</span><span class="s">Owned & shop</span></div>
-    <div class="gcard teal" onclick="showPage('more');showMView('album')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 15l4.5-4.5 3 3 5.5-5.5 4 4"/></svg></span><span class="t">Collection</span><span class="s">Album progress</span></div>
+    <div class="gcard violet" onclick="showPage('shop');showMView('avatars')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.2 8.2 0 1 0 0 16.4c1.3 0 1.9-1 1.2-2-.5-.7-.1-1.7.8-1.7h1.7A4.3 4.3 0 0 0 20 12a8.4 8.4 0 0 0-8-8.5z"/><circle cx="8" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg></span><span class="t">My Avatars</span><span class="s">Owned & shop</span></div>
+    <div class="gcard teal" onclick="showMView('album')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 15l4.5-4.5 3 3 5.5-5.5 4 4"/></svg></span><span class="t">Collection</span><span class="s">Album progress</span></div>
   </div>
 
   <div class="hub-sec"><div><div class="hub-sec-t">Progress</div><div class="hub-sec-s">Achievements & stats</div></div></div>
@@ -1651,15 +1775,6 @@
     <div class="gcard purple" onclick="showPage('achievements')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="5.5"/><path d="M9 13.2 7.3 20l4.7-2.5 4.7 2.5-1.7-6.8"/></svg></span><span class="t">Achievements</span><span class="s">Pin your badges</span></div>
     <div class="gcard orange" onclick="showPage('leaderboard')"><span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z"/><path d="M12 13.5V16M9.5 21h5"/></svg></span><span class="t">Statistics</span><span class="s">Ranks & scores</span></div>
   </div>
-
-  <div class="hub-sec"><div><div class="hub-sec-t">Earn</div><div class="hub-sec-s">Invite friends & claim tasks</div></div></div>
-  <div class="menu-row" onclick="showPage('games');showGView('events');">
-    <span class="mic">🎁</span><div class="mtxt"><div class="mt">Daily tasks</div><div class="ms">Claim quest rewards</div></div><span class="arrow">‹</span>
-  </div>
-  <div class="menu-row" onclick="document.getElementById('referralCard').scrollIntoView({behavior:'smooth'})">
-    <span class="mic">👥</span><div class="mtxt"><div class="mt">Invite friends</div><div class="ms" id="referralSubtitle">Referral commission</div></div><span class="arrow">‹</span>
-  </div>
-  <div class="card" id="referralCard">Loading...</div>
 
   <div class="hub-sec"><div><div class="hub-sec-t">Account</div><div class="hub-sec-s">Your account details</div></div></div>
   <div class="menu-row" onclick="openAboutPage()">
@@ -1677,150 +1792,11 @@
   <div class="menu-row" onclick="toast('Thanks for your support 🙏')"><span class="mic">⭐</span><div class="mtxt"><div class="mt">Rate the app</div></div><span class="arrow">‹</span></div>
 
   <button class="btn danger" style="margin-top:16px;" onclick="tg?.close && tg.close()">Exit mini app</button>
-</section>
-
-
-<!-- ============ More ============ -->
-<section class="page" id="page-more">
-  <div class="view active" id="mview-hub">
-    <h3 class="sec" style="margin-top:0;">Premium features</h3>
-    <div class="menu-row" onclick="showMView('auction')"><span class="mic">⚡</span><div class="mtxt"><div class="mt">Flash auction</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="showMView('clan')"><span class="mic">🏰</span><div class="mtxt"><div class="mt">Clan</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="showMView('album')"><span class="mic">🎯</span><div class="mtxt"><div class="mt">Collection album</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="showMView('cardmarket')"><span class="mic">🛒</span><div class="mtxt"><div class="mt">Card Marketplace</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="showMView('avatars')"><span class="mic">🎨</span><div class="mtxt"><div class="mt">Avatar shop</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="showPage('tasks')"><span class="mic">✅</span><div class="mtxt"><div class="mt">Tasks</div><div class="ms">Do it and get a reward</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="showMView('raffle')"><span class="mic">🎟</span><div class="mtxt"><div class="mt">Big wheel</div><div class="ms">Prize raffle</div></div><span class="arrow">‹</span></div>
-    <h3 class="sec">Info</h3>
-    <div class="menu-row" onclick="openInfoPage('guide','📖 Guide')"><span class="mic">📖</span><div class="mtxt"><div class="mt">Guide</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="openInfoPage('faq','❓ FAQ')"><span class="mic">❓</span><div class="mtxt"><div class="mt">FAQ</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="openInfoPage('rules','📋 Rules & terms')"><span class="mic">📋</span><div class="mtxt"><div class="mt">Rules & terms</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="toast('Thanks for your support 🙏')"><span class="mic">⭐</span><div class="mtxt"><div class="mt">Rate the app</div></div><span class="arrow">‹</span></div>
-    <div class="menu-row" onclick="toast('No news right now')"><span class="mic">📢</span><div class="mtxt"><div class="mt">News & announcements</div></div><span class="arrow">‹</span></div>
   </div>
 
-  <div class="view" id="mview-auction">
-    <div id="auctionsList2" class="muted">Loading...</div>
-  </div>
-
-  <div class="view" id="mview-clan">
-    <div class="section-banner" id="clanBanner">
-      <div class="section-banner-ribbon">🏰 Clans</div>
-      <div class="section-banner-desc">Join a clan or build one of your own — team up in clan wars and compete together.</div>
-    </div>
-    <div class="icon-grid">
-      <div class="icon-grid-item" onclick="showMView('clanmine')"><div class="icon-grid-ic">🏰</div><div class="icon-grid-t">My clan</div></div>
-      <div class="icon-grid-item" onclick="showMView('clanbrowse')"><div class="icon-grid-ic">🔎</div><div class="icon-grid-t">Browse & join</div></div>
-      <div class="icon-grid-item" onclick="showMView('clanwar')"><div class="icon-grid-ic">⚔️</div><div class="icon-grid-t">Clan war</div></div>
-      <div class="icon-grid-item" onclick="showMView('clanchat')"><div class="icon-grid-ic">💬</div><div class="icon-grid-t">Chat</div></div>
-    </div>
-    <div id="clanQuickPreview" class="muted">Loading...</div>
-  </div>
-
-  <!-- My clan: dedicated profile screen (info, bank, members) — only for the clan you're already in -->
-  <div class="view" id="mview-clanmine">
-    <div id="clanMineContent" class="muted">Loading...</div>
-  </div>
-
-  <!-- Browse & join: dedicated search/create screen + clan leaderboard -->
-  <div class="view" id="mview-clanbrowse">
-    <div class="card"><h3 class="sec" style="margin-top:0;">Create new clan</h3><label>Clan name</label><input id="newClanName"><label>Tag (unique)</label><input id="newClanTag"><button class="btn" onclick="createClanUI()">Create</button></div>
-    <div class="card"><h3 class="sec" style="margin-top:0;">Search clan</h3><input id="clanSearchQ" placeholder="Name or tag"><button class="btn secondary" onclick="searchClanUI()">Search</button><div id="clanSearchResults"></div></div>
-    <h3 class="sec">Top clans leaderboard</h3>
-    <div id="clanLeaderboard" class="muted"></div>
-  </div>
-
-  <div class="view" id="mview-clanchat">
-    <div class="card" style="display:flex;flex-direction:column;height:calc(100vh - 190px);padding:10px;">
-      <div id="clanChatMessages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px;"></div>
-      <div style="display:flex;gap:6px;margin-top:8px;">
-        <input type="text" id="clanChatInput" placeholder="Message..." style="flex:1;margin:0;" onkeydown="if(event.key==='Enter')sendClanChatMessage()">
-        <button class="btn" style="width:auto;padding:0 18px;" onclick="sendClanChatMessage()">➤</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="view" id="mview-clanwar">
-    <div id="clanWarContent" class="muted">Loading...</div>
-  </div>
-
-  <div class="view" id="mview-raffle">
-    <div id="raffleListBox">
-      <div id="raffleContent" class="muted">Loading...</div>
-      <h3 class="sec">🏆 Recent winners</h3>
-      <div id="raffleWinnersLog" class="muted">Loading...</div>
-    </div>
-    <div id="raffleDetailBox" style="display:none;">
-      <button class="btn secondary" onclick="closeRaffleDetail()">‹ Back</button>
-      <h3 class="sec" id="rdTitle" style="margin-top:10px;"></h3>
-      <div class="card" style="display:flex;gap:8px;text-align:center;">
-        <div style="flex:1;"><div style="font-size:19px;font-weight:800;" id="rdParticipants">0</div><div class="muted" style="font-size:11px;">Participants</div></div>
-        <div style="flex:1;"><div style="font-size:19px;font-weight:800;" id="rdGiftsCount">0</div><div class="muted" style="font-size:11px;">Gifts</div></div>
-        <div style="flex:1;"><div style="font-size:15px;font-weight:800;" id="rdCountdown">—</div><div class="muted" style="font-size:11px;" id="rdCountdownLabel">Ends in</div></div>
-      </div>
-      <div class="card"><div class="row"><span class="muted">🎫 Total ticket pool</span><b id="rdTicketPool">0</b></div></div>
-      <div id="rdGiftsRow" class="hscroll"></div>
-      <div id="rdWinnersBox" style="display:none;">
-        <h3 class="sec">🏆 Winners</h3>
-        <div id="rdWinnersList"></div>
-      </div>
-      <div id="rdJoinBox" class="card" style="display:none;">
-        <div id="rdRequirement" class="muted" style="margin-bottom:8px;"></div>
-        <div class="row"><span class="muted">Your tickets</span><b id="rdMyTickets">0</b></div>
-        <div id="rdReferralRow" class="row muted" style="display:none;font-size:12px;"><span id="rdReferralText"></span></div>
-        <div id="rdStepperRow" style="display:flex;align-items:center;gap:10px;margin:10px 0;">
-          <button class="btn secondary" style="padding:8px 16px;" onclick="rdStep(-1)">−</button>
-          <input type="number" id="rdQty" value="1" min="1" style="text-align:center;flex:1;">
-          <button class="btn secondary" style="padding:8px 16px;" onclick="rdStep(1)">+</button>
-        </div>
-        <button class="btn gold" style="width:100%;" id="rdJoinBtn" onclick="rdJoinOrBuy()">🎟 Join giveaway</button>
-      </div>
-      <h3 class="sec">👥 Top entries</h3>
-      <div id="rdTopEntries" class="muted">Loading...</div>
-      <p class="muted" id="rdSeedHash" style="margin-top:10px;font-size:10px;word-break:break-all;"></p>
-    </div>
-  </div>
-
+  <!-- Collection album (moved here from the old More hub) -->
   <div class="view" id="mview-album">
     <div id="albumsList" class="muted">Loading...</div>
-  </div>
-
-  <div class="view" id="mview-cardmarket">
-    <div class="card">
-      <h3 class="sec" style="margin-top:0;">List a card for sale</h3>
-      <p class="muted">Pick one of your cards. While it's listed, this card can't be used in battle, upgraded, or gifted.</p>
-      <select id="cmMyCardToList" onchange="onCmCardPick()"></select>
-      <div id="cmPriceGuidance" class="muted" style="display:none;margin:8px 0;padding:10px 12px;border-radius:12px;background:var(--surface2);"></div>
-      <label>Price (LNDC)</label>
-      <input type="number" id="cmListPrice" min="0.01" step="0.01" placeholder="e.g. 50000">
-      <button class="btn" onclick="createCardMarketListingUI()">➕ List for sale</button>
-    </div>
-    <h3 class="sec">My listings</h3>
-    <div id="myCardMarketListings" class="muted">Loading...</div>
-    <h3 class="sec">Marketplace (other players' cards)</h3>
-    <div class="card" style="padding:10px 12px;">
-      <div class="row2">
-        <div><label style="font-size:11px;">Sort by</label>
-          <select id="cmSort" onchange="renderCardMarketBoard()">
-            <option value="new_desc">Newest first</option>
-            <option value="new_asc">Oldest first</option>
-            <option value="price_asc">Price: low to high</option>
-            <option value="price_desc">Price: high to low</option>
-            <option value="power_asc">Power: low to high</option>
-            <option value="power_desc">Power: high to low</option>
-          </select>
-        </div>
-        <div><label style="font-size:11px;">Card</label><select id="cmFilterCard" onchange="renderCardMarketBoard()"><option value="">All cards</option></select></div>
-      </div>
-    </div>
-    <div id="cardMarketBoard" class="muted">Loading...</div>
-  </div>
-
-  <div class="view" id="mview-avatars">
-    <h3 class="sec" style="margin-top:0;">My avatars</h3>
-    <div id="myAvatarsList" class="muted">Loading...</div>
-    <h3 class="sec">Avatar shop</h3>
-    <div id="avatarShopList" class="muted">Loading...</div>
   </div>
 </section>
 
@@ -1897,8 +1873,8 @@ function haptic(kind) {
 }
 let CONFIG = {};
 let CURRENT_PAGE = 'games';
-let PAGE_BEFORE_SUBPAGE = 'more'; // the page we were on before going to tasks/info — the back button returns there
-// Real navigation history for nested child views (e.g. games > card game > ... , more > clan > clan war).
+let PAGE_BEFORE_SUBPAGE = 'games'; // the page we were on before going to tasks/info — the back button returns there
+// Real navigation history for nested child views (e.g. games > card game > ... , games > clan > clan war).
 // Each entry remembers exactly which view to return to, so the back button always steps back one
 // level at a time instead of always jumping straight to that section's hub — and never leaves a
 // stale/removed step behind that a second click could get stuck on.
@@ -2012,11 +1988,11 @@ async function uploadImage(file) {
 }
 
 /* ================= page navigation ================= */
-const PAGE_TITLES = { games:'Lando Gifts', rewards:'Rewards', shop:'Shop', market:'User market', leaderboard:'Leaderboard', wallet:'Wallet', profile:'Profile', more:'More', tasks:'Tasks', achievements:'My achievements' };
+const PAGE_TITLES = { games:'Lando Gifts', rewards:'Rewards', shop:'Shop', market:'User market', leaderboard:'Leaderboard', wallet:'Wallet', profile:'Profile', tasks:'Tasks', achievements:'My achievements' };
 function showPage(name) {
   haptic('light');
-  if (name !== 'more') stopClanChat(); // leaving the "more" section entirely — no reason to keep polling clan chat in the background
-  if (name !== 'more') clearInterval(RD_TIMER); // leaving "more" also leaves any open raffle detail — stop its countdown timer
+  stopClanChat(); // leaving wherever clan chat lived — no reason to keep polling it in the background
+  clearInterval(RD_TIMER); // also stop any open raffle detail's countdown timer
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.querySelectorAll('.navitem').forEach(b => b.classList.toggle('active', b.dataset.page === name));
@@ -2028,14 +2004,15 @@ function showPage(name) {
   if (name !== 'tasks' && name !== 'info' && name !== 'achievements') { PAGE_BEFORE_SUBPAGE = name; NAV_STACK = []; } // switching top-level tabs starts a fresh nested-navigation history
   CURRENT_PAGE = name;
   window.scrollTo(0, 0);
-  if (name === 'shop') loadShop();
+  // Every hub always opens on its own landing view, even if you'd drilled into a sub-view (e.g.
+  // Clan, Card Marketplace, Avatar shop) the last time you were here.
+  if (name === 'shop') { showShopHub(); loadShop(); }
   if (name === 'market') { showMarketTab('hub'); loadMarket(); }
   if (name === 'leaderboard') { showLbTab('hub'); loadLeaderboardPage(); }
   if (name === 'wallet') { loadWallet(); loadCurrency(); }
-  if (name === 'profile') loadProfile();
-  if (name === 'games') loadGamesHub();
-  if (name === 'more') loadMoreHub();
-  if (name === 'rewards') loadRewardsHub();
+  if (name === 'profile') { showProfileHub(); loadProfile(); }
+  if (name === 'games') { showGView('hub'); loadGamesHub(); }
+  if (name === 'rewards') { showRewardsHub(); loadRewardsHub(); }
   if (name === 'tasks') loadTasks();
   if (name === 'achievements') loadAchievements();
 }
@@ -2044,7 +2021,7 @@ function showPage(name) {
 function showGView(name) {
   if (!NAV_GOING_BACK) haptic('light');
   if (!NAV_GOING_BACK) {
-    const activeEl = document.querySelector('#page-games .view.active');
+    const activeEl = document.querySelector('#page-games .view.active[id^="gview-"]');
     const prevName = activeEl ? activeEl.id.replace('gview-', '') : null;
     if (prevName && prevName !== name && prevName !== 'hub') NAV_STACK.push({ type: 'gview', name: prevName });
   }
@@ -2063,19 +2040,22 @@ function showEventsSub(name) {
   document.querySelectorAll('#gview-events .pill').forEach(b => b.classList.toggle('active', b.dataset.esub === name));
 }
 
-/* More: sub-pages */
+/* Sub-views that were formerly gathered under a single "More" page — clan, raffle, card
+   marketplace, auctions, the collection album and the avatar shop. Each now lives physically
+   inside the hub page it belongs to (Games, Rewards, Market, Profile, Shop), so this function
+   scopes itself to whichever hub page is currently open (CURRENT_PAGE) instead of a fixed parent. */
 function showMView(name) {
   if (name !== 'raffle') clearInterval(RD_TIMER); // leaving the raffle section — stop its countdown timer if one was running
+  const container = document.getElementById('page-' + CURRENT_PAGE);
   if (!NAV_GOING_BACK) {
-    const activeEl = document.querySelector('#page-more .view.active');
+    const activeEl = container ? container.querySelector('.view.active[id^="mview-"]') : null;
     const prevName = activeEl ? activeEl.id.replace('mview-', '') : null;
-    if (prevName && prevName !== name && prevName !== 'hub') NAV_STACK.push({ type: 'mview', name: prevName });
+    if (prevName && prevName !== name) NAV_STACK.push({ type: 'mview', name: prevName });
   }
-  if (name === 'hub') NAV_STACK = []; // back at the section hub — nothing left to step back through
-  document.querySelectorAll('#page-more .view').forEach(v => v.classList.remove('active'));
+  if (container) container.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('mview-' + name).classList.add('active');
   const titles = { auction:'Flash auction', clan:'Clan', clanmine:'My clan', clanbrowse:'Browse & join', clanwar:'⚔️ Clan war', clanchat:'💬 Clan chat', album:'Collection album', cardmarket:'Card Marketplace', avatars:'Avatar shop', raffle:'🎟 Big wheel' };
-  document.getElementById('headerTitle').textContent = name === 'hub' ? 'More' : titles[name];
+  document.getElementById('headerTitle').textContent = titles[name] || 'Lando Gifts';
   if (name === 'auction') loadAuctions();
   if (name === 'clan') loadClan();
   if (name === 'clanmine') loadClanMine();
@@ -2089,7 +2069,7 @@ function showMView(name) {
 }
 function headerBack() {
   // Step back through the nested-navigation history one level at a time (e.g. clan war -> clan,
-  // not straight to the "more" hub) when there's a recorded step to return to.
+  // not straight to that hub's landing view) when there's a recorded step to return to.
   if (NAV_STACK.length) {
     const step = NAV_STACK.pop();
     NAV_GOING_BACK = true;
@@ -2099,7 +2079,6 @@ function headerBack() {
     return;
   }
   if (CURRENT_PAGE === 'games') showGView('hub');
-  else if (CURRENT_PAGE === 'more') showMView('hub');
   else if (CURRENT_PAGE === 'market') {
     const active = document.querySelector('#page-market .view.active');
     if (active && active.id !== 'mtab-hub') showMarketTab('hub'); else showPage('games');
@@ -2108,15 +2087,37 @@ function headerBack() {
     const active = document.querySelector('#page-leaderboard .view.active');
     if (active && active.id !== 'ltab-hub') showLbTab('hub'); else showPage('games');
   }
-  else if (CURRENT_PAGE === 'tasks' || CURRENT_PAGE === 'info') showPage(PAGE_BEFORE_SUBPAGE || 'more');
+  else if (CURRENT_PAGE === 'rewards') {
+    const active = document.querySelector('#page-rewards .view.active');
+    if (active && active.id !== 'rtab-hub') showRewardsHub(); else showPage('games');
+  }
+  else if (CURRENT_PAGE === 'profile') {
+    const active = document.querySelector('#page-profile .view.active');
+    if (active && active.id !== 'ptab-hub') showProfileHub(); else showPage('games');
+  }
+  else if (CURRENT_PAGE === 'shop') {
+    const active = document.querySelector('#page-shop .view.active');
+    if (active && active.id !== 'stab-hub') showShopHub(); else showPage('games');
+  }
+  else if (CURRENT_PAGE === 'tasks' || CURRENT_PAGE === 'info') showPage(PAGE_BEFORE_SUBPAGE || 'games');
   else showPage('games');
 }
 
 /* Market: tabs */
 function showMarketTab(name) {
+  // Auctions and the Card Marketplace are full sub-views (moved here from the old More hub) —
+  // hand those off to the shared mview system instead of the flat buy/sell/mine/watch tabs.
+  if (name === 'auction' || name === 'cardmarket') {
+    const tabs = document.querySelector('#page-market .toptabs');
+    if (tabs) tabs.style.display = 'none';
+    document.querySelectorAll('#page-market .toptabs button').forEach(b => b.classList.remove('active'));
+    showMView(name);
+    return;
+  }
   document.querySelectorAll('#page-market .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mtab-' + name).classList.add('active');
   document.querySelectorAll('#page-market .toptabs button').forEach(b => b.classList.toggle('active', b.dataset.mtab === name));
+  document.getElementById('headerTitle').textContent = name === 'hub' ? 'Market' : 'User market';
   // The Gift Market's own Buy/Sell/My consignments/Watch tab bar only makes sense once you're
   // inside the Gift Market feature — on the Market Hub landing screen it stays hidden.
   const tabs = document.querySelector('#page-market .toptabs');
@@ -2135,6 +2136,28 @@ function showLbTab(name) {
   const banner = document.getElementById('leaderboardBanner');
   if (tabs) tabs.style.display = name === 'hub' ? 'none' : 'flex';
   if (banner) banner.style.display = name === 'hub' ? 'none' : 'block';
+}
+
+/* Rewards / Profile / Shop: each hosts exactly one sub-view (moved here from the old More hub) —
+   Big wheel, Collection album, and the Avatar shop respectively. These simply return to that
+   page's own landing view; showMView() handles activating the sub-view itself. */
+function showRewardsHub() {
+  document.querySelectorAll('#page-rewards .view').forEach(v => v.classList.remove('active'));
+  document.getElementById('rtab-hub').classList.add('active');
+  document.getElementById('headerTitle').textContent = 'Rewards';
+  NAV_STACK = [];
+}
+function showProfileHub() {
+  document.querySelectorAll('#page-profile .view').forEach(v => v.classList.remove('active'));
+  document.getElementById('ptab-hub').classList.add('active');
+  document.getElementById('headerTitle').textContent = 'Profile';
+  NAV_STACK = [];
+}
+function showShopHub() {
+  document.querySelectorAll('#page-shop .view').forEach(v => v.classList.remove('active'));
+  document.getElementById('stab-hub').classList.add('active');
+  document.getElementById('headerTitle').textContent = 'Shop';
+  NAV_STACK = [];
 }
 
 async function loadMe() {
@@ -3409,7 +3432,7 @@ async function loadAuctions() {
   // we refresh from the server every few seconds to keep the last bidder and price live
   AUCTION_POLL = setInterval(async () => {
     if (document.hidden) return;
-    if (!document.getElementById('page-more')?.classList.contains('active') && !document.getElementById('page-games')?.classList.contains('active')) return;
+    if (!document.getElementById('page-market')?.classList.contains('active') && !document.getElementById('page-games')?.classList.contains('active')) return;
     try {
       const fresh = await api('/api/auctions');
       AUCTION_LIST_CACHE = fresh.auctions;
@@ -4049,7 +4072,6 @@ async function loadProfile() {
     const fill = document.getElementById('xpBarFill');
     if (fill) fill.style.width = pct + '%';
   }));
-  loadReferral();
 }
 async function doCheckinUI() {
   const r = await api('/api/rank/checkin', { method: 'POST' });
@@ -4253,9 +4275,6 @@ async function loadLeagueBoard(league) {
   renderLeagueBoard(leaderboard, null);
 }
 
-/* ================= More: hub ================= */
-function loadMoreHub() { /* static, no action needed */ }
-
 /* ================= Rewards hub (Visual Category Hub) ================= */
 async function loadRewardsHub() {
   try {
@@ -4269,6 +4288,7 @@ async function loadRewardsHub() {
     const el = document.getElementById('rewardsBpStat');
     if (el) el.textContent = s.config.enabled ? `Tier ${s.progress.currentTier} — claim your track` : 'Seasonal reward track';
   } catch (e) {}
+  loadReferral(); // the referral card now lives only here — Profile no longer shows its own copy
 }
 
 // Applies admin-set custom design images (hub shortcut tiles + section banners) on top of the
@@ -4284,6 +4304,14 @@ function applyUiImages() {
   }
   const bannerMap = { banner_clan: 'clanBanner', banner_battlepass: 'battlepassBanner', banner_events: 'eventsBanner', card_missions: 'missionsBanner', card_leaderboard: 'leaderboardBanner' };
   for (const [key, elId] of Object.entries(bannerMap)) {
+    const el = document.getElementById(elId);
+    const url = images[key];
+    if (el && url) { el.classList.add('has-img'); el.style.backgroundImage = `url('${url}')`; }
+  }
+  // Each of the 7 hub headers (Rewards/Market/Shop/Game/Leaderboard/Wallet) can have its own
+  // admin-chosen banner photo behind the icon/title bar.
+  const headMap = { hub_head_rewards: 'hubHead-rewards', hub_head_market: 'hubHead-market', hub_head_shop: 'hubHead-shop', hub_head_game: 'hubHead-game', hub_head_leaderboard: 'hubHead-leaderboard', hub_head_wallet: 'hubHead-wallet' };
+  for (const [key, elId] of Object.entries(headMap)) {
     const el = document.getElementById(elId);
     const url = images[key];
     if (el && url) { el.classList.add('has-img'); el.style.backgroundImage = `url('${url}')`; }
