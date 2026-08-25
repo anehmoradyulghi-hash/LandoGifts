@@ -696,100 +696,211 @@
   .chest-prize-extra-icon { font-size:16px; width:26px; text-align:center; }
 
   /* ---------- Tower War interactive map ---------- */
+  /* The whole Tower War map screen (header, league selector, map counter, the map itself, and the
+     collapsible info panel) is one fixed-position "shell" filling the space between the sticky app
+     header and the bottom nav — the closest a mini app can get to a real full-screen map, while
+     keeping all of that chrome (not just the raw map) always in view. */
+  .tw-shell {
+    position:fixed; top:56px; left:0; right:0; bottom:70px; z-index:30;
+    display:flex; flex-direction:column; background:#0a0814;
+  }
+  .tw-shell .tw-header, .tw-shell .tw-league-panel, .tw-shell .tw-mapcounter { margin-left:12px; margin-right:12px; }
+  .tw-shell .tw-header { margin-top:10px; }
   .warmap-viewport {
-    position:relative; width:100%; height:min(58vh, 480px); border-radius:16px; overflow:hidden;
+    position:relative; flex:1; min-height:0; width:auto; margin:8px 12px 0; border-radius:16px; overflow:hidden;
     background:
       radial-gradient(900px 500px at 15% 8%, rgba(139,92,246,.22), transparent 60%),
       radial-gradient(700px 500px at 90% 85%, rgba(59,130,246,.16), transparent 55%),
+      radial-gradient(600px 400px at 50% 100%, rgba(90,40,160,.14), transparent 60%),
       linear-gradient(160deg,#171029,#0a0814 70%);
     border:1px solid var(--border); touch-action:none; -webkit-user-select:none; user-select:none;
-    transition:height .25s ease, border-radius .25s ease;
+    transition:border-radius .25s ease;
   }
-  /* Full-screen mode: fills everything between the sticky top bar and the bottom nav — the closest
-     thing to "full screen" a mini app can offer while keeping navigation reachable. */
-  .warmap-viewport.fullscreen {
-    position:fixed; top:56px; left:0; right:0; bottom:70px; height:auto; width:100%;
-    z-index:30; border-radius:0; border:none;
-  }
+  /* Very faint grid + drifting fog/zone tint — a strategy-map backdrop, not a busy texture. */
   .warmap-viewport::before {
-    content:''; position:absolute; inset:0; opacity:.3; pointer-events:none;
+    content:''; position:absolute; inset:0; opacity:.28; pointer-events:none;
     background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
     background-size:44px 44px;
   }
   .warmap-viewport::after {
     content:''; position:absolute; inset:0; pointer-events:none;
     background:
-      radial-gradient(2px 2px at 8% 22%, rgba(255,255,255,.55), transparent),
-      radial-gradient(2px 2px at 82% 12%, rgba(255,255,255,.4), transparent),
-      radial-gradient(1.5px 1.5px at 34% 68%, rgba(255,255,255,.35), transparent),
-      radial-gradient(1.5px 1.5px at 68% 78%, rgba(255,255,255,.3), transparent),
-      radial-gradient(1.5px 1.5px at 92% 55%, rgba(255,255,255,.3), transparent),
-      radial-gradient(1.5px 1.5px at 15% 88%, rgba(255,255,255,.25), transparent);
+      radial-gradient(2px 2px at 8% 22%, rgba(255,255,255,.5), transparent),
+      radial-gradient(2px 2px at 82% 12%, rgba(255,255,255,.38), transparent),
+      radial-gradient(1.5px 1.5px at 34% 68%, rgba(255,255,255,.32), transparent),
+      radial-gradient(1.5px 1.5px at 68% 78%, rgba(255,255,255,.28), transparent),
+      radial-gradient(1.5px 1.5px at 92% 55%, rgba(255,255,255,.28), transparent),
+      radial-gradient(1.5px 1.5px at 15% 88%, rgba(255,255,255,.22), transparent),
+      radial-gradient(1.5px 1.5px at 45% 35%, rgba(255,255,255,.2), transparent);
     opacity:.6;
   }
-  .warmap-world { position:absolute; top:0; left:0; width:1000px; height:1000px; transform-origin:0 0; will-change:transform; }
+  .warmap-world {
+    position:absolute; top:0; left:0; width:1000px; height:1000px; transform-origin:0 0; will-change:transform;
+    background-size:cover; background-position:center;
+  }
+  /* A handful of soft, low-contrast "zone" tints scattered across the world layer — reads as
+     different terrain regions without adding any real visual weight or extra DOM. */
+  .warmap-world::before {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:
+      radial-gradient(260px 220px at 12% 15%, rgba(124,58,237,.10), transparent 70%),
+      radial-gradient(300px 240px at 78% 10%, rgba(37,99,235,.09), transparent 70%),
+      radial-gradient(280px 260px at 20% 82%, rgba(20,184,166,.06), transparent 70%),
+      radial-gradient(320px 280px at 85% 78%, rgba(217,119,6,.07), transparent 70%),
+      radial-gradient(260px 220px at 50% 48%, rgba(255,215,0,.05), transparent 70%);
+  }
+
+  /* ---- Tower: a small fantasy castle drawn in SVG (never an emoji), tinted by tier. Kept
+     deliberately simple — a handful of shapes, no raster images — so it stays cheap to render
+     even with a hundred of them on screen (zoomed out, only the castle + a tiny name tag show;
+     the full player badge appears once you're zoomed in / after tapping). ---- */
   .warmap-tower {
-    position:absolute; width:52px; height:58px; margin-left:-26px; margin-top:-26px;
+    position:absolute; width:64px; height:82px; margin-left:-32px; margin-top:-46px;
     display:flex; flex-direction:column; align-items:center; cursor:pointer; z-index:1;
   }
-  .warmap-tower .glow {
-    position:absolute; top:2px; left:50%; transform:translateX(-50%); width:38px; height:38px; border-radius:50%;
-    background:radial-gradient(circle, rgba(148,120,255,.35), transparent 70%); pointer-events:none;
+  .warmap-tower .tw-ring {
+    position:absolute; top:14px; left:50%; transform:translateX(-50%); width:52px; height:52px; border-radius:50%;
+    border:1.5px solid rgba(148,120,255,.35); pointer-events:none;
   }
-  .warmap-tower .icon-wrap {
-    position:relative; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    background:linear-gradient(150deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
-    border:1.5px solid rgba(255,255,255,.18); box-shadow:0 3px 8px rgba(0,0,0,.45);
+  .warmap-tower .tw-svg { position:relative; width:52px; height:52px; filter:drop-shadow(0 3px 6px rgba(0,0,0,.55)); }
+  .warmap-tower .tw-svg svg { width:100%; height:100%; display:block; }
+  .warmap-tower .tw-base { fill:#241a3a; }
+  .warmap-tower .tw-wall { fill:#5b4a86; }
+  .warmap-tower .tw-wall-dark { fill:#40325f; }
+  .warmap-tower .tw-roof { fill:#8a6bd8; }
+  .warmap-tower .tw-roof-dark { fill:#6a4fb8; }
+  .warmap-tower .tw-window { fill:#ffd76b; opacity:.85; }
+  .warmap-tower .tw-flag { fill:#e5484d; }
+  /* Basic (level 1-2) */
+  .warmap-tower.tier-basic .tw-wall { fill:#4a4560; } .warmap-tower.tier-basic .tw-wall-dark { fill:#332f45; }
+  .warmap-tower.tier-basic .tw-roof { fill:#6b6485; } .warmap-tower.tier-basic .tw-roof-dark { fill:#524c6b; }
+  /* Advanced (level 3-5) */
+  .warmap-tower.tier-advanced .tw-wall { fill:#3f6fa8; } .warmap-tower.tier-advanced .tw-wall-dark { fill:#2c4f7d; }
+  .warmap-tower.tier-advanced .tw-roof { fill:#5896d6; } .warmap-tower.tier-advanced .tw-roof-dark { fill:#3f75b0; }
+  /* Elite (level 6-8) */
+  .warmap-tower.tier-elite .tw-wall { fill:#7b3fa8; } .warmap-tower.tier-elite .tw-wall-dark { fill:#582c7d; }
+  .warmap-tower.tier-elite .tw-roof { fill:#a558d6; } .warmap-tower.tier-elite .tw-roof-dark { fill:#8340b0; }
+  .warmap-tower.tier-elite .tw-svg { filter:drop-shadow(0 3px 6px rgba(0,0,0,.55)) drop-shadow(0 0 10px rgba(165,88,214,.35)); }
+  /* Legendary (level 9-10) */
+  .warmap-tower.tier-legendary .tw-wall { fill:#a8822f; } .warmap-tower.tier-legendary .tw-wall-dark { fill:#7d5f1f; }
+  .warmap-tower.tier-legendary .tw-roof { fill:#e8b93f; } .warmap-tower.tier-legendary .tw-roof-dark { fill:#c99a28; }
+  .warmap-tower.tier-legendary .tw-svg { filter:drop-shadow(0 3px 6px rgba(0,0,0,.55)) drop-shadow(0 0 12px rgba(255,215,0,.5)); }
+  .warmap-tower.tier-legendary .tw-ring { border-color:rgba(255,215,0,.4); }
+
+  .warmap-tower .lvl-badge {
+    position:absolute; top:-2px; left:2px; font-size:8.5px; font-weight:800; color:#fff;
+    background:rgba(10,8,20,.85); border:1px solid rgba(255,255,255,.2); border-radius:6px; padding:0px 4px; z-index:2;
   }
-  .warmap-tower .icon { font-size:20px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.6)); line-height:1; }
   .warmap-tower .name {
     font-size:8.5px; font-weight:700; color:#fff; background:rgba(8,6,16,.72); backdrop-filter:blur(2px);
-    padding:1.5px 6px; border-radius:6px; white-space:nowrap; max-width:76px; overflow:hidden; text-overflow:ellipsis; margin-top:3px;
+    padding:1.5px 6px; border-radius:6px; white-space:nowrap; max-width:76px; overflow:hidden; text-overflow:ellipsis; margin-top:1px;
     border:1px solid rgba(255,255,255,.08);
   }
-  .warmap-tower .trophy-badge {
-    position:absolute; bottom:-3px; right:-6px; font-size:8px; font-weight:800; color:#3a2a00;
-    background:linear-gradient(150deg,#ffe9a8,#f5b93f); padding:1px 5px; border-radius:8px;
-    box-shadow:0 1px 3px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.5);
+  .warmap-tower .badge {
+    margin-top:1px; font-size:7.5px; font-weight:700; color:#dcd6f2; background:rgba(8,6,16,.6);
+    padding:1px 5px; border-radius:6px; white-space:nowrap; display:flex; gap:5px;
   }
-  .warmap-tower.me { z-index:3; }
-  .warmap-tower.me .icon-wrap { border-color:rgba(255,215,0,.9); box-shadow:0 0 14px rgba(255,215,0,.55), 0 3px 8px rgba(0,0,0,.5); }
-  .warmap-tower.me .glow { background:radial-gradient(circle, rgba(255,215,0,.45), transparent 70%); width:46px; height:46px; }
-  .warmap-tower.shielded { z-index:2; }
-  .warmap-tower.shielded .icon-wrap { border-color:rgba(96,180,255,.85); box-shadow:0 0 10px rgba(96,180,255,.4); animation:warShieldPulse 2.2s ease-in-out infinite; }
+  .warmap-tower .shield-ring {
+    position:absolute; top:14px; left:50%; transform:translateX(-50%); width:56px; height:56px; border-radius:50%;
+    border:1.5px solid rgba(96,180,255,.85); box-shadow:0 0 10px rgba(96,180,255,.4); pointer-events:none;
+    animation:warShieldPulse 2.2s ease-in-out infinite; display:none;
+  }
+  .warmap-tower.shielded .shield-ring { display:block; }
+  .warmap-tower .shield-tag {
+    display:none; margin-top:1px; font-size:7.5px; font-weight:800; color:#bfe0ff; background:rgba(10,20,40,.7);
+    padding:1px 5px; border-radius:6px; white-space:nowrap;
+  }
+  .warmap-tower.shielded .shield-tag { display:block; }
   @keyframes warShieldPulse { 0%,100% { box-shadow:0 0 8px rgba(96,180,255,.3); } 50% { box-shadow:0 0 16px rgba(96,180,255,.6); } }
-  .warmap-overlay { position:absolute; top:12px; left:12px; right:12px; display:flex; justify-content:space-between; gap:8px; pointer-events:none; z-index:5; }
+  /* The player's own tower — bigger glow ring, crown ornament, gold accents, "YOU" tag. */
+  .warmap-tower.me { z-index:3; width:72px; height:92px; margin-left:-36px; margin-top:-52px; }
+  .warmap-tower.me .tw-svg { width:58px; height:58px; filter:drop-shadow(0 3px 8px rgba(0,0,0,.6)) drop-shadow(0 0 14px rgba(255,215,0,.55)); }
+  .warmap-tower.me .tw-ring { width:62px; height:62px; border-color:rgba(255,215,0,.55); animation:warMeRingSpin 14s linear infinite; }
+  .warmap-tower.me .crown { position:absolute; top:-9px; left:50%; transform:translateX(-50%); font-size:15px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.6)); z-index:2; }
+  .warmap-tower.me .name { color:var(--gold); font-weight:800; border-color:rgba(255,215,0,.3); }
+  @keyframes warMeRingSpin { from { transform:translateX(-50%) rotate(0deg); } to { transform:translateX(-50%) rotate(360deg); } }
+  /* Tap-selected state: brief scale + glow ring while the target sheet is open. */
+  .warmap-tower.selected .tw-svg { transform:scale(1.14); transition:transform .18s ease; }
+  .warmap-tower.selected .tw-ring { border-color:rgba(255,255,255,.6); box-shadow:0 0 14px rgba(255,255,255,.3); }
+
+  .warmap-overlay { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; z-index:5; pointer-events:none; }
   .warmap-badge {
     background:rgba(10,8,20,.72); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.1);
     border-radius:12px; padding:6px 12px; font-size:12px; font-weight:800; letter-spacing:.2px;
-    box-shadow:0 4px 12px rgba(0,0,0,.3);
-  }
-  .warmap-hud {
-    position:absolute; bottom:12px; left:12px; display:flex; gap:8px; z-index:5; pointer-events:none;
-  }
-  .warmap-hud-pill {
-    background:rgba(10,8,20,.72); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.1);
-    border-radius:12px; padding:6px 12px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:5px;
-    box-shadow:0 4px 12px rgba(0,0,0,.3);
+    box-shadow:0 4px 12px rgba(0,0,0,.3); pointer-events:auto;
   }
   .warmap-subnav {
-    position:absolute; top:52px; left:12px; right:12px; display:flex; gap:6px; z-index:5;
+    position:absolute; top:52px; left:10px; right:10px; display:flex; gap:6px; z-index:5;
   }
   .warmap-subnav-btn {
     flex:1; background:rgba(10,8,20,.72); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.1);
     border-radius:12px; padding:8px 6px; font-size:16px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,.3);
   }
-  .warmap-zoom-controls { position:absolute; bottom:12px; right:12px; display:flex; flex-direction:column; gap:8px; z-index:5; }
+  .warmap-zoom-controls { position:absolute; bottom:12px; right:12px; display:flex; flex-direction:column; gap:7px; z-index:5; }
   .warmap-zoom-btn {
-    width:38px; height:38px; border-radius:50%; background:rgba(10,8,20,.78); backdrop-filter:blur(6px);
-    border:1px solid rgba(255,255,255,.12); color:#fff; font-size:19px; font-weight:700;
+    width:34px; height:34px; border-radius:50%; background:rgba(10,8,20,.78); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.12); color:#fff; font-size:17px; font-weight:700;
     display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,.35);
   }
-  .warmap-hint {
-    position:absolute; bottom:12px; left:50%; transform:translateX(-50%); z-index:5; pointer-events:none;
-    font-size:10.5px; color:rgba(255,255,255,.55); background:rgba(10,8,20,.55); padding:4px 10px; border-radius:8px;
-    white-space:nowrap;
+
+  /* ---- Tower War header, map counter, league selector, minimap, bottom info panel ---- */
+  .tw-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding:2px 0 10px; }
+  .tw-header-title { flex:1; min-width:0; }
+  .tw-title { font-size:17px; font-weight:900; letter-spacing:.3px; background:linear-gradient(120deg,#c9b3ff,#8f6bff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .tw-season { font-size:10.5px; color:var(--muted); font-weight:600; margin-top:1px; display:flex; align-items:center; gap:5px; }
+  .tw-season .pill-time { background:rgba(255,255,255,.06); border:1px solid var(--border); border-radius:999px; padding:1px 7px; }
+  .tw-header-me { display:flex; align-items:center; gap:7px; flex:none; }
+  .tw-me-avatar { position:relative; width:32px; height:32px; border-radius:50%; background:#1c2233; display:flex; align-items:center; justify-content:center; font-size:15px; border:2px solid var(--gold); }
+  .tw-me-level { position:absolute; bottom:-4px; right:-4px; font-size:8px; font-weight:800; background:var(--gold); color:#3a2a00; border-radius:999px; padding:0px 4px; border:1px solid rgba(0,0,0,.3); }
+  .tw-me-name { font-size:10px; font-weight:800; color:var(--gold); line-height:1.2; }
+  .tw-me-row { font-size:10.5px; color:#e7e9f2; font-weight:700; display:flex; gap:6px; white-space:nowrap; }
+  .tw-header-league { flex:none; text-align:right; cursor:pointer; }
+  .tw-league-badge { display:flex; align-items:center; gap:5px; background:rgba(255,255,255,.06); border:1px solid var(--border); border-radius:10px; padding:4px 9px; font-size:11px; font-weight:800; }
+  .tw-league-badge .tw-info-ic { opacity:.6; font-size:10px; }
+  .tw-league-rank { font-size:9.5px; color:var(--muted); margin-top:2px; font-weight:700; }
+
+  .tw-league-panel { display:none; margin-bottom:10px; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:8px; }
+  .tw-league-row { display:flex; align-items:center; gap:10px; padding:9px 8px; border-radius:12px; }
+  .tw-league-row + .tw-league-row { margin-top:2px; }
+  .tw-league-row.current { background:linear-gradient(150deg, rgba(255,215,0,.14), rgba(255,215,0,.03)); border:1px solid rgba(255,215,0,.35); }
+  .tw-league-row.locked { opacity:.5; }
+  .tw-league-row .tw-league-ic { font-size:19px; flex:none; }
+  .tw-league-row .tw-league-info { flex:1; min-width:0; }
+  .tw-league-row .tw-league-name { font-size:12.5px; font-weight:800; }
+  .tw-league-row .tw-league-sub { font-size:10px; color:var(--muted); margin-top:1px; }
+  .tw-league-row .tw-league-sub.here { color:var(--gold); font-weight:700; }
+  .tw-league-row .tw-lock { font-size:14px; opacity:.7; }
+
+  .tw-mapcounter { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; padding:8px 12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+  .tw-mapcounter-title { font-size:10px; font-weight:800; letter-spacing:.4px; color:var(--muted); }
+  .tw-mapcounter-count { font-size:11px; font-weight:800; margin-top:2px; }
+  .tw-mapcounter-bar { flex:1; max-width:120px; height:5px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; margin-left:10px; }
+  .tw-mapcounter-fill { height:100%; background:linear-gradient(90deg,#5896d6,#8f6bff); border-radius:999px; transition:width .3s ease; }
+
+  .tw-minimap {
+    position:absolute; bottom:12px; left:12px; width:74px; height:74px; border-radius:12px; z-index:5;
+    background:rgba(10,8,20,.72); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 4px 12px rgba(0,0,0,.35); overflow:hidden;
   }
+  .tw-minimap-dot { position:absolute; width:3px; height:3px; border-radius:50%; background:rgba(148,120,255,.8); }
+  .tw-minimap-dot.me { width:5px; height:5px; background:var(--gold); box-shadow:0 0 4px rgba(255,215,0,.8); }
+  .tw-minimap-viewport { position:absolute; border:1px solid rgba(255,255,255,.55); border-radius:2px; pointer-events:none; }
+
+  .tw-bottom-panel {
+    background:linear-gradient(180deg, rgba(24,18,40,.97), rgba(14,11,24,.99)); border-top:1px solid var(--border); border-top-left-radius:20px; border-top-right-radius:20px;
+    padding:6px 14px calc(10px + env(safe-area-inset-bottom,0px)); position:relative; z-index:2; flex:none;
+  }
+  .tw-bottom-toggle { text-align:center; padding:4px 0 2px; color:var(--muted); font-size:13px; cursor:pointer; }
+  .tw-bottom-content { display:flex; align-items:center; gap:8px; transition:max-height .25s ease, opacity .2s ease; overflow:hidden; }
+  .tw-bottom-content.collapsed { max-height:0; opacity:0; }
+  .tw-bottom-col { flex:1; min-width:0; }
+  .tw-bottom-title { font-size:9.5px; font-weight:800; letter-spacing:.4px; color:var(--muted); margin-bottom:5px; display:flex; align-items:center; gap:5px; justify-content:space-between; }
+  .tw-bottom-row { display:flex; align-items:center; justify-content:space-between; font-size:11.5px; padding:2.5px 0; }
+  .tw-bottom-row b { font-weight:800; }
+  .tw-bottom-shield-ic { flex:none; width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px; background:radial-gradient(circle, rgba(148,120,255,.25), transparent 70%); border:1px solid rgba(148,120,255,.3); }
+
+  .warmap-tower-sheet-target { display:flex; align-items:center; gap:12px; }
+  .warmap-tower-sheet-target .badge-tier { font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; }
   .warsheet { position:fixed; left:0; right:0; bottom:0; z-index:1000; background:var(--surface); border-radius:20px 20px 0 0; border:1px solid var(--border); padding:16px; transform:translateY(110%); transition:transform .25s ease; box-shadow:0 -12px 32px rgba(0,0,0,.4); }
   .warsheet.show { transform:translateY(0); }
   .warsheet-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:999; display:none; }
@@ -1156,52 +1267,102 @@
 
   <!-- Tower War -->
   <div class="view" id="gview-war">
-    <div class="gamehub-stats" id="warStatsRow">
-      <div class="gamehub-stat"><div class="gamehub-stat-ic">🏆</div><div class="gamehub-stat-val" id="warTrophies">-</div><div class="gamehub-stat-label">Trophies</div></div>
-      <div class="gamehub-stat"><div class="gamehub-stat-ic">🏰</div><div class="gamehub-stat-val" id="warTowerLevel">-</div><div class="gamehub-stat-label">Tower level</div></div>
-      <div class="gamehub-stat"><div class="gamehub-stat-ic">🎮</div><div class="gamehub-stat-val" id="warPlaysLeft">-</div><div class="gamehub-stat-label">Games left</div></div>
-    </div>
     <div class="gamehub-nav" id="warPills">
-      <div class="gamehub-tile active" data-wsub="tower" onclick="showWarSub('tower')"><div class="gamehub-tile-ic">🏰</div><div class="gamehub-tile-label">My tower</div></div>
-      <div class="gamehub-tile" data-wsub="attack" onclick="showWarSub('attack')"><div class="gamehub-tile-ic">🗺️</div><div class="gamehub-tile-label">Map</div></div>
+      <div class="gamehub-tile" data-wsub="tower" onclick="showWarSub('tower')"><div class="gamehub-tile-ic">🏰</div><div class="gamehub-tile-label">My tower</div></div>
+      <div class="gamehub-tile active" data-wsub="attack" onclick="showWarSub('attack')"><div class="gamehub-tile-ic">🗺️</div><div class="gamehub-tile-label">Map</div></div>
       <div class="gamehub-tile" data-wsub="leaderboard" onclick="showWarSub('leaderboard')"><div class="gamehub-tile-ic">🏆</div><div class="gamehub-tile-label">Leaderboard</div></div>
       <div class="gamehub-tile" data-wsub="history" onclick="showWarSub('history')"><div class="gamehub-tile-ic">📜</div><div class="gamehub-tile-label">History</div></div>
     </div>
-    <div class="view active" id="wsub-tower">
+    <div class="view" id="wsub-tower">
+      <div class="gamehub-stats" id="warStatsRow">
+        <div class="gamehub-stat"><div class="gamehub-stat-ic">🏆</div><div class="gamehub-stat-val" id="warTrophies">-</div><div class="gamehub-stat-label">Trophies</div></div>
+        <div class="gamehub-stat"><div class="gamehub-stat-ic">🏰</div><div class="gamehub-stat-val" id="warTowerLevel">-</div><div class="gamehub-stat-label">Tower level</div></div>
+        <div class="gamehub-stat"><div class="gamehub-stat-ic">🎮</div><div class="gamehub-stat-val" id="warPlaysLeft">-</div><div class="gamehub-stat-label">Games left</div></div>
+      </div>
+      <button class="btn secondary" style="width:100%;margin:8px 0 14px;" onclick="showWarSub('attack')">🗺️ Back to map</button>
       <div class="card" id="warTowerCard">Loading...</div>
       <h3 class="sec">Defense deck</h3>
       <p class="muted">These cards defend your tower automatically whenever someone attacks you.</p>
       <div id="warDefensePicker" class="muted">Loading cards...</div>
       <button class="btn" style="margin-top:10px;width:100%;" onclick="saveWarDefenseDeck()">💾 Save defense deck</button>
     </div>
-    <div class="view" id="wsub-attack">
-      <div class="warmap-viewport fullscreen" id="warMapViewport">
-        <div class="warmap-world" id="warMapWorld"></div>
-        <div class="warmap-overlay">
-          <div class="warmap-badge" id="warMapLeagueBadge">-</div>
-          <div class="warmap-badge" id="warMapCount">-/-</div>
+    <div class="view active" id="wsub-attack">
+      <div class="tw-shell" id="twShell">
+        <!-- Header: back to hub is the normal app header/back-button; this row is the war-specific
+             identity strip — season countdown, your avatar+trophies+power, and your league+rank. -->
+        <div class="tw-header">
+          <div class="tw-header-title">
+            <div class="tw-title">TOWER WAR</div>
+            <div class="tw-season"><span class="pill-time" id="twSeasonLine">Season · —</span></div>
+          </div>
+          <div class="tw-header-me" onclick="showWarSub('tower')">
+            <div class="tw-me-avatar">🙂<span class="tw-me-level" id="twMeLevel">-</span></div>
+            <div>
+              <div class="tw-me-name">YOU</div>
+              <div class="tw-me-row"><span>🏆</span><span id="twMeTrophies">-</span><span>⚔</span><span id="twMePower">-</span></div>
+            </div>
+          </div>
+          <div class="tw-header-league" onclick="toggleWarLeagueSelector()">
+            <div class="tw-league-badge"><span id="twLeagueIcon">🥉</span><span id="twLeagueLabel">-</span><span class="tw-info-ic">ⓘ</span></div>
+            <div class="tw-league-rank">Rank: #<span id="twLeagueRank">-</span></div>
+          </div>
         </div>
-        <div class="warmap-subnav">
-          <div class="warmap-subnav-btn" onclick="showWarSub('tower')" title="My tower">🏰</div>
-          <div class="warmap-subnav-btn" onclick="showWarSub('leaderboard')" title="Leaderboard">🏆</div>
-          <div class="warmap-subnav-btn" onclick="showWarSub('history')" title="History">📜</div>
+
+        <!-- League selector: tap the badge above to expand this — your current league is highlighted,
+             leagues you haven't reached yet show their trophy requirement and a lock. -->
+        <div class="tw-league-panel" id="twLeaguePanel"></div>
+
+        <div class="tw-mapcounter">
+          <div>
+            <div class="tw-mapcounter-title">TOWER WAR MAP</div>
+            <div class="tw-mapcounter-count"><span id="twPlayerCount">-</span> / <span id="twPlayerCap">-</span> PLAYERS</div>
+          </div>
+          <div class="tw-mapcounter-bar"><div class="tw-mapcounter-fill" id="twMapFill" style="width:0%;"></div></div>
         </div>
-        <div class="warmap-hud">
-          <div class="warmap-hud-pill">🏆 <span id="warMapHudTrophies">-</span></div>
-          <div class="warmap-hud-pill">🎮 <span id="warMapHudPlays">-</span></div>
+
+        <div class="warmap-viewport" id="warMapViewport">
+          <div class="warmap-world" id="warMapWorld"></div>
+          <div class="warmap-subnav">
+            <div class="warmap-subnav-btn" onclick="showWarSub('leaderboard')" title="Leaderboard">🏆</div>
+            <div class="warmap-subnav-btn" onclick="showWarSub('history')" title="History">📜</div>
+          </div>
+          <div class="tw-minimap" id="twMinimap"></div>
+          <div class="warmap-zoom-controls">
+            <div class="warmap-zoom-btn" onclick="warMapZoomBy(1.25)">+</div>
+            <div class="warmap-zoom-btn" onclick="warMapZoomBy(0.8)">−</div>
+            <div class="warmap-zoom-btn" onclick="warMapFitInitial()">⟲</div>
+          </div>
         </div>
-        <div class="warmap-zoom-controls">
-          <div class="warmap-zoom-btn" onclick="warMapZoomBy(1.25)">+</div>
-          <div class="warmap-zoom-btn" onclick="warMapZoomBy(0.8)">−</div>
-          <div class="warmap-zoom-btn" onclick="warMapFitInitial()">⟲</div>
+
+        <!-- Collapsible war-info + your-tower panel — tap the chevron to tuck it away and see more map. -->
+        <div class="tw-bottom-panel">
+          <div class="tw-bottom-toggle" onclick="toggleWarInfoPanel()" id="twBottomToggle">⌃</div>
+          <div class="tw-bottom-content" id="twBottomContent">
+            <div class="tw-bottom-col">
+              <div class="tw-bottom-title">WAR INFO</div>
+              <div class="tw-bottom-row"><span class="muted">⚔ Attacks</span><b id="twAttacks">-</b></div>
+              <div class="tw-bottom-row"><span class="muted">🎁 Loot</span><b id="twLoot">-</b></div>
+              <div class="tw-bottom-row"><span class="muted">🛡 Shield</span><b id="twShieldTime">-</b></div>
+              <div class="tw-bottom-row"><span class="muted">💪 Power</span><b id="twPowerVal">-</b></div>
+            </div>
+            <div class="tw-bottom-shield-ic">🛡</div>
+            <div class="tw-bottom-col">
+              <div class="tw-bottom-title">YOUR TOWER <span class="tw-info-ic" onclick="showWarSub('tower')" style="cursor:pointer;">ⓘ</span></div>
+              <div class="tw-bottom-row"><span class="muted">🛡 Defense</span><b id="twDefense">-</b></div>
+              <div class="tw-bottom-row"><span class="muted">🏆 Trophies</span><b id="twTrophies2">-</b></div>
+              <div class="tw-bottom-row"><span class="muted">🎖 League</span><b id="twLeague2">-</b></div>
+              <div class="tw-bottom-row"><span class="muted">📊 Rank</span><b id="twRank2">-</b></div>
+            </div>
+          </div>
         </div>
-        <div class="warmap-hint">👑 You · 🏰 Others · 🛡 Shielded — pinch/drag to explore, tap to attack</div>
       </div>
     </div>
     <div class="view" id="wsub-leaderboard">
+      <button class="btn secondary" style="width:100%;margin-bottom:14px;" onclick="showWarSub('attack')">🗺️ Back to map</button>
       <div id="warLeaderboardList" class="muted">Loading...</div>
     </div>
     <div class="view" id="wsub-history">
+      <button class="btn secondary" style="width:100%;margin-bottom:14px;" onclick="showWarSub('attack')">🗺️ Back to map</button>
       <div id="warHistoryList" class="muted">Loading...</div>
     </div>
   </div>
@@ -2030,7 +2191,7 @@ function showGView(name) {
   document.getElementById('gview-' + name).classList.add('active');
   document.getElementById('headerTitle').textContent = name === 'hub' ? 'Lando Gifts' : { cardgame:'Card game', war:'⚔️ Tower War', battlepass:'Battle pass', events:'Events' }[name];
   if (name === 'cardgame') { showGameSub('shop'); loadGame(); }
-  if (name === 'war') { showWarSub('tower'); loadWar(); }
+  if (name === 'war') { showWarSub('attack'); loadWar(); }
   if (name === 'battlepass') loadSeason();
   if (name === 'events') { showEventsSub('quests'); loadDailyQuests(); loadAuctions(); }
 }
@@ -3006,6 +3167,19 @@ function showWarSub(name) {
   if (name === 'leaderboard') loadWarLeaderboardTab();
   if (name === 'history') loadWarHistory();
 }
+let WAR_SHIELD_TIMER = null;
+function formatWarDuration(ms, precise) {
+  if (ms <= 0) return precise ? '00:00:00' : '0m';
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (precise) return `${String(h + d * 24).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
 async function loadWar() {
   const status = await api('/api/war/status');
   WAR_STATUS = status;
@@ -3015,6 +3189,75 @@ async function loadWar() {
   document.getElementById('warPlaysLeft').textContent = status.playsRemaining;
   renderWarTowerCard(status);
   renderWarDefensePicker(status.myCards, status.config.deck_size);
+  renderWarHeader(status);
+  renderWarLeagueSelector(status);
+  renderWarBottomPanel(status);
+  try { const rank = await api('/api/rank/me'); document.getElementById('twMeLevel').textContent = rank.level; } catch (e) {}
+}
+function renderWarHeader(status) {
+  document.getElementById('twMeTrophies').textContent = status.trophies.toLocaleString('en-US');
+  document.getElementById('twMePower').textContent = status.defensePower.toLocaleString('en-US');
+  document.getElementById('twLeagueIcon').textContent = status.league.icon || '🏅';
+  document.getElementById('twLeagueLabel').textContent = status.league.label;
+  document.getElementById('twLeagueRank').textContent = status.leagueRank;
+  const seasonEl = document.getElementById('twSeasonLine');
+  if (seasonEl && status.seasonEndsAt) {
+    const remain = new Date(status.seasonEndsAt.replace(' ', 'T') + (status.seasonEndsAt.endsWith('Z') ? '' : 'Z')).getTime() - Date.now();
+    seasonEl.textContent = remain > 0 ? `${formatWarDuration(remain)} left` : 'Ending soon';
+  }
+}
+function renderWarLeagueSelector(status) {
+  const panel = document.getElementById('twLeaguePanel');
+  if (!panel) return;
+  const tiers = [...(status.tiers || [])].sort((a, b) => a.min_trophies - b.min_trophies);
+  let currentKey = tiers[0]?.key;
+  for (const t of tiers) if (status.trophies >= t.min_trophies) currentKey = t.key;
+  panel.innerHTML = tiers.map(t => {
+    const locked = status.trophies < t.min_trophies;
+    const isCurrent = t.key === currentKey;
+    return `
+    <div class="tw-league-row ${isCurrent ? 'current' : ''} ${locked ? 'locked' : ''}">
+      <div class="tw-league-ic">${t.icon || '🏅'}</div>
+      <div class="tw-league-info">
+        <div class="tw-league-name">${t.label}</div>
+        <div class="tw-league-sub ${isCurrent ? 'here' : ''}">${isCurrent ? 'You are here' : (locked ? `${t.min_trophies.toLocaleString('en-US')} Trophies Required` : `${t.min_trophies.toLocaleString('en-US')}+ Trophies`)}</div>
+      </div>
+      ${locked ? '<div class="tw-lock">🔒</div>' : ''}
+    </div>`;
+  }).join('');
+}
+function toggleWarLeagueSelector() {
+  const panel = document.getElementById('twLeaguePanel');
+  if (!panel) return;
+  panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+}
+function renderWarBottomPanel(status) {
+  document.getElementById('twAttacks').textContent = `${status.playsUsed ?? '-'} / ${status.playsTotal ?? '-'}`;
+  document.getElementById('twLoot').textContent = `+${(Math.round((status.totalLooted || 0) * 100) / 100).toLocaleString('en-US')} LNDC`;
+  document.getElementById('twPowerVal').textContent = status.defensePower.toLocaleString('en-US');
+  document.getElementById('twDefense').textContent = status.defensePower.toLocaleString('en-US');
+  document.getElementById('twTrophies2').textContent = status.trophies.toLocaleString('en-US');
+  document.getElementById('twLeague2').textContent = status.league.label;
+  document.getElementById('twRank2').textContent = `#${status.globalRank}`;
+  clearInterval(WAR_SHIELD_TIMER);
+  const shieldEl = document.getElementById('twShieldTime');
+  if (status.shielded && status.shieldUntil) {
+    const until = new Date(status.shieldUntil.replace(' ', 'T') + (status.shieldUntil.endsWith('Z') ? '' : 'Z')).getTime();
+    const tick = () => {
+      const remain = until - Date.now();
+      if (remain <= 0) { shieldEl.textContent = '—'; clearInterval(WAR_SHIELD_TIMER); return; }
+      shieldEl.textContent = formatWarDuration(remain, true);
+    };
+    tick();
+    WAR_SHIELD_TIMER = setInterval(tick, 1000);
+  } else if (shieldEl) shieldEl.textContent = '—';
+}
+function toggleWarInfoPanel() {
+  const content = document.getElementById('twBottomContent');
+  const toggle = document.getElementById('twBottomToggle');
+  if (!content) return;
+  const collapsed = content.classList.toggle('collapsed');
+  if (toggle) toggle.textContent = collapsed ? '⌄' : '⌃';
 }
 function renderWarTowerCard(status) {
   const shieldLine = status.shielded
@@ -3067,18 +3310,49 @@ let WARMAP_DATA = null;
 let warMapScale = 1, warMapX = 0, warMapY = 0;
 const warMapPointers = new Map();
 let warMapLastDist = null, warMapDragging = false, warMapDragStart = null, warMapMoved = false;
+// Purely a *display* bucket for the castle's art style, derived from the tower's real level (never
+// sent anywhere, never affects gameplay) — so if the backend only ever hands out one tower type
+// today, the UI is already wired to show more variety the moment levels start to vary.
+function warTowerTier(level, maxLevel) {
+  const pct = level / (maxLevel || 10);
+  if (pct >= 0.85) return 'legendary';
+  if (pct >= 0.55) return 'elite';
+  if (pct >= 0.25) return 'advanced';
+  return 'basic';
+}
+// A small fantasy castle — two corner turrets, a taller central keep, a flag — drawn once per
+// tower as inline SVG. Cheap on purpose: this same handful of shapes has to render up to ~100
+// times on screen at once, so there's no per-tower network image, just a tint via CSS.
+function warTowerSvg(tier) {
+  const gem = tier === 'legendary' ? '<circle class="tw-window" cx="26" cy="1.1" r="1.5"/>' : '';
+  return `<svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+    <ellipse class="tw-base" cx="26" cy="47" rx="19" ry="3.5"/>
+    <rect class="tw-wall-dark" x="6" y="27" width="10" height="17" rx="1"/>
+    <polygon class="tw-roof-dark" points="11,15 6,27 16,27"/>
+    <rect class="tw-wall-dark" x="36" y="27" width="10" height="17" rx="1"/>
+    <polygon class="tw-roof-dark" points="41,15 36,27 46,27"/>
+    <rect class="tw-wall" x="16" y="19" width="20" height="25" rx="2"/>
+    <polygon class="tw-roof" points="26,5 16,19 36,19"/>
+    <rect class="tw-window" x="23" y="31" width="6" height="7" rx="1"/>
+    <circle class="tw-window" cx="11" cy="31" r="1.5"/>
+    <circle class="tw-window" cx="41" cy="31" r="1.5"/>
+    <rect class="tw-flag" x="25.2" y="1" width="1.6" height="6"/>
+    <polygon class="tw-flag" points="26.8,2 32,3.6 26.8,5.2"/>
+    ${gem}
+  </svg>`;
+}
 async function loadWarMap() {
   const vp = document.getElementById('warMapViewport');
   if (!vp._warMapBound) { warMapBindEvents(vp); vp._warMapBound = true; }
   const data = await api('/api/war/map');
   WARMAP_DATA = data;
-  document.getElementById('warMapLeagueBadge').textContent = `${data.league.icon || ''} ${data.league.label}`;
-  document.getElementById('warMapCount').textContent = `${data.towers.length}/${data.capacity}`;
-  const me = data.towers.find(t => t.isMe);
-  document.getElementById('warMapHudTrophies').textContent = me ? me.trophies : (WAR_STATUS?.trophies ?? '-');
-  document.getElementById('warMapHudPlays').textContent = WAR_STATUS?.playsRemaining ?? '-';
+  document.getElementById('twPlayerCount').textContent = data.towers.length;
+  document.getElementById('twPlayerCap').textContent = data.capacity;
+  const pct = data.capacity ? Math.min(100, Math.round(data.towers.length / data.capacity * 100)) : 0;
+  document.getElementById('twMapFill').style.width = pct + '%';
   renderWarMapTowers();
   warMapFitInitial();
+  renderWarMinimap();
 }
 function renderWarMapTowers() {
   const world = document.getElementById('warMapWorld');
@@ -3090,23 +3364,56 @@ function renderWarMapTowers() {
   // and falls back to the built-in dark battlefield gradient (plain CSS on .warmap-viewport) when unset.
   const bgUrl = CONFIG.uiImages?.war_map;
   world.style.backgroundImage = bgUrl ? `url('${bgUrl}')` : 'none';
-  world.style.backgroundSize = 'cover';
-  world.style.backgroundPosition = 'center';
-  world.innerHTML = WARMAP_DATA.towers.map(t => `
-    <div class="warmap-tower ${t.isMe ? 'me' : ''} ${t.shielded ? 'shielded' : ''}" id="warmapTower-${t.tgId}" style="left:${t.x}px;top:${t.y}px;" onclick="onWarMapTowerTap(${t.tgId})">
-      <div class="glow"></div>
-      <div class="icon-wrap"><div class="icon">${t.isMe ? '👑' : t.shielded ? '🛡' : '🏰'}</div></div>
-      <div class="name">${(t.name || '').replace(/</g, '')}</div>
-      <div class="trophy-badge">🏆${t.trophies}</div>
-    </div>`).join('');
+  const maxLevel = WAR_STATUS?.config?.max_tower_level || 10;
+  world.innerHTML = WARMAP_DATA.towers.map(t => {
+    const tier = warTowerTier(t.towerLevel, maxLevel);
+    const shieldRemain = t.shieldUntil ? new Date(t.shieldUntil.replace(' ', 'T') + (t.shieldUntil.endsWith('Z') ? '' : 'Z')).getTime() - Date.now() : 0;
+    const shieldTag = t.shielded ? `<div class="shield-tag">🛡 ${shieldRemain > 0 ? formatWarDuration(shieldRemain) : 'Shielded'}</div>` : '';
+    return `
+    <div class="warmap-tower tier-${tier} ${t.isMe ? 'me' : ''} ${t.shielded ? 'shielded' : ''}" id="warmapTower-${t.tgId}" style="left:${t.x}px;top:${t.y}px;" onclick="onWarMapTowerTap(${t.tgId})">
+      ${t.isMe ? '<div class="crown">👑</div>' : ''}
+      <div class="shield-ring"></div>
+      <div class="tw-ring"></div>
+      <div class="tw-svg">${warTowerSvg(tier)}</div>
+      <div class="lvl-badge">${t.towerLevel}</div>
+      <div class="name">${t.isMe ? 'YOU' : (t.name || '').replace(/</g, '')}</div>
+      <div class="badge"><span>🏆 ${t.trophies}</span></div>
+      ${shieldTag}
+    </div>`;
+  }).join('');
 }
 function updateWarMapTowerEl(t) {
   const el = document.getElementById(`warmapTower-${t.tgId}`);
   if (!el) return;
-  el.className = `warmap-tower ${t.isMe ? 'me' : ''} ${t.shielded ? 'shielded' : ''}`;
-  el.querySelector('.icon').textContent = t.isMe ? '👑' : t.shielded ? '🛡' : '🏰';
-  el.querySelector('.trophy-badge').textContent = `🏆${t.trophies}`;
-  if (t.isMe) document.getElementById('warMapHudTrophies').textContent = t.trophies;
+  const maxLevel = WAR_STATUS?.config?.max_tower_level || 10;
+  const tier = warTowerTier(t.towerLevel, maxLevel);
+  el.className = `warmap-tower tier-${tier} ${t.isMe ? 'me' : ''} ${t.shielded ? 'shielded' : ''}`;
+  const badgeEl = el.querySelector('.badge'); if (badgeEl) badgeEl.innerHTML = `<span>🏆 ${t.trophies}</span>`;
+  const lvlEl = el.querySelector('.lvl-badge'); if (lvlEl) lvlEl.textContent = t.towerLevel;
+  if (t.isMe) {
+    document.getElementById('twMeTrophies').textContent = t.trophies.toLocaleString('en-US');
+    document.getElementById('twTrophies2').textContent = t.trophies.toLocaleString('en-US');
+  }
+}
+function renderWarMinimap() {
+  const mm = document.getElementById('twMinimap');
+  if (!mm || !WARMAP_DATA) return;
+  const size = WARMAP_DATA.mapSize, box = 74;
+  const dots = WARMAP_DATA.towers.map(t => `<div class="tw-minimap-dot ${t.isMe ? 'me' : ''}" style="left:${(t.x / size * box).toFixed(1)}px;top:${(t.y / size * box).toFixed(1)}px;"></div>`).join('');
+  mm.innerHTML = dots + '<div class="tw-minimap-viewport" id="twMinimapViewport"></div>';
+  updateWarMinimapViewport();
+}
+function updateWarMinimapViewport() {
+  const rect = document.getElementById('twMinimapViewport');
+  const vp = document.getElementById('warMapViewport');
+  if (!rect || !vp || !WARMAP_DATA) return;
+  const size = WARMAP_DATA.mapSize, box = 74;
+  const worldLeft = -warMapX / warMapScale, worldTop = -warMapY / warMapScale;
+  const worldW = vp.clientWidth / warMapScale, worldH = vp.clientHeight / warMapScale;
+  rect.style.left = Math.max(0, Math.min(box, worldLeft / size * box)) + 'px';
+  rect.style.top = Math.max(0, Math.min(box, worldTop / size * box)) + 'px';
+  rect.style.width = Math.max(4, Math.min(box, worldW / size * box)) + 'px';
+  rect.style.height = Math.max(4, Math.min(box, worldH / size * box)) + 'px';
 }
 function warMapClamp() {
   const vp = document.getElementById('warMapViewport');
@@ -3119,6 +3426,7 @@ function warMapClamp() {
 function warMapApplyTransform() {
   const world = document.getElementById('warMapWorld');
   if (world) world.style.transform = `translate(${warMapX}px, ${warMapY}px) scale(${warMapScale})`;
+  updateWarMinimapViewport();
 }
 function warMapFitInitial() {
   const vp = document.getElementById('warMapViewport');
@@ -3191,6 +3499,8 @@ function onWarMapTowerTap(tgId) {
   const t = WARMAP_DATA?.towers.find(x => x.tgId === tgId);
   if (!t) return;
   if (t.isMe) { showWarSub('tower'); return; }
+  document.querySelectorAll('.warmap-tower.selected').forEach(el => el.classList.remove('selected'));
+  document.getElementById(`warmapTower-${tgId}`)?.classList.add('selected');
   openWarTowerSheet(t);
 }
 async function openWarTowerSheet(t) {
@@ -3219,6 +3529,7 @@ async function openWarTowerSheet(t) {
 function closeWarTowerSheet() {
   document.getElementById('warSheetBackdrop').classList.remove('show');
   document.getElementById('warTowerSheet').classList.remove('show');
+  document.querySelectorAll('.warmap-tower.selected').forEach(el => el.classList.remove('selected'));
 }
 function openWarAttackPanel(tgId, name) {
   WAR_ATTACK_TARGET = tgId;
@@ -3257,8 +3568,6 @@ async function confirmWarAttack() {
       ? `🏆 Victory! Looted ${r.lootAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC (+${r.trophyChangeAttacker} 🏆)`
       : `😢 Defeat (${r.trophyChangeAttacker} 🏆)`);
     loadMe(); loadWar();
-    const playsEl = document.getElementById('warMapHudPlays');
-    if (playsEl && WAR_STATUS) playsEl.textContent = Math.max(0, WAR_STATUS.playsRemaining - 1);
     // Patch just the two affected dots instead of reloading the whole map, per the performance rule.
     if (WARMAP_DATA) {
       const me = WARMAP_DATA.towers.find(t => t.isMe);
