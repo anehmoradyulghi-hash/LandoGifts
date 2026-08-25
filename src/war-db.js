@@ -551,6 +551,41 @@ export function resetWarMapPositions() {
   tx();
   return { reassigned };
 }
+// Resets EVERY player's trophies back to the configured starting value (war_config.starting_trophies)
+// — a full ladder reset. Doesn't touch tower level, defense deck, wallet, cards, or season win/loss
+// counters. Positions are re-laid-out afterward since almost everyone's league changes.
+export function resetAllWarTrophies() {
+  const cfg = getWarConfig();
+  let affected = 0;
+  const tx = db.transaction(() => {
+    affected = db.prepare('SELECT COUNT(*) c FROM war_towers').get().c;
+    db.prepare('UPDATE war_towers SET trophies = ?, league_key = NULL, map_x = NULL, map_y = NULL').run(cfg.starting_trophies);
+  });
+  tx();
+  const { reassigned } = resetWarMapPositions();
+  return { affected, reassigned };
+}
+// Resets trophies back to the configured starting value only for players currently placed in the
+// given league (by trophy range — the same membership rule used everywhere else in this file), so
+// e.g. clearing out one league doesn't touch anyone sitting in a different one. A player reset this
+// way will very likely drop to a lower league once positions are re-laid-out below.
+export function resetWarLeagueTrophies(leagueKey) {
+  const cfg = getWarConfig();
+  const tiers = listWarLeagues();
+  const idx = tiers.findIndex(t => t.key === leagueKey);
+  if (idx === -1) throw new Error('Unknown league');
+  const tier = tiers[idx];
+  const nextThreshold = idx < tiers.length - 1 ? tiers[idx + 1].min_trophies : Infinity;
+  let affected = 0;
+  const tx = db.transaction(() => {
+    affected = db.prepare('SELECT COUNT(*) c FROM war_towers WHERE trophies >= ? AND trophies < ?').get(tier.min_trophies, nextThreshold).c;
+    db.prepare('UPDATE war_towers SET trophies = ?, league_key = NULL, map_x = NULL, map_y = NULL WHERE trophies >= ? AND trophies < ?')
+      .run(cfg.starting_trophies, tier.min_trophies, nextThreshold);
+  });
+  tx();
+  const { reassigned } = resetWarMapPositions();
+  return { affected, reassigned };
+}
 
 /* ---------- Admin visibility ---------- */
 export function listRecentWarAttacksAdmin(limit = 50) {

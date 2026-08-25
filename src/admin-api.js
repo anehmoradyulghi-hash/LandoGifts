@@ -47,7 +47,7 @@ import { getLeagueConfig, setLeagueConfig, listLeagues, upsertLeagueTier, delete
 import {
   getWarConfig, setWarConfig, listWarLeagues, upsertWarLeagueTier, deleteWarLeagueTier,
   listWarLeaguePrizesAdmin, upsertWarLeaguePrize, deleteWarLeaguePrize, listRecentWarAttacksAdmin,
-  getWarMapStats, resetWarMapPositions, forceResolveWarSeason,
+  getWarMapStats, resetWarMapPositions, resetAllWarTrophies, resetWarLeagueTrophies, forceResolveWarSeason,
 } from './war-db.js';
 import {
   listRafflesAdmin, getRaffle, createRaffle, updateRaffle, deleteRaffle, cancelRaffle, listRaffleEntries, finishRaffle,
@@ -698,6 +698,16 @@ router.get('/war/attacks', (req, res) => res.json(listRecentWarAttacksAdmin(50))
 router.get('/war/map-stats', (req, res) => res.json(getWarMapStats()));
 router.post('/war/reset-map-positions', (req, res) => {
   try { res.json({ ok: true, ...resetWarMapPositions() }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+// Reset every player's Tower War trophies back to the starting value — a full ladder reset.
+router.post('/war/reset-trophies', (req, res) => {
+  try { res.json({ ok: true, ...resetAllWarTrophies() }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+// Reset trophies back to the starting value only for players currently in one specific league.
+router.post('/war/reset-league-trophies', (req, res) => {
+  try { res.json({ ok: true, ...resetWarLeagueTrophies(req.body.leagueKey) }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 router.post('/war/resolve-season', (req, res) => {
