@@ -142,6 +142,10 @@
   .hub-head.violet .hub-head-ic { background:linear-gradient(150deg,var(--v1),var(--v2)); }
   .hub-head-t { font-size:18px; font-weight:900; line-height:1.25; }
   .hub-head-s { font-size:12px; color:var(--muted); margin-top:2px; }
+  /* Persian strings read right-to-left even though the app's overall layout stays left-to-right
+     (this UI relies on absolute positioning throughout — especially the Tower War map — which
+     would break if the whole document flipped direction). Only translated text itself goes RTL. */
+  body.lang-fa [data-i18n] { direction:rtl; unicode-bidi:isolate; }
   /* Optional admin-chosen banner photo behind a hub header (Rewards/Market/Shop/Game/Leaderboard/Wallet) —
      falls back to the plain icon+text bar above when no image has been set for that hub. */
   .hub-head.has-img { position:relative; background-size:cover; background-position:center; border-radius:20px; padding:16px 14px; overflow:hidden; box-shadow:0 14px 32px -10px rgba(0,0,0,.55); }
@@ -757,69 +761,54 @@
      even with a hundred of them on screen (zoomed out, only the castle + a tiny name tag show;
      the full player badge appears once you're zoomed in / after tapping). ---- */
   .warmap-tower {
-    position:absolute; width:72px; height:92px; margin-left:-36px; margin-top:-50px;
+    position:absolute; width:82px; height:100px; margin-left:-41px; margin-top:-56px;
     display:flex; flex-direction:column; align-items:center; cursor:pointer; z-index:1;
   }
   .warmap-tower .tw-ring {
-    position:absolute; top:16px; left:50%; transform:translateX(-50%); width:60px; height:60px; border-radius:50%;
+    position:absolute; top:18px; left:50%; transform:translateX(-50%); width:64px; height:64px; border-radius:50%;
     border:1.5px solid rgba(168,145,255,.4); pointer-events:none;
   }
-  .warmap-tower .tw-svg { position:relative; width:60px; height:60px; filter:drop-shadow(0 3px 7px rgba(0,0,0,.6)); }
+  .warmap-tower .tw-svg { position:relative; width:64px; height:64px; filter:drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
   .warmap-tower .tw-svg svg { width:100%; height:100%; display:block; }
-  .warmap-tower .tw-base { fill:#2a1f45; }
-  .warmap-tower .tw-wall { fill:#6a5aa0; }
-  .warmap-tower .tw-wall-dark { fill:#4c3d78; }
-  .warmap-tower .tw-roof { fill:#9d7ef0; }
-  .warmap-tower .tw-roof-dark { fill:#7d5cd6; }
-  .warmap-tower .tw-window { fill:#ffe08a; opacity:.95; }
-  .warmap-tower .tw-flag { fill:#f0555c; }
-  /* Basic (level 1-2) */
-  .warmap-tower.tier-basic .tw-wall { fill:#5c5678; } .warmap-tower.tier-basic .tw-wall-dark { fill:#413c58; }
-  .warmap-tower.tier-basic .tw-roof { fill:#847bab; } .warmap-tower.tier-basic .tw-roof-dark { fill:#655d87; }
-  /* Advanced (level 3-5) */
-  .warmap-tower.tier-advanced .tw-wall { fill:#4a80c4; } .warmap-tower.tier-advanced .tw-wall-dark { fill:#345c92; }
-  .warmap-tower.tier-advanced .tw-roof { fill:#6ba8ec; } .warmap-tower.tier-advanced .tw-roof-dark { fill:#4c86cc; }
-  /* Elite (level 6-8) */
-  .warmap-tower.tier-elite .tw-wall { fill:#9048c4; } .warmap-tower.tier-elite .tw-wall-dark { fill:#69349a; }
-  .warmap-tower.tier-elite .tw-roof { fill:#bd6bec; } .warmap-tower.tier-elite .tw-roof-dark { fill:#9c4cd0; }
-  .warmap-tower.tier-elite .tw-svg { filter:drop-shadow(0 3px 7px rgba(0,0,0,.6)) drop-shadow(0 0 12px rgba(189,107,236,.45)); }
-  /* Legendary (level 9-10) */
-  .warmap-tower.tier-legendary .tw-wall { fill:#c79a3a; } .warmap-tower.tier-legendary .tw-wall-dark { fill:#977325; }
-  .warmap-tower.tier-legendary .tw-roof { fill:#ffd35c; } .warmap-tower.tier-legendary .tw-roof-dark { fill:#e6ad2e; }
-  .warmap-tower.tier-legendary .tw-svg { filter:drop-shadow(0 3px 7px rgba(0,0,0,.6)) drop-shadow(0 0 14px rgba(255,215,0,.55)); }
+  /* Elite and legendary castles get an extra colored glow behind the shading gradients already
+     baked into the SVG fills — basic/advanced stay plain so the higher tiers read as more prestigious. */
+  .warmap-tower.tier-elite .tw-svg { filter:drop-shadow(0 4px 8px rgba(0,0,0,.6)) drop-shadow(0 0 12px rgba(189,107,236,.45)); }
+  .warmap-tower.tier-legendary .tw-svg { filter:drop-shadow(0 4px 8px rgba(0,0,0,.6)) drop-shadow(0 0 14px rgba(255,215,0,.55)); }
   .warmap-tower.tier-legendary .tw-ring { border-color:rgba(255,215,0,.45); }
 
-  .warmap-tower .lvl-badge {
-    position:absolute; top:-2px; left:2px; font-size:8.5px; font-weight:800; color:#fff;
-    background:rgba(10,8,20,.85); border:1px solid rgba(255,255,255,.2); border-radius:6px; padding:0px 4px; z-index:2;
+  .warmap-tower .tw-card {
+    margin-top:3px; background:rgba(9,7,18,.82); backdrop-filter:blur(3px); border:1px solid rgba(255,255,255,.1);
+    border-radius:8px; padding:2px 6px 3px; max-width:92px; box-shadow:0 3px 8px rgba(0,0,0,.35);
   }
-  .warmap-tower .name {
-    font-size:8.5px; font-weight:700; color:#fff; background:rgba(8,6,16,.72); backdrop-filter:blur(2px);
-    padding:1.5px 6px; border-radius:6px; white-space:nowrap; max-width:76px; overflow:hidden; text-overflow:ellipsis; margin-top:1px;
-    border:1px solid rgba(255,255,255,.08);
+  .warmap-tower .tw-card-top { display:flex; align-items:center; gap:4px; }
+  .warmap-tower .lvl-chip {
+    font-size:8px; font-weight:800; color:#fff; background:rgba(255,255,255,.14); border-radius:4px;
+    padding:0.5px 4px; flex:none; line-height:1.4;
   }
-  .warmap-tower .badge {
-    margin-top:1px; font-size:7.5px; font-weight:700; color:#dcd6f2; background:rgba(8,6,16,.6);
-    padding:1px 5px; border-radius:6px; white-space:nowrap; display:flex; gap:5px;
+  .warmap-tower .tw-card-name {
+    font-size:8.5px; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.4;
   }
+  .warmap-tower .tw-card-stats { display:flex; gap:7px; font-size:7.5px; font-weight:700; color:#d8d2f0; white-space:nowrap; margin-top:1px; }
+  .warmap-tower .tw-card-shield { display:none; font-size:7.5px; font-weight:800; color:#a8d6ff; white-space:nowrap; margin-top:1px; }
+  .warmap-tower.shielded .tw-card-shield { display:block; }
   .warmap-tower .shield-ring {
-    position:absolute; top:14px; left:50%; transform:translateX(-50%); width:56px; height:56px; border-radius:50%;
-    border:1.5px solid rgba(96,180,255,.85); box-shadow:0 0 10px rgba(96,180,255,.4); pointer-events:none;
-    animation:warShieldPulse 2.2s ease-in-out infinite; display:none;
+    position:absolute; top:16px; left:50%; transform:translateX(-50%); width:68px; height:68px; border-radius:50%;
+    background:radial-gradient(circle at 40% 32%, rgba(160,210,255,.32), rgba(90,160,255,.1) 55%, transparent 75%);
+    border:1.5px solid rgba(120,190,255,.75); box-shadow:0 0 14px rgba(96,180,255,.45), inset 0 0 12px rgba(160,210,255,.25); pointer-events:none;
+    animation:warShieldPulse 2.4s ease-in-out infinite; display:none;
   }
   .warmap-tower.shielded .shield-ring { display:block; }
-  .warmap-tower .shield-tag {
-    display:none; margin-top:1px; font-size:7.5px; font-weight:800; color:#bfe0ff; background:rgba(10,20,40,.7);
-    padding:1px 5px; border-radius:6px; white-space:nowrap;
-  }
-  .warmap-tower.shielded .shield-tag { display:block; }
-  @keyframes warShieldPulse { 0%,100% { box-shadow:0 0 8px rgba(96,180,255,.3); } 50% { box-shadow:0 0 16px rgba(96,180,255,.6); } }
+  @keyframes warShieldPulse { 0%,100% { box-shadow:0 0 10px rgba(96,180,255,.35), inset 0 0 10px rgba(160,210,255,.2); } 50% { box-shadow:0 0 20px rgba(96,180,255,.7), inset 0 0 16px rgba(160,210,255,.35); } }
   /* The player's own tower — bigger glow ring, crown ornament, gold accents, "YOU" tag. */
-  .warmap-tower.me { z-index:3; width:82px; height:104px; margin-left:-41px; margin-top:-58px; }
-  .warmap-tower.me .tw-svg { width:68px; height:68px; filter:drop-shadow(0 3px 9px rgba(0,0,0,.65)) drop-shadow(0 0 16px rgba(255,215,0,.6)); }
-  .warmap-tower.me .tw-ring { width:72px; height:72px; border-color:rgba(255,215,0,.55); animation:warMeRingSpin 14s linear infinite; }
+  .warmap-tower.me { z-index:3; width:96px; height:118px; margin-left:-48px; margin-top:-64px; }
+  .warmap-tower.me .tw-svg { width:80px; height:80px; filter:drop-shadow(0 4px 10px rgba(0,0,0,.65)) drop-shadow(0 0 18px rgba(255,215,0,.6)); }
+  .warmap-tower.me .tw-ring { width:84px; height:84px; border-color:rgba(255,215,0,.55); animation:warMeRingSpin 14s linear infinite; }
+  .warmap-tower.me .tw-ring::before {
+    content:''; position:absolute; inset:-8px; border-radius:50%; border:1px dashed rgba(255,215,0,.3);
+  }
   .warmap-tower.me .crown { position:absolute; top:-9px; left:50%; transform:translateX(-50%); font-size:15px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.6)); z-index:2; }
-  .warmap-tower.me .name { color:var(--gold); font-weight:800; border-color:rgba(255,215,0,.3); }
+  .warmap-tower.me .tw-card { border-color:rgba(255,215,0,.35); }
+  .warmap-tower.me .tw-card-name { color:var(--gold); font-weight:800; }
   @keyframes warMeRingSpin { from { transform:translateX(-50%) rotate(0deg); } to { transform:translateX(-50%) rotate(360deg); } }
   /* Tap-selected state: brief scale + glow ring while the target sheet is open. */
   .warmap-tower.selected .tw-svg { transform:scale(1.14); transition:transform .18s ease; }
@@ -1060,6 +1049,25 @@
 </style>
 </head>
 <body>
+<!-- Shared gradients for the Tower War castle art — defined once and reused via url(#id) from every
+     tower's SVG, so up to ~100 towers on screen share the same gradient defs instead of each
+     duplicating their own (cheap to render, still gives each tier a shaded, painterly look). -->
+<svg width="0" height="0" style="position:absolute;overflow:hidden;" aria-hidden="true">
+  <defs>
+    <linearGradient id="twg-wall-basic" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8079a8"/><stop offset="100%" stop-color="#4c4568"/></linearGradient>
+    <linearGradient id="twg-roof-basic" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#aca2d4"/><stop offset="100%" stop-color="#6d63a0"/></linearGradient>
+    <linearGradient id="twg-wall-advanced" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#6ba3ea"/><stop offset="100%" stop-color="#2f5f9c"/></linearGradient>
+    <linearGradient id="twg-roof-advanced" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#9cc7f7"/><stop offset="100%" stop-color="#3f75c0"/></linearGradient>
+    <linearGradient id="twg-wall-elite" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c17ef2"/><stop offset="100%" stop-color="#6a2fa0"/></linearGradient>
+    <linearGradient id="twg-roof-elite" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#dcabf9"/><stop offset="100%" stop-color="#8f47c9"/></linearGradient>
+    <linearGradient id="twg-wall-legendary" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffe28a"/><stop offset="100%" stop-color="#b8862a"/></linearGradient>
+    <linearGradient id="twg-roof-legendary" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff0ba"/><stop offset="100%" stop-color="#e0a832"/></linearGradient>
+    <linearGradient id="twg-wall-me" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff0b0"/><stop offset="100%" stop-color="#d4a017"/></linearGradient>
+    <linearGradient id="twg-roof-me" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff8dc"/><stop offset="100%" stop-color="#f0c030"/></linearGradient>
+    <radialGradient id="twg-base" cx="50%" cy="35%" r="65%"><stop offset="0%" stop-color="#4a4066"/><stop offset="100%" stop-color="#221a38"/></radialGradient>
+    <radialGradient id="twg-shield-orb" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="rgba(150,200,255,.35)"/><stop offset="70%" stop-color="rgba(90,160,255,.12)"/><stop offset="100%" stop-color="rgba(90,160,255,0)"/></radialGradient>
+  </defs>
+</svg>
 <!-- ============ Boot loading screen ============ -->
 <div id="bootLoader">
   <div id="bootLoaderLogo">🎁</div>
@@ -1119,8 +1127,8 @@
     <div class="hub-head orange" id="hubHead-game">
       <div class="hub-head-ic">🎮</div>
       <div>
-        <div class="hub-head-t">Game Hub</div>
-        <div class="hub-head-s">Choose your battlefield</div>
+        <div class="hub-head-t" data-i18n="hub.game.title">Game Hub</div>
+        <div class="hub-head-s" data-i18n="hub.game.sub">Choose your battlefield</div>
       </div>
     </div>
 
@@ -1422,8 +1430,8 @@
   <div class="hub-head amber" id="hubHead-rewards">
     <div class="hub-head-ic">🎁</div>
     <div>
-      <div class="hub-head-t">Reward Center</div>
-      <div class="hub-head-s">Everything you can claim, spin, or earn today</div>
+      <div class="hub-head-t" data-i18n="hub.rewards.title">Reward Center</div>
+      <div class="hub-head-s" data-i18n="hub.rewards.sub">Everything you can claim, spin, or earn today</div>
     </div>
   </div>
 
@@ -1528,8 +1536,8 @@
   <div class="hub-head amber" id="hubHead-shop">
     <div class="hub-head-ic">🏪</div>
     <div>
-      <div class="hub-head-t">Lando Gifts Store</div>
-      <div class="hub-head-s">The official shop — buy directly from Lando Gifts</div>
+      <div class="hub-head-t" data-i18n="hub.shop.title">Lando Gifts Store</div>
+      <div class="hub-head-s" data-i18n="hub.shop.sub">The official shop — buy directly from Lando Gifts</div>
     </div>
   </div>
 
@@ -1577,8 +1585,8 @@
     <div class="hub-head pink" id="hubHead-market">
       <div class="hub-head-ic">🛒</div>
       <div>
-        <div class="hub-head-t">Market</div>
-        <div class="hub-head-s">Buy & sell with players — user to user</div>
+        <div class="hub-head-t" data-i18n="hub.market.title">Market</div>
+        <div class="hub-head-s" data-i18n="hub.market.sub">Buy & sell with players — user to user</div>
       </div>
     </div>
 
@@ -1726,8 +1734,8 @@
     <div class="hub-head amber" id="hubHead-leaderboard">
       <div class="hub-head-ic">🏆</div>
       <div>
-        <div class="hub-head-t">Leaderboard</div>
-        <div class="hub-head-s">See how you stack up</div>
+        <div class="hub-head-t" data-i18n="hub.leaderboard.title">Leaderboard</div>
+        <div class="hub-head-s" data-i18n="hub.leaderboard.sub">See how you stack up</div>
       </div>
     </div>
 
@@ -1798,8 +1806,8 @@
   <div class="hub-head cyan" id="hubHead-wallet">
     <div class="hub-head-ic">💳</div>
     <div>
-      <div class="hub-head-t">Wallet</div>
-      <div class="hub-head-s">Balances, deposits & transfers — premium & secure</div>
+      <div class="hub-head-t" data-i18n="hub.wallet.title">Wallet</div>
+      <div class="hub-head-s" data-i18n="hub.wallet.sub">Balances, deposits & transfers — premium & secure</div>
     </div>
   </div>
 
@@ -1969,23 +1977,23 @@
 <!-- ---------- bottom navigation ---------- -->
 <nav class="bottomnav">
   <button class="navitem" data-page="rewards" onclick="showPage('rewards')">
-    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9.5" width="17" height="10.5" rx="1.8"/><path d="M3.5 13.5h17"/><path d="M12 9.5v10.5"/><path d="M12 9.5c-3 0-4.2-4.5-1.8-4.5 1.8 0 1.8 3 1.8 4.5zM12 9.5c3 0 4.2-4.5 1.8-4.5-1.8 0-1.8 3-1.8 4.5z"/></svg></span><span>Rewards</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9.5" width="17" height="10.5" rx="1.8"/><path d="M3.5 13.5h17"/><path d="M12 9.5v10.5"/><path d="M12 9.5c-3 0-4.2-4.5-1.8-4.5 1.8 0 1.8 3 1.8 4.5zM12 9.5c3 0 4.2-4.5 1.8-4.5-1.8 0-1.8 3-1.8 4.5z"/></svg></span><span data-i18n="nav.rewards">Rewards</span><span class="label-underline"></span>
   </button>
   <button class="navitem" data-page="market" onclick="showPage('market')">
-    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/><path d="M3 4h2l2.3 11a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.2L20 8H6.2"/></svg></span><span>Market</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/><path d="M3 4h2l2.3 11a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.2L20 8H6.2"/></svg></span><span data-i18n="nav.market">Market</span><span class="label-underline"></span>
   </button>
   <button class="navitem" data-page="shop" onclick="showPage('shop')">
-    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-4.6A2 2 0 0 1 7.3 3h9.4a2 2 0 0 1 1.9 1.4L20 9"/><path d="M4 9h16v1.5a3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3V9z"/><path d="M6 13.5V20a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-6.5"/><path d="M10 21v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"/></svg></span><span>Shop</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-4.6A2 2 0 0 1 7.3 3h9.4a2 2 0 0 1 1.9 1.4L20 9"/><path d="M4 9h16v1.5a3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1-3 3 3 3 0 0 1-3-3V9z"/><path d="M6 13.5V20a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-6.5"/><path d="M10 21v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"/></svg></span><span data-i18n="nav.shop">Shop</span><span class="label-underline"></span>
   </button>
   <div class="navcenter" onclick="showPage('games')"><span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="11" rx="4.5"/><path d="M7 10.3v4.4M4.9 12.5h4.2"/><circle cx="16" cy="10.6" r="1" fill="currentColor" stroke="none"/><circle cx="18.5" cy="13.1" r="1" fill="currentColor" stroke="none"/></svg></span></div>
   <button class="navitem" data-page="leaderboard" onclick="showPage('leaderboard')">
-    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z"/><path d="M7 5H4.3a1 1 0 0 0-1 1.1c.2 2.7 2.1 4 4.2 4.4M17 5h2.7a1 1 0 0 1 1 1.1c-.2 2.7-2.1 4-4.2 4.4"/><path d="M12 13.5V16M9.5 21h5M10 17.5h4V19a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-1.5z"/></svg></span><span>Leaderboard</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z"/><path d="M7 5H4.3a1 1 0 0 0-1 1.1c.2 2.7 2.1 4 4.2 4.4M17 5h2.7a1 1 0 0 1 1 1.1c-.2 2.7-2.1 4-4.2 4.4"/><path d="M12 13.5V16M9.5 21h5M10 17.5h4V19a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-1.5z"/></svg></span><span data-i18n="nav.leaderboard">Leaderboard</span><span class="label-underline"></span>
   </button>
   <button class="navitem" data-page="wallet" onclick="showPage('wallet')">
-    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.2A2 2 0 0 1 5.5 5h12a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2V7.2z"/><path d="M16.5 12.2h2.6a1.4 1.4 0 0 1 0 2.8h-2.6a1.9 1.9 0 0 1 0-3.8z"/><path d="M3.5 8.7h13.5"/></svg></span><span>Wallet</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.2A2 2 0 0 1 5.5 5h12a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2V7.2z"/><path d="M16.5 12.2h2.6a1.4 1.4 0 0 1 0 2.8h-2.6a1.9 1.9 0 0 1 0-3.8z"/><path d="M3.5 8.7h13.5"/></svg></span><span data-i18n="nav.wallet">Wallet</span><span class="label-underline"></span>
   </button>
   <button class="navitem" data-page="profile" onclick="showPage('profile')">
-    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></span><span>Profile</span><span class="label-underline"></span>
+    <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></span><span data-i18n="nav.profile">Profile</span><span class="label-underline"></span>
   </button>
 </nav>
 
@@ -2014,6 +2022,48 @@ document.addEventListener('input', (e) => {
 const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
 const initData = tg?.initData || '';
+
+// ---- Language: Persian if the person's Telegram client is set to Persian, English otherwise.
+// Telegram hands this to us directly on initDataUnsafe.user.language_code (e.g. "fa", "en", "ru"…) —
+// a real signal from the client, not a guess — so there's nothing to ask the person about.
+const LANG = (tg?.initDataUnsafe?.user?.language_code || navigator.language || 'en').toLowerCase().startsWith('fa') ? 'fa' : 'en';
+// Translation dictionary. Only the highest-traffic strings (bottom nav + every hub's header) are
+// covered so far — everything else still falls back to English via t()'s fallback below. Add more
+// keys here over time; nothing else needs to change to pick them up.
+const I18N = {
+  en: {
+    'nav.rewards': 'Rewards', 'nav.market': 'Market', 'nav.shop': 'Shop', 'nav.leaderboard': 'Leaderboard', 'nav.wallet': 'Wallet', 'nav.profile': 'Profile',
+    'page.games': 'Lando Gifts', 'page.rewards': 'Rewards', 'page.shop': 'Shop', 'page.market': 'User market', 'page.leaderboard': 'Leaderboard', 'page.wallet': 'Wallet', 'page.profile': 'Profile', 'page.tasks': 'Tasks', 'page.achievements': 'My achievements',
+    'hub.rewards.title': 'Reward Center', 'hub.rewards.sub': 'Everything you can claim, spin, or earn today',
+    'hub.market.title': 'Market', 'hub.market.sub': 'Buy & sell with players — user to user',
+    'hub.shop.title': 'Lando Gifts Store', 'hub.shop.sub': 'The official shop — buy directly from Lando Gifts',
+    'hub.game.title': 'Game Hub', 'hub.game.sub': 'Choose your battlefield',
+    'hub.leaderboard.title': 'Leaderboard', 'hub.leaderboard.sub': 'See how you stack up',
+    'hub.wallet.title': 'Wallet', 'hub.wallet.sub': 'Balances, deposits & transfers — premium & secure',
+  },
+  fa: {
+    'nav.rewards': 'جوایز', 'nav.market': 'بازار', 'nav.shop': 'فروشگاه', 'nav.leaderboard': 'رتبه‌بندی', 'nav.wallet': 'کیف پول', 'nav.profile': 'پروفایل',
+    'page.games': 'لندو گیفتس', 'page.rewards': 'جوایز', 'page.shop': 'فروشگاه', 'page.market': 'بازار کاربران', 'page.leaderboard': 'رتبه‌بندی', 'page.wallet': 'کیف پول', 'page.profile': 'پروفایل', 'page.tasks': 'ماموریت‌ها', 'page.achievements': 'دستاوردهای من',
+    'hub.rewards.title': 'مرکز جوایز', 'hub.rewards.sub': 'هر چیزی که امروز می‌تونی دریافت کنی یا بچرخونی',
+    'hub.market.title': 'بازار', 'hub.market.sub': 'خرید و فروش بین کاربران',
+    'hub.shop.title': 'فروشگاه لندو گیفتس', 'hub.shop.sub': 'فروشگاه رسمی — خرید مستقیم از لندو گیفتس',
+    'hub.game.title': 'مرکز بازی', 'hub.game.sub': 'میدان نبردت رو انتخاب کن',
+    'hub.leaderboard.title': 'رتبه‌بندی', 'hub.leaderboard.sub': 'ببین جایگاهت کجاست',
+    'hub.wallet.title': 'کیف پول', 'hub.wallet.sub': 'موجودی، واریز و انتقال — امن و پریمیوم',
+  },
+};
+function t(key) { return (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || key; }
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const val = t(el.getAttribute('data-i18n'));
+    if (val) el.textContent = val;
+  });
+  // Persian text reads right-to-left even though the app's overall layout stays left-to-right —
+  // this UI leans on absolute positioning throughout (especially the Tower War map), which would
+  // break if the whole document direction flipped. Only the translated text itself goes RTL.
+  document.body.classList.toggle('lang-fa', LANG === 'fa');
+}
+applyI18n();
 // Tiny wrapper around Telegram's native haptic feedback API — every call is guarded so the app
 // works identically (just silently, no vibration) on any client/browser that doesn't support it.
 function haptic(kind) {
@@ -2140,7 +2190,7 @@ async function uploadImage(file) {
 }
 
 /* ================= page navigation ================= */
-const PAGE_TITLES = { games:'Lando Gifts', rewards:'Rewards', shop:'Shop', market:'User market', leaderboard:'Leaderboard', wallet:'Wallet', profile:'Profile', tasks:'Tasks', achievements:'My achievements' };
+const PAGE_TITLES = { games:t('page.games'), rewards:t('page.rewards'), shop:t('page.shop'), market:t('page.market'), leaderboard:t('page.leaderboard'), wallet:t('page.wallet'), profile:t('page.profile'), tasks:t('page.tasks'), achievements:t('page.achievements') };
 function showPage(name) {
   haptic('light');
   stopClanChat(); // leaving wherever clan chat lived — no reason to keep polling it in the background
@@ -2148,7 +2198,7 @@ function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.querySelectorAll('.navitem').forEach(b => b.classList.toggle('active', b.dataset.page === name));
-  document.getElementById('headerTitle').textContent = PAGE_TITLES[name] || 'Lando Gifts';
+  document.getElementById('headerTitle').textContent = PAGE_TITLES[name] || t('page.games');
   // The back button always stays visible everywhere in the app — never hidden, even on a main tab —
   // headerBack() itself decides where "back" goes to (a nested view if there's history, otherwise a
   // sensible default), so there's never a state where tapping it does nothing.
@@ -2180,7 +2230,7 @@ function showGView(name) {
   if (name === 'hub') NAV_STACK = []; // back at the section hub — nothing left to step back through
   document.querySelectorAll('#page-games .view').forEach(v => v.classList.remove('active'));
   document.getElementById('gview-' + name).classList.add('active');
-  document.getElementById('headerTitle').textContent = name === 'hub' ? 'Lando Gifts' : { cardgame:'Card game', war:'⚔️ Tower War', battlepass:'Battle pass', events:'Events' }[name];
+  document.getElementById('headerTitle').textContent = name === 'hub' ? t('page.games') : { cardgame:'Card game', war:'⚔️ Tower War', battlepass:'Battle pass', events:'Events' }[name];
   if (name === 'cardgame') { showGameSub('shop'); loadGame(); }
   if (name === 'war') { showWarSub('attack'); loadWar(); }
   if (name === 'battlepass') loadSeason();
@@ -2207,7 +2257,7 @@ function showMView(name) {
   if (container) container.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('mview-' + name).classList.add('active');
   const titles = { auction:'Flash auction', clan:'Clan', clanmine:'My clan', clanbrowse:'Browse & join', clanwar:'⚔️ Clan war', clanchat:'💬 Clan chat', album:'Collection album', cardmarket:'Card Marketplace', avatars:'Avatar shop', raffle:'🎟 Big wheel' };
-  document.getElementById('headerTitle').textContent = titles[name] || 'Lando Gifts';
+  document.getElementById('headerTitle').textContent = titles[name] || t('page.games');
   if (name === 'auction') loadAuctions();
   if (name === 'clan') loadClan();
   if (name === 'clanmine') loadClanMine();
@@ -2269,7 +2319,7 @@ function showMarketTab(name) {
   document.querySelectorAll('#page-market .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mtab-' + name).classList.add('active');
   document.querySelectorAll('#page-market .toptabs button').forEach(b => b.classList.toggle('active', b.dataset.mtab === name));
-  document.getElementById('headerTitle').textContent = name === 'hub' ? 'Market' : 'User market';
+  document.getElementById('headerTitle').textContent = name === 'hub' ? t('nav.market') : t('page.market');
   // The Gift Market's own Buy/Sell/My consignments/Watch tab bar only makes sense once you're
   // inside the Gift Market feature — on the Market Hub landing screen it stays hidden.
   const tabs = document.querySelector('#page-market .toptabs');
@@ -2296,19 +2346,19 @@ function showLbTab(name) {
 function showRewardsHub() {
   document.querySelectorAll('#page-rewards .view').forEach(v => v.classList.remove('active'));
   document.getElementById('rtab-hub').classList.add('active');
-  document.getElementById('headerTitle').textContent = 'Rewards';
+  document.getElementById('headerTitle').textContent = t('page.rewards');
   NAV_STACK = [];
 }
 function showProfileHub() {
   document.querySelectorAll('#page-profile .view').forEach(v => v.classList.remove('active'));
   document.getElementById('ptab-hub').classList.add('active');
-  document.getElementById('headerTitle').textContent = 'Profile';
+  document.getElementById('headerTitle').textContent = t('page.profile');
   NAV_STACK = [];
 }
 function showShopHub() {
   document.querySelectorAll('#page-shop .view').forEach(v => v.classList.remove('active'));
   document.getElementById('stab-hub').classList.add('active');
-  document.getElementById('headerTitle').textContent = 'Shop';
+  document.getElementById('headerTitle').textContent = t('page.shop');
   NAV_STACK = [];
 }
 
@@ -3311,24 +3361,48 @@ function warTowerTier(level, maxLevel) {
   if (pct >= 0.25) return 'advanced';
   return 'basic';
 }
-// A small fantasy castle — two corner turrets, a taller central keep, a flag — drawn once per
-// tower as inline SVG. Cheap on purpose: this same handful of shapes has to render up to ~100
-// times on screen at once, so there's no per-tower network image, just a tint via CSS.
-function warTowerSvg(tier) {
-  const gem = tier === 'legendary' ? '<circle class="tw-window" cx="26" cy="1.1" r="1.5"/>' : '';
-  return `<svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
-    <ellipse class="tw-base" cx="26" cy="47" rx="19" ry="3.5"/>
-    <rect class="tw-wall-dark" x="6" y="27" width="10" height="17" rx="1"/>
-    <polygon class="tw-roof-dark" points="11,15 6,27 16,27"/>
-    <rect class="tw-wall-dark" x="36" y="27" width="10" height="17" rx="1"/>
-    <polygon class="tw-roof-dark" points="41,15 36,27 46,27"/>
-    <rect class="tw-wall" x="16" y="19" width="20" height="25" rx="2"/>
-    <polygon class="tw-roof" points="26,5 16,19 36,19"/>
-    <rect class="tw-window" x="23" y="31" width="6" height="7" rx="1"/>
-    <circle class="tw-window" cx="11" cy="31" r="1.5"/>
-    <circle class="tw-window" cx="41" cy="31" r="1.5"/>
-    <rect class="tw-flag" x="25.2" y="1" width="1.6" height="6"/>
-    <polygon class="tw-flag" points="26.8,2 32,3.6 26.8,5.2"/>
+// A small fantasy castle — three turrets (two flanking, one peeking behind for depth) plus a taller
+// crenellated central keep, glowing windows, and a flag — drawn once per tower as inline SVG using
+// the shared gradients above. Cheap on purpose: this same handful of shapes has to render up to
+// ~100 times on screen at once, so there's no per-tower network image, just a shared gradient fill.
+function warTowerSvg(tier, isMe) {
+  const w = isMe ? 'me' : tier;
+  const wall = `url(#twg-wall-${w})`, roof = `url(#twg-roof-${w})`;
+  const gem = tier === 'legendary' || isMe ? `<circle cx="32" cy="2" r="1.8" fill="#fff6d0"/>` : '';
+  return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="32" cy="58" rx="24" ry="4.5" fill="url(#twg-base)"/>
+    <ellipse cx="32" cy="57" rx="24" ry="4" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+    <!-- back turret (depth) -->
+    <rect x="27" y="18" width="10" height="14" fill="${wall}" opacity=".55"/>
+    <polygon points="32,9 27,18 37,18" fill="${roof}" opacity=".55"/>
+    <!-- left turret -->
+    <g opacity=".92">
+      <rect x="6" y="30" width="12" height="22" rx="1.5" fill="${wall}"/>
+      <rect x="6" y="30" width="12" height="3" fill="rgba(0,0,0,.18)"/>
+      <polygon points="12,16 5,30 19,30" fill="${roof}"/>
+      <rect x="10.5" y="38" width="3" height="4" rx=".5" fill="#ffe08a" opacity=".9"/>
+    </g>
+    <!-- right turret -->
+    <g opacity=".92">
+      <rect x="46" y="30" width="12" height="22" rx="1.5" fill="${wall}"/>
+      <rect x="46" y="30" width="12" height="3" fill="rgba(0,0,0,.18)"/>
+      <polygon points="52,16 45,30 59,30" fill="${roof}"/>
+      <rect x="50.5" y="38" width="3" height="4" rx=".5" fill="#ffe08a" opacity=".9"/>
+    </g>
+    <!-- central keep -->
+    <rect x="19" y="22" width="26" height="30" rx="2" fill="${wall}"/>
+    <rect x="19" y="22" width="26" height="4" fill="rgba(0,0,0,.15)"/>
+    <!-- crenellations -->
+    <rect x="20" y="19" width="3.4" height="4" fill="${wall}"/>
+    <rect x="26" y="19" width="3.4" height="4" fill="${wall}"/>
+    <rect x="34.6" y="19" width="3.4" height="4" fill="${wall}"/>
+    <rect x="40.6" y="19" width="3.4" height="4" fill="${wall}"/>
+    <polygon points="32,4 19,22 45,22" fill="${roof}"/>
+    <rect x="27" y="34" width="10" height="10" rx="1.5" fill="#ffdf7a" opacity=".95"/>
+    <rect x="27" y="34" width="10" height="10" rx="1.5" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="1"/>
+    <!-- flag -->
+    <rect x="31.2" y="0" width="1.6" height="6.5" fill="#e9e4ff" opacity=".7"/>
+    <polygon points="32.8,1 39,3 32.8,5" fill="${isMe ? '#ffd700' : '#f0555c'}"/>
     ${gem}
   </svg>`;
 }
@@ -3361,17 +3435,17 @@ function renderWarMapTowers() {
   world.innerHTML = WARMAP_DATA.towers.map(t => {
     const tier = warTowerTier(t.towerLevel, maxLevel);
     const shieldRemain = t.shieldUntil ? new Date(t.shieldUntil.replace(' ', 'T') + (t.shieldUntil.endsWith('Z') ? '' : 'Z')).getTime() - Date.now() : 0;
-    const shieldTag = t.shielded ? `<div class="shield-tag">🛡 ${shieldRemain > 0 ? formatWarDuration(shieldRemain) : 'Shielded'}</div>` : '';
     return `
     <div class="warmap-tower tier-${tier} ${t.isMe ? 'me' : ''} ${t.shielded ? 'shielded' : ''}" id="warmapTower-${t.tgId}" style="left:${t.x}px;top:${t.y}px;" onclick="onWarMapTowerTap(${t.tgId})">
       ${t.isMe ? '<div class="crown">👑</div>' : ''}
       <div class="shield-ring"></div>
       <div class="tw-ring"></div>
-      <div class="tw-svg">${warTowerSvg(tier)}</div>
-      <div class="lvl-badge">${t.towerLevel}</div>
-      <div class="name">${t.isMe ? 'YOU' : (t.name || '').replace(/</g, '')}</div>
-      <div class="badge"><span>🏆 ${t.trophies}</span></div>
-      ${shieldTag}
+      <div class="tw-svg">${warTowerSvg(tier, t.isMe)}</div>
+      <div class="tw-card">
+        <div class="tw-card-top"><span class="lvl-chip">${t.towerLevel}</span><span class="tw-card-name">${t.isMe ? 'YOU' : (t.name || '').replace(/</g, '')}</span></div>
+        <div class="tw-card-stats"><span>🏆 ${t.trophies}</span></div>
+        <div class="tw-card-shield">🛡 ${shieldRemain > 0 ? formatWarDuration(shieldRemain) : 'Shielded'}</div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -3381,8 +3455,8 @@ function updateWarMapTowerEl(t) {
   const maxLevel = WAR_STATUS?.config?.max_tower_level || 10;
   const tier = warTowerTier(t.towerLevel, maxLevel);
   el.className = `warmap-tower tier-${tier} ${t.isMe ? 'me' : ''} ${t.shielded ? 'shielded' : ''}`;
-  const badgeEl = el.querySelector('.badge'); if (badgeEl) badgeEl.innerHTML = `<span>🏆 ${t.trophies}</span>`;
-  const lvlEl = el.querySelector('.lvl-badge'); if (lvlEl) lvlEl.textContent = t.towerLevel;
+  const statsEl = el.querySelector('.tw-card-stats'); if (statsEl) statsEl.innerHTML = `<span>🏆 ${t.trophies}</span>`;
+  const lvlEl = el.querySelector('.lvl-chip'); if (lvlEl) lvlEl.textContent = t.towerLevel;
   if (t.isMe) {
     document.getElementById('twMeTrophies').textContent = t.trophies.toLocaleString('en-US');
     document.getElementById('twTrophies2').textContent = t.trophies.toLocaleString('en-US');
