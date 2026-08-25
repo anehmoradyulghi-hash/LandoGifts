@@ -928,6 +928,15 @@
         <p class="muted" style="font-size:11px;margin-top:6px;">Resetting positions only re-lays-out towers on the map — it never touches trophies, wallet, cards, or defense decks. Resolving the season grants rank prizes immediately and resets win/loss counters (trophies persist), same as the automatic end-of-season check.</p>
       </div>
       <div class="card">
+        <h3>🏆 Reset trophies</h3>
+        <p class="muted">Reset Tower War trophies back to the starting value (set in Trophy &amp; shield settings above). Positions are re-laid-out afterward since leagues change. Doesn't touch tower level, defense deck, wallet, or cards.</p>
+        <div class="row2">
+          <div><label>League</label><select id="warResetLeagueKey"></select></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn secondary" style="width:100%;" onclick="resetWarLeagueTrophiesUI()">🔁 Reset this league only</button></div>
+        </div>
+        <button class="btn danger" style="width:100%;margin-top:10px;" onclick="resetAllWarTrophiesUI()">⚠️ Reset ALL players' trophies</button>
+      </div>
+      <div class="card">
         <h3>Recent attacks</h3>
         <div id="warAttacksTable"></div>
       </div>
@@ -2789,6 +2798,7 @@ async function loadWarAdmin() {
   await loadWarLeagueTiersTable();
   await loadWarPrizesTable();
   await loadWarMapStatsTable();
+  await loadWarResetLeagueSelect();
   await loadWarAttacksTable();
 }
 async function loadWarMapStatsTable() {
@@ -2808,6 +2818,25 @@ async function resolveWarSeasonUI() {
   if (!confirm('Resolve the Tower War season now? Rank prizes will be granted immediately and win/loss counters reset (trophies persist).')) return;
   const result = await api('/war/resolve-season', { method: 'POST' });
   alert(`Season resolved — ${result.tomanCount} LNDC prize(s) and ${result.cardCount} card prize(s) granted.`);
+  loadWarMapStatsTable();
+}
+async function loadWarResetLeagueSelect() {
+  const tiers = await api('/war/leagues');
+  document.getElementById('warResetLeagueKey').innerHTML = tiers.map(t => `<option value="${t.key}">${t.icon || ''} ${t.label}</option>`).join('');
+}
+async function resetWarLeagueTrophiesUI() {
+  const key = document.getElementById('warResetLeagueKey').value;
+  if (!key) return;
+  if (!confirm('Reset trophies to the starting value for every player currently in this league? They will very likely drop to a lower league once positions are re-laid-out. This cannot be undone.')) return;
+  const result = await api('/war/reset-league-trophies', { method: 'POST', body: JSON.stringify({ leagueKey: key }) });
+  alert(`${result.affected} player(s) reset, ${result.reassigned} tower(s) repositioned.`);
+  loadWarMapStatsTable();
+}
+async function resetAllWarTrophiesUI() {
+  if (!confirm("Reset EVERY player's Tower War trophies back to the starting value? This affects the whole player base and cannot be undone.")) return;
+  if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+  const result = await api('/war/reset-trophies', { method: 'POST' });
+  alert(`${result.affected} player(s) reset, ${result.reassigned} tower(s) repositioned.`);
   loadWarMapStatsTable();
 }
 async function saveWarConfig() {
