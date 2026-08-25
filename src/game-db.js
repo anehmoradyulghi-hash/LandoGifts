@@ -583,6 +583,14 @@ export function getPlaysRemaining(tgId) {
   const extra = getExtraPlays(tgId);
   return Math.max(0, cfg.daily_play_limit + extra - used);
 }
+// Same accounting as getPlaysRemaining, but returned as a {used, total} pair — for UI that wants to
+// show "3 / 5 attacks used today" rather than just the remaining count.
+export function getPlaysUsedToday(tgId) {
+  const cfg = getGameConfig();
+  const used = todayCount(tgId);
+  const extra = getExtraPlays(tgId);
+  return { used, total: cfg.daily_play_limit + extra };
+}
 export function buyExtraPlays(tgId) {
   const cfg = getGameConfig();
   const user = getUser(tgId);

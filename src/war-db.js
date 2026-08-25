@@ -1,6 +1,6 @@
 import db, { round2 } from './db.js';
 import { adjustToman, getUser, checkAndUnlockReferralBalance } from './db.js';
-import { getUserCard, getPlaysRemaining, consumePlay } from './game-db.js';
+import { getUserCard, getPlaysRemaining, getPlaysUsedToday, consumePlay } from './game-db.js';
 import { isCardListedForSale } from './card-market-db.js';
 import { checkAchievements, logPlayerActivity } from './achievements-db.js';
 
@@ -241,6 +241,7 @@ export function getMyWarStatus(tgId) {
   const rank = db.prepare('SELECT COUNT(*) + 1 AS rank FROM war_towers WHERE trophies > ?').get(tower.trophies).rank;
   const leagueRank = db.prepare('SELECT COUNT(*) + 1 AS rank FROM war_towers WHERE trophies > ? AND trophies >= ?')
     .get(tower.trophies, league.min_trophies).rank;
+  const playsInfo = getPlaysUsedToday(tgId);
   return {
     config: cfg,
     trophies: tower.trophies,
@@ -252,6 +253,8 @@ export function getMyWarStatus(tgId) {
     seasonWins: tower.season_wins, seasonLosses: tower.season_losses, totalLooted: tower.total_looted,
     globalRank: rank, leagueRank,
     playsRemaining: getPlaysRemaining(tgId),
+    playsUsed: playsInfo.used, playsTotal: playsInfo.total,
+    seasonEndsAt: getWarSeasonEndsAt(),
   };
 }
 
@@ -339,6 +342,7 @@ export function getWarMap(tgId) {
       trophies: r.trophies,
       towerLevel: r.tower_level,
       shielded: !!(r.shield_until && new Date(r.shield_until.replace(' ', 'T') + 'Z').getTime() > now),
+      shieldUntil: (r.shield_until && new Date(r.shield_until.replace(' ', 'T') + 'Z').getTime() > now) ? r.shield_until : null,
       isMe: r.tg_id === tgId,
     })),
   };
@@ -467,6 +471,14 @@ export function attackTower(attackerTgId, defenderTgId, attackUserCardIds) {
 
 /* ---------- Season resolution (rank-based prizes, like the weekly league) ---------- */
 function getWarState() { return db.prepare('SELECT * FROM war_state WHERE id = 1').get(); }
+// The season's end time, computed from the same period_started_at + season_days the auto-reset
+// check already uses — exposed for the UI's countdown, not a separately-tracked value.
+function getWarSeasonEndsAt() {
+  const cfg = getWarConfig();
+  const state = getWarState();
+  const startedAt = new Date(state.period_started_at.replace(' ', 'T') + 'Z').getTime();
+  return new Date(startedAt + cfg.season_days * 24 * 60 * 60 * 1000).toISOString();
+}
 function resolveWarSeason() {
   const tiers = listWarLeagues();
   const cardGrants = []; // caller grants the card (avoids a circular import with game-db.js)
