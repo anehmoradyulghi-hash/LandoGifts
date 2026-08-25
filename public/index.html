@@ -702,37 +702,39 @@
      keeping all of that chrome (not just the raw map) always in view. */
   .tw-shell {
     position:fixed; top:56px; left:0; right:0; bottom:70px; z-index:30;
-    display:flex; flex-direction:column; background:#0a0814;
+    display:flex; flex-direction:column; overflow:hidden;
+    background:
+      radial-gradient(900px 500px at 15% 8%, rgba(139,92,246,.22), transparent 60%),
+      radial-gradient(700px 500px at 90% 25%, rgba(59,130,246,.16), transparent 55%),
+      radial-gradient(700px 500px at 50% 100%, rgba(90,40,160,.16), transparent 60%),
+      linear-gradient(160deg,#171029,#0a0814 70%);
+    background-size:cover; background-position:center;
   }
+  /* Very faint grid + a scatter of tiny stars — reads as a strategy-map backdrop across the WHOLE
+     screen (header, counters and all), not just inside the map box. */
+  .tw-shell::before {
+    content:''; position:absolute; inset:0; opacity:.22; pointer-events:none; z-index:0;
+    background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size:44px 44px;
+  }
+  .tw-shell::after {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(2px 2px at 8% 12%, rgba(255,255,255,.5), transparent),
+      radial-gradient(2px 2px at 82% 8%, rgba(255,255,255,.38), transparent),
+      radial-gradient(1.5px 1.5px at 34% 32%, rgba(255,255,255,.3), transparent),
+      radial-gradient(1.5px 1.5px at 68% 42%, rgba(255,255,255,.26), transparent),
+      radial-gradient(1.5px 1.5px at 92% 60%, rgba(255,255,255,.26), transparent),
+      radial-gradient(1.5px 1.5px at 15% 70%, rgba(255,255,255,.2), transparent),
+      radial-gradient(1.5px 1.5px at 45% 85%, rgba(255,255,255,.2), transparent);
+    opacity:.6;
+  }
+  .tw-shell > * { position:relative; z-index:1; }
   .tw-shell .tw-header, .tw-shell .tw-league-panel, .tw-shell .tw-mapcounter { margin-left:12px; margin-right:12px; }
   .tw-shell .tw-header { margin-top:10px; }
   .warmap-viewport {
     position:relative; flex:1; min-height:0; width:auto; margin:8px 12px 0; border-radius:16px; overflow:hidden;
-    background:
-      radial-gradient(900px 500px at 15% 8%, rgba(139,92,246,.22), transparent 60%),
-      radial-gradient(700px 500px at 90% 85%, rgba(59,130,246,.16), transparent 55%),
-      radial-gradient(600px 400px at 50% 100%, rgba(90,40,160,.14), transparent 60%),
-      linear-gradient(160deg,#171029,#0a0814 70%);
     border:1px solid var(--border); touch-action:none; -webkit-user-select:none; user-select:none;
-    transition:border-radius .25s ease;
-  }
-  /* Very faint grid + drifting fog/zone tint — a strategy-map backdrop, not a busy texture. */
-  .warmap-viewport::before {
-    content:''; position:absolute; inset:0; opacity:.28; pointer-events:none;
-    background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
-    background-size:44px 44px;
-  }
-  .warmap-viewport::after {
-    content:''; position:absolute; inset:0; pointer-events:none;
-    background:
-      radial-gradient(2px 2px at 8% 22%, rgba(255,255,255,.5), transparent),
-      radial-gradient(2px 2px at 82% 12%, rgba(255,255,255,.38), transparent),
-      radial-gradient(1.5px 1.5px at 34% 68%, rgba(255,255,255,.32), transparent),
-      radial-gradient(1.5px 1.5px at 68% 78%, rgba(255,255,255,.28), transparent),
-      radial-gradient(1.5px 1.5px at 92% 55%, rgba(255,255,255,.28), transparent),
-      radial-gradient(1.5px 1.5px at 15% 88%, rgba(255,255,255,.22), transparent),
-      radial-gradient(1.5px 1.5px at 45% 35%, rgba(255,255,255,.2), transparent);
-    opacity:.6;
   }
   .warmap-world {
     position:absolute; top:0; left:0; width:1000px; height:1000px; transform-origin:0 0; will-change:transform;
@@ -755,37 +757,37 @@
      even with a hundred of them on screen (zoomed out, only the castle + a tiny name tag show;
      the full player badge appears once you're zoomed in / after tapping). ---- */
   .warmap-tower {
-    position:absolute; width:64px; height:82px; margin-left:-32px; margin-top:-46px;
+    position:absolute; width:72px; height:92px; margin-left:-36px; margin-top:-50px;
     display:flex; flex-direction:column; align-items:center; cursor:pointer; z-index:1;
   }
   .warmap-tower .tw-ring {
-    position:absolute; top:14px; left:50%; transform:translateX(-50%); width:52px; height:52px; border-radius:50%;
-    border:1.5px solid rgba(148,120,255,.35); pointer-events:none;
+    position:absolute; top:16px; left:50%; transform:translateX(-50%); width:60px; height:60px; border-radius:50%;
+    border:1.5px solid rgba(168,145,255,.4); pointer-events:none;
   }
-  .warmap-tower .tw-svg { position:relative; width:52px; height:52px; filter:drop-shadow(0 3px 6px rgba(0,0,0,.55)); }
+  .warmap-tower .tw-svg { position:relative; width:60px; height:60px; filter:drop-shadow(0 3px 7px rgba(0,0,0,.6)); }
   .warmap-tower .tw-svg svg { width:100%; height:100%; display:block; }
-  .warmap-tower .tw-base { fill:#241a3a; }
-  .warmap-tower .tw-wall { fill:#5b4a86; }
-  .warmap-tower .tw-wall-dark { fill:#40325f; }
-  .warmap-tower .tw-roof { fill:#8a6bd8; }
-  .warmap-tower .tw-roof-dark { fill:#6a4fb8; }
-  .warmap-tower .tw-window { fill:#ffd76b; opacity:.85; }
-  .warmap-tower .tw-flag { fill:#e5484d; }
+  .warmap-tower .tw-base { fill:#2a1f45; }
+  .warmap-tower .tw-wall { fill:#6a5aa0; }
+  .warmap-tower .tw-wall-dark { fill:#4c3d78; }
+  .warmap-tower .tw-roof { fill:#9d7ef0; }
+  .warmap-tower .tw-roof-dark { fill:#7d5cd6; }
+  .warmap-tower .tw-window { fill:#ffe08a; opacity:.95; }
+  .warmap-tower .tw-flag { fill:#f0555c; }
   /* Basic (level 1-2) */
-  .warmap-tower.tier-basic .tw-wall { fill:#4a4560; } .warmap-tower.tier-basic .tw-wall-dark { fill:#332f45; }
-  .warmap-tower.tier-basic .tw-roof { fill:#6b6485; } .warmap-tower.tier-basic .tw-roof-dark { fill:#524c6b; }
+  .warmap-tower.tier-basic .tw-wall { fill:#5c5678; } .warmap-tower.tier-basic .tw-wall-dark { fill:#413c58; }
+  .warmap-tower.tier-basic .tw-roof { fill:#847bab; } .warmap-tower.tier-basic .tw-roof-dark { fill:#655d87; }
   /* Advanced (level 3-5) */
-  .warmap-tower.tier-advanced .tw-wall { fill:#3f6fa8; } .warmap-tower.tier-advanced .tw-wall-dark { fill:#2c4f7d; }
-  .warmap-tower.tier-advanced .tw-roof { fill:#5896d6; } .warmap-tower.tier-advanced .tw-roof-dark { fill:#3f75b0; }
+  .warmap-tower.tier-advanced .tw-wall { fill:#4a80c4; } .warmap-tower.tier-advanced .tw-wall-dark { fill:#345c92; }
+  .warmap-tower.tier-advanced .tw-roof { fill:#6ba8ec; } .warmap-tower.tier-advanced .tw-roof-dark { fill:#4c86cc; }
   /* Elite (level 6-8) */
-  .warmap-tower.tier-elite .tw-wall { fill:#7b3fa8; } .warmap-tower.tier-elite .tw-wall-dark { fill:#582c7d; }
-  .warmap-tower.tier-elite .tw-roof { fill:#a558d6; } .warmap-tower.tier-elite .tw-roof-dark { fill:#8340b0; }
-  .warmap-tower.tier-elite .tw-svg { filter:drop-shadow(0 3px 6px rgba(0,0,0,.55)) drop-shadow(0 0 10px rgba(165,88,214,.35)); }
+  .warmap-tower.tier-elite .tw-wall { fill:#9048c4; } .warmap-tower.tier-elite .tw-wall-dark { fill:#69349a; }
+  .warmap-tower.tier-elite .tw-roof { fill:#bd6bec; } .warmap-tower.tier-elite .tw-roof-dark { fill:#9c4cd0; }
+  .warmap-tower.tier-elite .tw-svg { filter:drop-shadow(0 3px 7px rgba(0,0,0,.6)) drop-shadow(0 0 12px rgba(189,107,236,.45)); }
   /* Legendary (level 9-10) */
-  .warmap-tower.tier-legendary .tw-wall { fill:#a8822f; } .warmap-tower.tier-legendary .tw-wall-dark { fill:#7d5f1f; }
-  .warmap-tower.tier-legendary .tw-roof { fill:#e8b93f; } .warmap-tower.tier-legendary .tw-roof-dark { fill:#c99a28; }
-  .warmap-tower.tier-legendary .tw-svg { filter:drop-shadow(0 3px 6px rgba(0,0,0,.55)) drop-shadow(0 0 12px rgba(255,215,0,.5)); }
-  .warmap-tower.tier-legendary .tw-ring { border-color:rgba(255,215,0,.4); }
+  .warmap-tower.tier-legendary .tw-wall { fill:#c79a3a; } .warmap-tower.tier-legendary .tw-wall-dark { fill:#977325; }
+  .warmap-tower.tier-legendary .tw-roof { fill:#ffd35c; } .warmap-tower.tier-legendary .tw-roof-dark { fill:#e6ad2e; }
+  .warmap-tower.tier-legendary .tw-svg { filter:drop-shadow(0 3px 7px rgba(0,0,0,.6)) drop-shadow(0 0 14px rgba(255,215,0,.55)); }
+  .warmap-tower.tier-legendary .tw-ring { border-color:rgba(255,215,0,.45); }
 
   .warmap-tower .lvl-badge {
     position:absolute; top:-2px; left:2px; font-size:8.5px; font-weight:800; color:#fff;
@@ -813,9 +815,9 @@
   .warmap-tower.shielded .shield-tag { display:block; }
   @keyframes warShieldPulse { 0%,100% { box-shadow:0 0 8px rgba(96,180,255,.3); } 50% { box-shadow:0 0 16px rgba(96,180,255,.6); } }
   /* The player's own tower — bigger glow ring, crown ornament, gold accents, "YOU" tag. */
-  .warmap-tower.me { z-index:3; width:72px; height:92px; margin-left:-36px; margin-top:-52px; }
-  .warmap-tower.me .tw-svg { width:58px; height:58px; filter:drop-shadow(0 3px 8px rgba(0,0,0,.6)) drop-shadow(0 0 14px rgba(255,215,0,.55)); }
-  .warmap-tower.me .tw-ring { width:62px; height:62px; border-color:rgba(255,215,0,.55); animation:warMeRingSpin 14s linear infinite; }
+  .warmap-tower.me { z-index:3; width:82px; height:104px; margin-left:-41px; margin-top:-58px; }
+  .warmap-tower.me .tw-svg { width:68px; height:68px; filter:drop-shadow(0 3px 9px rgba(0,0,0,.65)) drop-shadow(0 0 16px rgba(255,215,0,.6)); }
+  .warmap-tower.me .tw-ring { width:72px; height:72px; border-color:rgba(255,215,0,.55); animation:warMeRingSpin 14s linear infinite; }
   .warmap-tower.me .crown { position:absolute; top:-9px; left:50%; transform:translateX(-50%); font-size:15px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.6)); z-index:2; }
   .warmap-tower.me .name { color:var(--gold); font-weight:800; border-color:rgba(255,215,0,.3); }
   @keyframes warMeRingSpin { from { transform:translateX(-50%) rotate(0deg); } to { transform:translateX(-50%) rotate(360deg); } }
@@ -828,13 +830,6 @@
     background:rgba(10,8,20,.72); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.1);
     border-radius:12px; padding:6px 12px; font-size:12px; font-weight:800; letter-spacing:.2px;
     box-shadow:0 4px 12px rgba(0,0,0,.3); pointer-events:auto;
-  }
-  .warmap-subnav {
-    position:absolute; top:52px; left:10px; right:10px; display:flex; gap:6px; z-index:5;
-  }
-  .warmap-subnav-btn {
-    flex:1; background:rgba(10,8,20,.72); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.1);
-    border-radius:12px; padding:8px 6px; font-size:16px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,.3);
   }
   .warmap-zoom-controls { position:absolute; bottom:12px; right:12px; display:flex; flex-direction:column; gap:7px; z-index:5; }
   .warmap-zoom-btn {
@@ -1322,10 +1317,6 @@
 
         <div class="warmap-viewport" id="warMapViewport">
           <div class="warmap-world" id="warMapWorld"></div>
-          <div class="warmap-subnav">
-            <div class="warmap-subnav-btn" onclick="showWarSub('leaderboard')" title="Leaderboard">🏆</div>
-            <div class="warmap-subnav-btn" onclick="showWarSub('history')" title="History">📜</div>
-          </div>
           <div class="tw-minimap" id="twMinimap"></div>
           <div class="warmap-zoom-controls">
             <div class="warmap-zoom-btn" onclick="warMapZoomBy(1.25)">+</div>
@@ -3360,10 +3351,12 @@ function renderWarMapTowers() {
   world.style.height = WARMAP_DATA.mapSize + 'px';
   // Custom map background (from App Design in the admin panel) — pulled from the config already
   // loaded once at boot (CONFIG.uiImages), so applying it here costs zero extra network requests.
-  // Applied to the world layer itself (not the viewport) so it pans/zooms together with the towers,
-  // and falls back to the built-in dark battlefield gradient (plain CSS on .warmap-viewport) when unset.
+  // Applied to the whole screen shell (not just the map box) so it sits behind the header, the
+  // player counter, and the map alike, and falls back to the built-in dark gradient (plain CSS on
+  // .tw-shell) when unset.
+  const shell = document.getElementById('twShell');
   const bgUrl = CONFIG.uiImages?.war_map;
-  world.style.backgroundImage = bgUrl ? `url('${bgUrl}')` : 'none';
+  if (shell) shell.style.backgroundImage = bgUrl ? `url('${bgUrl}')` : '';
   const maxLevel = WAR_STATUS?.config?.max_tower_level || 10;
   world.innerHTML = WARMAP_DATA.towers.map(t => {
     const tier = warTowerTier(t.towerLevel, maxLevel);
