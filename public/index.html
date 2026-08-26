@@ -1033,6 +1033,53 @@
   .gamehub-stat-val { font-size:16px; font-weight:800; }
   .gamehub-stat-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px; }
   .gamehub-nav { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
+
+  /* ---- Plinko ---- */
+  .plinko-topbar { display:flex; justify-content:flex-end; margin-bottom:8px; }
+  .plinko-balance {
+    background:rgba(255,255,255,.06); border:1px solid var(--border); border-radius:999px;
+    padding:6px 14px; font-size:13px; font-weight:800;
+  }
+  .plinko-board-wrap {
+    position:relative; background:
+      radial-gradient(500px 300px at 50% 0%, rgba(168,85,247,.22), transparent 65%),
+      linear-gradient(180deg,#1c1430,#100a1e);
+    border:1px solid var(--border); border-radius:18px; overflow:hidden; padding:18px 6px 10px;
+  }
+  .plinko-board { position:relative; width:100%; height:min(48vh, 340px); }
+  .plinko-peg {
+    position:absolute; width:6px; height:6px; border-radius:50%; background:#fff; opacity:.9;
+    box-shadow:0 0 4px rgba(255,255,255,.5); transform:translate(-50%,-50%);
+  }
+  .plinko-ball {
+    position:absolute; width:14px; height:14px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #fff, #ffd76b 55%, #d9a521 100%);
+    box-shadow:0 0 8px rgba(255,215,0,.7), 0 2px 4px rgba(0,0,0,.4);
+    transform:translate(-50%,-50%); transition:left .16s ease, top .16s ease; z-index:5;
+  }
+  .plinko-buckets { display:flex; gap:2px; padding:0 2px; }
+  .plinko-bucket {
+    flex:1; text-align:center; font-size:10.5px; font-weight:800; color:#fff; padding:6px 0;
+    border-radius:8px; background:linear-gradient(150deg,#a855f7,#6d28d9);
+  }
+  .plinko-bucket.lit { animation:plinkoBucketLit .6s ease; }
+  @keyframes plinkoBucketLit { 0%,100% { transform:scale(1); } 40% { transform:scale(1.25); box-shadow:0 0 16px rgba(255,215,0,.8); } }
+  .plinko-risk-tabs { display:flex; background:rgba(255,255,255,.05); border-radius:12px; padding:4px; gap:4px; margin:14px 0 10px; }
+  .plinko-risk-tabs button {
+    flex:1; padding:9px 0; border-radius:9px; border:none; background:transparent; color:var(--muted);
+    font-weight:800; font-size:13px;
+  }
+  .plinko-risk-tabs button.active { background:linear-gradient(150deg,var(--p1),var(--p2)); color:#fff; }
+  .plinko-bet-row label { font-size:11px; color:var(--muted); font-weight:700; }
+  .plinko-bet-input-row { display:flex; gap:8px; margin-top:5px; }
+  .plinko-bet-input-row input { flex:1; text-align:center; }
+  .plinko-bet-input-row button { flex:none; width:52px; padding:0; }
+  .plinko-result {
+    margin-top:12px; text-align:center; border-radius:12px; padding:12px; font-weight:800; font-size:15px;
+  }
+  .plinko-result.win { background:rgba(34,197,94,.14); border:1px solid rgba(34,197,94,.35); color:#4ade80; }
+  .plinko-result.lose { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); color:#f87171; }
+
   .gamehub-tile {
     background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px 6px;
     text-align:center; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; position:relative; overflow:hidden;
@@ -1142,6 +1189,7 @@
 
     <div class="hub-sec"><div><div class="hub-sec-t" data-i18n="game.games.t">Games</div><div class="hub-sec-s" data-i18n="game.games.s">Another way to play</div></div></div>
     <div class="gcard blue" style="margin-top:2px;" onclick="showGView('cardgame')" id="hubTile-cardgame"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t" data-i18n="game.cardGame.t">Card Game</span><span class="s" data-i18n="game.cardGame.s">Collection, mutation, battles & cards</span></div>
+    <div class="gcard teal" style="margin-top:10px;" onclick="showGView('plinko')" id="hubTile-plinko"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="7.5" cy="9" r="1.4" fill="currentColor" stroke="none"/><circle cx="16.5" cy="9" r="1.4" fill="currentColor" stroke="none"/><circle cx="4" cy="14" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="1.4" fill="currentColor" stroke="none"/><circle cx="20" cy="14" r="1.4" fill="currentColor" stroke="none"/><rect x="3" y="18.5" width="18" height="3" rx="1"/></svg></span><span class="t" data-i18n="game.plinko.t">Plinko</span><span class="s" data-i18n="game.plinko.s">Drop the ball, win with LNDC</span></div>
 
     <div class="hub-sec"><div><div class="hub-sec-t" data-i18n="game.clan.t">Clan</div><div class="hub-sec-s" data-i18n="game.clan.s">Team up and compete together</div></div></div>
     <div class="gcard violet has-img" style="margin-top:14px;" id="hubTile-clan" onclick="showMView('clan')">
@@ -1421,6 +1469,36 @@
     <div class="view" id="esub-auction">
       <div id="auctionsList" class="muted">Loading...</div>
     </div>
+  </div>
+
+  <!-- Plinko -->
+  <div class="view" id="gview-plinko">
+    <div class="plinko-topbar">
+      <div class="plinko-balance">💎 <span id="plinkoBalance">-</span> LNDC</div>
+    </div>
+    <div class="plinko-board-wrap">
+      <div class="plinko-board" id="plinkoBoard">
+        <div class="plinko-ball" id="plinkoBall" style="display:none;"></div>
+      </div>
+      <div class="plinko-buckets" id="plinkoBuckets"></div>
+    </div>
+    <div class="plinko-risk-tabs" id="plinkoRiskTabs">
+      <button class="active" data-risk="low" onclick="setPlinkoRisk('low')" data-i18n="plinko.easy">Easy</button>
+      <button data-risk="medium" onclick="setPlinkoRisk('medium')" data-i18n="plinko.medium">Medium</button>
+      <button data-risk="high" onclick="setPlinkoRisk('high')" data-i18n="plinko.hard">Hard</button>
+    </div>
+    <div class="plinko-bet-row">
+      <label data-i18n="plinko.betAmount">Bet amount (LNDC)</label>
+      <div class="plinko-bet-input-row">
+        <button type="button" class="btn secondary" onclick="plinkoBetMultiply(0.5)">½</button>
+        <input type="number" id="plinkoBetAmount" value="1" min="0" step="0.01">
+        <button type="button" class="btn secondary" onclick="plinkoBetMultiply(2)">2×</button>
+      </div>
+    </div>
+    <button class="btn gold" id="plinkoPlaceBetBtn" style="width:100%;margin-top:12px;" onclick="placePlinkoBet()" data-i18n="plinko.placeBet">🎯 Place Bet</button>
+    <div id="plinkoResult" class="plinko-result" style="display:none;"></div>
+    <h3 class="sec" data-i18n="plinko.recentDrops">Recent drops</h3>
+    <div id="plinkoHistoryList" class="muted" data-i18n="common.loading">Loading...</div>
   </div>
 </section>
 
@@ -2113,6 +2191,10 @@ const I18N = {
     'game.battlePass.t': 'Battle Pass', 'game.battlePass.s': 'Seasonal rewards',
     'game.history.t': 'Game History', 'game.history.s': 'Match history',
     'game.stats.t': 'Game Stats', 'game.stats.s': 'Ranks & scores',
+    'game.plinko.t': 'Plinko', 'game.plinko.s': 'Drop the ball, win with LNDC',
+    'plinko.easy': 'Easy', 'plinko.medium': 'Medium', 'plinko.hard': 'Hard',
+    'plinko.betAmount': 'Bet amount (LNDC)', 'plinko.placeBet': '🎯 Place Bet', 'plinko.recentDrops': 'Recent drops',
+    'common.loading': 'Loading...',
   },
   fa: {
     'nav.rewards': 'جوایز', 'nav.market': 'بازار', 'nav.shop': 'فروشگاه', 'nav.leaderboard': 'رتبه‌بندی', 'nav.wallet': 'کیف پول', 'nav.profile': 'پروفایل',
@@ -2196,6 +2278,10 @@ const I18N = {
     'game.battlePass.t': 'بتل پس', 'game.battlePass.s': 'جوایز فصلی',
     'game.history.t': 'تاریخچه بازی', 'game.history.s': 'تاریخچه‌ی مسابقات',
     'game.stats.t': 'آمار بازی', 'game.stats.s': 'رتبه‌ها و امتیازها',
+    'game.plinko.t': 'پلینکو', 'game.plinko.s': 'توپ رو بنداز، با LNDC ببر',
+    'plinko.easy': 'آسان', 'plinko.medium': 'متوسط', 'plinko.hard': 'سخت',
+    'plinko.betAmount': 'مبلغ شرط (LNDC)', 'plinko.placeBet': '🎯 قرار دادن شرط', 'plinko.recentDrops': 'انداختن‌های اخیر',
+    'common.loading': 'در حال بارگذاری...',
   },
 };
 function t(key) { return (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || key; }
@@ -2376,11 +2462,12 @@ function showGView(name) {
   if (name === 'hub') NAV_STACK = []; // back at the section hub — nothing left to step back through
   document.querySelectorAll('#page-games .view').forEach(v => v.classList.remove('active'));
   document.getElementById('gview-' + name).classList.add('active');
-  document.getElementById('headerTitle').textContent = name === 'hub' ? t('page.games') : { cardgame:'Card game', war:'⚔️ Tower War', battlepass:'Battle pass', events:'Events' }[name];
+  document.getElementById('headerTitle').textContent = name === 'hub' ? t('page.games') : { cardgame:'Card game', war:'⚔️ Tower War', battlepass:'Battle pass', events:'Events', plinko:'🎯 Plinko' }[name];
   if (name === 'cardgame') { showGameSub('shop'); loadGame(); }
   if (name === 'war') { showWarSub('attack'); loadWar(); }
   if (name === 'battlepass') loadSeason();
   if (name === 'events') { showEventsSub('quests'); loadDailyQuests(); loadAuctions(); }
+  if (name === 'plinko') loadPlinko();
 }
 function showEventsSub(name) {
   document.querySelectorAll('#gview-events .view').forEach(v => v.classList.remove('active'));
@@ -3818,6 +3905,127 @@ async function loadWarHistory() {
 function bpIcon(type) {
   return { toman: '💰', card: '🎴', extra_games: '🎮', avatar: '🖼️', product: '📦', gift_pack: '🎁', none: '➖' }[type] || '➖';
 }
+/* ================= Plinko ================= */
+let PLINKO_CONFIG = null;
+let PLINKO_RISK = 'low';
+let PLINKO_BUSY = false;
+async function loadPlinko() {
+  PLINKO_CONFIG = await api('/api/plinko/config');
+  renderPlinkoPegs();
+  renderPlinkoBuckets();
+  const me = await api('/api/me').catch(() => null);
+  if (me) document.getElementById('plinkoBalance').textContent = me.balance_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('plinkoBetAmount').min = PLINKO_CONFIG.minBet;
+  document.getElementById('plinkoBetAmount').max = PLINKO_CONFIG.maxBet;
+  loadPlinkoHistory();
+}
+function renderPlinkoPegs() {
+  const board = document.getElementById('plinkoBoard');
+  board.querySelectorAll('.plinko-peg').forEach(el => el.remove());
+  // Purely decorative peg field (11 rows, widening from 3 to 13 dots) behind the ball's path —
+  // the ball's own left/right decisions (and which bucket it lands in) come entirely from the
+  // server in loadPlinko()/placePlinkoBet(), never from this layout.
+  const rows = 11;
+  for (let r = 0; r < rows; r++) {
+    const count = r + 3;
+    const y = 8 + (r / (rows - 1)) * 76;
+    for (let c = 0; c < count; c++) {
+      const x = 50 + (c - (count - 1) / 2) * (78 / (count - 1 || 1));
+      const peg = document.createElement('div');
+      peg.className = 'plinko-peg';
+      peg.style.left = x + '%'; peg.style.top = y + '%';
+      board.appendChild(peg);
+    }
+  }
+}
+function renderPlinkoBuckets() {
+  const wrap = document.getElementById('plinkoBuckets');
+  const mults = PLINKO_CONFIG.multipliers[PLINKO_RISK];
+  wrap.innerHTML = mults.map((m, i) => `<div class="plinko-bucket" id="plinkoBucket-${i}">${m}×</div>`).join('');
+}
+function setPlinkoRisk(risk) {
+  PLINKO_RISK = risk;
+  document.querySelectorAll('#plinkoRiskTabs button').forEach(b => b.classList.toggle('active', b.dataset.risk === risk));
+  renderPlinkoBuckets();
+}
+function plinkoBetMultiply(factor) {
+  const input = document.getElementById('plinkoBetAmount');
+  const val = Math.max(0.01, Math.round((parseFloat(input.value) || 0) * factor * 100) / 100);
+  input.value = val;
+}
+// Ball position for step s (0..rows): s=0 is the drop point (apex, centered); after s decisions the
+// ball sits in one of s+1 slots, at horizontal slot index = how many of those s decisions went right.
+function plinkoXY(rightsSoFar, step, rows) {
+  const y = 4 + (step / rows) * 84;
+  const spread = 80;
+  const x = 50 + (rightsSoFar - step / 2) * (spread / rows);
+  return { x, y };
+}
+async function placePlinkoBet() {
+  if (PLINKO_BUSY) return;
+  const amount = parseFloat(document.getElementById('plinkoBetAmount').value);
+  if (!amount || amount <= 0) { toast('Enter a bet amount'); return; }
+  PLINKO_BUSY = true;
+  document.getElementById('plinkoPlaceBetBtn').disabled = true;
+  document.getElementById('plinkoResult').style.display = 'none';
+  try {
+    const result = await api('/api/plinko/play', { method: 'POST', body: JSON.stringify({ risk: PLINKO_RISK, amount }) });
+    await animatePlinkoBall(result.path, PLINKO_CONFIG.rows);
+    const bucketEl = document.getElementById(`plinkoBucket-${result.bucket}`);
+    if (bucketEl) { bucketEl.classList.remove('lit'); void bucketEl.offsetWidth; bucketEl.classList.add('lit'); }
+    document.getElementById('plinkoBalance').textContent = result.newBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const resEl = document.getElementById('plinkoResult');
+    resEl.style.display = 'block';
+    const won = result.payout > result.bet;
+    resEl.className = 'plinko-result ' + (won ? 'win' : 'lose');
+    resEl.textContent = won
+      ? `🎉 +${result.payout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC (${result.multiplier}×)`
+      : `${result.multiplier}× — ${result.payout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`;
+    haptic(won ? 'medium' : 'light');
+    loadPlinkoHistory();
+  } catch (e) {
+    toast(e.message || 'Could not place bet');
+  } finally {
+    PLINKO_BUSY = false;
+    document.getElementById('plinkoPlaceBetBtn').disabled = false;
+  }
+}
+function animatePlinkoBall(path, rows) {
+  return new Promise(resolve => {
+    const ball = document.getElementById('plinkoBall');
+    let rights = 0;
+    const { x, y } = plinkoXY(0, 0, rows);
+    ball.style.transition = 'none';
+    ball.style.left = x + '%'; ball.style.top = y + '%';
+    ball.style.display = 'block';
+    void ball.offsetWidth;
+    ball.style.transition = 'left .16s ease, top .16s ease';
+    let step = 0;
+    const tick = () => {
+      if (step >= path.length) { setTimeout(resolve, 200); return; }
+      if (path[step] === 'R') rights++;
+      step++;
+      const pos = plinkoXY(rights, step, rows);
+      ball.style.left = pos.x + '%'; ball.style.top = pos.y + '%';
+      setTimeout(tick, 170);
+    };
+    setTimeout(tick, 170);
+  });
+}
+async function loadPlinkoHistory() {
+  const rows = await api('/api/plinko/history');
+  const el = document.getElementById('plinkoHistoryList');
+  if (!rows.length) { el.textContent = 'No drops yet.'; return; }
+  el.innerHTML = rows.map(r => {
+    const won = r.payout_toman > r.bet_toman;
+    return `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--border);">
+      <span class="muted">${r.risk} · ${r.bet_toman} LNDC</span>
+      <b style="color:${won ? '#4ade80' : '#f87171'}">${r.multiplier}× → ${r.payout_toman} LNDC</b>
+    </div>`;
+  }).join('');
+}
+
+/* ================= Battle pass ================= */
 async function loadSeason() {
   const { config, progress, tiers, season } = await api('/api/season/status');
   const hero = document.getElementById('battlepassHero');
