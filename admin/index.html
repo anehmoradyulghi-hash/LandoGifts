@@ -150,6 +150,7 @@
     <button data-tab="chests" onclick="showTab('chests')">📦 Chests</button>
     <button data-tab="giftpacks" onclick="showTab('giftpacks')">🎁 Gift packs</button>
     <button data-tab="war" onclick="showTab('war')">⚔️ Tower War</button>
+    <button data-tab="plinko" onclick="showTab('plinko')">🎯 Plinko</button>
     <button data-tab="achievements" onclick="showTab('achievements')">🏅 Achievements</button>
     <button data-tab="auction" onclick="showTab('auction')">Auction</button>
     <button data-tab="season" onclick="showTab('season')">Battle pass</button>
@@ -942,6 +943,30 @@
       </div>
     </section>
 
+    <section class="tab" id="tab-plinko">
+      <div class="card">
+        <h3>🎯 Plinko settings</h3>
+        <p class="muted">A ball drops through a 12-row peg board and lands in one of 13 buckets, each with its own payout multiplier. All bets and payouts use LNDC (the player's main wallet balance).</p>
+        <label><input type="checkbox" id="plinkoEnabled"> Enabled</label>
+        <div class="row2">
+          <div><label>Minimum bet (LNDC)</label><input type="number" id="plinkoMinBet" step="0.01"></div>
+          <div><label>Maximum bet (LNDC)</label><input type="number" id="plinkoMaxBet" step="0.01"></div>
+        </div>
+        <button class="btn" style="margin-top:10px;" onclick="savePlinkoSettings()">💾 Save</button>
+      </div>
+      <div class="card">
+        <h3>Payout multipliers</h3>
+        <p class="muted">13 comma-separated numbers, symmetric from edge to edge (bucket 0 = far left, bucket 12 = far right). The center buckets are landed in far more often than the edges (a binomial distribution over 12 coin-flip bounces), so keep the middle values near or under 1× and the edges as the rare, big payouts — the app's own estimated payback percentage for each row updates live below.</p>
+        <label>Easy <span id="plinkoRtpLow" class="muted"></span></label>
+        <input type="text" id="plinkoMultLow" oninput="updatePlinkoRtpPreview()">
+        <label style="margin-top:10px;">Medium <span id="plinkoRtpMedium" class="muted"></span></label>
+        <input type="text" id="plinkoMultMedium" oninput="updatePlinkoRtpPreview()">
+        <label style="margin-top:10px;">Hard <span id="plinkoRtpHigh" class="muted"></span></label>
+        <input type="text" id="plinkoMultHigh" oninput="updatePlinkoRtpPreview()">
+        <button class="btn" style="margin-top:10px;" onclick="savePlinkoMultipliers()">💾 Save multipliers</button>
+      </div>
+    </section>
+
     <section class="tab" id="tab-achievements">
       <div class="card">
         <h3>Create / edit achievement</h3>
@@ -1413,6 +1438,7 @@ function showTab(name) {
     creqs: loadCreqs, products: loadProducts, orders: loadOrders, gifts: loadGifts, tasks: loadTasks,
     gamecards: loadGameCards, specialcards: loadSpecialCards, gameconfig: loadGameConfig, leaderboard: loadLeaderboardTab, cardtasks: loadCardTasksTab,
     raffles: () => { loadRafflesAdmin(); },
+    plinko: loadPlinkoAdmin,
     users: loadUsers };
   loaders[name]?.();
 }
@@ -2858,6 +2884,54 @@ async function saveWarConfig() {
   }) });
   alert('Saved');
 }
+
+/* ---------- Plinko ---------- */
+const PLINKO_BINOM_12 = [1, 12, 66, 220, 495, 792, 924, 792, 495, 220, 66, 12, 1]; // C(12,k), 12-row board
+function plinkoParseMults(str) {
+  return str.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+}
+function plinkoRtp(mults) {
+  if (mults.length !== 13) return null;
+  const sum = mults.reduce((acc, m, i) => acc + m * PLINKO_BINOM_12[i], 0);
+  return sum / 4096;
+}
+function updatePlinkoRtpPreview() {
+  for (const [inputId, labelId] of [['plinkoMultLow', 'plinkoRtpLow'], ['plinkoMultMedium', 'plinkoRtpMedium'], ['plinkoMultHigh', 'plinkoRtpHigh']]) {
+    const mults = plinkoParseMults(document.getElementById(inputId).value);
+    const rtp = plinkoRtp(mults);
+    document.getElementById(labelId).textContent = rtp === null ? '(needs exactly 13 numbers)' : `— ~${(rtp * 100).toFixed(1)}% payback`;
+  }
+}
+async function loadPlinkoAdmin() {
+  const cfg = await api('/plinko/config');
+  document.getElementById('plinkoEnabled').checked = cfg.enabled;
+  document.getElementById('plinkoMinBet').value = cfg.minBet;
+  document.getElementById('plinkoMaxBet').value = cfg.maxBet;
+  document.getElementById('plinkoMultLow').value = cfg.multipliers.low.join(', ');
+  document.getElementById('plinkoMultMedium').value = cfg.multipliers.medium.join(', ');
+  document.getElementById('plinkoMultHigh').value = cfg.multipliers.high.join(', ');
+  updatePlinkoRtpPreview();
+}
+async function savePlinkoSettings() {
+  await api('/plinko/config', { method: 'POST', body: JSON.stringify({
+    enabled: document.getElementById('plinkoEnabled').checked,
+    minBet: document.getElementById('plinkoMinBet').value,
+    maxBet: document.getElementById('plinkoMaxBet').value,
+  }) });
+  alert('Saved');
+}
+async function savePlinkoMultipliers() {
+  const low = plinkoParseMults(document.getElementById('plinkoMultLow').value);
+  const medium = plinkoParseMults(document.getElementById('plinkoMultMedium').value);
+  const high = plinkoParseMults(document.getElementById('plinkoMultHigh').value);
+  if (low.length !== 13 || medium.length !== 13 || high.length !== 13) { alert('Each risk level needs exactly 13 numbers'); return; }
+  try {
+    await api('/plinko/config', { method: 'POST', body: JSON.stringify({ multipliers: { low, medium, high } }) });
+    alert('Multipliers saved');
+    loadPlinkoAdmin();
+  } catch (e) { alert(e.message || 'Could not save'); }
+}
+
 async function loadWarLeagueTiersTable() {
   const tiers = await api('/war/leagues');
   document.getElementById('warLeagueTiersTable').innerHTML = tiers.length ? `
