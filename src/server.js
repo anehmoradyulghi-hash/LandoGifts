@@ -74,6 +74,7 @@ import {
   getWarAttackHistory, getWarLeaderboard, listWarLeagues, checkAutoResetWarSeason,
   getWarMap, getWarTowerDetail,
 } from './war-db.js';
+import { getPlinkoConfig, playPlinko, getPlinkoHistory } from './plinko-db.js';
 import adminApi from './admin-api.js';
 import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
 import { startBackupScheduler } from './backup.js';
@@ -841,6 +842,15 @@ app.post('/api/war/attack', requireTelegramAuth, (req, res) => {
 });
 app.get('/api/war/history', requireTelegramAuth, (req, res) => res.json(getWarAttackHistory(req.dbUser.tg_id)));
 app.get('/api/war/leaderboard/:league', requireTelegramAuth, (req, res) => res.json(getWarLeaderboard(req.params.league, 20)));
+
+/* ---------- Plinko ---------- */
+app.get('/api/plinko/config', requireTelegramAuth, (req, res) => res.json(getPlinkoConfig()));
+app.post('/api/plinko/play', requireTelegramAuth, (req, res) => {
+  try { res.json(playPlinko(req.dbUser.tg_id, req.body.risk, req.body.amount)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/plinko/history', requireTelegramAuth, (req, res) => res.json(getPlinkoHistory(req.dbUser.tg_id)));
+
 
 /* ---------- Big wheel (raffle / giveaway) ---------- */
 app.get('/api/raffle/list', requireTelegramAuth, (req, res) => {

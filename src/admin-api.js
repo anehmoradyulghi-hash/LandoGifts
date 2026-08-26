@@ -53,6 +53,7 @@ import {
   listRafflesAdmin, getRaffle, createRaffle, updateRaffle, deleteRaffle, cancelRaffle, listRaffleEntries, finishRaffle,
   listRafflePrizes, upsertRafflePrize, deleteRafflePrize, getRaffleTopEntries, listFinishedRaffles,
 } from './raffle-db.js';
+import { getPlinkoConfig, setPlinkoConfig } from './plinko-db.js';
 import {
   getRankConfig, setRankConfig, listRankTitles, upsertRankTitle, deleteRankTitle,
   listAvatars, upsertAvatar, deleteAvatar, listStreakRewards, setStreakReward, deleteStreakReward,
@@ -723,6 +724,13 @@ router.post('/war/resolve-season', (req, res) => {
     });
     res.json({ ok: true, cardCount: result.cardGrants.length, tomanCount: result.tomanGrants.length });
   } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+/* ---------- Plinko ---------- */
+router.get('/plinko/config', (req, res) => res.json(getPlinkoConfig()));
+router.post('/plinko/config', (req, res) => {
+  try { setPlinkoConfig(req.body); res.json({ ok: true, ...getPlinkoConfig() }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 /* ---------- Big wheel (raffle / giveaway) ---------- */
