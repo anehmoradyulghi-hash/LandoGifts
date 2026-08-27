@@ -323,6 +323,9 @@
         <label>Tower War</label>
         <input type="file" accept="image/*" id="uiImgHubWar_file" onchange="uploadImageTo('uiImgHubWar_file','uiImgHubWar','uiImgHubWar_prev')">
         <input type="hidden" id="uiImgHubWar"><img id="uiImgHubWar_prev" class="admin-img-preview">
+        <label>Plinko (quick-access tile)</label>
+        <input type="file" accept="image/*" id="uiImgHubPlinko_file" onchange="uploadImageTo('uiImgHubPlinko_file','uiImgHubPlinko','uiImgHubPlinko_prev')">
+        <input type="hidden" id="uiImgHubPlinko"><img id="uiImgHubPlinko_prev" class="admin-img-preview">
       </div>
       <div class="card">
         <h3>🖼 Hub page header images</h3>
@@ -1616,7 +1619,7 @@ async function disableReferralConditionUI(tgId) {
 /* ---------- App design (hub tile + section banner images) ---------- */
 const UI_IMAGE_FIELD_MAP = {
   hub_shop: 'uiImgHubShop', hub_cardgame: 'uiImgHubCardgame', hub_battlepass: 'uiImgHubBattlepass',
-  hub_market: 'uiImgHubMarket', hub_wallet: 'uiImgHubWallet', hub_clan: 'uiImgHubClan', hub_war: 'uiImgHubWar',
+  hub_market: 'uiImgHubMarket', hub_wallet: 'uiImgHubWallet', hub_clan: 'uiImgHubClan', hub_war: 'uiImgHubWar', hub_plinko: 'uiImgHubPlinko',
   hub_head_rewards: 'uiImgHeadRewards', hub_head_market: 'uiImgHeadMarket', hub_head_shop: 'uiImgHeadShop',
   hub_head_game: 'uiImgHeadGame', hub_head_leaderboard: 'uiImgHeadLeaderboard', hub_head_wallet: 'uiImgHeadWallet',
   banner_clan: 'uiImgBannerClan', banner_battlepass: 'uiImgBannerBattlepass',
