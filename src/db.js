@@ -667,29 +667,51 @@ export function getReferralInfo(tgId) {
     myOwnRequirement: getReferralWithdrawalRequirement(tgId),
   };
 }
+// Referral leaderboard "season" — a reset here only changes which invites COUNT toward the
+// competitive ranking; it never touches referred_by relationships, commission totals, or LNDC
+// balances (those stay exactly as getReferralInfo already reports them, lifetime).
+db.exec(`
+CREATE TABLE IF NOT EXISTS referral_leaderboard_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  period_started_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+INSERT OR IGNORE INTO referral_leaderboard_state (id) VALUES (1);
+`);
+function getReferralLeaderboardPeriodStart() {
+  return db.prepare('SELECT period_started_at FROM referral_leaderboard_state WHERE id = 1').get().period_started_at;
+}
+// Resets the referral leaderboard's ranking to zero for everyone by moving the "counts from" line
+// up to now — a person's own lifetime invited count, commission earnings, and LNDC balance are
+// completely unaffected; only which invites are recent enough to count toward the leaderboard rank.
+export function resetReferralLeaderboard() {
+  db.prepare(`UPDATE referral_leaderboard_state SET period_started_at = datetime('now') WHERE id = 1`).run();
+}
 // Ranks every user who has invited at least one other person, by how many people they've invited
 // (ties broken by whoever reached that count first — lower tg_id has no special meaning, it's just
-// a stable, deterministic tiebreaker rather than an arbitrary re-sort on every request).
+// a stable, deterministic tiebreaker rather than an arbitrary re-sort on every request). Only counts
+// invites since the leaderboard's last reset — see resetReferralLeaderboard() above.
 export function getReferralLeaderboard(limit = 50) {
+  const since = getReferralLeaderboardPeriodStart();
   return db.prepare(`
     SELECT u.tg_id, u.username, u.first_name,
-      (SELECT COUNT(*) FROM users r WHERE r.referred_by = u.tg_id) AS invited_count
+      (SELECT COUNT(*) FROM users r WHERE r.referred_by = u.tg_id AND r.created_at >= ?) AS invited_count
     FROM users u
-    WHERE (SELECT COUNT(*) FROM users r WHERE r.referred_by = u.tg_id) > 0
+    WHERE (SELECT COUNT(*) FROM users r WHERE r.referred_by = u.tg_id AND r.created_at >= ?) > 0
     ORDER BY invited_count DESC, u.tg_id ASC
     LIMIT ?
-  `).all(limit);
+  `).all(since, since, limit);
 }
 // This user's own position on that same leaderboard, even if they're not in the top `limit` shown
 // to everyone — computed as "how many other inviters have strictly more invites than me, plus one".
 export function getMyReferralRank(tgId) {
-  const invitedCount = db.prepare('SELECT COUNT(*) c FROM users WHERE referred_by = ?').get(tgId).c;
+  const since = getReferralLeaderboardPeriodStart();
+  const invitedCount = db.prepare('SELECT COUNT(*) c FROM users WHERE referred_by = ? AND created_at >= ?').get(tgId, since).c;
   if (invitedCount === 0) return { rank: null, invitedCount: 0 };
   const higher = db.prepare(`
     SELECT COUNT(*) c FROM (
-      SELECT referred_by FROM users WHERE referred_by IS NOT NULL GROUP BY referred_by HAVING COUNT(*) > ?
+      SELECT referred_by FROM users WHERE referred_by IS NOT NULL AND created_at >= ? GROUP BY referred_by HAVING COUNT(*) > ?
     )
-  `).get(invitedCount).c;
+  `).get(since, invitedCount).c;
   return { rank: higher + 1, invitedCount };
 }
 

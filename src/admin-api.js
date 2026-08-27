@@ -22,6 +22,7 @@ import {
   getGiftMarketMinPrice, setGiftMarketMinPrice,
   getUiImages, setUiImages, getComebackConfig, setComebackConfig,
   getReferralSettings, setReferralSettings, getLndcWalletSettings, setLndcWalletSettings,
+  getReferralLeaderboard, resetReferralLeaderboard,
   listGiftCategories, upsertGiftCategory, deleteGiftCategory,
   getMessageSettings, setMessageSettings, getAllUserIds,
 } from './db.js';
@@ -250,6 +251,8 @@ router.post('/referral-settings', (req, res) => {
   });
   res.json({ ok: true });
 });
+router.get('/referral-leaderboard', (req, res) => res.json(getReferralLeaderboard(50)));
+router.post('/referral-leaderboard/reset', (req, res) => { resetReferralLeaderboard(); res.json({ ok: true }); });
 
 /* ---------- Info pages (guide/FAQ/rules) ---------- */
 router.get('/info-pages', (req, res) => res.json({
