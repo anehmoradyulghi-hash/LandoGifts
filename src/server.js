@@ -11,6 +11,7 @@ import {
 import db, {
   round2,
   getOrCreateUser, getUser, adjustToman, isBanned, getLedger, payReferralBonus, getReferralInfo, getReferralSettings, getSwapFeePercent,
+  getReferralLeaderboard, getMyReferralRank,
   listCurrencies, getCurrency, getWalletBalances, getCurrencyBalance, adjustCurrencyBalance,
   createTomanTopup, createTomanWithdrawal,
   createCurrencyRequest,
@@ -466,6 +467,9 @@ app.get('/api/referral', requireTelegramAuth, (req, res) => {
     signupBonusCurrency: settings.signupBonusCurrency,
     signupBonusCardName,
   });
+});
+app.get('/api/referral/leaderboard', requireTelegramAuth, (req, res) => {
+  res.json({ top: getReferralLeaderboard(50), me: getMyReferralRank(req.dbUser.tg_id) });
 });
 
 /* =========================================================================

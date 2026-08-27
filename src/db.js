@@ -667,6 +667,31 @@ export function getReferralInfo(tgId) {
     myOwnRequirement: getReferralWithdrawalRequirement(tgId),
   };
 }
+// Ranks every user who has invited at least one other person, by how many people they've invited
+// (ties broken by whoever reached that count first — lower tg_id has no special meaning, it's just
+// a stable, deterministic tiebreaker rather than an arbitrary re-sort on every request).
+export function getReferralLeaderboard(limit = 50) {
+  return db.prepare(`
+    SELECT u.tg_id, u.username, u.first_name,
+      (SELECT COUNT(*) FROM users r WHERE r.referred_by = u.tg_id) AS invited_count
+    FROM users u
+    WHERE (SELECT COUNT(*) FROM users r WHERE r.referred_by = u.tg_id) > 0
+    ORDER BY invited_count DESC, u.tg_id ASC
+    LIMIT ?
+  `).all(limit);
+}
+// This user's own position on that same leaderboard, even if they're not in the top `limit` shown
+// to everyone — computed as "how many other inviters have strictly more invites than me, plus one".
+export function getMyReferralRank(tgId) {
+  const invitedCount = db.prepare('SELECT COUNT(*) c FROM users WHERE referred_by = ?').get(tgId).c;
+  if (invitedCount === 0) return { rank: null, invitedCount: 0 };
+  const higher = db.prepare(`
+    SELECT COUNT(*) c FROM (
+      SELECT referred_by FROM users WHERE referred_by IS NOT NULL GROUP BY referred_by HAVING COUNT(*) > ?
+    )
+  `).get(invitedCount).c;
+  return { rank: higher + 1, invitedCount };
+}
 
 /* =========================================================================
  * CURRENCIES (manual — admin sets everything)
@@ -1022,7 +1047,7 @@ export function setGiftMarketMinPrice(price) {
 // UI_IMAGE_KEYS covers hub shortcut cards (small tile background), full section banners, and a few
 // other Game Hub cards/teasers that logically support artwork.
 const UI_IMAGE_KEYS = [
-  'hub_shop', 'hub_wallet', 'hub_market', 'hub_cardgame', 'hub_battlepass', 'hub_clan', 'hub_war', // hub shortcut tiles
+  'hub_shop', 'hub_wallet', 'hub_market', 'hub_cardgame', 'hub_battlepass', 'hub_clan', 'hub_war', 'hub_plinko', // hub shortcut tiles
   'hub_head_rewards', 'hub_head_market', 'hub_head_shop', 'hub_head_game', 'hub_head_leaderboard', 'hub_head_wallet', // banner photo behind each hub page's header bar
   'banner_clan', 'banner_battlepass', 'banner_events', 'banner_wheel', // full-width banners at the top of a section's own page
   'card_missions', 'card_leaderboard', // Game Hub quick-access card artwork
