@@ -296,6 +296,12 @@
         <button class="btn" onclick="saveReferralConditionUI()">Add / update exception for this invited user</button>
         <div id="referralConditionsTable" style="margin-top:14px;"></div>
       </div>
+      <div class="card">
+        <h3>🏆 Referral leaderboard</h3>
+        <p class="muted">Ranks users by how many people they've invited. Resetting starts the ranking count over from zero for everyone — it does <b>not</b> touch anyone's LNDC balance, commission earnings, or their own lifetime "number invited" stat shown in their referral card; it only changes which invites count toward this competitive ranking, so you can run repeat invite contests.</p>
+        <button class="btn danger" onclick="resetReferralLeaderboardUI()">🔁 Reset leaderboard ranking</button>
+        <div id="referralLeaderboardAdminTable" style="margin-top:14px;"></div>
+      </div>
     </section>
 
     <section class="tab" id="tab-design">
@@ -1433,7 +1439,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: () => { loadReferralSettings(); loadReferralConditionGlobal(); loadReferralConditionsTable(); }, design: loadUiImages, retention: () => { loadComebackConfig(); loadBackupConfig(); }, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
+  const loaders = { dash: loadDash, currencies: () => { loadCurrencies(); loadLndcWalletSettings(); }, payment: loadPaymentSettings, referral: () => { loadReferralSettings(); loadReferralConditionGlobal(); loadReferralConditionsTable(); loadReferralLeaderboardAdmin(); }, design: loadUiImages, retention: () => { loadComebackConfig(); loadBackupConfig(); }, messages: loadMessageSettings, topups: loadTopups, withdrawals: loadWithdrawals,
     cardcategories: loadCategories, mergecosts: loadMergeCosts, chests: loadChestsAdmin, giftpacks: loadGiftPacksAdmin, war: loadWarAdmin, achievements: loadAchievementsAdmin,
     auction: loadAuctionAdmin, season: loadSeasonAdmin, clan: loadClanAdmin,
     rank: loadRankAdmin, quests: loadQuestsAdmin, promo: loadPromoAdmin, albums: loadAlbumsAdmin,
@@ -1609,6 +1615,23 @@ async function saveReferralConditionUI() {
   document.getElementById('rcTgId').value = '';
   document.getElementById('rcRequiredBattles').value = 1;
   loadReferralConditionsTable();
+}
+async function loadReferralLeaderboardAdmin() {
+  const rows = await api('/referral-leaderboard');
+  document.getElementById('referralLeaderboardAdminTable').innerHTML = rows.length ? `
+    <table><tr><th>#</th><th>User</th><th>Invited (this period)</th></tr>
+    ${rows.map((r, i) => `<tr>
+      <td>${i + 1}</td>
+      <td>${r.first_name || r.username || r.tg_id} (${r.tg_id})</td>
+      <td>${r.invited_count}</td>
+    </tr>`).join('')}
+    </table>` : '<p class="muted">No one has invited anyone yet this period.</p>';
+}
+async function resetReferralLeaderboardUI() {
+  if (!confirm("Reset the referral leaderboard ranking? Everyone's ranking count goes back to zero. Their LNDC balance, commission earnings, and lifetime invited count are NOT affected. This cannot be undone.")) return;
+  await api('/referral-leaderboard/reset', { method: 'POST' });
+  alert('Referral leaderboard reset.');
+  loadReferralLeaderboardAdmin();
 }
 async function disableReferralConditionUI(tgId) {
   if (!confirm('Remove this exception? This user will go back to following the global rule (if one is active). If the global rule is currently off, or they already meet it, their locked balance is released immediately.')) return;
