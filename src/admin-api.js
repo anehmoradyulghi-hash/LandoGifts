@@ -56,6 +56,10 @@ import {
 } from './raffle-db.js';
 import { getPlinkoConfig, setPlinkoConfig } from './plinko-db.js';
 import {
+  listCampaignLandsAdmin, upsertCampaignLand, deleteCampaignLand,
+  listCampaignStagesAdmin, upsertCampaignStage, deleteCampaignStage,
+} from './campaign-db.js';
+import {
   getRankConfig, setRankConfig, listRankTitles, upsertRankTitle, deleteRankTitle,
   listAvatars, upsertAvatar, deleteAvatar, listStreakRewards, setStreakReward, deleteStreakReward,
 } from './rank-db.js';
@@ -126,7 +130,7 @@ router.post('/nft-lookup', async (req, res) => {
 router.get('/stats', (req, res) => res.json(getStats()));
 
 /* ---------- Users ---------- */
-router.get('/users', (req, res) => res.json(listUsers(req.query.q)));
+router.get('/users', (req, res) => res.json(listUsers(req.query.q, req.query.sort)));
 // Same ledger the user sees in their own Wallet tab (getLedger from db.js) — no separate/duplicate
 // transaction system, just exposing the existing one for admin visibility.
 router.get('/users/:tgId/ledger', (req, res) => {
@@ -735,6 +739,20 @@ router.post('/plinko/config', (req, res) => {
   try { setPlinkoConfig(req.body); res.json({ ok: true, ...getPlinkoConfig() }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
+
+/* ---------- Story Campaign ---------- */
+router.get('/campaign/lands', (req, res) => res.json(listCampaignLandsAdmin()));
+router.post('/campaign/lands', (req, res) => {
+  try { res.json({ ok: true, id: upsertCampaignLand(req.body) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/campaign/lands/:id', (req, res) => { deleteCampaignLand(Number(req.params.id)); res.json({ ok: true }); });
+router.get('/campaign/lands/:id/stages', (req, res) => res.json(listCampaignStagesAdmin(Number(req.params.id))));
+router.post('/campaign/stages', (req, res) => {
+  try { res.json({ ok: true, id: upsertCampaignStage(req.body) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/campaign/stages/:id', (req, res) => { deleteCampaignStage(Number(req.params.id)); res.json({ ok: true }); });
 
 /* ---------- Big wheel (raffle / giveaway) ---------- */
 router.get('/raffles', (req, res) => res.json(listRafflesAdmin()));

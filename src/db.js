@@ -359,20 +359,23 @@ export function unbanUser(tgId) {
   db.prepare(`UPDATE users SET is_banned = 0, ban_reason = NULL WHERE tg_id = ?`).run(tgId);
 }
 
-export function listUsers(search) {
+export function listUsers(search, sort) {
+  const orderBy = sort === 'balance_desc' ? 'u.balance_toman DESC'
+    : sort === 'balance_asc' ? 'u.balance_toman ASC'
+    : 'u.created_at DESC';
   if (search) {
     const like = `%${search}%`;
     return db.prepare(`
       SELECT u.*, COALESCE(us.purchased_premium, 0) AS has_battlepass FROM users u
       LEFT JOIN user_season us ON us.tg_id = u.tg_id
       WHERE CAST(u.tg_id AS TEXT) LIKE ? OR u.username LIKE ? OR u.first_name LIKE ?
-      ORDER BY u.created_at DESC LIMIT 100
+      ORDER BY ${orderBy} LIMIT 100
     `).all(like, like, like);
   }
   return db.prepare(`
     SELECT u.*, COALESCE(us.purchased_premium, 0) AS has_battlepass FROM users u
     LEFT JOIN user_season us ON us.tg_id = u.tg_id
-    ORDER BY u.created_at DESC LIMIT 100
+    ORDER BY ${orderBy} LIMIT 100
   `).all();
 }
 

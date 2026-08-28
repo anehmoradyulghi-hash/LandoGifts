@@ -76,6 +76,7 @@ import {
   getWarMap, getWarTowerDetail,
 } from './war-db.js';
 import { getPlinkoConfig, playPlinko, getPlinkoHistory } from './plinko-db.js';
+import { getCampaignProgress, fightCampaignStage } from './campaign-db.js';
 import adminApi from './admin-api.js';
 import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
 import { startBackupScheduler } from './backup.js';
@@ -854,6 +855,13 @@ app.post('/api/plinko/play', requireTelegramAuth, (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.get('/api/plinko/history', requireTelegramAuth, (req, res) => res.json(getPlinkoHistory(req.dbUser.tg_id)));
+
+/* ---------- Story Campaign ---------- */
+app.get('/api/campaign/progress', requireTelegramAuth, (req, res) => res.json(getCampaignProgress(req.dbUser.tg_id)));
+app.post('/api/campaign/fight', requireTelegramAuth, (req, res) => {
+  try { res.json(fightCampaignStage(req.dbUser.tg_id, Number(req.body.stageId), req.body.userCardIds)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 
 
 /* ---------- Big wheel (raffle / giveaway) ---------- */
