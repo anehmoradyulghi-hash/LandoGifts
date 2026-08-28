@@ -1085,6 +1085,44 @@
     padding:9px 12px; cursor:pointer; font-size:12.5px; font-family:monospace;
   }
 
+  /* ---- Story Campaign ---- */
+  .camp-land-banner {
+    position:relative; border-radius:16px; overflow:hidden; padding:16px; margin-bottom:14px;
+    background:linear-gradient(150deg, rgba(34,197,94,.18), rgba(20,20,35,.6)), linear-gradient(160deg,#1c1430,#100a1e);
+    background-size:cover; background-position:center; border:1px solid var(--border);
+  }
+  .camp-land-banner .t { font-size:16px; font-weight:900; }
+  .camp-land-banner .s { font-size:11.5px; color:var(--muted); margin-top:3px; }
+  .camp-stage-row {
+    display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:10px 12px; margin-bottom:8px; position:relative;
+  }
+  .camp-stage-row.locked { opacity:.45; }
+  .camp-stage-row.cleared { border-color:rgba(34,197,94,.4); }
+  .camp-stage-ic {
+    width:44px; height:44px; border-radius:12px; flex:none; display:flex; align-items:center; justify-content:center;
+    font-size:20px; background:linear-gradient(150deg,var(--p1),var(--p2)); background-size:cover; background-position:center;
+  }
+  .camp-stage-row.cleared .camp-stage-ic { background:linear-gradient(150deg,#22c55e,#15803d); }
+  .camp-stage-info { flex:1; min-width:0; }
+  .camp-stage-info .t { font-size:13px; font-weight:800; }
+  .camp-stage-info .s { font-size:10.5px; color:var(--muted); margin-top:1px; }
+  .camp-stage-badge { font-size:10px; font-weight:800; padding:3px 8px; border-radius:999px; flex:none; }
+  .camp-stage-badge.cleared { background:rgba(34,197,94,.16); color:#4ade80; }
+  .camp-stage-badge.locked { background:rgba(255,255,255,.06); color:var(--muted); }
+  .camp-battle-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px;
+    background-size:cover; background-position:center;
+  }
+  .camp-vs-row { display:flex; align-items:center; justify-content:space-around; margin:14px 0; }
+  .camp-vs-side { text-align:center; }
+  .camp-vs-side .power { font-size:20px; font-weight:900; }
+  .camp-vs-side .label { font-size:10.5px; color:var(--muted); margin-top:2px; }
+  .camp-vs-x { font-size:14px; color:var(--muted); font-weight:800; }
+  .camp-result { text-align:center; border-radius:14px; padding:16px; margin-top:12px; font-weight:800; }
+  .camp-result.win { background:rgba(34,197,94,.14); border:1px solid rgba(34,197,94,.35); color:#4ade80; }
+  .camp-result.lose { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); color:#f87171; }
+
   .gamehub-tile {
     background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px 6px;
     text-align:center; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; position:relative; overflow:hidden;
@@ -1195,6 +1233,7 @@
     <div class="hub-sec"><div><div class="hub-sec-t" data-i18n="game.games.t">Games</div><div class="hub-sec-s" data-i18n="game.games.s">Another way to play</div></div></div>
     <div class="gcard blue" style="margin-top:2px;" onclick="showGView('cardgame')" id="hubTile-cardgame"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5 9.5 20.5 3.5 14.5z"/><path d="M14.5 3.5 3.5 14.5M13 8l3 3"/></svg></span><span class="t" data-i18n="game.cardGame.t">Card Game</span><span class="s" data-i18n="game.cardGame.s">Collection, mutation, battles & cards</span></div>
     <div class="gcard teal" style="margin-top:10px;" onclick="showGView('plinko')" id="hubTile-plinko"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="7.5" cy="9" r="1.4" fill="currentColor" stroke="none"/><circle cx="16.5" cy="9" r="1.4" fill="currentColor" stroke="none"/><circle cx="4" cy="14" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="1.4" fill="currentColor" stroke="none"/><circle cx="20" cy="14" r="1.4" fill="currentColor" stroke="none"/><rect x="3" y="18.5" width="18" height="3" rx="1"/></svg></span><span class="t" data-i18n="game.plinko.t">Plinko</span><span class="s" data-i18n="game.plinko.s">Drop the ball, win with LNDC</span></div>
+    <div class="gcard green" style="margin-top:10px;" onclick="showGView('campaign')" id="hubTile-campaign"><span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v18M15 3v18"/><path d="M3 8l6-2.5M9 8 15 5.5M15 8l6-2.5M3 16l6 2.5M9 16l6 2.5M15 16l6 2.5"/></svg></span><span class="t" data-i18n="game.campaign.t">Story Campaign</span><span class="s" data-i18n="game.campaign.s">Battle through the lands, earn cards</span></div>
 
     <div class="hub-sec"><div><div class="hub-sec-t" data-i18n="game.clan.t">Clan</div><div class="hub-sec-s" data-i18n="game.clan.s">Team up and compete together</div></div></div>
     <div class="gcard violet has-img" style="margin-top:14px;" id="hubTile-clan" onclick="showMView('clan')">
@@ -1504,6 +1543,35 @@
     <div id="plinkoResult" class="plinko-result" style="display:none;"></div>
     <h3 class="sec" data-i18n="plinko.recentDrops">Recent drops</h3>
     <div id="plinkoHistoryList" class="muted" data-i18n="common.loading">Loading...</div>
+  </div>
+
+  <!-- Story Campaign -->
+  <div class="view" id="gview-campaign">
+    <div id="campaignListMode">
+      <div id="campaignLandsList" class="muted" data-i18n="common.loading">Loading...</div>
+    </div>
+    <div id="campaignBattleMode" style="display:none;">
+      <button class="btn secondary" style="width:100%;margin-bottom:12px;" onclick="closeCampaignBattle()" data-i18n="camp.backToMap">‹ Back to map</button>
+      <div class="camp-battle-card" id="campBattleCard">
+        <div id="campBattleStageName" style="font-size:15px;font-weight:900;"></div>
+        <p class="muted" id="campBattleStory" style="margin:8px 0;"></p>
+        <div class="camp-vs-row">
+          <div class="camp-vs-side">
+            <div class="power" id="campBattleMyPower">-</div>
+            <div class="label" data-i18n="camp.yourPower">Your Power</div>
+          </div>
+          <div class="camp-vs-x">VS</div>
+          <div class="camp-vs-side">
+            <div class="power" id="campBattleEnemyPower">-</div>
+            <div class="label" id="campBattleEnemyName">Enemy</div>
+          </div>
+        </div>
+        <h3 class="sec" data-i18n="camp.chooseDeck">Choose your deck</h3>
+        <div id="campBattleDeckPicker" class="muted" data-i18n="common.loading">Loading cards...</div>
+        <button class="btn gold" style="width:100%;margin-top:12px;" id="campFightBtn" onclick="fightCampaignStageUI()" data-i18n="camp.fight">⚔️ Fight</button>
+        <div id="campBattleResult" class="camp-result" style="display:none;"></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -2211,6 +2279,8 @@ const I18N = {
     'plinko.easy': 'Easy', 'plinko.medium': 'Medium', 'plinko.hard': 'Hard',
     'plinko.betAmount': 'Bet amount (LNDC)', 'plinko.placeBet': '🎯 Place Bet', 'plinko.recentDrops': 'Recent drops',
     'common.loading': 'Loading...',
+    'game.campaign.t': 'Story Campaign', 'game.campaign.s': 'Battle through the lands, earn cards',
+    'camp.backToMap': '‹ Back to map', 'camp.yourPower': 'Your Power', 'camp.chooseDeck': 'Choose your deck', 'camp.fight': '⚔️ Fight',
   },
   fa: {
     'nav.rewards': 'جوایز', 'nav.market': 'بازار', 'nav.shop': 'فروشگاه', 'nav.leaderboard': 'رتبه‌بندی', 'nav.wallet': 'کیف پول', 'nav.profile': 'پروفایل',
@@ -2299,6 +2369,8 @@ const I18N = {
     'plinko.easy': 'آسان', 'plinko.medium': 'متوسط', 'plinko.hard': 'سخت',
     'plinko.betAmount': 'مبلغ شرط (LNDC)', 'plinko.placeBet': '🎯 قرار دادن شرط', 'plinko.recentDrops': 'انداختن‌های اخیر',
     'common.loading': 'در حال بارگذاری...',
+    'game.campaign.t': 'نبرد داستانی', 'game.campaign.s': 'توی سرزمین‌ها نبرد کن، کارت بگیر',
+    'camp.backToMap': '‹ برگشت به نقشه', 'camp.yourPower': 'قدرت شما', 'camp.chooseDeck': 'دسته‌ی خودتو انتخاب کن', 'camp.fight': '⚔️ نبرد',
   },
 };
 function t(key) { return (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || key; }
@@ -2479,12 +2551,13 @@ function showGView(name) {
   if (name === 'hub') NAV_STACK = []; // back at the section hub — nothing left to step back through
   document.querySelectorAll('#page-games .view').forEach(v => v.classList.remove('active'));
   document.getElementById('gview-' + name).classList.add('active');
-  document.getElementById('headerTitle').textContent = name === 'hub' ? t('page.games') : { cardgame:'Card game', war:'⚔️ Tower War', battlepass:'Battle pass', events:'Events', plinko:'🎯 Plinko' }[name];
+  document.getElementById('headerTitle').textContent = name === 'hub' ? t('page.games') : { cardgame:'Card game', war:'⚔️ Tower War', battlepass:'Battle pass', events:'Events', plinko:'🎯 Plinko', campaign:'🗺️ Story Campaign' }[name];
   if (name === 'cardgame') { showGameSub('shop'); loadGame(); }
   if (name === 'war') { showWarSub('attack'); loadWar(); }
   if (name === 'battlepass') loadSeason();
   if (name === 'events') { showEventsSub('quests'); loadDailyQuests(); loadAuctions(); }
   if (name === 'plinko') loadPlinko();
+  if (name === 'campaign') { closeCampaignBattle(); loadCampaign(); }
 }
 function showEventsSub(name) {
   document.querySelectorAll('#gview-events .view').forEach(v => v.classList.remove('active'));
@@ -4045,6 +4118,110 @@ async function loadPlinkoHistory() {
       <b style="color:${won ? '#4ade80' : '#f87171'}">${r.multiplier}× → ${r.payout_toman} LNDC</b>
     </div>`;
   }).join('');
+}
+
+/* ================= Story Campaign ================= */
+let CAMPAIGN_PROGRESS = null;
+let CAMPAIGN_MY_CARDS = null;
+let CAMPAIGN_SELECTED = [];
+let CAMPAIGN_ACTIVE_STAGE = null;
+async function loadCampaign() {
+  CAMPAIGN_PROGRESS = await api('/api/campaign/progress');
+  renderCampaignLands();
+}
+function renderCampaignLands() {
+  const el = document.getElementById('campaignLandsList');
+  if (!CAMPAIGN_PROGRESS.lands.length) { el.textContent = 'No lands available yet.'; return; }
+  el.innerHTML = CAMPAIGN_PROGRESS.lands.map(land => {
+    const clearedCount = land.stages.filter(s => s.cleared).length;
+    const bg = land.imageUrl ? `style="background-image:url('${land.imageUrl}');"` : '';
+    return `
+    <div class="camp-land-banner" ${bg}>
+      <div class="t">${land.name}</div>
+      <div class="s">${clearedCount} / ${land.stages.length} cleared</div>
+    </div>
+    ${land.stages.map(s => `
+      <div class="camp-stage-row ${s.cleared ? 'cleared' : ''} ${s.unlocked ? '' : 'locked'}" ${s.unlocked ? `onclick="openCampaignStage(${s.id})"` : ''}>
+        <div class="camp-stage-ic" ${s.imageUrl ? `style="background-image:url('${s.imageUrl}');"` : ''}>${s.cleared ? '✅' : (s.unlocked ? '⚔️' : '🔒')}</div>
+        <div class="camp-stage-info">
+          <div class="t">${s.name}</div>
+          <div class="s">${s.enemyName} · Power ${s.enemyPower}</div>
+        </div>
+        <div class="camp-stage-badge ${s.cleared ? 'cleared' : 'locked'}">${s.cleared ? 'Cleared' : (s.unlocked ? 'Ready' : 'Locked')}</div>
+      </div>`).join('')}
+    `;
+  }).join('');
+}
+async function openCampaignStage(stageId) {
+  const stage = CAMPAIGN_PROGRESS.lands.flatMap(l => l.stages).find(s => s.id === stageId);
+  if (!stage || !stage.unlocked) return;
+  CAMPAIGN_ACTIVE_STAGE = stage;
+  CAMPAIGN_SELECTED = [];
+  document.getElementById('campaignListMode').style.display = 'none';
+  document.getElementById('campaignBattleMode').style.display = 'block';
+  document.getElementById('campBattleResult').style.display = 'none';
+  document.getElementById('campBattleStageName').textContent = stage.name;
+  document.getElementById('campBattleStory').textContent = stage.story || '';
+  document.getElementById('campBattleEnemyPower').textContent = stage.enemyPower;
+  document.getElementById('campBattleEnemyName').textContent = stage.enemyName;
+  document.getElementById('campBattleMyPower').textContent = '0';
+  if (!CAMPAIGN_MY_CARDS) CAMPAIGN_MY_CARDS = await api('/api/game/my-cards');
+  renderCampaignDeckPicker();
+}
+function closeCampaignBattle() {
+  const listEl = document.getElementById('campaignListMode');
+  const battleEl = document.getElementById('campaignBattleMode');
+  if (listEl) listEl.style.display = 'block';
+  if (battleEl) battleEl.style.display = 'none';
+  CAMPAIGN_ACTIVE_STAGE = null;
+}
+function renderCampaignDeckPicker() {
+  const el = document.getElementById('campBattleDeckPicker');
+  const [minSize, maxSize] = CAMPAIGN_PROGRESS.deckSize;
+  if (!CAMPAIGN_MY_CARDS.length) { el.textContent = 'You do not have any cards yet, buy some from the shop.'; return; }
+  el.innerHTML = `
+    <div class="row" style="margin-bottom:6px;"><span class="muted">Selected</span><b>${CAMPAIGN_SELECTED.length} (need ${minSize}-${maxSize})</b></div>
+    <div class="hscroll">${CAMPAIGN_MY_CARDS.map(c => `
+      <div class="mini-card ${CAMPAIGN_SELECTED.includes(c.id) ? 'gold' : ''}" style="cursor:pointer;${CAMPAIGN_SELECTED.includes(c.id) ? 'border:2px solid var(--gold);' : ''}" onclick="toggleCampaignCard(${c.id})">
+        <div class="ic">${CAMPAIGN_SELECTED.includes(c.id) ? '✅' : '🎴'}</div>
+        <div class="t">${c.name}</div>
+        <div class="s">Lv${c.level} · ${c.power}</div>
+      </div>`).join('')}</div>`;
+  const myPower = CAMPAIGN_MY_CARDS.filter(c => CAMPAIGN_SELECTED.includes(c.id)).reduce((s, c) => s + c.power, 0);
+  document.getElementById('campBattleMyPower').textContent = myPower;
+}
+function toggleCampaignCard(id) {
+  const [, maxSize] = CAMPAIGN_PROGRESS.deckSize;
+  if (CAMPAIGN_SELECTED.includes(id)) CAMPAIGN_SELECTED = CAMPAIGN_SELECTED.filter(x => x !== id);
+  else { if (CAMPAIGN_SELECTED.length >= maxSize) return toast(`You can only pick ${maxSize} cards`); CAMPAIGN_SELECTED.push(id); }
+  renderCampaignDeckPicker();
+}
+async function fightCampaignStageUI() {
+  const [minSize] = CAMPAIGN_PROGRESS.deckSize;
+  if (CAMPAIGN_SELECTED.length < minSize) { toast(`Pick at least ${minSize} cards`); return; }
+  if (!CAMPAIGN_ACTIVE_STAGE) return;
+  document.getElementById('campFightBtn').disabled = true;
+  try {
+    const result = await api('/api/campaign/fight', { method: 'POST', body: JSON.stringify({ stageId: CAMPAIGN_ACTIVE_STAGE.id, userCardIds: CAMPAIGN_SELECTED }) });
+    const resEl = document.getElementById('campBattleResult');
+    resEl.style.display = 'block';
+    resEl.className = 'camp-result ' + (result.won ? 'win' : 'lose');
+    let msg = result.won ? `🎉 Victory! (${Math.round(result.myPower)} vs ${Math.round(result.enemyPower)})` : `❌ Defeat (${Math.round(result.myPower)} vs ${Math.round(result.enemyPower)})`;
+    if (result.firstClear && result.reward) {
+      const parts = [];
+      if (result.reward.toman > 0) parts.push(`+${result.reward.toman} LNDC`);
+      if (result.reward.cardId) parts.push('a new card');
+      if (parts.length) msg += `<br>🎁 Reward: ${parts.join(' + ')}`;
+    }
+    resEl.innerHTML = msg;
+    haptic(result.won ? 'medium' : 'light');
+    loadMe();
+    if (result.won) { CAMPAIGN_MY_CARDS = null; await loadCampaign(); }
+  } catch (e) {
+    toast(e.message || 'Could not fight');
+  } finally {
+    document.getElementById('campFightBtn').disabled = false;
+  }
 }
 
 /* ================= Battle pass ================= */
