@@ -151,6 +151,7 @@
     <button data-tab="giftpacks" onclick="showTab('giftpacks')">🎁 Gift packs</button>
     <button data-tab="war" onclick="showTab('war')">⚔️ Tower War</button>
     <button data-tab="plinko" onclick="showTab('plinko')">🎯 Plinko</button>
+    <button data-tab="campaign" onclick="showTab('campaign')">🗺️ Campaign</button>
     <button data-tab="achievements" onclick="showTab('achievements')">🏅 Achievements</button>
     <button data-tab="auction" onclick="showTab('auction')">Auction</button>
     <button data-tab="season" onclick="showTab('season')">Battle pass</button>
@@ -976,6 +977,55 @@
       </div>
     </section>
 
+    <section class="tab" id="tab-campaign">
+      <div class="card">
+        <h3>🗺️ Story Campaign</h3>
+        <p class="muted">A single-player mode: "lands" (themed worlds) each contain an ordered list of stages. Stages unlock strictly in order across the whole campaign — clearing the last stage of one land unlocks the first stage of the next. Battles reuse the same deck-power formula as the real Card Game queue, just against a fixed enemy power instead of a live opponent, and cost a play from the same daily "games left" pool. A stage's reward (a specific card at a specific level, and/or LNDC) is granted only the first time it's cleared.</p>
+      </div>
+      <div class="card">
+        <h3 id="clFormTitle">Add a land</h3>
+        <input type="hidden" id="clId">
+        <label>Name</label><input id="clName" placeholder="e.g. Whispering Woods">
+        <label>Description</label><textarea id="clDescription" rows="2"></textarea>
+        <label>Cover image</label>
+        <input type="file" accept="image/*" id="clImage_file" onchange="uploadImageTo('clImage_file','clImage','clImage_prev')">
+        <input type="hidden" id="clImage"><img id="clImage_prev" class="admin-img-preview">
+        <div class="row2">
+          <div><label>Sort order</label><input type="number" id="clSortOrder" value="0"></div>
+          <div><label>Active</label><select id="clActive"><option value="1">Yes</option><option value="0">No</option></select></div>
+        </div>
+        <button class="btn" onclick="saveCampaignLandUI()">💾 Save land</button>
+        <button class="btn secondary" onclick="resetCampaignLandForm()">Cancel edit</button>
+        <div id="campaignLandsTable" style="margin-top:14px;"></div>
+      </div>
+      <div class="card" id="campaignStagesCard" style="display:none;">
+        <h3>Stages in <span id="csLandName"></span></h3>
+        <input type="hidden" id="csId">
+        <input type="hidden" id="csLandId">
+        <label>Stage name</label><input id="csName" placeholder="e.g. The Overgrown Path">
+        <label>Story text</label><textarea id="csStoryText" rows="3" placeholder="A short scene-setting blurb shown before the battle"></textarea>
+        <label>Stage image</label>
+        <input type="file" accept="image/*" id="csImage_file" onchange="uploadImageTo('csImage_file','csImage','csImage_prev')">
+        <input type="hidden" id="csImage"><img id="csImage_prev" class="admin-img-preview">
+        <div class="row2">
+          <div><label>Enemy name</label><input id="csEnemyName" placeholder="e.g. Shrine Wraith"></div>
+          <div><label>Enemy power</label><input type="number" id="csEnemyPower" value="100"></div>
+        </div>
+        <div class="row2">
+          <div><label>Reward card (optional)</label><select id="csRewardCardId"><option value="">— none —</option></select></div>
+          <div><label>Reward card level (optional)</label><input type="number" id="csRewardCardLevel" placeholder="leave empty for default"></div>
+        </div>
+        <div class="row2">
+          <div><label>Reward LNDC</label><input type="number" id="csRewardToman" value="0" step="0.01"></div>
+          <div><label>Sort order</label><input type="number" id="csSortOrder" value="0"></div>
+        </div>
+        <label>Active</label><select id="csActive"><option value="1">Yes</option><option value="0">No</option></select>
+        <button class="btn" style="margin-top:10px;" onclick="saveCampaignStageUI()">💾 Save stage</button>
+        <button class="btn secondary" onclick="resetCampaignStageForm()">Cancel edit</button>
+        <div id="campaignStagesTable" style="margin-top:14px;"></div>
+      </div>
+    </section>
+
     <section class="tab" id="tab-achievements">
       <div class="card">
         <h3>Create / edit achievement</h3>
@@ -1359,6 +1409,12 @@
     <section class="tab" id="tab-users">
       <div class="card">
         <input placeholder="Search by numeric ID, username, or name" id="userSearch" oninput="loadUsers()">
+        <label style="margin-top:8px;">Sort by</label>
+        <select id="userSort" onchange="loadUsers()">
+          <option value="created_desc">Newest first (default)</option>
+          <option value="balance_desc">LNDC balance — highest to lowest</option>
+          <option value="balance_asc">LNDC balance — lowest to highest</option>
+        </select>
       </div>
       <div id="usersTable"></div>
     </section>
@@ -1448,6 +1504,7 @@ function showTab(name) {
     gamecards: loadGameCards, specialcards: loadSpecialCards, gameconfig: loadGameConfig, leaderboard: loadLeaderboardTab, cardtasks: loadCardTasksTab,
     raffles: () => { loadRafflesAdmin(); },
     plinko: loadPlinkoAdmin,
+    campaign: loadCampaignLandsAdmin,
     users: loadUsers };
   loaders[name]?.();
 }
@@ -2958,6 +3015,152 @@ async function savePlinkoMultipliers() {
   } catch (e) { alert(e.message || 'Could not save'); }
 }
 
+/* ---------- Story Campaign ---------- */
+let CAMPAIGN_CARDS_CACHE = null;
+async function loadCampaignLandsAdmin() {
+  const lands = await api('/campaign/lands');
+  document.getElementById('campaignLandsTable').innerHTML = lands.length ? `
+    <table><tr><th>#</th><th>Name</th><th>Active</th><th>Actions</th></tr>
+    ${lands.map(l => `<tr>
+      <td>${l.sort_order}</td>
+      <td>${l.name}</td>
+      <td>${l.active ? 'Yes' : 'No'}</td>
+      <td>
+        <button class="btn secondary" onclick="editCampaignLand(${l.id})">Edit</button>
+        <button class="btn secondary" onclick="openCampaignStages(${l.id}, '${l.name.replace(/'/g, "\\'")}')">📜 Stages</button>
+        <button class="btn danger" onclick="deleteCampaignLandUI(${l.id})">Delete</button>
+      </td>
+    </tr>`).join('')}
+    </table>` : '<p class="muted">No lands yet.</p>';
+}
+function resetCampaignLandForm() {
+  document.getElementById('clFormTitle').textContent = 'Add a land';
+  document.getElementById('clId').value = '';
+  document.getElementById('clName').value = '';
+  document.getElementById('clDescription').value = '';
+  document.getElementById('clImage').value = '';
+  document.getElementById('clImage_prev').src = '';
+  document.getElementById('clSortOrder').value = 0;
+  document.getElementById('clActive').value = '1';
+}
+async function editCampaignLand(id) {
+  const lands = await api('/campaign/lands');
+  const l = lands.find(x => x.id === id);
+  if (!l) return;
+  document.getElementById('clFormTitle').textContent = 'Edit land';
+  document.getElementById('clId').value = l.id;
+  document.getElementById('clName').value = l.name;
+  document.getElementById('clDescription').value = l.description || '';
+  document.getElementById('clImage').value = l.image_url || '';
+  document.getElementById('clImage_prev').src = l.image_url || '';
+  document.getElementById('clSortOrder').value = l.sort_order;
+  document.getElementById('clActive').value = l.active ? '1' : '0';
+}
+async function saveCampaignLandUI() {
+  const id = document.getElementById('clId').value;
+  await api('/campaign/lands', { method: 'POST', body: JSON.stringify({
+    id: id || undefined,
+    name: document.getElementById('clName').value,
+    description: document.getElementById('clDescription').value,
+    image_url: document.getElementById('clImage').value,
+    sort_order: document.getElementById('clSortOrder').value,
+    active: document.getElementById('clActive').value === '1',
+  }) });
+  resetCampaignLandForm();
+  loadCampaignLandsAdmin();
+}
+async function deleteCampaignLandUI(id) {
+  if (!confirm('Delete this land and ALL its stages? This cannot be undone. Players\' clear history for those stages is also removed.')) return;
+  await api(`/campaign/lands/${id}`, { method: 'DELETE' });
+  document.getElementById('campaignStagesCard').style.display = 'none';
+  loadCampaignLandsAdmin();
+}
+async function openCampaignStages(landId, landName) {
+  document.getElementById('campaignStagesCard').style.display = 'block';
+  document.getElementById('csLandName').textContent = landName;
+  document.getElementById('csLandId').value = landId;
+  resetCampaignStageForm();
+  if (!CAMPAIGN_CARDS_CACHE) CAMPAIGN_CARDS_CACHE = await api('/game/cards');
+  document.getElementById('csRewardCardId').innerHTML = '<option value="">— none —</option>' +
+    CAMPAIGN_CARDS_CACHE.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  loadCampaignStagesTable(landId);
+}
+async function loadCampaignStagesTable(landId) {
+  const stages = await api(`/campaign/lands/${landId}/stages`);
+  document.getElementById('campaignStagesTable').innerHTML = stages.length ? `
+    <table><tr><th>#</th><th>Name</th><th>Enemy</th><th>Reward</th><th>Active</th><th>Actions</th></tr>
+    ${stages.map(s => `<tr>
+      <td>${s.sort_order}</td>
+      <td>${s.name}</td>
+      <td>${s.enemy_name} (${s.enemy_power})</td>
+      <td>${[s.reward_card_id ? `Card #${s.reward_card_id}${s.reward_card_level ? ' Lv.' + s.reward_card_level : ''}` : null, s.reward_toman ? s.reward_toman + ' LNDC' : null].filter(Boolean).join(' + ') || '—'}</td>
+      <td>${s.active ? 'Yes' : 'No'}</td>
+      <td>
+        <button class="btn secondary" onclick="editCampaignStage(${s.id})">Edit</button>
+        <button class="btn danger" onclick="deleteCampaignStageUI(${s.id}, ${landId})">Delete</button>
+      </td>
+    </tr>`).join('')}
+    </table>` : '<p class="muted">No stages yet in this land.</p>';
+}
+function resetCampaignStageForm() {
+  document.getElementById('csId').value = '';
+  document.getElementById('csName').value = '';
+  document.getElementById('csStoryText').value = '';
+  document.getElementById('csImage').value = '';
+  document.getElementById('csImage_prev').src = '';
+  document.getElementById('csEnemyName').value = '';
+  document.getElementById('csEnemyPower').value = 100;
+  document.getElementById('csRewardCardId').value = '';
+  document.getElementById('csRewardCardLevel').value = '';
+  document.getElementById('csRewardToman').value = 0;
+  document.getElementById('csSortOrder').value = 0;
+  document.getElementById('csActive').value = '1';
+}
+async function editCampaignStage(id) {
+  const landId = document.getElementById('csLandId').value;
+  const stages = await api(`/campaign/lands/${landId}/stages`);
+  const s = stages.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('csId').value = s.id;
+  document.getElementById('csName').value = s.name;
+  document.getElementById('csStoryText').value = s.story_text || '';
+  document.getElementById('csImage').value = s.image_url || '';
+  document.getElementById('csImage_prev').src = s.image_url || '';
+  document.getElementById('csEnemyName').value = s.enemy_name;
+  document.getElementById('csEnemyPower').value = s.enemy_power;
+  document.getElementById('csRewardCardId').value = s.reward_card_id || '';
+  document.getElementById('csRewardCardLevel').value = s.reward_card_level || '';
+  document.getElementById('csRewardToman').value = s.reward_toman;
+  document.getElementById('csSortOrder').value = s.sort_order;
+  document.getElementById('csActive').value = s.active ? '1' : '0';
+}
+async function saveCampaignStageUI() {
+  const landId = document.getElementById('csLandId').value;
+  const id = document.getElementById('csId').value;
+  await api('/campaign/stages', { method: 'POST', body: JSON.stringify({
+    id: id || undefined,
+    land_id: Number(landId),
+    name: document.getElementById('csName').value,
+    story_text: document.getElementById('csStoryText').value,
+    image_url: document.getElementById('csImage').value,
+    enemy_name: document.getElementById('csEnemyName').value,
+    enemy_power: document.getElementById('csEnemyPower').value,
+    reward_card_id: document.getElementById('csRewardCardId').value || null,
+    reward_card_level: document.getElementById('csRewardCardLevel').value || null,
+    reward_toman: document.getElementById('csRewardToman').value,
+    sort_order: document.getElementById('csSortOrder').value,
+    active: document.getElementById('csActive').value === '1',
+  }) });
+  resetCampaignStageForm();
+  loadCampaignStagesTable(landId);
+}
+async function deleteCampaignStageUI(id, landId) {
+  if (!confirm('Delete this stage? This cannot be undone.')) return;
+  await api(`/campaign/stages/${id}`, { method: 'DELETE' });
+  loadCampaignStagesTable(landId);
+}
+
+
 async function loadWarLeagueTiersTable() {
   const tiers = await api('/war/leagues');
   document.getElementById('warLeagueTiersTable').innerHTML = tiers.length ? `
@@ -3108,7 +3311,9 @@ async function deleteCardTask(id) { if (confirm('be deleted?')) { await api(`/ca
 /* ---------- Users ---------- */
 async function loadUsers() {
   const q = document.getElementById('userSearch').value;
-  const rows = await api('/users?q=' + encodeURIComponent(q));
+  const sortVal = document.getElementById('userSort').value;
+  const sortParam = sortVal === 'balance_desc' ? 'balance_desc' : sortVal === 'balance_asc' ? 'balance_asc' : '';
+  const rows = await api('/users?q=' + encodeURIComponent(q) + (sortParam ? '&sort=' + sortParam : ''));
   document.getElementById('usersTable').innerHTML = `
     <table><tr><th>ID</th><th>Name</th><th>Balance</th><th>battle pass?</th><th>banned?</th><th>Actions</th></tr>
     ${rows.map(u => `<tr><td>${u.tg_id}</td><td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td><td>${u.balance_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${u.has_battlepass ? '👑 has' : '-'}</td><td>${u.is_banned ? '🚫' : '-'}</td>
