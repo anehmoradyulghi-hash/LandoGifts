@@ -1123,6 +1123,61 @@
   .camp-result.win { background:rgba(34,197,94,.14); border:1px solid rgba(34,197,94,.35); color:#4ade80; }
   .camp-result.lose { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); color:#f87171; }
 
+  /* ---- Wallet (Tonkeeper-style: hero balance + round actions + asset list + accordions) ---- */
+  .wal-hero {
+    position:relative; overflow:hidden; border-radius:24px; padding:26px 20px 22px; text-align:center;
+    background:
+      radial-gradient(400px 220px at 20% -10%, rgba(168,85,247,.35), transparent 60%),
+      radial-gradient(360px 220px at 100% 110%, rgba(59,130,246,.28), transparent 60%),
+      linear-gradient(160deg,#241a3d,#140f24);
+    border:1px solid rgba(255,255,255,.08); box-shadow:0 20px 50px -20px rgba(124,58,237,.5);
+  }
+  .wal-hero::before {
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background:radial-gradient(1.5px 1.5px at 20% 25%, rgba(255,255,255,.5), transparent),
+      radial-gradient(1.5px 1.5px at 75% 15%, rgba(255,255,255,.4), transparent),
+      radial-gradient(1.5px 1.5px at 55% 70%, rgba(255,255,255,.3), transparent),
+      radial-gradient(1.5px 1.5px at 90% 60%, rgba(255,255,255,.3), transparent);
+  }
+  .wal-hero-label { position:relative; font-size:12px; color:var(--muted); font-weight:700; letter-spacing:.3px; }
+  .wal-hero-balance { position:relative; font-size:34px; font-weight:900; margin-top:6px; background:linear-gradient(120deg,#fff,#d8c8ff); -webkit-background-clip:text; background-clip:text; color:transparent; letter-spacing:.2px; }
+  .wal-hero-balance.pulse { animation:walBalancePulse .5s ease; }
+  @keyframes walBalancePulse { 0% { transform:scale(1); } 35% { transform:scale(1.06); } 100% { transform:scale(1); } }
+  .wal-hero-actions { position:relative; display:flex; justify-content:center; gap:22px; margin-top:20px; }
+  .wal-action-btn { display:flex; flex-direction:column; align-items:center; gap:6px; background:none; border:none; color:#fff; cursor:pointer; }
+  .wal-action-ic {
+    width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:19px;
+    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.14); backdrop-filter:blur(6px);
+    transition:transform .15s ease, background .15s ease;
+  }
+  .wal-action-btn:active .wal-action-ic { transform:scale(.9); background:rgba(255,255,255,.18); }
+  .wal-action-label { font-size:10.5px; font-weight:700; color:#e9e4ff; }
+
+  .wal-asset-row {
+    display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:11px 13px; margin-bottom:8px;
+  }
+  .wal-asset-ic {
+    width:38px; height:38px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center;
+    font-size:16px; font-weight:800; background:linear-gradient(150deg,var(--b1),var(--p2)); color:#fff;
+  }
+  .wal-asset-info { flex:1; min-width:0; }
+  .wal-asset-name { font-size:13px; font-weight:800; }
+  .wal-asset-rate { font-size:10.5px; color:var(--muted); margin-top:1px; }
+  .wal-asset-balance { font-size:13.5px; font-weight:800; flex:none; text-align:right; }
+
+  .wal-acc { border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:10px; background:var(--surface); }
+  .wal-acc-head {
+    display:flex; align-items:center; justify-content:space-between; padding:13px 16px; cursor:pointer;
+    font-size:13.5px; font-weight:800; -webkit-tap-highlight-color:transparent;
+  }
+  .wal-acc-chevron { color:var(--muted); transition:transform .25s ease; font-size:13px; }
+  .wal-acc-head.open .wal-acc-chevron { transform:rotate(180deg); }
+  .wal-acc-body { max-height:0; overflow:hidden; transition:max-height .3s ease; }
+  .wal-acc-body.open { max-height:2400px; }
+  .wal-acc-body-inner { padding:2px 16px 16px; }
+
+
   .gamehub-tile {
     background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px 6px;
     text-align:center; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; position:relative; overflow:hidden;
@@ -1625,7 +1680,7 @@
   </div>
 
   <div class="hub-sec"><div><div class="hub-sec-t" data-i18n="rw.codes.t">Codes</div><div class="hub-sec-s" data-i18n="rw.codes.s">Have a promo code?</div></div></div>
-  <div class="gcard gold has-img featured" style="margin-top:14px;" onclick="showPage('wallet');setTimeout(()=>document.getElementById('promoCodeSection')?.scrollIntoView({behavior:'smooth'}),300);">
+  <div class="gcard gold has-img featured" style="margin-top:14px;" onclick="showPage('wallet');setTimeout(()=>{openWalAcc('walAccGift');document.getElementById('promoCodeSection')?.scrollIntoView({behavior:'smooth'});},300);">
     <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/><path d="M7 14h4"/></svg></span>
     <span class="t" data-i18n="rw.giftCode.t">Gift Code / Promo Code</span>
     <span class="s" data-i18n="rw.giftCode.s">Redeem a code for rewards</span>
@@ -1972,100 +2027,122 @@
     </div>
   </div>
 
-  <div class="hub-sec"><div><div class="hub-sec-t" data-i18n="wal.assets.t">Assets</div><div class="hub-sec-s" data-i18n="wal.assets.s">Your balances at a glance</div></div></div>
-  <div class="gcard purple featured" id="hubTile-wallet" style="margin-top:2px;">
-    <div class="tg-caption" data-i18n="wal.totalBalance">Total balance</div>
-    <div class="tg-num tg-num-lg stat-hero" style="margin-top:4px;" id="walletHeroBalance">0 LNDC</div>
-    <div class="btn3" style="margin-top:12px;">
-      <button class="btn outline" id="walletTopupShortcut" onclick="document.getElementById('topupAmount').scrollIntoView({behavior:'smooth'})" data-i18n="wal.topup">⬇️ Top up</button>
-      <button class="btn outline" id="walletWithdrawShortcut" onclick="document.getElementById('withdrawAmount').scrollIntoView({behavior:'smooth'})" data-i18n="wal.withdraw">⬆️ Withdraw</button>
-      <button class="btn outline" onclick="document.getElementById('ledgerList').scrollIntoView({behavior:'smooth'})" data-i18n="wal.history">📜 History</button>
+  <div class="wal-hero" id="hubTile-wallet">
+    <div class="wal-hero-label" data-i18n="wal.totalBalance">Total balance</div>
+    <div class="wal-hero-balance" id="walletHeroBalance">0 LNDC</div>
+    <div class="wal-hero-actions">
+      <button class="wal-action-btn" id="walletTopupShortcut" onclick="openWalAcc('walAccTopup');document.getElementById('topupAmount').scrollIntoView({behavior:'smooth'})">
+        <span class="wal-action-ic">⬇️</span><span class="wal-action-label" data-i18n="wal.topup2">Deposit</span>
+      </button>
+      <button class="wal-action-btn" id="walletWithdrawShortcut" onclick="openWalAcc('walAccTopup');document.getElementById('withdrawAmount').scrollIntoView({behavior:'smooth'})">
+        <span class="wal-action-ic">⬆️</span><span class="wal-action-label" data-i18n="wal.withdraw2">Withdraw</span>
+      </button>
+      <button class="wal-action-btn" onclick="openWalAcc('walAccSwap');document.getElementById('swapAmount').scrollIntoView({behavior:'smooth'})">
+        <span class="wal-action-ic">🔄</span><span class="wal-action-label" data-i18n="wal.swap2">Swap</span>
+      </button>
+      <button class="wal-action-btn" onclick="document.getElementById('ledgerList').scrollIntoView({behavior:'smooth'})">
+        <span class="wal-action-ic">📜</span><span class="wal-action-label" data-i18n="wal.history2">History</span>
+      </button>
     </div>
   </div>
+
+  <div class="hub-sec"><div><div class="hub-sec-t" data-i18n="wal.assets.t">Assets</div><div class="hub-sec-s" data-i18n="wal.assets.s">Your balances at a glance</div></div></div>
+  <div id="currencyBalances" class="muted">Loading...</div>
 
   <div class="hub-sec"><div><div class="hub-sec-t" data-i18n="wal.money.t">Money</div><div class="hub-sec-s" data-i18n="wal.money.s">Deposit, withdraw, transfer & swap</div></div></div>
-  <div id="lndcTopupSection">
-    <h3 class="sec" data-i18n="wal.topupWallet">Top up wallet</h3>
-    <div class="card">
-      <div id="manualTopupBox">
-        <label>Amount (LNDC)</label>
-        <input type="number" id="topupAmount" step="0.01" placeholder="e.g. 100000" />
-        <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
-          <p class="muted" style="margin:0 0 6px;">or card-to-card:</p>
-          <div class="muted" id="cardInfo"></div>
-          <label>Tracking code or last 4 digits of the card</label>
-          <input type="text" id="topupTracking" />
-          <button class="btn secondary" onclick="doTopup()">Submit card-to-card top-up request</button>
+
+  <div class="wal-acc" id="walAccTopup">
+    <div class="wal-acc-head open" onclick="toggleWalAcc(this)"><span data-i18n="wal.topupWallet">💰 Top up & Withdraw</span><span class="wal-acc-chevron">⌄</span></div>
+    <div class="wal-acc-body open"><div class="wal-acc-body-inner">
+      <div id="lndcTopupSection">
+        <div id="manualTopupBox">
+          <label>Amount (LNDC)</label>
+          <input type="number" id="topupAmount" step="0.01" placeholder="e.g. 100000" />
+          <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+            <p class="muted" style="margin:0 0 6px;">or card-to-card:</p>
+            <div class="muted" id="cardInfo"></div>
+            <label>Tracking code or last 4 digits of the card</label>
+            <input type="text" id="topupTracking" />
+            <button class="btn secondary" onclick="doTopup()">Submit card-to-card top-up request</button>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-  <div class="card" id="lndcWithdrawSection">
-    <h3 class="sec" style="margin-top:0;">LNDC withdrawal</h3>
-    <label>Amount (LNDC)</label><input type="number" id="withdrawAmount" step="0.01" />
-    <label>Destination card number</label><input type="text" id="withdrawCard" />
-    <button class="btn secondary" onclick="doWithdraw()">Submit withdrawal request</button>
-  </div>
-
-  <h3 class="sec">Currency wallet</h3>
-  <div class="card"><div id="currencyBalances" class="muted">Loading...</div></div>
-  <div class="card">
-    <h3 class="sec" style="margin-top:0;">Convert LNDC ⇄ currency</h3>
-    <p class="muted" id="swapFeeNote" style="margin-top:-4px;"></p>
-    <label>From</label><select id="swapFrom"></select>
-    <label>To</label><select id="swapTo"></select>
-    <label>Amount</label><input type="number" id="swapAmount" step="0.01" />
-    <button class="btn" onclick="doSwap()">Convert</button>
-  </div>
-  <div class="card">
-    <h3 class="sec" style="margin-top:0;">TON wallet</h3>
-    <div id="tonWalletStatus" class="row"><span class="muted" id="tonWalletLabel">Not connected</span><span id="tonConnectBtn"></span></div>
-    <div id="tonPayBox" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
-      <label>Amount (TON)</label><input type="number" id="tonPayAmount" step="0.01" placeholder="e.g. 1.5">
-      <button class="btn gold" onclick="doTonPay()">💎 Pay with TON wallet</button>
-      <p class="muted" style="margin-top:6px;">Sends TON directly from your connected wallet to the deposit address below, then submits the top-up request automatically.</p>
-    </div>
-  </div>
-  <div class="card">
-    <h3 class="sec" style="margin-top:0;">⭐ Top up with Telegram Stars</h3>
-    <div id="starsTopupBox" style="display:none;">
-      <p class="muted" style="margin:0 0 6px;">Instant top-up — credited to your LNDC balance right away.</p>
-      <input type="number" id="starsAmount" placeholder="Number of Stars" />
-      <div class="muted" id="starsToTomanHint" style="margin-bottom:8px;"></div>
-      <button class="btn" style="background:linear-gradient(90deg,#ffd76b,#ff9f43);" onclick="doStarsTopup()">⭐ Pay with Stars</button>
-    </div>
-    <p class="muted" id="starsUnavailableMsg" style="display:none;">Star payments have not been enabled by the admin yet.</p>
-  </div>
-  <div class="card">
-    <h3 class="sec" style="margin-top:0;">Crypto deposit</h3>
-    <label>Currency</label><select id="depCode" onchange="onDepCodeChange()"></select>
-    <div id="depAddressBox" class="muted" style="margin-bottom:10px;"></div>
-    <label>Amount</label><input type="number" id="depAmount" step="0.01" />
-    <label>Transaction hash</label><input type="text" id="depTx" />
-    <button class="btn" onclick="doCurrencyDeposit()">Submit deposit request</button>
-  </div>
-  <div class="card">
-    <h3 class="sec" style="margin-top:0;">Crypto withdrawal</h3>
-    <label>Currency</label><select id="wdCode"></select>
-    <label>Amount</label><input type="number" id="wdAmount" step="0.01" />
-    <label>Destination address</label><input type="text" id="wdAddress" />
-    <button class="btn secondary" onclick="doCurrencyWithdraw()">Submit withdrawal request</button>
+      <div id="lndcWithdrawSection" style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);">
+        <h3 class="sec" style="margin-top:0;">LNDC withdrawal</h3>
+        <label>Amount (LNDC)</label><input type="number" id="withdrawAmount" step="0.01" />
+        <label>Destination card number</label><input type="text" id="withdrawCard" />
+        <button class="btn secondary" onclick="doWithdraw()">Submit withdrawal request</button>
+      </div>
+    </div></div>
   </div>
 
-  <h3 class="sec" id="promoCodeSection">Gift code</h3>
-  <div class="card">
-    <input type="text" id="promoCodeInput" placeholder="e.g. SPRING1404" style="text-transform:uppercase;">
-    <button class="btn gold" onclick="redeemPromo()">Redeem code</button>
+  <div class="wal-acc" id="walAccSwap">
+    <div class="wal-acc-head" onclick="toggleWalAcc(this)"><span>🔄 Convert LNDC ⇄ currency</span><span class="wal-acc-chevron">⌄</span></div>
+    <div class="wal-acc-body"><div class="wal-acc-body-inner">
+      <p class="muted" id="swapFeeNote" style="margin-top:6px;"></p>
+      <label>From</label><select id="swapFrom"></select>
+      <label>To</label><select id="swapTo"></select>
+      <label>Amount</label><input type="number" id="swapAmount" step="0.01" />
+      <button class="btn" onclick="doSwap()">Convert</button>
+    </div></div>
   </div>
 
-  <h3 class="sec">Gift to a friend</h3>
-  <div class="card">
-    <label>Recipient ID or username</label><input type="text" id="giftReceiver" placeholder="123456789 or @username">
-    <label>Amount (2% fee deducted)</label><input type="number" id="giftTomanAmount" step="0.01">
-    <button class="btn secondary" onclick="doGiftToman()">Send gift</button>
+  <div class="wal-acc">
+    <div class="wal-acc-head" onclick="toggleWalAcc(this)"><span>💎 TON wallet</span><span class="wal-acc-chevron">⌄</span></div>
+    <div class="wal-acc-body"><div class="wal-acc-body-inner">
+      <div id="tonWalletStatus" class="row"><span class="muted" id="tonWalletLabel">Not connected</span><span id="tonConnectBtn"></span></div>
+      <div id="tonPayBox" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+        <label>Amount (TON)</label><input type="number" id="tonPayAmount" step="0.01" placeholder="e.g. 1.5">
+        <button class="btn gold" onclick="doTonPay()">💎 Pay with TON wallet</button>
+        <p class="muted" style="margin-top:6px;">Sends TON directly from your connected wallet to the deposit address below, then submits the top-up request automatically.</p>
+      </div>
+    </div></div>
   </div>
 
-  <h3 class="sec">Transaction history</h3>
+  <div class="wal-acc">
+    <div class="wal-acc-head" onclick="toggleWalAcc(this)"><span>⭐ Top up with Telegram Stars</span><span class="wal-acc-chevron">⌄</span></div>
+    <div class="wal-acc-body"><div class="wal-acc-body-inner">
+      <div id="starsTopupBox" style="display:none;">
+        <p class="muted" style="margin:6px 0 6px;">Instant top-up — credited to your LNDC balance right away.</p>
+        <input type="number" id="starsAmount" placeholder="Number of Stars" />
+        <div class="muted" id="starsToTomanHint" style="margin-bottom:8px;"></div>
+        <button class="btn" style="background:linear-gradient(90deg,#ffd76b,#ff9f43);" onclick="doStarsTopup()">⭐ Pay with Stars</button>
+      </div>
+      <p class="muted" id="starsUnavailableMsg" style="display:none;">Star payments have not been enabled by the admin yet.</p>
+    </div></div>
+  </div>
+
+  <div class="wal-acc">
+    <div class="wal-acc-head" onclick="toggleWalAcc(this)"><span>🪙 Crypto deposit & withdrawal</span><span class="wal-acc-chevron">⌄</span></div>
+    <div class="wal-acc-body"><div class="wal-acc-body-inner">
+      <h3 class="sec" style="margin-top:6px;">Crypto deposit</h3>
+      <label>Currency</label><select id="depCode" onchange="onDepCodeChange()"></select>
+      <div id="depAddressBox" class="muted" style="margin-bottom:10px;"></div>
+      <label>Amount</label><input type="number" id="depAmount" step="0.01" />
+      <label>Transaction hash</label><input type="text" id="depTx" />
+      <button class="btn" onclick="doCurrencyDeposit()">Submit deposit request</button>
+      <h3 class="sec" style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);">Crypto withdrawal</h3>
+      <label>Currency</label><select id="wdCode"></select>
+      <label>Amount</label><input type="number" id="wdAmount" step="0.01" />
+      <label>Destination address</label><input type="text" id="wdAddress" />
+      <button class="btn secondary" onclick="doCurrencyWithdraw()">Submit withdrawal request</button>
+    </div></div>
+  </div>
+
+  <div class="wal-acc" id="walAccGift">
+    <div class="wal-acc-head" onclick="toggleWalAcc(this)"><span id="promoCodeSection">🎁 Gift code & send to a friend</span><span class="wal-acc-chevron">⌄</span></div>
+    <div class="wal-acc-body"><div class="wal-acc-body-inner">
+      <h3 class="sec" style="margin-top:6px;">Gift code</h3>
+      <input type="text" id="promoCodeInput" placeholder="e.g. SPRING1404" style="text-transform:uppercase;">
+      <button class="btn gold" onclick="redeemPromo()">Redeem code</button>
+      <h3 class="sec" style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);">Gift to a friend</h3>
+      <label>Recipient ID or username</label><input type="text" id="giftReceiver" placeholder="123456789 or @username">
+      <label>Amount (2% fee deducted)</label><input type="number" id="giftTomanAmount" step="0.01">
+      <button class="btn secondary" onclick="doGiftToman()">Send gift</button>
+    </div></div>
+  </div>
+
+  <h3 class="sec" data-i18n="wal.transactionHistory">Transaction history</h3>
   <div class="card">
     <div id="ledgerList" class="muted">Loading...</div>
     <button class="btn outline" id="ledgerMoreBtn" style="display:none;margin-top:8px;" onclick="loadMoreLedger()">Show earlier transactions</button>
@@ -2238,6 +2315,8 @@ const I18N = {
     'wal.assets.t': 'Assets', 'wal.assets.s': 'Your balances at a glance',
     'wal.totalBalance': 'Total balance',
     'wal.topup': '⬇️ Top up', 'wal.withdraw': '⬆️ Withdraw', 'wal.history': '📜 History',
+    'wal.topup2': 'Deposit', 'wal.withdraw2': 'Withdraw', 'wal.swap2': 'Swap', 'wal.history2': 'History',
+    'wal.transactionHistory': 'Transaction history',
     'wal.money.t': 'Money', 'wal.money.s': 'Deposit, withdraw, transfer & swap',
     'wal.topupWallet': 'Top up wallet',
     'lb.mainRankings.t': 'Main Rankings', 'lb.mainRankings.s': 'Top players by game',
@@ -2328,6 +2407,8 @@ const I18N = {
     'wal.assets.t': 'دارایی', 'wal.assets.s': 'موجودی شما در یک نگاه',
     'wal.totalBalance': 'موجودی کل',
     'wal.topup': '⬇️ افزایش موجودی', 'wal.withdraw': '⬆️ برداشت', 'wal.history': '📜 تاریخچه',
+    'wal.topup2': 'واریز', 'wal.withdraw2': 'برداشت', 'wal.swap2': 'تبدیل', 'wal.history2': 'تاریخچه',
+    'wal.transactionHistory': 'تاریخچه تراکنش‌ها',
     'wal.money.t': 'پول', 'wal.money.s': 'واریز، برداشت، انتقال و تبدیل',
     'wal.topupWallet': 'افزایش موجودی کیف پول',
     'lb.mainRankings.t': 'رتبه‌بندی اصلی', 'lb.mainRankings.s': 'برترین بازیکن‌ها بر اساس بازی',
@@ -2691,6 +2772,8 @@ async function loadMe() {
     const me = await api('/api/me');
     document.getElementById('balanceLine').textContent = `Balance: ${me.balance_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`;
     document.getElementById('walletHeroBalance').textContent = `${me.balance_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC`;
+    const heroBalEl = document.getElementById('walletHeroBalance');
+    heroBalEl.classList.remove('pulse'); void heroBalEl.offsetWidth; heroBalEl.classList.add('pulse');
     document.getElementById('profileName').textContent = me.first_name || me.username || 'User';
     document.getElementById('profileId').textContent = 'ID: ' + me.tg_id;
     return me;
@@ -2886,6 +2969,23 @@ function renderLedgerRow(l) {
   return `<div class="row"><span>${l.reason || '-'}</span><span>${l.direction === 'in' ? '+' : '-'}${l.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${l.currency_code}</span></div>`;
 }
 let STARS_RATE = 0;
+/* ================= Wallet: Tonkeeper-style accordions ================= */
+function toggleWalAcc(headEl) {
+  const body = headEl.nextElementSibling;
+  const nowOpen = !body.classList.contains('open');
+  body.classList.toggle('open', nowOpen);
+  headEl.classList.toggle('open', nowOpen);
+}
+// Used by deep links from other pages (e.g. Rewards Hub's "Gift Code" card) to land on this
+// section already expanded, instead of scrolling to a collapsed accordion with nothing visible.
+function openWalAcc(accId) {
+  const acc = document.getElementById(accId);
+  if (!acc) return;
+  const head = acc.querySelector('.wal-acc-head');
+  const body = acc.querySelector('.wal-acc-body');
+  head?.classList.add('open');
+  body?.classList.add('open');
+}
 async function loadWallet() {
   document.getElementById('cardInfo').textContent = CONFIG.cardNumber
     ? `Card number: ${CONFIG.cardNumber} (${CONFIG.cardOwner || ''})` : 'The card number has not been set by the admin yet.';
@@ -2950,8 +3050,16 @@ async function loadCurrency() {
   CURRENCIES = await api('/api/currencies');
   const balances = await api('/api/wallet/balances');
   document.getElementById('currencyBalances').innerHTML = CURRENCIES.length
-    ? CURRENCIES.map(c => `<div class="row"><span>${c.name} (${c.code})</span><span>${Math.round(balances[c.code] || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} — Rate: ${c.rate_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</span></div>`).join('')
-    : 'No currency has been enabled by the admin.';
+    ? CURRENCIES.map(c => `
+      <div class="wal-asset-row">
+        <div class="wal-asset-ic">${(c.code || '?').slice(0, 2)}</div>
+        <div class="wal-asset-info">
+          <div class="wal-asset-name">${c.name} <span class="muted">(${c.code})</span></div>
+          <div class="wal-asset-rate">Rate: ${c.rate_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</div>
+        </div>
+        <div class="wal-asset-balance">${Math.round(balances[c.code] || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+      </div>`).join('')
+    : '<p class="muted">No currency has been enabled by the admin.</p>';
   const codeOptions = CURRENCIES.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
   document.getElementById('depCode').innerHTML = codeOptions;
   document.getElementById('wdCode').innerHTML = codeOptions;
