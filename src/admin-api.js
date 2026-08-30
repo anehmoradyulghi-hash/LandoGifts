@@ -891,9 +891,9 @@ router.delete('/quests/templates/:id', (req, res) => { deleteQuestTemplate(Numbe
 /* ---------- Gift code ---------- */
 router.get('/promo', (req, res) => res.json(listPromoCodes()));
 router.post('/promo', (req, res) => {
-  const { code, reward_type, reward_value, max_uses, expires_at, active } = req.body;
+  const { code, reward_type, reward_value, reward_card_level, max_uses, expires_at, active } = req.body;
   if (!code || !reward_type) return res.status(400).json({ error: 'Code and prize type are required' });
-  createPromoCode({ code, reward_type, reward_value, max_uses: max_uses ? Number(max_uses) : null, expires_at, active });
+  createPromoCode({ code, reward_type, reward_value, reward_card_level, max_uses: max_uses ? Number(max_uses) : null, expires_at, active });
   res.json({ ok: true });
 });
 router.delete('/promo/:code', (req, res) => { deletePromoCode(req.params.code.toUpperCase()); res.json({ ok: true }); });

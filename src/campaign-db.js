@@ -22,6 +22,15 @@ CREATE TABLE IF NOT EXISTS campaign_lands (
   sort_order INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1
 );
+`);
+function safeAddColumn(table, columnDef) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
+  catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+}
+// A purely visual palette (forest/fire/ice/shadow/gold) — picks the CSS gradient + decorative
+// silhouette shown behind the land's stage path and battle screens when no custom image_url is set.
+safeAddColumn('campaign_lands', "theme TEXT NOT NULL DEFAULT 'forest'");
+db.exec(`
 CREATE TABLE IF NOT EXISTS campaign_stages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   land_id INTEGER NOT NULL REFERENCES campaign_lands(id) ON DELETE CASCADE,
@@ -73,12 +82,12 @@ export function listCampaignLandsAdmin() {
 }
 export function upsertCampaignLand(l) {
   if (l.id) {
-    db.prepare('UPDATE campaign_lands SET name=?, description=?, image_url=?, sort_order=?, active=? WHERE id=?')
-      .run(l.name, l.description || null, l.image_url || null, Number(l.sort_order) || 0, l.active ? 1 : 0, l.id);
+    db.prepare('UPDATE campaign_lands SET name=?, description=?, image_url=?, theme=?, sort_order=?, active=? WHERE id=?')
+      .run(l.name, l.description || null, l.image_url || null, l.theme || 'forest', Number(l.sort_order) || 0, l.active ? 1 : 0, l.id);
     return l.id;
   }
-  return db.prepare('INSERT INTO campaign_lands (name, description, image_url, sort_order, active) VALUES (?,?,?,?,?)')
-    .run(l.name, l.description || null, l.image_url || null, Number(l.sort_order) || 0, l.active === false ? 0 : 1).lastInsertRowid;
+  return db.prepare('INSERT INTO campaign_lands (name, description, image_url, theme, sort_order, active) VALUES (?,?,?,?,?,?)')
+    .run(l.name, l.description || null, l.image_url || null, l.theme || 'forest', Number(l.sort_order) || 0, l.active === false ? 0 : 1).lastInsertRowid;
 }
 export function deleteCampaignLand(id) {
   db.prepare('DELETE FROM campaign_stages WHERE land_id = ?').run(id);
@@ -110,7 +119,7 @@ export function deleteCampaignStage(id) { db.prepare('DELETE FROM campaign_stage
 /* ---------- Player ---------- */
 function listAllActiveStagesInOrder() {
   return db.prepare(`
-    SELECT st.*, l.name AS land_name, l.image_url AS land_image_url
+    SELECT st.*, l.name AS land_name, l.image_url AS land_image_url, l.theme AS land_theme
     FROM campaign_stages st JOIN campaign_lands l ON l.id = st.land_id
     WHERE st.active = 1 AND l.active = 1
     ORDER BY l.sort_order ASC, l.id ASC, st.sort_order ASC, st.id ASC
@@ -126,7 +135,7 @@ export function getCampaignProgress(tgId) {
   const lands = new Map();
   for (const st of stages) {
     const cleared = clearedIds.has(st.id);
-    if (!lands.has(st.land_id)) lands.set(st.land_id, { id: st.land_id, name: st.land_name, imageUrl: st.land_image_url, stages: [] });
+    if (!lands.has(st.land_id)) lands.set(st.land_id, { id: st.land_id, name: st.land_name, imageUrl: st.land_image_url, theme: st.land_theme || 'forest', stages: [] });
     lands.get(st.land_id).stages.push({
       id: st.id, name: st.name, story: st.story_text, imageUrl: st.image_url, enemyName: st.enemy_name, enemyPower: st.enemy_power,
       rewardCardId: st.reward_card_id, rewardCardLevel: st.reward_card_level, rewardToman: st.reward_toman,

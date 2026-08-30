@@ -21,13 +21,20 @@ CREATE TABLE IF NOT EXISTS promo_redemptions (
   PRIMARY KEY (code, tg_id)
 );
 `);
+function safeAddColumn(table, columnDef) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); }
+  catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+}
+// Only used when reward_type = 'card' — lets a gift code hand out a card at a SPECIFIC level
+// (e.g. a promo tied to a launch event granting a Level 5 card), not just its default level.
+safeAddColumn('promo_codes', 'reward_card_level INTEGER');
 
 export function listPromoCodes() { return db.prepare('SELECT * FROM promo_codes ORDER BY created_at DESC').all(); }
 export function getPromoCode(code) { return db.prepare('SELECT * FROM promo_codes WHERE code = ?').get(code); }
 export function createPromoCode(c) {
   db.prepare(`
-    INSERT INTO promo_codes (code, reward_type, reward_value, max_uses, expires_at, active) VALUES (?,?,?,?,?,?)
-  `).run(c.code.trim().toUpperCase(), c.reward_type, c.reward_value, c.max_uses || null, c.expires_at || null, c.active !== false ? 1 : 0);
+    INSERT INTO promo_codes (code, reward_type, reward_value, reward_card_level, max_uses, expires_at, active) VALUES (?,?,?,?,?,?,?)
+  `).run(c.code.trim().toUpperCase(), c.reward_type, c.reward_value, c.reward_card_level ? Number(c.reward_card_level) : null, c.max_uses || null, c.expires_at || null, c.active !== false ? 1 : 0);
 }
 export function deletePromoCode(code) { db.prepare('DELETE FROM promo_codes WHERE code = ?').run(code); }
 export function listRedemptions(code) {
@@ -50,7 +57,7 @@ export function redeemPromoCode(tgId, codeInput) {
     if (promo.reward_type === 'toman' && Number(promo.reward_value) > 0) {
       adjustToman(tgId, Number(promo.reward_value), `Gift code: ${code}`);
     } else if (promo.reward_type === 'card' && promo.reward_value) {
-      grantCardInstance(tgId, Number(promo.reward_value));
+      grantCardInstance(tgId, Number(promo.reward_value), promo.reward_card_level || null);
     }
     db.prepare('INSERT INTO promo_redemptions (code, tg_id) VALUES (?,?)').run(code, tgId);
     db.prepare('UPDATE promo_codes SET used_count = used_count + 1 WHERE code = ?').run(code);
