@@ -481,8 +481,22 @@
 
   /* ---------- Battle clash animation ---------- */
   .battle-fx { position:relative; border-radius:22px; overflow:hidden; padding:26px 10px 18px; margin-bottom:12px;
-    background:radial-gradient(circle at 50% 40%, #241332, #0a0c12 75%); border:1px solid var(--border); }
-  .battle-fx-row { display:flex; align-items:center; justify-content:center; gap:10px; position:relative; min-height:104px; }
+    background:
+      radial-gradient(420px 240px at 20% -10%, rgba(168,85,247,.32), transparent 60%),
+      radial-gradient(360px 240px at 100% 110%, rgba(59,130,246,.24), transparent 60%),
+      radial-gradient(circle at 50% 40%, #241332, #0a0c12 75%);
+    border:1px solid rgba(255,255,255,.1); box-shadow:0 18px 44px -18px rgba(124,58,237,.5); }
+  .battle-fx::before {
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.7;
+    background:radial-gradient(1.6px 1.6px at 14% 22%, #fff, transparent), radial-gradient(1.6px 1.6px at 85% 18%, #fff, transparent),
+      radial-gradient(1.2px 1.2px at 45% 70%, #fff, transparent), radial-gradient(1.2px 1.2px at 70% 78%, #fff, transparent),
+      radial-gradient(1.6px 1.6px at 92% 60%, #fff, transparent);
+    animation:campTwinkle 3s ease-in-out infinite;
+  }
+  .battle-fx-flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:6; }
+  .battle-fx-flash.go { animation:campFlash .3s ease; }
+  .battle-fx.shaking { animation:campShake .4s ease; }
+  .battle-fx-row { display:flex; align-items:center; justify-content:center; gap:10px; position:relative; min-height:104px; z-index:1; }
   .battle-fx-card { width:84px; height:104px; border-radius:14px; overflow:hidden; background:var(--surface2); box-shadow:0 10px 26px -8px rgba(0,0,0,.6); border:2px solid rgba(255,255,255,.12); flex-shrink:0; }
   .battle-fx-card img { width:100%; height:100%; object-fit:cover; display:block; }
   .battle-fx-card.mine { animation: fxLungeLeft 1.1s ease-in-out 0.5s 2 alternate; }
@@ -491,14 +505,22 @@
   @keyframes fxLungeRight { 0% { transform:translateX(0) rotate(0deg); } 100% { transform:translateX(-22px) rotate(6deg); } }
   .battle-fx-vs { font-size:22px; font-weight:900; color:var(--gold); text-shadow:0 0 14px rgba(255,215,0,.6); flex-shrink:0; animation: fxPulse 0.6s ease-in-out infinite alternate; }
   @keyframes fxPulse { from { transform:scale(1); } to { transform:scale(1.18); } }
-  .battle-fx-spark { position:absolute; left:50%; top:50%; width:70px; height:70px; margin:-35px 0 0 -35px; pointer-events:none; opacity:0;
+  .battle-fx-spark { position:absolute; left:50%; top:50%; width:70px; height:70px; margin:-35px 0 0 -35px; pointer-events:none; opacity:0; z-index:2;
     background:radial-gradient(circle, rgba(255,255,255,.95), rgba(255,215,0,.5) 40%, transparent 70%); border-radius:50%; }
   .battle-fx-spark.hit { animation: fxSpark 0.35s ease-out; }
   @keyframes fxSpark { 0% { opacity:0; transform:scale(.2); } 40% { opacity:1; transform:scale(1.3); } 100% { opacity:0; transform:scale(1.6); } }
-  .battle-fx-names { display:flex; justify-content:space-between; padding:0 4px; margin-top:10px; font-size:11px; color:var(--muted); }
-  .battle-fx-power { display:flex; justify-content:space-between; padding:0 4px; margin-top:2px; font-size:16px; font-weight:800; }
+  .battle-fx-names { position:relative; z-index:1; display:flex; justify-content:space-between; padding:0 4px; margin-top:10px; font-size:11px; color:var(--muted); }
+  .battle-fx-power { position:relative; z-index:1; display:flex; justify-content:space-between; padding:0 4px; margin-top:2px; font-size:16px; font-weight:800; }
   .battle-fx-power span.mine { color:var(--success); } .battle-fx-power span.opp { color:var(--danger); }
-  .battle-fx-status { text-align:center; margin-top:12px; font-size:12.5px; color:var(--muted); min-height:16px; }
+  .battle-fx-status { position:relative; z-index:1; text-align:center; margin-top:12px; font-size:12.5px; color:var(--muted); min-height:16px; }
+  .battle-fx-confetti { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:7; }
+  /* Searching-for-opponent state: a small radar-style pulse instead of a static line of text */
+  .queue-searching { display:flex; align-items:center; justify-content:center; gap:5px; font-size:10.5px; white-space:nowrap; }
+  .queue-radar { position:relative; width:13px; height:13px; flex:none; }
+  .queue-radar span { position:absolute; inset:0; border-radius:50%; border:1.5px solid var(--p1); opacity:0; animation:queueRadarPing 1.6s ease-out infinite; }
+  .queue-radar span:nth-child(2) { animation-delay:.5s; }
+  .queue-radar span:nth-child(3) { animation-delay:1s; }
+  @keyframes queueRadarPing { 0% { transform:scale(.3); opacity:.9; } 100% { transform:scale(1.6); opacity:0; } }
 
   /* ---------- Clan chat: avatar + level badge next to the sender's name ---------- */
   .chat-avatar {
@@ -3655,7 +3677,7 @@ function updateQueueState(queue) {
   const el = document.getElementById('gameQueueState');
   clearTimeout(GAME_QUEUE_TIMER);
   if (queue.waiting) {
-    el.textContent = 'In queue waiting for opponent...';
+    el.innerHTML = `<span class="queue-searching"><span class="queue-radar"><span></span><span></span><span></span></span> Searching...</span>`;
     GAME_QUEUE_TIMER = setTimeout(async () => { const s = await api('/api/game/queue-status'); updateQueueState(s); }, 4000);
   } else el.textContent = 'You are not in queue';
 }
@@ -3676,6 +3698,7 @@ function playBattleClashAnimation(banner, r) {
   const myImg = myCard.image ? `<img src="${myCard.image}">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:30px;">⚔️</div>';
   banner.innerHTML = `
     <div class="battle-fx" id="battleFx">
+      <div class="battle-fx-flash" id="battleFxFlash"></div>
       <div class="battle-fx-row">
         <div class="battle-fx-card mine">${myImg}</div>
         <div class="battle-fx-spark" id="fxSpark"></div>
@@ -3685,13 +3708,22 @@ function playBattleClashAnimation(banner, r) {
       <div class="battle-fx-names"><span>You</span><span>Opponent</span></div>
       <div class="battle-fx-power"><span class="mine" id="fxMyPower">0</span><span class="opp" id="fxOppPower">0</span></div>
       <div class="battle-fx-status" id="fxStatus">Cards are clashing...</div>
+      <div class="battle-fx-confetti" id="fxConfetti"></div>
     </div>`;
+  const fx = document.getElementById('battleFx');
+  const flash = document.getElementById('battleFxFlash');
   const spark = document.getElementById('fxSpark');
   const myPowerEl = document.getElementById('fxMyPower');
   const oppPowerEl = document.getElementById('fxOppPower');
-  // Two hits, timed to land with the card-lunge animation (which alternates twice over ~2.2s)
+  // Two hits, timed to land with the card-lunge animation (which alternates twice over ~2.2s) —
+  // each hit now also gets a brief white flash and screen shake for extra impact.
   const hitAt = [550, 1650];
-  hitAt.forEach(t => setTimeout(() => { spark.classList.remove('hit'); void spark.offsetWidth; spark.classList.add('hit'); }, t));
+  hitAt.forEach(t => setTimeout(() => {
+    spark.classList.remove('hit'); void spark.offsetWidth; spark.classList.add('hit');
+    flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
+    fx.classList.remove('shaking'); void fx.offsetWidth; fx.classList.add('shaking');
+    haptic('light');
+  }, t));
   // Count both power numbers up together so the reveal feels like a live tally, not a static label
   const duration = 2400, steps = 30;
   for (let i = 1; i <= steps; i++) {
@@ -3703,6 +3735,8 @@ function playBattleClashAnimation(banner, r) {
   setTimeout(() => {
     const status = document.getElementById('fxStatus');
     if (status) status.textContent = r.won ? '🏆 Victory!' : '😢 Defeat';
+    if (r.won) campSpawnConfetti(document.getElementById('fxConfetti'));
+    haptic(r.won ? 'medium' : 'light');
   }, duration - 200);
   setTimeout(() => {
     banner.innerHTML = `<div class="battle-banner ${r.won ? 'win' : 'lose'}">${r.won ? '🏆 You won!' : '😢 You lost'}<br><span style="font-weight:400;font-size:13px;">My power: ${r.myPower} — Opponent's power: ${r.opponentPower}</span></div>`;
