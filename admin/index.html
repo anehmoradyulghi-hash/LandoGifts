@@ -994,6 +994,14 @@
           <div><label>Sort order</label><input type="number" id="clSortOrder" value="0"></div>
           <div><label>Active</label><select id="clActive"><option value="1">Yes</option><option value="0">No</option></select></div>
         </div>
+        <label>Visual theme (used when no cover image is set)</label>
+        <select id="clTheme">
+          <option value="forest">🌲 Forest</option>
+          <option value="fire">🔥 Fire / Ash</option>
+          <option value="ice">❄️ Ice</option>
+          <option value="shadow">🌑 Shadow</option>
+          <option value="gold">✨ Golden</option>
+        </select>
         <button class="btn" onclick="saveCampaignLandUI()">💾 Save land</button>
         <button class="btn secondary" onclick="resetCampaignLandForm()">Cancel edit</button>
         <div id="campaignLandsTable" style="margin-top:14px;"></div>
@@ -1309,8 +1317,12 @@
         <h3>Create gift code</h3>
         <label>Code (e.g. SPRING1404)</label><input id="pcCode" style="text-transform:uppercase;">
         <div class="row2">
-          <div><label>Prize type</label><select id="pcRewardType"><option value="toman">LNDC</option><option value="card">Card</option></select></div>
-          <div><label>Amount</label><input id="pcRewardValue"></div>
+          <div><label>Prize type</label><select id="pcRewardType" onchange="togglePromoRewardFields()"><option value="toman">LNDC</option><option value="card">Card</option></select></div>
+          <div id="pcRewardValueTomanWrap"><label>Amount (LNDC)</label><input id="pcRewardValue"></div>
+        </div>
+        <div class="row2" id="pcRewardCardWrap" style="display:none;">
+          <div><label>Card</label><select id="pcRewardCardId"></select></div>
+          <div><label>Level (optional, default = card's normal level)</label><input type="number" id="pcRewardCardLevel"></div>
         </div>
         <div class="row2">
           <div><label>Max uses (empty = unlimited)</label><input type="number" id="pcMaxUses"></div>
@@ -3042,6 +3054,7 @@ function resetCampaignLandForm() {
   document.getElementById('clImage_prev').src = '';
   document.getElementById('clSortOrder').value = 0;
   document.getElementById('clActive').value = '1';
+  document.getElementById('clTheme').value = 'forest';
 }
 async function editCampaignLand(id) {
   const lands = await api('/campaign/lands');
@@ -3055,6 +3068,7 @@ async function editCampaignLand(id) {
   document.getElementById('clImage_prev').src = l.image_url || '';
   document.getElementById('clSortOrder').value = l.sort_order;
   document.getElementById('clActive').value = l.active ? '1' : '0';
+  document.getElementById('clTheme').value = l.theme || 'forest';
 }
 async function saveCampaignLandUI() {
   const id = document.getElementById('clId').value;
@@ -3065,6 +3079,7 @@ async function saveCampaignLandUI() {
     image_url: document.getElementById('clImage').value,
     sort_order: document.getElementById('clSortOrder').value,
     active: document.getElementById('clActive').value === '1',
+    theme: document.getElementById('clTheme').value,
   }) });
   resetCampaignLandForm();
   loadCampaignLandsAdmin();
@@ -3839,19 +3854,32 @@ async function saveQuestTemplate() {
 async function deleteQuestTemplateUI(id) { if (confirm('be deleted?')) { await api(`/quests/templates/${id}`, { method: 'DELETE' }); loadQuestsAdmin(); } }
 
 /* ---------- Gift code ---------- */
+let PROMO_CARDS_CACHE = null;
+async function togglePromoRewardFields() {
+  const isCard = document.getElementById('pcRewardType').value === 'card';
+  document.getElementById('pcRewardValueTomanWrap').style.display = isCard ? 'none' : 'block';
+  document.getElementById('pcRewardCardWrap').style.display = isCard ? 'flex' : 'none';
+  if (isCard && !PROMO_CARDS_CACHE) {
+    PROMO_CARDS_CACHE = await api('/game/cards');
+    document.getElementById('pcRewardCardId').innerHTML = PROMO_CARDS_CACHE.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
+}
 async function loadPromoAdmin() {
+  if (!PROMO_CARDS_CACHE) PROMO_CARDS_CACHE = await api('/game/cards');
   const rows = await api('/promo');
   document.getElementById('promoTable').innerHTML = rows.length ? `
     <table><tr><th>Code</th><th>Prize</th><th>Use</th><th>Actions</th></tr>
-    ${rows.map(p => `<tr><td>${p.code}</td><td>${p.reward_type}: ${p.reward_value}</td><td>${p.used_count}${p.max_uses ? '/' + p.max_uses : ''}</td>
+    ${rows.map(p => `<tr><td>${p.code}</td><td>${p.reward_type === 'card' ? (PROMO_CARDS_CACHE.find(c => c.id === Number(p.reward_value))?.name || 'Card #' + p.reward_value) + (p.reward_card_level ? ' Lv.' + p.reward_card_level : '') : p.reward_value + ' LNDC'}</td><td>${p.used_count}${p.max_uses ? '/' + p.max_uses : ''}</td>
       <td><button class="btn danger" onclick="deletePromoUI('${p.code}')">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No code registered yet.</p>';
 }
 async function savePromoCode() {
+  const isCard = document.getElementById('pcRewardType').value === 'card';
   await api('/promo', { method: 'POST', body: JSON.stringify({
     code: document.getElementById('pcCode').value,
     reward_type: document.getElementById('pcRewardType').value,
-    reward_value: document.getElementById('pcRewardValue').value,
+    reward_value: isCard ? document.getElementById('pcRewardCardId').value : document.getElementById('pcRewardValue').value,
+    reward_card_level: isCard ? (document.getElementById('pcRewardCardLevel').value || null) : null,
     max_uses: document.getElementById('pcMaxUses').value || null,
     expires_at: document.getElementById('pcExpires').value || null,
   }) });
