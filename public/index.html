@@ -68,22 +68,6 @@
   @keyframes blobDrift1 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(6%,8%,0) scale(1.18); } }
   @keyframes blobDrift2 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(-9%,7%,0) scale(.88); } }
   @keyframes blobDrift3 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(5%,-9%,0) scale(1.12); } }
-  /* Slow-drifting starfield speckle on top of the blobs — tiny, low-opacity dots that add
-     depth without pulling focus, purely decorative (pointer-events:none, fixed, behind content). */
-  .bg-sparkle {
-    position:fixed; z-index:-2; inset:-10% ; pointer-events:none;
-    background-image:
-      radial-gradient(1.6px 1.6px at 12% 22%, rgba(255,255,255,.55), transparent 60%),
-      radial-gradient(1.6px 1.6px at 78% 14%, rgba(255,255,255,.4), transparent 60%),
-      radial-gradient(1.2px 1.2px at 34% 62%, rgba(255,255,255,.5), transparent 60%),
-      radial-gradient(1.8px 1.8px at 62% 78%, rgba(255,255,255,.35), transparent 60%),
-      radial-gradient(1.2px 1.2px at 90% 55%, rgba(255,255,255,.45), transparent 60%),
-      radial-gradient(1.4px 1.4px at 22% 88%, rgba(255,255,255,.3), transparent 60%),
-      radial-gradient(1.6px 1.6px at 50% 40%, rgba(255,255,255,.4), transparent 60%);
-    animation: sparkleDrift 46s linear infinite;
-    opacity:.6;
-  }
-  @keyframes sparkleDrift { from{ transform:translate3d(0,0,0); } to{ transform:translate3d(-3%,4%,0); } }
   @media (prefers-reduced-motion: reduce) {
     .bg-blob { animation:none; }
     *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
@@ -108,12 +92,6 @@
     display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 14px;
     border-radius:999px; border:1px solid rgba(52,211,153,.4); background:rgba(52,211,153,.1); color:var(--success);
     margin:10px 14px 0; box-shadow:0 0 16px rgba(52,211,153,.15);
-    animation: pillIn .4s cubic-bezier(.22,.9,.34,1) backwards, pillBreathe 3.6s ease-in-out .4s infinite;
-  }
-  @keyframes pillIn { from{opacity:0; transform:translateY(-6px) scale(.94);} to{opacity:1; transform:none;} }
-  @keyframes pillBreathe {
-    0%,100% { box-shadow:0 0 16px rgba(52,211,153,.15); }
-    50% { box-shadow:0 0 22px rgba(52,211,153,.32); }
   }
 
   /* ---------- Pages ---------- */
@@ -154,12 +132,7 @@
      "visual category hub" pattern instead of a bare list. Purely additive — existing .section-banner
      usage elsewhere is untouched. ---- */
   .hub-head { display:flex; align-items:center; gap:12px; margin:2px 0 16px; }
-  .hub-head-ic {
-    width:46px; height:46px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:22px; flex:none;
-    box-shadow:0 6px 18px -6px rgba(0,0,0,.5);
-    animation: hubIcPop .42s cubic-bezier(.34,1.56,.64,1) backwards;
-  }
-  @keyframes hubIcPop { from{ opacity:0; transform:scale(.5) rotate(-8deg); } to{ opacity:1; transform:none; } }
+  .hub-head-ic { width:46px; height:46px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:22px; flex:none; box-shadow:0 6px 18px -6px rgba(0,0,0,.5); }
   .hub-head.gold .hub-head-ic, .hub-head.amber .hub-head-ic { background:linear-gradient(150deg,var(--am1),var(--am2)); }
   .hub-head.purple .hub-head-ic { background:linear-gradient(150deg,var(--p1),var(--p2)); }
   .hub-head.pink .hub-head-ic { background:linear-gradient(150deg,var(--pk1),var(--pk2)); }
@@ -254,25 +227,11 @@
     position:absolute; top:12px; left:12px; font-size:10.5px; font-weight:800; padding:4px 10px;
     border-radius:20px; background:linear-gradient(135deg,#fbbf24,#d97706); color:#241800;
     box-shadow:0 4px 12px rgba(217,119,6,.4);
-    animation: hotPulse 2.2s ease-in-out infinite;
   }
-  @keyframes hotPulse {
-    0%,100% { box-shadow:0 4px 12px rgba(217,119,6,.4); transform:scale(1); }
-    50% { box-shadow:0 4px 18px rgba(217,119,6,.65); transform:scale(1.045); }
-  }
-  .featured { min-height:128px; display:flex; flex-direction:column; justify-content:flex-end; cursor:pointer; position:relative; }
+  .featured { min-height:128px; display:flex; flex-direction:column; justify-content:flex-end; cursor:pointer; }
   .featured .ic { font-size:30px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.3)); }
   .featured .t { font-weight:800; font-size:19px; margin-top:6px; letter-spacing:.1px; }
   .featured .s { font-size:12.5px; opacity:.9; margin-top:2px; }
-  /* One-time light sweep across the featured hero card on load — a single deliberate
-     moment of shine instead of a looping shimmer, so it reads as polish, not noise. */
-  .featured::after {
-    content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
-    background:linear-gradient(115deg, transparent 40%, rgba(255,255,255,.35) 50%, transparent 60%);
-    background-size:220% 100%; background-position:150% 0;
-    animation: heroSweep 1.3s ease-out .5s 1;
-  }
-  @keyframes heroSweep { to { background-position:-50% 0; } }
 
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
   .grid2 .gcard { aspect-ratio:1/1.08; display:flex; flex-direction:column; justify-content:flex-end; cursor:pointer; }
@@ -401,15 +360,13 @@
 
   /* ---------- Podium (Podium) ---------- */
   .podium { display:flex; align-items:flex-end; justify-content:center; gap:10px; margin:18px 0 8px; }
-  .podium-item { display:flex; flex-direction:column; align-items:center; width:78px; opacity:0; animation:podiumRise .5s cubic-bezier(.22,.9,.34,1) forwards; }
-  .podium-item.p2 { animation-delay:.05s; } .podium-item.p1 { animation-delay:.18s; } .podium-item.p3 { animation-delay:.05s; }
-  @keyframes podiumRise { from{ opacity:0; transform:translateY(16px) scale(.92); } to{ opacity:1; transform:none; } }
+  .podium-item { display:flex; flex-direction:column; align-items:center; width:78px; }
   .podium-avatar {
     width:56px; height:56px; border-radius:50%; background:var(--surface2); display:flex; align-items:center; justify-content:center;
     font-size:22px; border:3px solid; margin-bottom:6px; box-shadow:0 6px 16px -8px rgba(0,0,0,.5);
   }
   .podium-item.p1 { order:2; } .podium-item.p2 { order:1; } .podium-item.p3 { order:3; }
-  .podium-item.p1 .podium-avatar { width:72px; height:72px; border-color:var(--gold); box-shadow:0 0 26px rgba(255,215,0,.55); animation:goldPulse 2.4s ease-in-out .6s infinite; }
+  .podium-item.p1 .podium-avatar { width:72px; height:72px; border-color:var(--gold); box-shadow:0 0 26px rgba(255,215,0,.55); animation:goldPulse 2.4s ease-in-out infinite; }
   .podium-item.p2 .podium-avatar { border-color:var(--silver); box-shadow:0 0 14px rgba(192,192,192,.35); }
   .podium-item.p3 .podium-avatar { border-color:var(--bronze); box-shadow:0 0 14px rgba(205,127,50,.3); }
   @keyframes goldPulse { 0%,100%{ box-shadow:0 0 22px rgba(255,215,0,.45); } 50%{ box-shadow:0 0 34px rgba(255,215,0,.75); } }
@@ -418,33 +375,17 @@
   .podium-base {
     width:78px; border-radius:14px 14px 0 0; background:linear-gradient(180deg,#242a3c,#171b26);
     border:1px solid var(--border); display:flex; align-items:flex-start; justify-content:center; padding-top:8px;
-    font-weight:800; font-size:15px; height:0; overflow:hidden;
-    animation:baseGrow .45s cubic-bezier(.22,.9,.34,1) .15s forwards;
+    font-weight:800; font-size:15px;
   }
-  .podium-item.p1 .podium-base { --h:86px; color:var(--gold); box-shadow:inset 0 1px 0 rgba(255,215,0,.2); animation-delay:.3s; }
-  .podium-item.p2 .podium-base { --h:62px; color:var(--silver); animation-delay:.18s; }
-  .podium-item.p3 .podium-base { --h:48px; color:var(--bronze); animation-delay:.18s; }
-  @keyframes baseGrow { from{ height:0; } to{ height:var(--h); } }
+  .podium-item.p1 .podium-base { height:86px; color:var(--gold); box-shadow:inset 0 1px 0 rgba(255,215,0,.2); }
+  .podium-item.p2 .podium-base { height:62px; color:var(--silver); }
+  .podium-item.p3 .podium-base { height:48px; color:var(--bronze); }
 
-  .lb-row {
-    display:flex; align-items:center; gap:10px; padding:10px 10px; border-radius:14px;
-    background:var(--surface); border:1px solid transparent;
-    transition:background .15s ease, border-color .15s ease, transform .15s ease;
-    opacity:0; animation:lbRowIn .36s cubic-bezier(.22,.9,.34,1) backwards;
-  }
-  .lb-row + .lb-row { margin-top:6px; }
-  .lb-row:hover, .lb-row:active { background:var(--surface2); border-color:var(--border-strong,var(--border)); transform:scale(.99); }
-  @keyframes lbRowIn { from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
-  .lb-rank {
-    width:26px; height:26px; border-radius:50%; background:var(--surface2);
-    display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:800; flex:none;
-    transition:transform .15s ease;
-  }
-  .lb-rank.gold   { background:linear-gradient(150deg,#ffe58a,var(--gold)); color:#3a2600; box-shadow:0 0 12px rgba(255,215,0,.45); }
-  .lb-rank.silver { background:linear-gradient(150deg,#f1f3f7,var(--silver)); color:#2a2a2a; box-shadow:0 0 10px rgba(192,192,192,.35); }
-  .lb-rank.bronze { background:linear-gradient(150deg,#e3a06b,var(--bronze)); color:#2a1608; box-shadow:0 0 10px rgba(205,127,50,.3); }
-  .lb-name { flex:1; font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .lb-score { font-size:12px; font-weight:800; color:#c4b0ff; flex:none; }
+  .lb-row { display:flex; align-items:center; gap:10px; padding:10px 6px; border-radius:12px; transition:background .15s ease; }
+  .lb-row:hover, .lb-row:active { background:rgba(255,255,255,.03); }
+  .lb-rank { width:26px; height:26px; border-radius:50%; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:800; flex:none; }
+  .lb-name { flex:1; font-size:13px; }
+  .lb-score { font-size:12px; font-weight:800; color:#c4b0ff; }
 
   /* ---------- Battle pass ---------- */
   .bp-progress { height:10px; border-radius:6px; background:var(--surface2); overflow:hidden; margin:8px 0; box-shadow:inset 0 1px 3px rgba(0,0,0,.4); }
@@ -1045,17 +986,10 @@
   }
   .activity-feed-row {
     display:flex; align-items:center; gap:8px; padding:6px 0; font-size:12px; color:var(--muted);
-    border-bottom:1px solid var(--border); animation:feedRowIn .32s cubic-bezier(.22,.9,.34,1) backwards;
+    border-bottom:1px solid var(--border); animation:feedRowIn .3s ease;
   }
   .activity-feed-row:last-child { border-bottom:none; }
-  .activity-feed-row:nth-child(1) { animation-delay:.03s; }
-  .activity-feed-row:nth-child(2) { animation-delay:.09s; }
-  .activity-feed-row:nth-child(3) { animation-delay:.15s; }
-  .activity-feed-row:nth-child(4) { animation-delay:.21s; }
-  .activity-feed-row:nth-child(5) { animation-delay:.27s; }
-  .activity-feed-row > span:first-child { flex:none; display:inline-block; animation:feedIconPop .4s cubic-bezier(.34,1.56,.64,1) backwards; animation-delay:inherit; }
   @keyframes feedRowIn { from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:translateY(0); } }
-  @keyframes feedIconPop { from{ transform:scale(.4); } to{ transform:scale(1); } }
 
   /* Achievement badge cards */
   .ach-card {
@@ -1410,7 +1344,6 @@
 <div class="bg-blob bg-blob-1"></div>
 <div class="bg-blob bg-blob-2"></div>
 <div class="bg-blob bg-blob-3"></div>
-<div class="bg-sparkle"></div>
 <div class="toast" id="toast"></div>
 
 <!-- ============ Chest opening reveal modal ============ -->
@@ -4298,7 +4231,7 @@ async function loadWarLeaderboardTab() {
   if (!WAR_STATUS) await loadWar();
   const rows = await api(`/api/war/leaderboard/${WAR_STATUS.league.key}`);
   document.getElementById('warLeaderboardList').innerHTML = rows.length ? rows.map((p, i) => `
-    <div class="lb-row" ${staggerStyle(i)}><div class="lb-rank${i<3?' '+['gold','silver','bronze'][i]:''}">${i + 1}</div><div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">🏆 ${p.trophies}</div></div>
+    <div class="lb-row" ${staggerStyle(i)}><div class="lb-rank">${i + 1}</div><div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">🏆 ${p.trophies}</div></div>
   `).join('') : '<p class="muted">No one in this league yet.</p>';
 }
 async function loadWarHistory() {
@@ -5609,7 +5542,7 @@ async function loadLeaderboardPage() {
   showLbTab('game');
   const g = await api('/api/game/leaderboard');
   document.getElementById('lbGamePodium').innerHTML = renderPodium(g.leaderboard.slice(0, 3), p => `${p.first_name || ''}`, p => `${p.score} Score`, p => p.avatarImage);
-  document.getElementById('lbGameList').innerHTML = g.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row" ${staggerStyle(i)}><div class="lb-rank">${i + 4}</div>${p.avatarImage ? `<img src="${p.avatarImage}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''} ${renderBadges(p.badges)}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'Not enough data.';
+  document.getElementById('lbGameList').innerHTML = g.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div>${p.avatarImage ? `<img src="${p.avatarImage}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''} ${renderBadges(p.badges)}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'Not enough data.';
   const gInTop = g.leaderboard.some(p => p.tg_id === g.myRow.tg_id);
   document.getElementById('lbGameMine').innerHTML = gInTop ? '' : renderMineRow('My rank: #' + g.myRank + ' —', g.myRank, g.myRow.first_name, `${g.myRow.score} Score`);
   const gPrizes = (g.prizes || []).filter(p => p.reward_toman > 0);
@@ -5619,7 +5552,7 @@ async function loadLeaderboardPage() {
 
   const c = await api('/api/clan/leaderboard');
   document.getElementById('lbClanPodium').innerHTML = renderPodium(c.leaderboard.slice(0, 3), p => `${p.emblem.icon} ${p.name}`, p => `${p.score} Score`);
-  document.getElementById('lbClanList').innerHTML = c.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row" ${staggerStyle(i)}><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.emblem.icon} ${p.name} #${p.tag}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'Not enough data.';
+  document.getElementById('lbClanList').innerHTML = c.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div><div class="lb-name">${p.emblem.icon} ${p.name} #${p.tag}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'Not enough data.';
   const cInTop = c.myClan && c.leaderboard.some(p => p.id === c.myClan.id);
   document.getElementById('lbClanMine').innerHTML = (c.myClan && !cInTop) ? renderMineRow('My clan rank: #' + c.myRank + ' —', c.myRank, `${c.myClan.name} #${c.myClan.tag}`, `${c.myClan.score} Score`) : '';
   document.getElementById('lbClanPrizes').innerHTML = c.prizeInfo && c.prizeInfo.reward_toman > 0
@@ -5628,7 +5561,7 @@ async function loadLeaderboardPage() {
 
   const l = await api('/api/rank/leaderboard');
   document.getElementById('lbLevelPodium').innerHTML = renderPodium(l.leaderboard.slice(0, 3), p => p.first_name || '', p => `Lv.${p.level}`, p => p.avatarImage);
-  document.getElementById('lbLevelList').innerHTML = l.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row" ${staggerStyle(i)}><div class="lb-rank">${i + 4}</div>${p.avatarImage ? `<img src="${p.avatarImage}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">Lv.${p.level}</div></div>`).join('') || 'Not enough data.';
+  document.getElementById('lbLevelList').innerHTML = l.leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div>${p.avatarImage ? `<img src="${p.avatarImage}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">Lv.${p.level}</div></div>`).join('') || 'Not enough data.';
   const lInTop = l.leaderboard.some(p => p.tg_id === l.myRow.tg_id);
   document.getElementById('lbLevelMine').innerHTML = lInTop ? '' : renderMineRow('My rank: #' + l.myRank + ' —', l.myRank, l.myRow.first_name, `Lv.${l.myRow.level}`);
 
@@ -5648,7 +5581,7 @@ async function loadLeaderboardPage() {
 }
 function renderLeagueBoard(leaderboard, me) {
   document.getElementById('lbLeaguePodium').innerHTML = renderPodium(leaderboard.slice(0, 3), p => p.first_name || '', p => `${p.score}`, p => p.avatar_image);
-  document.getElementById('lbLeagueList').innerHTML = leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row" ${staggerStyle(i)}><div class="lb-rank">${i + 4}</div>${p.avatar_image ? `<img src="${p.avatar_image}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'Not enough data.';
+  document.getElementById('lbLeagueList').innerHTML = leaderboard.slice(3, 10).map((p, i) => `<div class="lb-row"><div class="lb-rank">${i + 4}</div>${p.avatar_image ? `<img src="${p.avatar_image}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:6px;">` : ''}<div class="lb-name">${p.first_name || ''} ${p.username ? '@' + p.username : ''}</div><div class="lb-score">${p.score}</div></div>`).join('') || 'Not enough data.';
 }
 async function loadLeagueBoard(league) {
   document.querySelectorAll('#lbLeagueChips .chip').forEach(c => c.classList.toggle('active', c.dataset.league === league));
