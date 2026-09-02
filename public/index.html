@@ -71,16 +71,48 @@
   ::selection { background:rgba(168,85,247,.35); }
   :focus-visible { outline:2px solid var(--p1); outline-offset:2px; }
 
-  /* ---------- Signature: layered ambient light behind the whole app — three blobs drifting
-     independently (different speed/direction each) instead of one static gradient, so the
-     background reads as alive rather than a flat painted glow. ---------- */
-  .bg-blob { position:fixed; z-index:-2; pointer-events:none; border-radius:50%; filter:blur(60px); }
-  .bg-blob-1 { width:70vw; height:70vw; top:-20%; left:-20%; background:radial-gradient(circle, rgba(var(--aura-p),.4), transparent 70%); animation:blobDrift1 19s ease-in-out infinite alternate; }
-  .bg-blob-2 { width:60vw; height:60vw; top:0%; right:-22%; background:radial-gradient(circle, rgba(var(--aura-b),.32), transparent 70%); animation:blobDrift2 24s ease-in-out infinite alternate; }
-  .bg-blob-3 { width:65vw; height:65vw; bottom:-24%; left:15%; background:radial-gradient(circle, rgba(var(--aura-k),.26), transparent 70%); animation:blobDrift3 28s ease-in-out infinite alternate; }
+  /* ---------- Signature: layered ambient light behind the whole app. Four blobs (was three)
+     drift AND breathe (opacity pulses independently of position) so the light itself feels
+     alive, not just panning around at a flat brightness. A slow-rotating conic wash underneath
+     shifts hue very gradually for a subtle "living" color temperature change over ~90s. ---------- */
+  .bg-blob { position:fixed; z-index:-2; pointer-events:none; border-radius:50%; filter:blur(60px); will-change:transform,opacity; }
+  .bg-blob-1 { width:70vw; height:70vw; top:-20%; left:-20%; background:radial-gradient(circle, rgba(var(--aura-p),.4), transparent 70%); animation:blobDrift1 19s ease-in-out infinite alternate, blobBreathe1 7s ease-in-out infinite; }
+  .bg-blob-2 { width:60vw; height:60vw; top:0%; right:-22%; background:radial-gradient(circle, rgba(var(--aura-b),.32), transparent 70%); animation:blobDrift2 24s ease-in-out infinite alternate, blobBreathe2 8.5s ease-in-out infinite; }
+  .bg-blob-3 { width:65vw; height:65vw; bottom:-24%; left:15%; background:radial-gradient(circle, rgba(var(--aura-k),.26), transparent 70%); animation:blobDrift3 28s ease-in-out infinite alternate, blobBreathe3 9.5s ease-in-out infinite; }
+  .bg-blob-4 { width:50vw; height:50vw; bottom:5%; right:-10%; background:radial-gradient(circle, rgba(255,215,0,.16), transparent 70%); animation:blobDrift4 22s ease-in-out infinite alternate, blobBreathe4 6.5s ease-in-out infinite; }
   @keyframes blobDrift1 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(6%,8%,0) scale(1.18); } }
   @keyframes blobDrift2 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(-9%,7%,0) scale(.88); } }
   @keyframes blobDrift3 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(5%,-9%,0) scale(1.12); } }
+  @keyframes blobDrift4 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(-6%,-6%,0) scale(1.1); } }
+  @keyframes blobBreathe1 { 0%,100%{ opacity:.75; } 50%{ opacity:1; } }
+  @keyframes blobBreathe2 { 0%,100%{ opacity:.65; } 50%{ opacity:1; } }
+  @keyframes blobBreathe3 { 0%,100%{ opacity:.7; } 50%{ opacity:1; } }
+  @keyframes blobBreathe4 { 0%,100%{ opacity:.5; } 50%{ opacity:1; } }
+  /* Slow conic hue wash — a huge, barely-visible rotating gradient disc centered off-screen.
+     Rotation period is long (95s) so it's never perceived as "spinning", only as the ambient
+     light very gradually leaning warmer/cooler over time, like changing light through a day. */
+  .bg-wash {
+    position:fixed; z-index:-2; pointer-events:none; top:50%; left:50%; width:140vmax; height:140vmax;
+    transform:translate(-50%,-50%); opacity:.12; mix-blend-mode:screen;
+    background:conic-gradient(from 0deg, rgba(var(--aura-p),.5), rgba(var(--aura-b),.5), rgba(var(--aura-k),.5), rgba(255,215,0,.4), rgba(var(--aura-p),.5));
+    animation:washSpin 95s linear infinite;
+    filter:blur(50px);
+  }
+  @keyframes washSpin { to{ transform:translate(-50%,-50%) rotate(360deg); } }
+  /* Floating embers: small glowing motes that drift upward and sideways on independent loops,
+     each with its own size/speed/delay so the motion never looks synchronized/mechanical. */
+  .bg-embers { position:fixed; z-index:-2; inset:0; pointer-events:none; overflow:hidden; }
+  .ember {
+    position:absolute; bottom:-5%; border-radius:50%; background:radial-gradient(circle, #fff, transparent 70%);
+    opacity:0; animation-name:emberFloat; animation-timing-function:ease-in-out; animation-iteration-count:infinite;
+  }
+  @keyframes emberFloat {
+    0%   { transform:translate3d(0,0,0) scale(.6); opacity:0; }
+    8%   { opacity:var(--ember-op,.55); }
+    50%  { transform:translate3d(var(--ember-x,14px), -52vh, 0) scale(1); }
+    92%  { opacity:var(--ember-op,.55); }
+    100% { transform:translate3d(calc(var(--ember-x,14px) * 2), -108vh, 0) scale(.5); opacity:0; }
+  }
   /* Slow-drifting starfield speckle on top of the blobs — tiny, low-opacity dots that add
      depth without pulling focus, purely decorative (pointer-events:none, fixed, behind content). */
   .bg-sparkle {
@@ -695,18 +727,57 @@
     display:inline-flex; align-items:center; gap:2px; font-size:9.5px; font-weight:800; padding:1.5px 7px 2px; border-radius:999px;
     background:linear-gradient(135deg,var(--gold),#d97706); color:#2b1a00; box-shadow:0 2px 6px -2px rgba(217,119,6,.7);
   }
-  /* ---------- Shop ---------- */
-  .shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .shop-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; box-shadow:0 10px 24px -14px rgba(0,0,0,.55); transition:transform .12s ease; animation:popIn .35s cubic-bezier(.22,.9,.34,1) backwards; }
-  .shop-card:active { transform:scale(.97); }
-  .shop-imgwrap { position:relative; aspect-ratio:1/1; background:linear-gradient(135deg,#241f38,var(--surface2)); display:flex; align-items:center; justify-content:center; }
-  .shop-imgwrap img { width:100%; height:100%; object-fit:cover; }
+  /* ---------- Shop v2: real depth (image parallax-zoom on press, gradient price chip instead
+     of a full-width flat button, quantity-style micro feedback on buy) — same markup class
+     names so JS/loadShop() keeps working unmodified. ---------- */
+  .shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .shop-card {
+    background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 30%), var(--surface);
+    border:1px solid var(--border); border-radius:22px; overflow:hidden;
+    box-shadow:var(--shadow-md, 0 10px 24px -14px rgba(0,0,0,.55));
+    transition:transform var(--dur-fast,.16s) var(--ease-smooth,ease), box-shadow var(--dur-fast,.16s) var(--ease-smooth,ease), border-color var(--dur-fast,.16s);
+    opacity:0; animation:popIn .4s var(--ease-smooth, cubic-bezier(.22,.9,.34,1)) both;
+    position:relative;
+  }
+  .shop-card:active { transform:scale(.96); box-shadow:var(--shadow-sm,0 4px 14px -6px rgba(0,0,0,.4)); }
+  .shop-imgwrap {
+    position:relative; aspect-ratio:1/1; overflow:hidden;
+    background:radial-gradient(120% 100% at 30% 0%, #2a2245, var(--surface2) 70%);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .shop-imgwrap img { width:100%; height:100%; object-fit:cover; transition:transform .5s var(--ease-out, cubic-bezier(.16,1,.3,1)); }
+  .shop-card:active .shop-imgwrap img { transform:scale(1.08); }
   .shop-imgwrap .ic-fallback { font-size:34px; opacity:.5; }
-  .shop-body { padding:11px 12px 13px; }
+  .shop-imgwrap::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(180deg, transparent 60%, rgba(0,0,0,.28) 100%);
+  }
+  .shop-body { padding:12px 13px 13px; }
   .shop-name { font-weight:800; font-size:13px; line-height:1.4; min-height:2.6em; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
   .shop-desc { color:var(--muted); font-size:11px; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .shop-note { margin:8px 0 0 !important; font-size:12px !important; padding:8px 10px !important; }
-  .shop-buy-pill { display:block; width:100%; margin-top:8px; background:linear-gradient(90deg,var(--p1),var(--b1)); border:none; border-radius:14px; padding:10px; color:#fff; font-weight:800; font-size:13px; text-align:center; box-shadow:0 6px 16px -8px rgba(168,85,247,.55); cursor:pointer; }
+  .shop-note {
+    margin:9px 0 0 !important; font-size:12px !important; padding:9px 11px !important;
+    border-radius:12px !important; transition:border-color .15s ease, background .15s ease;
+  }
+  .shop-note:focus { border-color:var(--p1) !important; background:rgba(168,85,247,.06) !important; }
+  .shop-buy-pill {
+    display:flex; align-items:center; justify-content:center; gap:5px; width:100%; margin-top:9px;
+    background:
+      radial-gradient(130% 180% at 18% -30%, rgba(255,255,255,.28), transparent 55%),
+      linear-gradient(90deg,var(--p1),var(--b1));
+    border:none; border-radius:14px; padding:10px; color:#fff; font-weight:800; font-size:13px; text-align:center;
+    box-shadow:0 6px 16px -8px rgba(168,85,247,.55), inset 0 1px 0 rgba(255,255,255,.2);
+    cursor:pointer; transition:transform .12s var(--ease-sharp,ease), box-shadow .12s ease;
+    position:relative; overflow:hidden;
+  }
+  .shop-buy-pill:active { transform:scale(.95); }
+  .shop-buy-pill.is-loading { pointer-events:none; opacity:.75; }
+  .shop-buy-pill.is-done { background:linear-gradient(90deg,var(--success),#0d9c6f); }
+  /* Skeleton card that mirrors the real shop-card layout (image block + two text lines + price
+     bar) so the loading state previews the shape of what's coming, instead of one gray box. */
+  .shop-card-sk { border-radius:22px; overflow:hidden; background:var(--surface); border:1px solid var(--border); }
+  .shop-card-sk .sk-img { aspect-ratio:1/1; }
+  .shop-card-sk .sk-body { padding:12px 13px 13px; }
   #infoPageContent { font-size:13.5px; color:#d8dbe6; }
   .game-card-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .game-card { background:var(--surface); border-radius:18px; overflow:hidden; box-shadow:0 10px 24px -14px rgba(0,0,0,.55); border:1.5px solid var(--rc, var(--border)); transition:transform .12s ease; animation:popIn .35s cubic-bezier(.22,.9,.34,1) backwards; }
@@ -1536,10 +1607,13 @@
   <button class="btn" id="joinGateJoinBtn">📢 Join the channel</button>
   <button class="btn secondary" id="joinGateRetryBtn">✅ I joined, check again</button>
 </div>
+<div class="bg-wash"></div>
 <div class="bg-blob bg-blob-1"></div>
 <div class="bg-blob bg-blob-2"></div>
 <div class="bg-blob bg-blob-3"></div>
+<div class="bg-blob bg-blob-4"></div>
 <div class="bg-sparkle"></div>
+<div class="bg-embers" id="bgEmbers"></div>
 <div class="toast" id="toast"><span class="t-ic">✓</span><span class="t-msg"></span></div>
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-card" id="modalCard">
@@ -3312,6 +3386,15 @@ async function loadShop() {
   loadChests();
   loadGiftPacks();
   const el = document.getElementById('productList');
+  el.innerHTML = `<div class="shop-grid">${Array.from({length:4}).map(() => `
+    <div class="shop-card-sk">
+      <div class="sk-img skeleton"></div>
+      <div class="sk-body">
+        <div class="sk-line skeleton w-80" style="height:13px;"></div>
+        <div class="sk-line skeleton w-40" style="height:10px;margin-top:6px;"></div>
+        <div class="sk-line skeleton w-100" style="height:34px;border-radius:12px;margin-top:10px;"></div>
+      </div>
+    </div>`).join('')}</div>`;
   try {
     const products = await api('/api/products');
     if (!products.length) { el.innerHTML = '<div class="empty"><div class="eic">🛍</div>No product listed yet.</div>'; document.getElementById('shopBestsellers').innerHTML = ''; return; }
@@ -3322,7 +3405,7 @@ async function loadShop() {
           <div class="shop-name">${p.title}</div>
           ${p.description ? `<div class="shop-desc">${p.description}</div>` : ''}
           <input type="text" class="shop-note" id="note-${p.id}" placeholder="Destination/username (optional)">
-          <button class="shop-buy-pill" onclick="buyProduct(${p.id})">${p.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</button>
+          <button class="shop-buy-pill" data-pid="${p.id}" onclick="buyProduct(${p.id})">${p.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</button>
         </div>
       </div>`).join('')}</div>`;
     document.getElementById('shopBestsellers').innerHTML = products.slice(0, 5).map(p => `
@@ -3335,9 +3418,20 @@ async function loadShop() {
 }
 async function buyProduct(id) {
   const note = document.getElementById('note-' + id).value;
-  await api('/api/checkout', { method: 'POST', body: JSON.stringify({ productId: id, qty: 1, note }) });
-  toast('Order submitted ✅');
-  loadMe();
+  const btn = document.querySelector(`.shop-buy-pill[data-pid="${id}"]`);
+  const originalHtml = btn ? btn.innerHTML : null;
+  if (btn) { btn.classList.add('is-loading'); btn.innerHTML = '<span class="sk-circle" style="width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;background:none;animation:bootRingSpin .6s linear infinite;"></span>'; }
+  try {
+    await api('/api/checkout', { method: 'POST', body: JSON.stringify({ productId: id, qty: 1, note }) });
+    toast('Order submitted ✅', 'success');
+    if (btn) {
+      btn.classList.remove('is-loading'); btn.classList.add('is-done'); btn.innerHTML = '✓ Ordered';
+      setTimeout(() => { btn.classList.remove('is-done'); btn.innerHTML = originalHtml; }, 1800);
+    }
+    loadMe();
+  } catch (e) {
+    if (btn) { btn.classList.remove('is-loading'); btn.innerHTML = originalHtml; }
+  }
 }
 
 /* ================= Wallet ================= */
@@ -5885,6 +5979,28 @@ function hideBootLoader() {
   const el = document.getElementById('bootLoader');
   if (el) setTimeout(() => el.classList.add('hide'), 250);
 }
+/* Generates the floating-ember particles once on load. Each ember gets randomized size,
+   horizontal drift, duration and delay via inline CSS custom properties so the motion field
+   never looks like a mechanically repeating pattern — this is purely decorative and skipped
+   entirely under prefers-reduced-motion since motion there is already suppressed globally. */
+function spawnEmbers() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const host = document.getElementById('bgEmbers');
+  if (!host) return;
+  const COUNT = 14;
+  let html = '';
+  for (let i = 0; i < COUNT; i++) {
+    const size = (Math.random() * 3 + 1.5).toFixed(1);
+    const left = (Math.random() * 100).toFixed(1);
+    const duration = (Math.random() * 10 + 13).toFixed(1);
+    const delay = (Math.random() * -20).toFixed(1);
+    const driftX = (Math.random() * 40 - 20).toFixed(0);
+    const op = (Math.random() * 0.35 + 0.25).toFixed(2);
+    html += `<div class="ember" style="left:${left}%; width:${size}px; height:${size}px; --ember-x:${driftX}px; --ember-op:${op}; animation-duration:${duration}s; animation-delay:${delay}s;"></div>`;
+  }
+  host.innerHTML = html;
+}
+spawnEmbers();
 async function bootApp() {
   try {
     setBootProgress(10);
