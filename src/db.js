@@ -1161,7 +1161,13 @@ export function getStats() {
   const pendingTopups = db.prepare(`SELECT COUNT(*) c FROM toman_topups WHERE status='pending'`).get().c;
   const pendingCurrency = db.prepare(`SELECT COUNT(*) c FROM currency_requests WHERE status='pending'`).get().c;
   const openTickets = db.prepare(`SELECT COUNT(*) c FROM tickets WHERE status='open'`).get().c;
-  return { users, orders, totalToman, pendingTopups, pendingCurrency, openTickets };
+  // "Online now" is derived from real activity, not simulated: last_seen_at is updated on
+  // every authenticated mini-app request (see requireTelegramAuth -> getOrCreateUser in
+  // server.js), so a 2-minute window is a genuine concurrent-session heartbeat, not a guess.
+  const onlineNow = db.prepare(`SELECT COUNT(*) c FROM users WHERE last_seen_at > datetime('now', '-2 minutes')`).get().c;
+  const activeLast15m = db.prepare(`SELECT COUNT(*) c FROM users WHERE last_seen_at > datetime('now', '-15 minutes')`).get().c;
+  const activeLast24h = db.prepare(`SELECT COUNT(*) c FROM users WHERE last_seen_at > datetime('now', '-1 day')`).get().c;
+  return { users, orders, totalToman, pendingTopups, pendingCurrency, openTickets, onlineNow, activeLast15m, activeLast24h };
 }
 
 export function getAllUserIds() {
