@@ -159,10 +159,10 @@
 
   /* ---------- Pages ---------- */
   .page { display:none; padding: 10px 14px 18px; }
-  .page.active { display:block; animation:fadeInUp .32s cubic-bezier(.22,.9,.34,1); }
+  .page.active { display:block; animation:fadeInUp .32s cubic-bezier(.22,.9,.34,1) both; }
   @keyframes fadeInUp { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:none;} }
   .view { display:none; }
-  .view.active { display:block; animation:fadeInUp .28s cubic-bezier(.22,.9,.34,1); }
+  .view.active { display:block; animation:fadeInUp .28s cubic-bezier(.22,.9,.34,1) both; }
 
   h3.sec { font-size:14px; font-weight:800; margin:18px 2px 10px; display:flex; align-items:center; gap:7px; letter-spacing:.15px; }
   h3.sec::before { content:''; width:4px; height:14px; border-radius:3px; background:linear-gradient(180deg,var(--p1),var(--b1)); box-shadow:0 0 8px rgba(168,85,247,.6); }
@@ -995,6 +995,7 @@
   .warmap-viewport {
     position:relative; flex:1; min-height:0; width:auto; margin:8px 12px 0; border-radius:16px; overflow:hidden;
     border:1px solid var(--border); touch-action:none; -webkit-user-select:none; user-select:none;
+    contain:layout paint size; isolation:isolate;
   }
   .warmap-world {
     position:absolute; top:0; left:0; width:1000px; height:1000px; transform-origin:0 0; will-change:transform;
@@ -1033,7 +1034,7 @@
   .warmap-tower.tier-legendary .tw-ring { border-color:rgba(255,215,0,.45); }
 
   .warmap-tower .tw-card {
-    margin-top:3px; background:rgba(9,7,18,.82); backdrop-filter:blur(3px); border:1px solid rgba(255,255,255,.1);
+    margin-top:3px; background:rgba(9,7,18,.94); border:1px solid rgba(255,255,255,.1);
     border-radius:8px; padding:2px 6px 3px; max-width:92px; box-shadow:0 3px 8px rgba(0,0,0,.35);
   }
   .warmap-tower .tw-card-top { display:flex; align-items:center; gap:4px; }
@@ -4418,10 +4419,20 @@ function warMapClamp() {
   warMapX = Math.max(minX, Math.min(0, warMapX));
   warMapY = Math.max(minY, Math.min(0, warMapY));
 }
+let warMapRafPending = false;
 function warMapApplyTransform() {
-  const world = document.getElementById('warMapWorld');
-  if (world) world.style.transform = `translate(${warMapX}px, ${warMapY}px) scale(${warMapScale})`;
-  updateWarMinimapViewport();
+  // Coalesce rapid pointermove-driven calls into one write per animation frame — without this,
+  // a fast drag/pinch can fire dozens of synchronous style writes per second, which is what was
+  // starving the compositor and causing the fixed header/bottom-nav (both backdrop-filter blur
+  // layers) and the tower badges to visibly flicker/drop frames during map interaction.
+  if (warMapRafPending) return;
+  warMapRafPending = true;
+  requestAnimationFrame(() => {
+    warMapRafPending = false;
+    const world = document.getElementById('warMapWorld');
+    if (world) world.style.transform = `translate(${warMapX}px, ${warMapY}px) scale(${warMapScale})`;
+    updateWarMinimapViewport();
+  });
 }
 function warMapFitInitial() {
   const vp = document.getElementById('warMapViewport');
