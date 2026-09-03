@@ -161,8 +161,28 @@
   .page { display:none; padding: 10px 14px 18px; }
   .page.active { display:block; animation:fadeInUp .32s cubic-bezier(.22,.9,.34,1) both; }
   @keyframes fadeInUp { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:none;} }
+  /* #page-games hosts Tower War, whose .tw-shell relies on position:fixed spanning the real
+     viewport (header to bottom nav). A transform on ANY ancestor — including this page's own
+     entrance animation — creates a containing block that traps position:fixed descendants
+     inside it instead of the viewport, collapsing the whole map area while the transform is
+     live. This page skips the translateY and fades on opacity alone, which never creates that
+     containing block, so Tower War (and every other tab that lives here) still arrives smoothly
+     without ever breaking the fixed layout underneath. */
+  #page-games.active { animation-name: fadeInOpacityOnly; }
   .view { display:none; }
   .view.active { display:block; animation:fadeInUp .28s cubic-bezier(.22,.9,.34,1) both; }
+  /* Tower War's shell uses position:fixed to span from the header to the bottom nav, which only
+     works correctly when positioned relative to the real viewport. A `transform` on ANY ancestor
+     — even a translateY(12px) mid-animation — creates a new containing block for fixed-position
+     descendants per spec, trapping .tw-shell inside its (still-collapsing, still-animating)
+     parent instead of the viewport, which is what was making the whole map area render blank/
+     empty. #wsub-attack and its parent #gview-war both play fadeInUp on entry, so both must skip
+     the transform for this one screen — opacity-only fade keeps the same visual arrival without
+     ever creating that containing block. */
+  #gview-war.active, #wsub-attack.active {
+    animation-name: fadeInOpacityOnly;
+  }
+  @keyframes fadeInOpacityOnly { from{ opacity:0; } to{ opacity:1; } }
 
   h3.sec { font-size:14px; font-weight:800; margin:18px 2px 10px; display:flex; align-items:center; gap:7px; letter-spacing:.15px; }
   h3.sec::before { content:''; width:4px; height:14px; border-radius:3px; background:linear-gradient(180deg,var(--p1),var(--b1)); box-shadow:0 0 8px rgba(168,85,247,.6); }
