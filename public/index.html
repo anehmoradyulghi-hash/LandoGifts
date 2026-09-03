@@ -71,29 +71,25 @@
   ::selection { background:rgba(168,85,247,.35); }
   :focus-visible { outline:2px solid var(--p1); outline-offset:2px; }
 
-  /* ---------- Signature: layered ambient light behind the whole app. Four blobs (was three)
-     drift AND breathe (opacity pulses independently of position) so the light itself feels
-     alive, not just panning around at a flat brightness. A slow-rotating conic wash underneath
-     shifts hue very gradually for a subtle "living" color temperature change over ~90s. ---------- */
+  /* ---------- Signature: layered ambient light behind the whole app. Three blobs drift and
+     the two largest breathe gently (opacity pulses) — kept deliberately restrained so the
+     motion reads as "alive" rather than busy. A very faint slow-rotating hue wash underneath
+     shifts color temperature gradually over ~95s, barely perceptible. ---------- */
   .bg-blob { position:fixed; z-index:-2; pointer-events:none; border-radius:50%; filter:blur(60px); will-change:transform,opacity; }
-  .bg-blob-1 { width:70vw; height:70vw; top:-20%; left:-20%; background:radial-gradient(circle, rgba(var(--aura-p),.4), transparent 70%); animation:blobDrift1 19s ease-in-out infinite alternate, blobBreathe1 7s ease-in-out infinite; }
-  .bg-blob-2 { width:60vw; height:60vw; top:0%; right:-22%; background:radial-gradient(circle, rgba(var(--aura-b),.32), transparent 70%); animation:blobDrift2 24s ease-in-out infinite alternate, blobBreathe2 8.5s ease-in-out infinite; }
-  .bg-blob-3 { width:65vw; height:65vw; bottom:-24%; left:15%; background:radial-gradient(circle, rgba(var(--aura-k),.26), transparent 70%); animation:blobDrift3 28s ease-in-out infinite alternate, blobBreathe3 9.5s ease-in-out infinite; }
-  .bg-blob-4 { width:50vw; height:50vw; bottom:5%; right:-10%; background:radial-gradient(circle, rgba(255,215,0,.16), transparent 70%); animation:blobDrift4 22s ease-in-out infinite alternate, blobBreathe4 6.5s ease-in-out infinite; }
+  .bg-blob-1 { width:70vw; height:70vw; top:-20%; left:-20%; background:radial-gradient(circle, rgba(var(--aura-p),.4), transparent 70%); animation:blobDrift1 19s ease-in-out infinite alternate, blobBreathe1 9s ease-in-out infinite; }
+  .bg-blob-2 { width:60vw; height:60vw; top:0%; right:-22%; background:radial-gradient(circle, rgba(var(--aura-b),.32), transparent 70%); animation:blobDrift2 24s ease-in-out infinite alternate, blobBreathe2 11s ease-in-out infinite; }
+  .bg-blob-3 { width:65vw; height:65vw; bottom:-24%; left:15%; background:radial-gradient(circle, rgba(var(--aura-k),.26), transparent 70%); animation:blobDrift3 28s ease-in-out infinite alternate; }
   @keyframes blobDrift1 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(6%,8%,0) scale(1.18); } }
   @keyframes blobDrift2 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(-9%,7%,0) scale(.88); } }
   @keyframes blobDrift3 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(5%,-9%,0) scale(1.12); } }
-  @keyframes blobDrift4 { from{ transform:translate3d(0,0,0) scale(1); } to{ transform:translate3d(-6%,-6%,0) scale(1.1); } }
-  @keyframes blobBreathe1 { 0%,100%{ opacity:.75; } 50%{ opacity:1; } }
-  @keyframes blobBreathe2 { 0%,100%{ opacity:.65; } 50%{ opacity:1; } }
-  @keyframes blobBreathe3 { 0%,100%{ opacity:.7; } 50%{ opacity:1; } }
-  @keyframes blobBreathe4 { 0%,100%{ opacity:.5; } 50%{ opacity:1; } }
-  /* Slow conic hue wash — a huge, barely-visible rotating gradient disc centered off-screen.
+  @keyframes blobBreathe1 { 0%,100%{ opacity:.82; } 50%{ opacity:1; } }
+  @keyframes blobBreathe2 { 0%,100%{ opacity:.75; } 50%{ opacity:1; } }
+  /* Very faint conic hue wash — barely-visible rotating gradient disc centered off-screen.
      Rotation period is long (95s) so it's never perceived as "spinning", only as the ambient
      light very gradually leaning warmer/cooler over time, like changing light through a day. */
   .bg-wash {
     position:fixed; z-index:-2; pointer-events:none; top:50%; left:50%; width:140vmax; height:140vmax;
-    transform:translate(-50%,-50%); opacity:.12; mix-blend-mode:screen;
+    transform:translate(-50%,-50%); opacity:.07; mix-blend-mode:screen;
     background:conic-gradient(from 0deg, rgba(var(--aura-p),.5), rgba(var(--aura-b),.5), rgba(var(--aura-k),.5), rgba(255,215,0,.4), rgba(var(--aura-p),.5));
     animation:washSpin 95s linear infinite;
     filter:blur(50px);
@@ -126,7 +122,7 @@
       radial-gradient(1.4px 1.4px at 22% 88%, rgba(255,255,255,.3), transparent 60%),
       radial-gradient(1.6px 1.6px at 50% 40%, rgba(255,255,255,.4), transparent 60%);
     animation: sparkleDrift 46s linear infinite;
-    opacity:.6;
+    opacity:.4;
   }
   @keyframes sparkleDrift { from{ transform:translate3d(0,0,0); } to{ transform:translate3d(-3%,4%,0); } }
   @media (prefers-reduced-motion: reduce) {
@@ -747,6 +743,12 @@
   }
   .shop-imgwrap img { width:100%; height:100%; object-fit:cover; transition:transform .5s var(--ease-out, cubic-bezier(.16,1,.3,1)); }
   .shop-card:active .shop-imgwrap img { transform:scale(1.08); }
+  /* Generic fade-in for any image (product photos, avatars, prizes) that loads asynchronously:
+     starts invisible+slightly-scaled, and JS toggles .loaded on the img's load/error event —
+     this is what turns "image pops in abruptly once downloaded" into a smooth reveal. */
+  img.fade-img { opacity:0; transform:scale(1.04); transition:opacity .35s var(--ease-smooth,ease), transform .35s var(--ease-smooth,ease); }
+  img.fade-img.loaded { opacity:1; transform:scale(1); }
+  @media (prefers-reduced-motion: reduce) { img.fade-img { transition:opacity .01ms; transform:none; } }
   .shop-imgwrap .ic-fallback { font-size:34px; opacity:.5; }
   .shop-imgwrap::after {
     content:''; position:absolute; inset:0; pointer-events:none;
@@ -1611,7 +1613,6 @@
 <div class="bg-blob bg-blob-1"></div>
 <div class="bg-blob bg-blob-2"></div>
 <div class="bg-blob bg-blob-3"></div>
-<div class="bg-blob bg-blob-4"></div>
 <div class="bg-sparkle"></div>
 <div class="bg-embers" id="bgEmbers"></div>
 <div class="toast" id="toast"><span class="t-ic">✓</span><span class="t-msg"></span></div>
@@ -3386,6 +3387,13 @@ async function loadShop() {
   loadChests();
   loadGiftPacks();
   const el = document.getElementById('productList');
+  // If the boot-time prefetch already has products (and their images are already warmed
+  // in the browser cache), render immediately with no skeleton flash and no re-fetch —
+  // this is what makes opening Shop feel instant instead of "loading late".
+  if (PREFETCH_CACHE.products) {
+    renderShopProducts(PREFETCH_CACHE.products);
+    return;
+  }
   el.innerHTML = `<div class="shop-grid">${Array.from({length:4}).map(() => `
     <div class="shop-card-sk">
       <div class="sk-img skeleton"></div>
@@ -3397,10 +3405,18 @@ async function loadShop() {
     </div>`).join('')}</div>`;
   try {
     const products = await api('/api/products');
-    if (!products.length) { el.innerHTML = '<div class="empty"><div class="eic">🛍</div>No product listed yet.</div>'; document.getElementById('shopBestsellers').innerHTML = ''; return; }
-    el.innerHTML = `<div class="shop-grid">${products.map((p, i) => `
+    PREFETCH_CACHE.products = products;
+    renderShopProducts(products);
+  } catch (e) {
+    el.innerHTML = `<p class="muted">⚠️ Shop failed to load — <a href="#" onclick="loadShop();return false;" style="color:#c9b3ff;">Try again</a></p>`;
+  }
+}
+function renderShopProducts(products) {
+  const el = document.getElementById('productList');
+  if (!products.length) { el.innerHTML = '<div class="empty"><div class="eic">🛍</div>No product listed yet.</div>'; document.getElementById('shopBestsellers').innerHTML = ''; return; }
+  el.innerHTML = `<div class="shop-grid">${products.map((p, i) => `
       <div class="shop-card" ${staggerStyle(i)}>
-        <div class="shop-imgwrap">${p.image_url ? `<img src="${p.image_url}">` : '<span class="ic-fallback">🎁</span>'}</div>
+        <div class="shop-imgwrap">${p.image_url ? `<img src="${p.image_url}" loading="eager" class="fade-img" onload="this.classList.add('loaded')" onerror="this.classList.add('loaded')">` : '<span class="ic-fallback">🎁</span>'}</div>
         <div class="shop-body">
           <div class="shop-name">${p.title}</div>
           ${p.description ? `<div class="shop-desc">${p.description}</div>` : ''}
@@ -3412,9 +3428,6 @@ async function loadShop() {
       <div class="mini-card" onclick="document.getElementById('note-${p.id}')?.scrollIntoView({behavior:'smooth'})">
         <div class="ic">🎁</div><div class="t">${p.title}</div><div class="s">${p.price_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</div>
       </div>`).join('');
-  } catch (e) {
-    el.innerHTML = `<p class="muted">⚠️ Shop failed to load — <a href="#" onclick="loadShop();return false;" style="color:#c9b3ff;">Try again</a></p>`;
-  }
 }
 async function buyProduct(id) {
   const note = document.getElementById('note-' + id).value;
@@ -3759,7 +3772,7 @@ function renderMarketGrid() {
       <div class="mkt-card" ${staggerStyle(i)}>
         <div class="mkt-imgwrap">
           <div class="mkt-img-placeholder">🎁</div>
-          ${o.image_url ? `<img src="${o.image_url}" loading="lazy" onload="this.classList.add('loaded')" onerror="this.remove()">` : ''}
+          ${o.image_url ? `<img src="${o.image_url}" loading="eager" onload="this.classList.add('loaded')" onerror="this.remove()">` : ''}
           <div class="mkt-badge-tl">🎁</div>
           <div class="mkt-badge-tr">⭐</div>
         </div>
@@ -5987,7 +6000,7 @@ function spawnEmbers() {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const host = document.getElementById('bgEmbers');
   if (!host) return;
-  const COUNT = 14;
+  const COUNT = 6;
   let html = '';
   for (let i = 0; i < COUNT; i++) {
     const size = (Math.random() * 3 + 1.5).toFixed(1);
@@ -6001,6 +6014,25 @@ function spawnEmbers() {
   host.innerHTML = html;
 }
 spawnEmbers();
+/* Warms the browser's image cache for a batch of URLs without blocking anything — fires
+   plain Image() requests in the background so that by the time the user actually opens a
+   tab, the images are already downloaded and paint instantly instead of popping in late. */
+function warmImages(urls) {
+  (urls || []).filter(Boolean).forEach(u => { const img = new Image(); img.src = u; });
+}
+/* Prefetches the data (and, via warmImages, the artwork) for the tabs people open most —
+   Shop and Market — right after boot's critical path, in the background, without delaying
+   the boot loader. Wrapped so a failure here never breaks the app; it's pure optimization. */
+async function prefetchHighTrafficTabs() {
+  try {
+    const [products] = await Promise.all([
+      api('/api/products').catch(() => []),
+    ]);
+    PREFETCH_CACHE.products = products;
+    warmImages(products.map(p => p.image_url));
+  } catch (e) { /* best-effort */ }
+}
+let PREFETCH_CACHE = {};
 async function bootApp() {
   try {
     setBootProgress(10);
@@ -6016,6 +6048,9 @@ async function bootApp() {
     setBootProgress(88);
     await loadGamesHub().catch(() => {});
     setBootProgress(100);
+    // Fire-and-forget: warms Shop images/data in the background so opening that tab later
+    // feels instant instead of showing a skeleton then popping images in one by one.
+    prefetchHighTrafficTabs();
   } finally {
     hideBootLoader();
   }
