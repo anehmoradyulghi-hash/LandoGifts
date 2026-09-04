@@ -176,6 +176,12 @@ export const WAR_MAP_SIZE = 1000;
 // configured map capacity (e.g. capacity 100 -> a 10x10 grid). Only ever called when a tower is
 // created or changes league (or on an admin-triggered reset) — never on a normal map load — so it
 // stays a rare, cheap, bounded (<= map_capacity rows) query, not a per-request cost.
+//
+// Cell selection is a shuffled walk of every free cell (not repeated random guesses) so towers
+// spread evenly across the whole grid from the very first placement, instead of clustering toward
+// whichever cells the RNG happens to land on early — random-with-retry can leave large visible gaps
+// when the grid is sparse (well below full capacity), since nothing steers it away from a region
+// it has already filled by chance.
 function assignMapPosition(tgId, leagueKey) {
   const cfg = getWarConfig();
   const gridSize = Math.max(4, Math.ceil(Math.sqrt(cfg.map_capacity)));
@@ -185,13 +191,26 @@ function assignMapPosition(tgId, leagueKey) {
       .all(leagueKey, tgId)
       .map(r => `${Math.floor(r.map_x / cell)},${Math.floor(r.map_y / cell)}`)
   );
-  let gx = 0, gy = 0, tries = 0;
-  const maxTries = gridSize * gridSize * 2;
-  do {
+  const freeCells = [];
+  for (let gx = 0; gx < gridSize; gx++) {
+    for (let gy = 0; gy < gridSize; gy++) {
+      if (!occupied.has(`${gx},${gy}`)) freeCells.push([gx, gy]);
+    }
+  }
+  let gx, gy;
+  if (freeCells.length) {
+    // Deterministic-but-varied pick: hash the user id into the free-cell list instead of pure
+    // Math.random(), so placement is reproducible per user (stable across retries) while still
+    // effectively shuffled across the grid.
+    const idx = Math.abs(tgId * 2654435761 % freeCells.length);
+    [gx, gy] = freeCells[idx];
+  } else {
+    // Grid is completely full (more towers than capacity allows) — fall back to a random cell
+    // rather than failing; towers will overlap slightly, which is the honest outcome of exceeding
+    // configured capacity, not a bug to hide.
     gx = Math.floor(Math.random() * gridSize);
     gy = Math.floor(Math.random() * gridSize);
-    tries++;
-  } while (occupied.has(`${gx},${gy}`) && tries < maxTries);
+  }
   const jitter = cell * 0.15;
   const x = Math.round((gx * cell + cell / 2 + (Math.random() * 2 - 1) * jitter) * 100) / 100;
   const y = Math.round((gy * cell + cell / 2 + (Math.random() * 2 - 1) * jitter) * 100) / 100;

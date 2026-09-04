@@ -193,6 +193,7 @@ safeAddColumn('gift_offers', 'link TEXT'); // Optional link to the gift itself
 safeAddColumn('tasks', 'description TEXT'); // Free-text instructions shown to the user for custom tasks
 safeAddColumn('tasks', 'link TEXT'); // Optional "open" button link for custom tasks (e.g. an Instagram page, a video)
 safeAddColumn('currencies', 'deposit_address TEXT'); // The deposit address/account number the user should send to, per currency
+safeAddColumn('users', 'onboarding_seen INTEGER NOT NULL DEFAULT 0'); // Whether the first-run "how this app works" walkthrough has been shown to this user
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS star_payments (
@@ -317,6 +318,12 @@ function makeRefCode() {
 
 export function getUser(tgId) {
   return db.prepare('SELECT * FROM users WHERE tg_id = ?').get(tgId);
+}
+
+// Marks that this user has been shown the first-run onboarding walkthrough, so /api/me stops
+// telling the frontend to display it again. Idempotent — calling it repeatedly is harmless.
+export function markOnboardingSeen(tgId) {
+  db.prepare('UPDATE users SET onboarding_seen = 1 WHERE tg_id = ?').run(tgId);
 }
 
 export function getOrCreateUser(tgUser, startParam) {

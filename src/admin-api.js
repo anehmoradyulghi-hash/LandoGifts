@@ -893,6 +893,7 @@ router.get('/promo', (req, res) => res.json(listPromoCodes()));
 router.post('/promo', (req, res) => {
   const { code, reward_type, reward_value, reward_card_level, max_uses, expires_at, active } = req.body;
   if (!code || !reward_type) return res.status(400).json({ error: 'Code and prize type are required' });
+  if (reward_type === 'card' && !reward_value) return res.status(400).json({ error: 'Pick a card for the card prize' });
   createPromoCode({ code, reward_type, reward_value, reward_card_level, max_uses: max_uses ? Number(max_uses) : null, expires_at, active });
   res.json({ ok: true });
 });

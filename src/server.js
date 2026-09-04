@@ -24,6 +24,7 @@ import db, {
   getPaymentSettings, getMessageSettings, getSupportContact, getInfoPage, getLndcWalletSettings, getUiImages,
   createStarPaymentRequest, getStarPayment, completeStarPayment,
   getComebackConfig, findUsersDueForComebackReminder, markComebackReminderSent,
+  markOnboardingSeen,
 } from './db.js';
 import {
   listGameCards, getUserCards, buyGameCard, sacrificeCards, getMutationGroups, mutateCards, getGameCard, grantCardInstance,
@@ -268,7 +269,13 @@ app.get('/api/me', requireTelegramAuth, (req, res) => {
     first_name: req.dbUser.first_name,
     balance_toman: req.dbUser.balance_toman,
     ref_code: req.dbUser.ref_code,
+    onboarding_seen: !!req.dbUser.onboarding_seen,
   });
+});
+
+app.post('/api/onboarding-seen', requireTelegramAuth, (req, res) => {
+  markOnboardingSeen(req.dbUser.tg_id);
+  res.json({ ok: true });
 });
 
 app.get('/api/wallet/ledger', requireTelegramAuth, (req, res) => {
