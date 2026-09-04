@@ -1120,6 +1120,21 @@
       linear-gradient(160deg,#171029,#0a0814 70%);
     background-size:cover; background-position:center;
   }
+  /* Map mode: the Map sub-tab specifically becomes truly full-screen (covers the app's own
+     header and bottom nav too, not just the region between them) so panning/zooming the war
+     map gets the whole viewport instead of a letterboxed strip. Only #wsub-attack gets this —
+     My tower / Leaderboard / History keep the normal layout with the app chrome visible. */
+  #wsub-attack.tw-fullscreen-map .tw-shell { top:0; bottom:0; z-index:2500; }
+  .tw-map-close-btn {
+    position:fixed; top:calc(14px + env(safe-area-inset-top)); left:14px; z-index:2510;
+    width:38px; height:38px; border-radius:50%; border:none; cursor:pointer;
+    background:rgba(10,13,19,.85); backdrop-filter:blur(14px); color:#fff; font-size:18px;
+    display:none; align-items:center; justify-content:center; box-shadow:var(--shadow-md,0 8px 20px -8px rgba(0,0,0,.5));
+    transition:transform .12s var(--ease-sharp,ease);
+  }
+  #wsub-attack.tw-fullscreen-map .tw-map-close-btn { display:flex; }
+  .tw-map-close-btn:active { transform:scale(.88); }
+  html[dir="rtl"] .tw-map-close-btn { left:auto; right:14px; }
   /* Very faint grid + a scatter of tiny stars — reads as a strategy-map backdrop across the WHOLE
      screen (header, counters and all), not just inside the map box. */
   .tw-shell::before {
@@ -1667,6 +1682,19 @@
       linear-gradient(160deg,#241a3d,#140f24);
     border:1px solid rgba(255,255,255,.08); box-shadow:0 20px 50px -20px rgba(124,58,237,.5);
   }
+  /* When an admin sets a custom background photo for this card (applyUiImages sets both the
+     .has-img class and an inline background-image), layer it as a base photo UNDER the existing
+     gradients + a darkening scrim, instead of the inline style silently fighting/replacing the
+     card's own layered gradient background — so the card keeps working either way. */
+  .wal-hero.has-img {
+    background-image:
+      radial-gradient(400px 220px at 20% -10%, rgba(168,85,247,.45), transparent 60%),
+      radial-gradient(360px 220px at 100% 110%, rgba(59,130,246,.35), transparent 60%),
+      linear-gradient(160deg, rgba(36,26,61,.75), rgba(20,15,36,.85)),
+      var(--wal-hero-bg-img, none);
+    background-size:auto, auto, auto, cover;
+    background-position:center, center, center, center;
+  }
   .wal-hero::before {
     content:''; position:absolute; inset:0; pointer-events:none; opacity:.5;
     background:radial-gradient(1.5px 1.5px at 20% 25%, rgba(255,255,255,.5), transparent),
@@ -2001,6 +2029,7 @@
       <button class="btn" style="margin-top:10px;width:100%;" onclick="saveWarDefenseDeck()">💾 Save defense deck</button>
     </div>
     <div class="view active" id="wsub-attack">
+      <button class="tw-map-close-btn" onclick="showWarSub('tower')" aria-label="Close map">✕</button>
       <div class="tw-shell" id="twShell">
         <div class="gamehub-nav war-tabs" style="margin:10px 12px 8px;">
           <div class="gamehub-tile" data-wsub="tower" onclick="showWarSub('tower')"><div class="gamehub-tile-ic">🏰</div><div class="gamehub-tile-label">My tower</div></div>
@@ -3771,26 +3800,34 @@ async function doWithdraw() {
 }
 let CURRENCIES = [];
 async function loadCurrency() {
-  CURRENCIES = await api('/api/currencies');
-  const balances = await api('/api/wallet/balances');
-  document.getElementById('currencyBalances').innerHTML = CURRENCIES.length
-    ? CURRENCIES.map((c, i) => `
-      <div class="wal-asset-row" ${staggerStyle(i)}>
-        <div class="wal-asset-ic">${(c.code || '?').slice(0, 2)}</div>
-        <div class="wal-asset-info">
-          <div class="wal-asset-name">${c.name} <span class="muted">(${c.code})</span></div>
-          <div class="wal-asset-rate">Rate: ${c.rate_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</div>
-        </div>
-        <div class="wal-asset-balance">${Math.round(balances[c.code] || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-      </div>`).join('')
-    : '<p class="muted">No currency has been enabled by the admin.</p>';
-  const codeOptions = CURRENCIES.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
-  document.getElementById('depCode').innerHTML = codeOptions;
-  document.getElementById('wdCode').innerHTML = codeOptions;
-  document.getElementById('swapFrom').innerHTML = `<option value="LNDC">Lando Coin (LNDC)</option>` + codeOptions;
-  document.getElementById('swapTo').innerHTML = codeOptions + `<option value="LNDC">Lando Coin (LNDC)</option>`;
-  document.getElementById('swapFeeNote').textContent = `Conversion fee: ${CONFIG.swapFeePercent ?? 1}%`;
-  onDepCodeChange();
+  const el = document.getElementById('currencyBalances');
+  try {
+    CURRENCIES = await api('/api/currencies');
+    const balances = await api('/api/wallet/balances');
+    el.innerHTML = CURRENCIES.length
+      ? CURRENCIES.map((c, i) => `
+        <div class="wal-asset-row" ${staggerStyle(i)}>
+          <div class="wal-asset-ic">${(c.code || '?').slice(0, 2)}</div>
+          <div class="wal-asset-info">
+            <div class="wal-asset-name">${c.name} <span class="muted">(${c.code})</span></div>
+            <div class="wal-asset-rate">Rate: ${c.rate_toman.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LNDC</div>
+          </div>
+          <div class="wal-asset-balance">${Math.round(balances[c.code] || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        </div>`).join('')
+      : '<p class="muted">No currency has been enabled by the admin.</p>';
+    const codeOptions = CURRENCIES.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
+    document.getElementById('depCode').innerHTML = codeOptions;
+    document.getElementById('wdCode').innerHTML = codeOptions;
+    document.getElementById('swapFrom').innerHTML = `<option value="LNDC">Lando Coin (LNDC)</option>` + codeOptions;
+    document.getElementById('swapTo').innerHTML = codeOptions + `<option value="LNDC">Lando Coin (LNDC)</option>`;
+    document.getElementById('swapFeeNote').textContent = `Conversion fee: ${CONFIG.swapFeePercent ?? 1}%`;
+    onDepCodeChange();
+  } catch (e) {
+    // Previously a thrown request here left the section stuck on its static "Loading..."
+    // placeholder forever with no way to tell it had actually failed — now it says so plainly
+    // and offers a retry, instead of reading as "this section is just broken/empty".
+    el.innerHTML = `<p class="muted">⚠️ Could not load balances — <a href="#" onclick="loadCurrency();return false;" style="color:#c9b3ff;">Try again</a></p>`;
+  }
 }
 function onDepCodeChange() {
   const code = document.getElementById('depCode').value;
@@ -4412,6 +4449,10 @@ function showWarSub(name) {
   // screen) — keep every copy's active state in sync so the highlighted tab is always correct
   // no matter which one the person is currently looking at.
   document.querySelectorAll('#gview-war .war-tabs .gamehub-tile').forEach(b => b.classList.toggle('active', b.dataset.wsub === name));
+  // The map goes truly full-screen (covers the app's own header + bottom nav, not just the
+  // region between them) — the dedicated ✕ button is how you get back, since the app chrome
+  // that normally handles navigation is hidden while this is on.
+  document.getElementById('wsub-attack').classList.toggle('tw-fullscreen-map', name === 'attack');
   if (name === 'attack') loadWarMap();
   if (name === 'leaderboard') loadWarLeaderboardTab();
   if (name === 'history') loadWarHistory();
@@ -6255,7 +6296,13 @@ function applyUiImages() {
   for (const [key, elId] of Object.entries(tileMap)) {
     const el = document.getElementById(elId);
     const url = images[key];
-    if (el && url) { el.classList.add('has-img'); el.style.backgroundImage = `url('${url}')`; }
+    if (!el || !url) continue;
+    el.classList.add('has-img');
+    // .wal-hero (the wallet card) reads its background photo from a CSS variable instead of the
+    // plain inline background-image property, because that property alone would replace its
+    // entire multi-layer gradient background rather than sitting underneath it (see .wal-hero.has-img).
+    if (elId === 'hubTile-wallet') el.style.setProperty('--wal-hero-bg-img', `url('${url}')`);
+    else el.style.backgroundImage = `url('${url}')`;
   }
   const bannerMap = { banner_clan: 'clanBanner', banner_battlepass: 'battlepassBanner', banner_events: 'eventsBanner', card_missions: 'missionsBanner', card_leaderboard: 'leaderboardBanner' };
   for (const [key, elId] of Object.entries(bannerMap)) {
