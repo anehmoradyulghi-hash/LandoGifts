@@ -203,6 +203,7 @@
     <button data-tab="cardmarket" onclick="showTab('cardmarket')">Card Marketplace</button>
     <button data-tab="cardtasks" onclick="showTab('cardtasks')">Card tasks</button>
     <button data-tab="users" onclick="showTab('users')">Users</button>
+    <button data-tab="markets" onclick="showTab('markets')">📈 Markets</button>
   </nav>
   <main>
     <section class="tab active" id="tab-dash"><div class="card" id="statsCard">Loading...</div></section>
@@ -1468,6 +1469,24 @@
       </div>
       <div id="usersTable"></div>
     </section>
+
+    <section class="tab" id="tab-markets">
+      <div class="card">
+        <h3>Add / Edit Tracked Symbol</h3>
+        <p class="muted" style="margin-top:-6px;">Symbol id must match a CoinGecko coin id (e.g. "bitcoin", "ethereum", "the-open-network"). Prices are fetched automatically every 2 minutes — nothing here connects to any wallet or places trades.</p>
+        <input type="hidden" id="mktSymId">
+        <label>Symbol id (CoinGecko)</label>
+        <input id="mktSymCode" placeholder="bitcoin">
+        <label>Display name</label>
+        <input id="mktSymName" placeholder="Bitcoin (BTC)">
+        <label>Sort order</label>
+        <input id="mktSymOrder" type="number" value="0">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:8px;"><input type="checkbox" id="mktSymActive" checked style="width:auto;"> Active</label>
+        <button class="btn" style="margin-top:10px;" onclick="saveMarketSymbol()">Save</button>
+        <button class="btn secondary" style="margin-top:10px;" onclick="resetMarketSymbolForm()">Clear form</button>
+      </div>
+      <div id="marketSymbolsTable"></div>
+    </section>
   </main>
 </div>
 
@@ -1565,7 +1584,8 @@ function showTab(name) {
     raffles: () => { loadRafflesAdmin(); },
     plinko: loadPlinkoAdmin,
     campaign: loadCampaignLandsAdmin,
-    users: loadUsers };
+    users: loadUsers,
+    markets: loadMarketSymbolsAdmin };
   loaders[name]?.();
 }
 
@@ -2482,6 +2502,43 @@ async function saveCategory() {
   loadCategories();
 }
 async function deleteCategory(id) { if (confirm('be deleted?')) { await api(`/card-categories/${id}`, { method: 'DELETE' }); loadCategories(); } }
+
+/* ---------- Markets (signals) — tracked symbols only; no wallet/trade config lives here ---------- */
+async function loadMarketSymbolsAdmin() {
+  const rows = await api('/markets/symbols');
+  document.getElementById('marketSymbolsTable').innerHTML = rows.length ? `
+    <table><tr><th>Symbol id</th><th>Display name</th><th>Order</th><th>Active</th><th>Actions</th></tr>
+    ${rows.map(s => `<tr><td>${s.symbol}</td><td>${s.display_name}</td><td>${s.sort_order}</td><td>${s.active ? '✅' : '❌'}</td>
+      <td><button class="btn secondary" onclick='editMarketSymbol(${JSON.stringify(s)})'>Edit</button>
+      <button class="btn danger" onclick="deleteMarketSymbolUI(${s.id})">Delete</button></td></tr>`).join('')}
+    </table>` : '<p class="muted">No symbol tracked yet.</p>';
+}
+function editMarketSymbol(s) {
+  document.getElementById('mktSymId').value = s.id;
+  document.getElementById('mktSymCode').value = s.symbol;
+  document.getElementById('mktSymName').value = s.display_name;
+  document.getElementById('mktSymOrder').value = s.sort_order;
+  document.getElementById('mktSymActive').checked = !!s.active;
+}
+function resetMarketSymbolForm() {
+  document.getElementById('mktSymId').value = '';
+  document.getElementById('mktSymCode').value = '';
+  document.getElementById('mktSymName').value = '';
+  document.getElementById('mktSymOrder').value = '0';
+  document.getElementById('mktSymActive').checked = true;
+}
+async function saveMarketSymbol() {
+  await api('/markets/symbols', { method: 'POST', body: JSON.stringify({
+    id: document.getElementById('mktSymId').value || null,
+    symbol: document.getElementById('mktSymCode').value,
+    display_name: document.getElementById('mktSymName').value,
+    sort_order: document.getElementById('mktSymOrder').value,
+    active: document.getElementById('mktSymActive').checked,
+  }) });
+  resetMarketSymbolForm();
+  loadMarketSymbolsAdmin();
+}
+async function deleteMarketSymbolUI(id) { if (confirm('Remove this tracked symbol?')) { await api(`/markets/symbols/${id}`, { method: 'DELETE' }); loadMarketSymbolsAdmin(); } }
 
 /* ---------- Mutation cost ---------- */
 async function loadMergeCosts() {
