@@ -78,6 +78,7 @@ import { sendMessage, fetchTelegramNftMeta } from './telegram.js';
 import { logPlayerActivity } from './achievements-db.js';
 import { listAchievementsAdmin, upsertAchievement, deleteAchievement } from './achievements-db.js';
 import { getBackupConfig, setBackupConfig, listBackups, runBackupNow } from './backup.js';
+import { listAllSymbolsAdmin, upsertSymbol, deleteSymbol } from './markets-db.js';
 
 const router = express.Router();
 
@@ -704,6 +705,16 @@ router.post('/war/prizes', (req, res) => {
 router.delete('/war/prizes/:id', (req, res) => { deleteWarLeaguePrize(Number(req.params.id)); res.json({ ok: true }); });
 router.get('/war/attacks', (req, res) => res.json(listRecentWarAttacksAdmin(50)));
 router.get('/war/map-stats', (req, res) => res.json(getWarMapStats()));
+
+/* ---------------- Markets (signals) admin — manage which symbols are tracked ---------------- */
+router.get('/markets/symbols', (req, res) => res.json(listAllSymbolsAdmin()));
+router.post('/markets/symbols', (req, res) => {
+  const { id, symbol, display_name, active, sort_order } = req.body;
+  if (!symbol || !display_name) return res.status(400).json({ error: 'Symbol id and display name are required' });
+  const newId = upsertSymbol({ id, symbol: symbol.trim().toLowerCase(), display_name, active, sort_order });
+  res.json({ ok: true, id: newId });
+});
+router.delete('/markets/symbols/:id', (req, res) => { deleteSymbol(Number(req.params.id)); res.json({ ok: true }); });
 router.post('/war/reset-map-positions', (req, res) => {
   try { res.json({ ok: true, ...resetWarMapPositions() }); }
   catch (e) { res.status(400).json({ error: e.message }); }

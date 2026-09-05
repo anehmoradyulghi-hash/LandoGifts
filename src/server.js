@@ -78,6 +78,12 @@ import {
 } from './war-db.js';
 import { getPlinkoConfig, playPlinko, getPlinkoHistory } from './plinko-db.js';
 import { getCampaignProgress, fightCampaignStage } from './campaign-db.js';
+import {
+  listActiveSymbols, getLatestTick, getRecentPrices, summarizeSignal,
+  getWatchlist, addToWatchlist, removeFromWatchlist,
+  listAlerts, createAlert, deleteAlert, checkTriggeredAlerts,
+  recordPriceTick, pruneOldCandles,
+} from './markets-db.js';
 import adminApi from './admin-api.js';
 import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
 import { startBackupScheduler } from './backup.js';
@@ -327,6 +333,67 @@ app.post('/api/wallet/toman-withdraw', requireTelegramAuth, (req, res) => {
  * ========================================================================= */
 app.get('/api/currencies', (req, res) => res.json(listCurrencies(true)));
 app.get('/api/wallet/balances', requireTelegramAuth, (req, res) => res.json(getWalletBalances(req.dbUser.tg_id)));
+
+/* =========================================================================
+ * Markets — informational only: public price data, personal watchlist, price alerts, and basic
+ * technical indicators. No wallet connection, no order placement, no trade execution — the person
+ * reads a signal here and acts on it themselves outside this app, if at all. Every signal response
+ * carries `disclaimer` so the frontend always shows it; this is not financial advice.
+ * ========================================================================= */
+const MARKET_DISCLAIMER = 'Informational only — not financial advice. Prices and indicators can be wrong or delayed; always do your own research.';
+
+app.get('/api/markets/symbols', (req, res) => {
+  const symbols = listActiveSymbols().map(s => {
+    const tick = getLatestTick(s.symbol);
+    return {
+      symbol: s.symbol, name: s.display_name,
+      price_usd: tick?.price_usd ?? null, change_24h_pct: tick?.change_24h_pct ?? null,
+      volume_24h_usd: tick?.volume_24h_usd ?? null, updated_at: tick?.fetched_at ?? null,
+    };
+  });
+  res.json({ symbols, disclaimer: MARKET_DISCLAIMER });
+});
+
+app.get('/api/markets/:symbol/signal', (req, res) => {
+  const { symbol } = req.params;
+  const tick = getLatestTick(symbol);
+  if (!tick) return res.status(404).json({ error: 'No data yet for this symbol' });
+  const prices = getRecentPrices(symbol, 200);
+  const signal = summarizeSignal(prices);
+  res.json({
+    symbol, price_usd: tick.price_usd, change_24h_pct: tick.change_24h_pct, updated_at: tick.fetched_at,
+    history: prices, signal, disclaimer: MARKET_DISCLAIMER,
+  });
+});
+
+app.get('/api/markets/watchlist', requireTelegramAuth, (req, res) => res.json(getWatchlist(req.dbUser.tg_id)));
+app.post('/api/markets/watchlist', requireTelegramAuth, (req, res) => {
+  const { symbol } = req.body;
+  if (!symbol) return res.status(400).json({ error: 'Symbol is required' });
+  addToWatchlist(req.dbUser.tg_id, symbol);
+  res.json({ ok: true });
+});
+app.delete('/api/markets/watchlist/:symbol', requireTelegramAuth, (req, res) => {
+  removeFromWatchlist(req.dbUser.tg_id, req.params.symbol);
+  res.json({ ok: true });
+});
+
+app.get('/api/markets/alerts', requireTelegramAuth, (req, res) => res.json(listAlerts(req.dbUser.tg_id)));
+app.post('/api/markets/alerts', requireTelegramAuth, (req, res) => {
+  const { symbol, direction, target_price } = req.body;
+  const price = Number(target_price);
+  if (!symbol || !['above', 'below'].includes(direction) || !price || price <= 0) {
+    return res.status(400).json({ error: 'Invalid alert parameters' });
+  }
+  try {
+    const id = createAlert(req.dbUser.tg_id, symbol, direction, price);
+    res.json({ ok: true, id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.delete('/api/markets/alerts/:id', requireTelegramAuth, (req, res) => {
+  deleteAlert(req.dbUser.tg_id, Number(req.params.id));
+  res.json({ ok: true });
+});
 
 app.post('/api/wallet/swap', requireTelegramAuth, (req, res) => {
   const { from, to, amount } = req.body; // 'LNDC' <-> 'USDT'/'TON'/...
@@ -1386,6 +1453,36 @@ setInterval(() => {
     }
   } catch (e) { console.error('[comeback reminder]', e); }
 }, 60 * 60 * 1000);
+
+// Fetches current prices for every active market symbol from CoinGecko's free public API (no key
+// required), records one tick each, then checks whether that new data just crossed anyone's price
+// alert. Runs every 2 minutes — frequent enough for alerts to feel timely, far under CoinGecko's
+// free-tier rate limit for the handful of symbols this app tracks. A failed fetch (network hiccup,
+// rate limit) is logged and simply retried next cycle — it never crashes the server, and old data
+// stays visible in the meantime rather than the UI going blank.
+async function fetchMarketPrices() {
+  const symbols = listActiveSymbols();
+  if (!symbols.length) return;
+  const ids = symbols.map(s => s.symbol).join(',');
+  try {
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('CoinGecko responded ' + res.status);
+    const data = await res.json();
+    for (const s of symbols) {
+      const d = data[s.symbol];
+      if (!d || typeof d.usd !== 'number') continue;
+      recordPriceTick(s.symbol, d.usd, d.usd_24h_change ?? null, d.usd_24h_vol ?? null);
+    }
+    pruneOldCandles(300);
+    const triggered = checkTriggeredAlerts();
+    for (const a of triggered) {
+      const dir = a.direction === 'above' ? 'rose above' : 'fell below';
+      sendMessage(a.tg_id, `🔔 Price alert: ${a.display_name} ${dir} $${a.target_price.toLocaleString('en-US', { maximumFractionDigits: 6 })} — current price: $${a.currentPrice.toLocaleString('en-US', { maximumFractionDigits: 6 })}.\n\n${MARKET_DISCLAIMER}`).catch(() => {});
+    }
+  } catch (e) { console.error('[market price fetch]', e.message); }
+}
+setInterval(fetchMarketPrices, 2 * 60 * 1000);
+fetchMarketPrices(); // also run once immediately on boot instead of waiting 2 minutes for first data
 
 // Register the Telegram webhook; if the domain/tunnel is not up yet (e.g. during boot on
 // Termux), instead of just failing once and giving up, it retries every 30 seconds
