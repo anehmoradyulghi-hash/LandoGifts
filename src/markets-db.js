@@ -164,19 +164,24 @@ export function macd(prices, fast = 12, slow = 26, signalPeriod = 9) {
 }
 
 // A plain-language read of the indicators — deliberately hedged, never a "buy"/"sell" instruction.
+// Periods scale down when there isn't full history yet (e.g. right after the tracker starts, or
+// for a symbol just added) so a real, honestly-labeled reading shows up within a couple of minutes
+// instead of a wall of "—" for the ~9 minutes a full RSI(14)/MACD(12,26,9) needs to fill in.
 export function summarizeSignal(prices) {
-  const r = rsi(prices);
-  const m = macd(prices);
-  const sma20 = sma(prices, 20);
-  const sma50 = sma(prices, 50);
+  const rsiPeriod = prices.length >= 15 ? 14 : Math.max(3, prices.length - 1);
+  const r = prices.length >= 4 ? rsi(prices, rsiPeriod) : null;
+  const m = macd(prices, Math.min(12, Math.floor(prices.length / 3) || 1), Math.min(26, Math.floor(prices.length * 0.7) || 2), Math.min(9, Math.floor(prices.length / 4) || 1));
+  const smaShort = prices.length >= 20 ? sma(prices, 20) : sma(prices, Math.max(2, Math.floor(prices.length / 2)));
+  const smaLong = prices.length >= 50 ? sma(prices, 50) : (prices.length >= 6 ? sma(prices, prices.length) : null);
   const notes = [];
   if (r !== null) {
     if (r >= 70) notes.push('RSI suggests the market may be overbought');
     else if (r <= 30) notes.push('RSI suggests the market may be oversold');
   }
   if (m) notes.push(m.histogram > 0 ? 'MACD histogram is positive (upward momentum)' : 'MACD histogram is negative (downward momentum)');
-  if (sma20 !== null && sma50 !== null) notes.push(sma20 > sma50 ? 'Short-term average is above the long-term average' : 'Short-term average is below the long-term average');
-  return { rsi: r, macd: m, sma20, sma50, notes };
+  if (smaShort !== null && smaLong !== null) notes.push(smaShort > smaLong ? 'Short-term average is above the long-term average' : 'Short-term average is below the long-term average');
+  if (prices.length < 35) notes.push(`Still building up price history (${prices.length} data point${prices.length === 1 ? '' : 's'} so far) — indicators will sharpen over the next few minutes.`);
+  return { rsi: r, macd: m, sma20: smaShort, sma50: smaLong, notes };
 }
 
 /* ---------------- Watchlist ---------------- */

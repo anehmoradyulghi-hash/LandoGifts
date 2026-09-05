@@ -1456,17 +1456,26 @@ setInterval(() => {
 
 // Fetches current prices for every active market symbol from CoinGecko's free public API (no key
 // required), records one tick each, then checks whether that new data just crossed anyone's price
-// alert. Runs every 2 minutes — frequent enough for alerts to feel timely, far under CoinGecko's
-// free-tier rate limit for the handful of symbols this app tracks. A failed fetch (network hiccup,
-// rate limit) is logged and simply retried next cycle — it never crashes the server, and old data
-// stays visible in the meantime rather than the UI going blank.
+// alert. Runs every 15 seconds — CoinGecko's free tier is rate-limited to roughly 10-30 calls per
+// minute PER IP, shared across everything else this server does; 5 seconds (12 calls/min just for
+// this) risks tripping that limit and getting the whole feature (and possibly other lookups from
+// this IP) temporarily blocked, which would be worse than a slightly slower refresh. If a 429 (too
+// many requests) comes back, this backs off to a longer wait automatically instead of hammering an
+// already-rate-limited endpoint every 15s regardless.
+let marketFetchBackoffMs = 0;
 async function fetchMarketPrices() {
   const symbols = listActiveSymbols();
   if (!symbols.length) return;
   const ids = symbols.map(s => s.symbol).join(',');
   try {
     const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`, { signal: AbortSignal.timeout(10000) });
+    if (res.status === 429) {
+      marketFetchBackoffMs = Math.min((marketFetchBackoffMs || 15000) * 2, 5 * 60 * 1000);
+      console.warn(`[market price fetch] rate-limited by CoinGecko, backing off for ${marketFetchBackoffMs / 1000}s`);
+      return;
+    }
     if (!res.ok) throw new Error('CoinGecko responded ' + res.status);
+    marketFetchBackoffMs = 0; // reset backoff once a request succeeds again
     const data = await res.json();
     for (const s of symbols) {
       const d = data[s.symbol];
@@ -1481,8 +1490,12 @@ async function fetchMarketPrices() {
     }
   } catch (e) { console.error('[market price fetch]', e.message); }
 }
-setInterval(fetchMarketPrices, 2 * 60 * 1000);
-fetchMarketPrices(); // also run once immediately on boot instead of waiting 2 minutes for first data
+function scheduleMarketFetch() {
+  fetchMarketPrices().finally(() => {
+    setTimeout(scheduleMarketFetch, marketFetchBackoffMs || 15 * 1000);
+  });
+}
+scheduleMarketFetch();
 
 // Register the Telegram webhook; if the domain/tunnel is not up yet (e.g. during boot on
 // Termux), instead of just failing once and giving up, it retries every 30 seconds
