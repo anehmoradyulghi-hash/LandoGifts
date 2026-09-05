@@ -1718,8 +1718,7 @@
 
   .wal-asset-row {
     display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border);
-    border-radius:14px; padding:11px 13px; margin-bottom:8px; transition:transform .13s var(--ease-sharp,ease), border-color .13s ease;
-    opacity:0; animation:riseIn .38s var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
+    border-radius:14px; padding:11px 13px; margin-bottom:8px; transition:transform .13s ease, border-color .13s ease;
   }
   .wal-asset-row:active { transform:scale(.98); border-color:var(--border-strong,rgba(255,255,255,.14)); }
   .wal-asset-ic {
@@ -1756,6 +1755,23 @@
   }
   .gamehub-tile.active .gamehub-tile-label { color:#fff; }
   .gamehub-tile:nth-child(4), .gamehub-tile:nth-child(5) { grid-column:span 1; }
+
+  /* ---------- Entrance-animation safety net ----------
+     Confirmed on-device: this specific WebView sometimes never triggers a CSS `animation`
+     applied to elements freshly inserted via innerHTML (the .wal-asset-row "Assets" list on the
+     Wallet page was reported and verified stuck fully invisible — the content was there, the
+     animation just never ran, so the element sat at its own base opacity:0 forever). Rather than
+     track down every affected component one at a time, every selector below that used the
+     hide-then-animate-in pattern is forced back to fully visible by default here, in one place,
+     loaded last so it always wins. If the entrance animation DOES fire on a given device, it
+     still plays exactly as before; if it doesn't, the content is simply visible immediately
+     instead of permanently gone. Nothing about layout, spacing, or interaction changes — only
+     the guaranteed baseline visibility. */
+  .task-card, .gcard, .section-banner, .podium-item, .lb-row, .mkt-card, .chat-row, .shop-card,
+  .ach-card, .wal-asset-row, .menu-row, .icon-grid-item, .hscroll > *, .grid2 > .gcard,
+  .cat-item, .shop-card-sk, .stat-tile {
+    opacity:1 !important;
+  }
 </style>
 </head>
 <body>
