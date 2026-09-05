@@ -632,6 +632,37 @@
     transition:transform .12s var(--ease-sharp,ease); cursor:pointer;
   }
   .mkt-price-pill:active { transform:scale(.95); }
+
+  /* ---------- Markets (signals) ---------- */
+  .mkt-sig-disclaimer {
+    font-size:11.5px; color:#fbbf24; background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.28);
+    border-radius:12px; padding:9px 12px; margin:10px 0 4px; line-height:1.5;
+  }
+  .mkt-sig-row {
+    display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:11px 13px; margin-bottom:8px; cursor:pointer; transition:transform .13s ease, border-color .13s ease;
+  }
+  .mkt-sig-row:active { transform:scale(.98); border-color:var(--border-strong,rgba(255,255,255,.14)); }
+  .mkt-sig-ic { width:38px; height:38px; flex:none; border-radius:50%; background:linear-gradient(135deg,var(--p1),var(--b1)); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; color:#fff; }
+  .mkt-sig-info { flex:1; min-width:0; }
+  .mkt-sig-name { font-size:13px; font-weight:800; }
+  .mkt-sig-price { font-size:10.5px; color:var(--muted); margin-top:1px; font-variant-numeric:tabular-nums; }
+  .mkt-sig-change { font-size:12.5px; font-weight:800; flex:none; text-align:right; }
+  .mkt-sig-change.up { color:var(--success); }
+  .mkt-sig-change.down { color:var(--danger); }
+  .mkt-sig-star { flex:none; font-size:17px; background:none; border:none; cursor:pointer; padding:4px; color:var(--muted); transition:transform .15s var(--ease-spring, cubic-bezier(.34,1.56,.64,1)); }
+  .mkt-sig-star.on { color:var(--gold); }
+  .mkt-sig-star:active { transform:scale(.8); }
+  .mkt-sig-detail-price { font-size:32px; font-weight:900; margin:4px 0; }
+  .mkt-sig-indicator-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+  .mkt-sig-indicator { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px; }
+  .mkt-sig-indicator .lbl { font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
+  .mkt-sig-indicator .val { font-size:18px; font-weight:800; margin-top:3px; font-variant-numeric:tabular-nums; }
+  .mkt-sig-note-row { display:flex; align-items:flex-start; gap:8px; font-size:12.5px; color:var(--muted); padding:8px 0; border-bottom:1px solid var(--border); line-height:1.5; }
+  .mkt-sig-note-row:last-child { border-bottom:none; }
+  .mkt-alert-row { display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:11px 13px; margin-bottom:8px; }
+  .mkt-alert-row .txt { flex:1; font-size:12.5px; }
+  .mkt-alert-row .del { flex:none; background:none; border:none; color:var(--danger); font-size:16px; cursor:pointer; padding:4px; }
   /* Empty state when a search/filter combination matches nothing — offers a one-tap way back
      to a clean slate instead of a dead end. */
   .mkt-empty-clear { margin-top:10px; background:none; border:1px solid var(--border); color:#c9b3ff; font-size:12.5px; font-weight:700; padding:9px 18px; border-radius:12px; cursor:pointer; }
@@ -2697,6 +2728,13 @@
   <div class="hub-sec"><div><div class="hub-sec-t" data-i18n="wal.assets.t">Assets</div><div class="hub-sec-s" data-i18n="wal.assets.s">Your balances at a glance</div></div></div>
   <div id="currencyBalances" class="muted">Loading...</div>
 
+  <div class="hub-sec"><div><div class="hub-sec-t" data-i18n="wal.markets.t">Markets</div><div class="hub-sec-s" data-i18n="wal.markets.s">Live prices & signals — informational only</div></div></div>
+  <div class="gcard blue has-img featured" style="margin-top:2px;" onclick="showPage('markets');">
+    <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15l3-3 3 2 5-6"/></svg></span>
+    <span class="t" data-i18n="wal.markets.cardT">Market Signals</span>
+    <span class="s" data-i18n="wal.markets.cardS">Prices, watchlist & price alerts</span>
+  </div>
+
   <div class="hub-sec"><div><div class="hub-sec-t" data-i18n="wal.money.t">Money</div><div class="hub-sec-s" data-i18n="wal.money.s">Deposit, withdraw, transfer & swap</div></div></div>
 
   <div class="wal-acc" id="walAccTopup">
@@ -2794,6 +2832,35 @@
   <div class="card">
     <div id="ledgerList" class="muted">Loading...</div>
     <button class="btn outline" id="ledgerMoreBtn" style="display:none;margin-top:8px;" onclick="loadMoreLedger()">Show earlier transactions</button>
+  </div>
+</section>
+
+<!-- ============ Markets (informational signals only — no wallet connection, no trading) ============ -->
+<section class="page" id="page-markets">
+  <div class="view active" id="mktSigTab-list">
+    <div class="hub-head blue">
+      <div class="hub-head-ic">📈</div>
+      <div>
+        <div class="hub-head-t">Market Signals</div>
+        <div class="hub-head-s">Live prices and basic technical indicators</div>
+      </div>
+    </div>
+    <div class="mkt-sig-disclaimer">⚠️ Informational only — not financial advice. Always do your own research.</div>
+
+    <div class="hub-sec"><div><div class="hub-sec-t">Your Watchlist</div><div class="hub-sec-s">Pinned symbols show up first</div></div></div>
+    <div id="mktSigWatchlist" class="muted" style="padding:0 2px;">No symbol pinned yet — tap the star on any coin below.</div>
+
+    <div class="hub-sec"><div><div class="hub-sec-t">All Symbols</div><div class="hub-sec-s">Tap a coin for full signal detail</div></div></div>
+    <div id="mktSigList" class="muted">Loading...</div>
+
+    <div class="hub-sec"><div><div class="hub-sec-t">Your Alerts</div><div class="hub-sec-s">Get notified when a price is hit</div></div></div>
+    <div id="mktSigAlerts" class="muted">No active alert.</div>
+  </div>
+
+  <div class="view" id="mktSigTab-detail">
+    <button class="btn secondary" style="width:100%;margin-bottom:12px;" onclick="showMarketsList()">← Back to list</button>
+    <div class="mkt-sig-disclaimer">⚠️ Informational only — not financial advice. Always do your own research.</div>
+    <div id="mktSigDetail" class="muted">Loading...</div>
   </div>
 </section>
 
@@ -2966,6 +3033,8 @@ const I18N = {
     'wal.topup2': 'Deposit', 'wal.withdraw2': 'Withdraw', 'wal.swap2': 'Swap', 'wal.history2': 'History',
     'wal.transactionHistory': 'Transaction history',
     'wal.money.t': 'Money', 'wal.money.s': 'Deposit, withdraw, transfer & swap',
+    'wal.markets.t': 'Markets', 'wal.markets.s': 'Live prices & signals — informational only',
+    'wal.markets.cardT': 'Market Signals', 'wal.markets.cardS': 'Prices, watchlist & price alerts',
     'wal.topupWallet': 'Top up wallet',
     'lb.mainRankings.t': 'Main Rankings', 'lb.mainRankings.s': 'Top players by game',
     'lb.cardGame.t': 'Card Game', 'lb.cardGame.s': 'Battle score rankings',
@@ -3059,6 +3128,8 @@ const I18N = {
     'wal.topup2': 'واریز', 'wal.withdraw2': 'برداشت', 'wal.swap2': 'تبدیل', 'wal.history2': 'تاریخچه',
     'wal.transactionHistory': 'تاریخچه تراکنش‌ها',
     'wal.money.t': 'پول', 'wal.money.s': 'واریز، برداشت، انتقال و تبدیل',
+    'wal.markets.t': 'بازارها', 'wal.markets.s': 'قیمت زنده و سیگنال — فقط اطلاع‌رسانی',
+    'wal.markets.cardT': 'سیگنال بازار', 'wal.markets.cardS': 'قیمت، واچ‌لیست و هشدار قیمتی',
     'wal.topupWallet': 'افزایش موجودی کیف پول',
     'lb.mainRankings.t': 'رتبه‌بندی اصلی', 'lb.mainRankings.s': 'برترین بازیکن‌ها بر اساس بازی',
     'lb.cardGame.t': 'بازی کارتی', 'lb.cardGame.s': 'رتبه‌بندی امتیاز نبرد',
@@ -3345,6 +3416,7 @@ function showPage(name) {
   if (name === 'market') { showMarketTab('hub'); loadMarket(); }
   if (name === 'leaderboard') { showLbTab('hub'); loadLeaderboardPage(); }
   if (name === 'wallet') { loadWallet(); loadCurrency(); }
+  if (name === 'markets') { showMarketsList(); loadMarketsList(); }
   if (name === 'profile') { showProfileHub(); loadProfile(); }
   if (name === 'games') { showGView('hub'); loadGamesHub(); }
   if (name === 'rewards') { showRewardsHub(); loadRewardsHub(); }
@@ -3839,6 +3911,146 @@ async function loadCurrency() {
     el.innerHTML = `<p class="muted">⚠️ Could not load balances — <a href="#" onclick="loadCurrency();return false;" style="color:#c9b3ff;">Try again</a></p>`;
   }
 }
+
+/* ---------------- Markets (signals) — read-only informational feature, no wallet connection,
+   no trade execution. WATCHLIST_CACHE/ALERTS_CACHE just avoid re-fetching on every star-tap. ---------------- */
+let MARKET_SYMBOLS_CACHE = [];
+let WATCHLIST_CACHE = [];
+let ALERTS_CACHE = [];
+
+function showMarketsList() {
+  document.getElementById('mktSigTab-list').classList.add('active');
+  document.getElementById('mktSigTab-detail').classList.remove('active');
+}
+function showMarketsDetail() {
+  document.getElementById('mktSigTab-list').classList.remove('active');
+  document.getElementById('mktSigTab-detail').classList.add('active');
+}
+
+async function loadMarketsList() {
+  try {
+    const [symData, watchlist, alerts] = await Promise.all([
+      api('/api/markets/symbols'), api('/api/markets/watchlist'), api('/api/markets/alerts'),
+    ]);
+    MARKET_SYMBOLS_CACHE = symData.symbols;
+    WATCHLIST_CACHE = watchlist;
+    ALERTS_CACHE = alerts;
+    renderMarketsList();
+  } catch (e) {
+    document.getElementById('mktSigList').innerHTML = `<p class="muted">⚠️ Could not load market data — <a href="#" onclick="loadMarketsList();return false;" style="color:#c9b3ff;">Try again</a></p>`;
+  }
+}
+
+function fmtPrice(p) {
+  if (p === null || p === undefined) return '—';
+  return '$' + p.toLocaleString('en-US', { minimumFractionDigits: p < 1 ? 4 : 2, maximumFractionDigits: p < 1 ? 6 : 2 });
+}
+
+function renderMarketsList() {
+  const watchedSymbols = new Set(WATCHLIST_CACHE.map(w => w.symbol));
+  const rowHtml = (s) => {
+    const change = s.change_24h_pct;
+    const changeCls = change > 0 ? 'up' : change < 0 ? 'down' : '';
+    const changeTxt = change === null || change === undefined ? '—' : (change > 0 ? '+' : '') + change.toFixed(2) + '%';
+    const isWatched = watchedSymbols.has(s.symbol);
+    return `
+      <div class="mkt-sig-row">
+        <button class="mkt-sig-star${isWatched ? ' on' : ''}" onclick="event.stopPropagation();toggleWatchlist('${s.symbol}')">${isWatched ? '★' : '☆'}</button>
+        <div class="mkt-sig-ic">${s.symbol.slice(0, 2).toUpperCase()}</div>
+        <div class="mkt-sig-info" onclick="openMarketDetail('${s.symbol}')">
+          <div class="mkt-sig-name">${s.name}</div>
+          <div class="mkt-sig-price">${fmtPrice(s.price_usd)}</div>
+        </div>
+        <div class="mkt-sig-change ${changeCls}" onclick="openMarketDetail('${s.symbol}')">${changeTxt}</div>
+      </div>`;
+  };
+  const watched = MARKET_SYMBOLS_CACHE.filter(s => watchedSymbols.has(s.symbol));
+  document.getElementById('mktSigWatchlist').innerHTML = watched.length
+    ? watched.map(rowHtml).join('')
+    : 'No symbol pinned yet — tap the star on any coin below.';
+  document.getElementById('mktSigList').innerHTML = MARKET_SYMBOLS_CACHE.length
+    ? MARKET_SYMBOLS_CACHE.map(rowHtml).join('')
+    : '<p class="muted">No symbol has been enabled by the admin yet.</p>';
+  document.getElementById('mktSigAlerts').innerHTML = ALERTS_CACHE.length
+    ? ALERTS_CACHE.map(a => `
+      <div class="mkt-alert-row">
+        <span class="txt">${a.display_name} ${a.direction === 'above' ? '≥' : '≤'} ${fmtPrice(a.target_price)}</span>
+        <button class="del" onclick="deleteMarketAlert(${a.id})">✕</button>
+      </div>`).join('')
+    : 'No active alert.';
+}
+
+async function toggleWatchlist(symbol) {
+  const isWatched = WATCHLIST_CACHE.some(w => w.symbol === symbol);
+  try {
+    if (isWatched) { await api('/api/markets/watchlist/' + symbol, { method: 'DELETE' }); WATCHLIST_CACHE = WATCHLIST_CACHE.filter(w => w.symbol !== symbol); }
+    else { await api('/api/markets/watchlist', { method: 'POST', body: JSON.stringify({ symbol }) }); WATCHLIST_CACHE.push({ symbol }); }
+    renderMarketsList();
+  } catch (e) { /* api() already toasts the error */ }
+}
+
+async function openMarketDetail(symbol) {
+  showMarketsDetail();
+  const el = document.getElementById('mktSigDetail');
+  el.innerHTML = '<p class="muted">Loading...</p>';
+  try {
+    const d = await api('/api/markets/' + symbol + '/signal');
+    const sym = MARKET_SYMBOLS_CACHE.find(s => s.symbol === symbol);
+    const change = d.change_24h_pct;
+    const changeCls = change > 0 ? 'up' : change < 0 ? 'down' : '';
+    const changeTxt = change === null || change === undefined ? '—' : (change > 0 ? '+' : '') + change.toFixed(2) + '%';
+    const isWatched = WATCHLIST_CACHE.some(w => w.symbol === symbol);
+    el.innerHTML = `
+      <div class="card" style="text-align:center;">
+        <div class="row" style="justify-content:center;gap:10px;">
+          <b>${sym?.name || symbol}</b>
+          <button class="mkt-sig-star${isWatched ? ' on' : ''}" onclick="toggleWatchlist('${symbol}');this.classList.toggle('on');this.textContent=this.classList.contains('on')?'★':'☆';">${isWatched ? '★' : '☆'}</button>
+        </div>
+        <div class="mkt-sig-detail-price">${fmtPrice(d.price_usd)}</div>
+        <div class="mkt-sig-change ${changeCls}" style="font-size:14px;">${changeTxt} (24h)</div>
+      </div>
+      <div class="mkt-sig-indicator-grid">
+        <div class="mkt-sig-indicator"><div class="lbl">RSI (14)</div><div class="val">${d.signal.rsi !== null ? d.signal.rsi.toFixed(1) : '—'}</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">MACD Histogram</div><div class="val">${d.signal.macd ? d.signal.macd.histogram.toFixed(4) : '—'}</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">SMA 20</div><div class="val">${fmtPrice(d.signal.sma20)}</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">SMA 50</div><div class="val">${fmtPrice(d.signal.sma50)}</div></div>
+      </div>
+      <div class="card">
+        ${d.signal.notes.length ? d.signal.notes.map(n => `<div class="mkt-sig-note-row">💡 ${n}</div>`).join('') : '<div class="mkt-sig-note-row">Not enough price history yet for a read — check back soon.</div>'}
+      </div>
+      <div class="hub-sec"><div><div class="hub-sec-t">Set a Price Alert</div><div class="hub-sec-s">We'll message you on Telegram when it's hit</div></div></div>
+      <div class="card">
+        <div class="row" style="gap:8px;">
+          <select id="mktAlertDir" style="flex:1;">
+            <option value="above">Price goes above</option>
+            <option value="below">Price goes below</option>
+          </select>
+          <input type="number" id="mktAlertPrice" placeholder="Target price (USD)" style="flex:1;" step="any">
+        </div>
+        <button class="btn" style="width:100%;margin-top:10px;" onclick="createMarketAlert('${symbol}')">Create Alert</button>
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<p class="muted">⚠️ Could not load this symbol — <a href="#" onclick="openMarketDetail('${symbol}');return false;" style="color:#c9b3ff;">Try again</a></p>`;
+  }
+}
+
+async function createMarketAlert(symbol) {
+  const direction = document.getElementById('mktAlertDir').value;
+  const target_price = Number(document.getElementById('mktAlertPrice').value);
+  if (!target_price || target_price <= 0) { toast('Enter a valid target price', 'error'); return; }
+  try {
+    await api('/api/markets/alerts', { method: 'POST', body: JSON.stringify({ symbol, direction, target_price }) });
+    toast('Alert created ✅', 'success');
+    ALERTS_CACHE = await api('/api/markets/alerts');
+    document.getElementById('mktAlertPrice').value = '';
+  } catch (e) { /* api() already toasts the error */ }
+}
+async function deleteMarketAlert(id) {
+  await api('/api/markets/alerts/' + id, { method: 'DELETE' });
+  ALERTS_CACHE = ALERTS_CACHE.filter(a => a.id !== id);
+  renderMarketsList();
+}
+
 function onDepCodeChange() {
   const code = document.getElementById('depCode').value;
   const c = CURRENCIES.find(x => x.code === code);
