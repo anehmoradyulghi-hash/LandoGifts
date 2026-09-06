@@ -57,6 +57,19 @@
   .tab.active { display:block; }
   @keyframes fadeIn { from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
 
+  /* ---------- Markets: coin search-and-select (replaces manual CoinGecko id entry) ---------- */
+  .mkt-search-results { margin-top:8px; max-height:340px; overflow-y:auto; }
+  .mkt-search-result-row {
+    display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; cursor:pointer;
+    transition:background .12s ease;
+  }
+  .mkt-search-result-row:hover { background:var(--surface3); }
+  .mkt-search-result-row img { width:26px; height:26px; border-radius:50%; flex:none; }
+  .mkt-search-result-row .info { flex:1; min-width:0; }
+  .mkt-search-result-row .name { font-size:13px; font-weight:700; }
+  .mkt-search-result-row .meta { font-size:11px; color:var(--muted); }
+  .mkt-search-result-row .badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; background:rgba(240,185,11,.15); color:var(--gold,#f0b90b); flex:none; }
+
   /* ---------- Dashboard stat cards + live "online now" indicator ---------- */
   .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
   .stat-tile {
@@ -1472,19 +1485,29 @@
 
     <section class="tab" id="tab-markets">
       <div class="card">
-        <h3>Add / Edit Tracked Symbol</h3>
-        <p class="muted" style="margin-top:-6px;">Symbol id must match a CoinGecko coin id (e.g. "bitcoin", "ethereum", "the-open-network"). Prices are fetched automatically every 2 minutes — nothing here connects to any wallet or places trades.</p>
+        <h3>Add a Tracked Symbol</h3>
+        <p class="muted" style="margin-top:-6px;">Search by coin name — this looks up the exact CoinGecko id for you, so you never type it by hand (which is what was going wrong: ids aren't always the obvious guess, e.g. Toncoin is "the-open-network", not "ton"). A matching Binance pair is auto-suggested when one exists.</p>
+        <label>Search for a coin</label>
+        <input id="mktCoinSearchInput" placeholder="Type a coin name, e.g. Bitcoin" oninput="onMarketCoinSearchInput()" autocomplete="off">
+        <div id="mktCoinSearchResults" class="mkt-search-results"></div>
+      </div>
+
+      <div class="card" id="mktSymFormCard" style="display:none;">
+        <h3>Symbol Details</h3>
         <input type="hidden" id="mktSymId">
-        <label>Symbol id (CoinGecko)</label>
-        <input id="mktSymCode" placeholder="bitcoin">
+        <div class="row" style="align-items:center;gap:10px;margin-bottom:8px;" id="mktSymPreview"></div>
+        <label>Symbol id (CoinGecko) — set by search, read-only</label>
+        <input id="mktSymCode" readonly style="opacity:.7;">
         <label>Display name</label>
         <input id="mktSymName" placeholder="Bitcoin (BTC)">
         <label>Sort order</label>
         <input id="mktSymOrder" type="number" value="0">
+        <label>Binance pair (optional — unlocks Funding Rate, Open Interest, Volume Profile, Multi-Timeframe)</label>
+        <input id="mktSymBinance" placeholder="BTCUSDT">
         <label style="display:flex;align-items:center;gap:8px;margin-top:8px;"><input type="checkbox" id="mktSymActive" checked style="width:auto;"> Active</label>
         <label style="display:flex;align-items:center;gap:8px;margin-top:6px;"><input type="checkbox" id="mktSymMeme" style="width:auto;"> Show in Meme Radar</label>
         <button class="btn" style="margin-top:10px;" onclick="saveMarketSymbol()">Save</button>
-        <button class="btn secondary" style="margin-top:10px;" onclick="resetMarketSymbolForm()">Clear form</button>
+        <button class="btn secondary" style="margin-top:10px;" onclick="resetMarketSymbolForm()">Cancel</button>
       </div>
       <div id="marketSymbolsTable"></div>
     </section>
@@ -2508,25 +2531,75 @@ async function deleteCategory(id) { if (confirm('be deleted?')) { await api(`/ca
 async function loadMarketSymbolsAdmin() {
   const rows = await api('/markets/symbols');
   document.getElementById('marketSymbolsTable').innerHTML = rows.length ? `
-    <table><tr><th>Symbol id</th><th>Display name</th><th>Order</th><th>Active</th><th>Meme</th><th>Actions</th></tr>
-    ${rows.map(s => `<tr><td>${s.symbol}</td><td>${s.display_name}</td><td>${s.sort_order}</td><td>${s.active ? '✅' : '❌'}</td><td>${s.is_meme ? '🐸' : '—'}</td>
+    <table><tr><th>Symbol id</th><th>Display name</th><th>Binance pair</th><th>Order</th><th>Active</th><th>Meme</th><th>Actions</th></tr>
+    ${rows.map(s => `<tr><td>${s.symbol}</td><td>${s.display_name}</td><td>${s.binance_symbol || '—'}</td><td>${s.sort_order}</td><td>${s.active ? '✅' : '❌'}</td><td>${s.is_meme ? '🐸' : '—'}</td>
       <td><button class="btn secondary" onclick='editMarketSymbol(${JSON.stringify(s)})'>Edit</button>
       <button class="btn danger" onclick="deleteMarketSymbolUI(${s.id})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No symbol tracked yet.</p>';
 }
+
+// Live coin search: debounced so it doesn't fire a request on every keystroke, backed by the
+// admin API's CoinGecko-search proxy — the admin picks from real search results instead of typing
+// a CoinGecko id by hand, which is exactly the thing that kept going wrong (ids aren't always the
+// obvious guess: Toncoin is "the-open-network", not "ton").
+let mktCoinSearchTimer = null;
+function onMarketCoinSearchInput() {
+  clearTimeout(mktCoinSearchTimer);
+  const query = document.getElementById('mktCoinSearchInput').value.trim();
+  const resultsEl = document.getElementById('mktCoinSearchResults');
+  if (query.length < 2) { resultsEl.innerHTML = ''; return; }
+  resultsEl.innerHTML = '<p class="muted" style="padding:8px 10px;">Searching...</p>';
+  mktCoinSearchTimer = setTimeout(async () => {
+    try {
+      const coins = await api('/markets/search-coins?q=' + encodeURIComponent(query));
+      resultsEl.innerHTML = coins.length
+        ? coins.map(c => `
+          <div class="mkt-search-result-row" onclick='selectSearchedCoin(${JSON.stringify(c)})'>
+            <img src="${c.thumb}" onerror="this.style.visibility='hidden'">
+            <div class="info">
+              <div class="name">${c.name} <span class="muted">(${c.symbol})</span></div>
+              <div class="meta">${c.id}${c.market_cap_rank ? ' · Rank #' + c.market_cap_rank : ''}</div>
+            </div>
+            ${c.suggested_binance_pair ? `<span class="badge">${c.suggested_binance_pair}</span>` : ''}
+          </div>`).join('')
+        : '<p class="muted" style="padding:8px 10px;">No coin matched that search.</p>';
+    } catch (e) {
+      resultsEl.innerHTML = '<p class="muted" style="padding:8px 10px;">Search failed — try again.</p>';
+    }
+  }, 350);
+}
+function selectSearchedCoin(c) {
+  document.getElementById('mktCoinSearchResults').innerHTML = '';
+  document.getElementById('mktCoinSearchInput').value = '';
+  document.getElementById('mktSymFormCard').style.display = 'block';
+  document.getElementById('mktSymId').value = '';
+  document.getElementById('mktSymCode').value = c.id;
+  document.getElementById('mktSymName').value = `${c.name} (${c.symbol})`;
+  document.getElementById('mktSymOrder').value = '0';
+  document.getElementById('mktSymBinance').value = c.suggested_binance_pair || '';
+  document.getElementById('mktSymActive').checked = true;
+  document.getElementById('mktSymMeme').checked = false;
+  document.getElementById('mktSymPreview').innerHTML = `<img src="${c.thumb}" style="width:32px;height:32px;border-radius:50%;" onerror="this.style.visibility='hidden'"><b>${c.name}</b> <span class="muted">(${c.symbol})</span>`;
+}
 function editMarketSymbol(s) {
+  document.getElementById('mktSymFormCard').style.display = 'block';
+  document.getElementById('mktSymPreview').innerHTML = `<b>${s.display_name}</b>`;
   document.getElementById('mktSymId').value = s.id;
   document.getElementById('mktSymCode').value = s.symbol;
   document.getElementById('mktSymName').value = s.display_name;
   document.getElementById('mktSymOrder').value = s.sort_order;
+  document.getElementById('mktSymBinance').value = s.binance_symbol || '';
   document.getElementById('mktSymActive').checked = !!s.active;
   document.getElementById('mktSymMeme').checked = !!s.is_meme;
+  document.getElementById('mktSymFormCard').scrollIntoView({ behavior: 'smooth' });
 }
 function resetMarketSymbolForm() {
+  document.getElementById('mktSymFormCard').style.display = 'none';
   document.getElementById('mktSymId').value = '';
   document.getElementById('mktSymCode').value = '';
   document.getElementById('mktSymName').value = '';
   document.getElementById('mktSymOrder').value = '0';
+  document.getElementById('mktSymBinance').value = '';
   document.getElementById('mktSymActive').checked = true;
   document.getElementById('mktSymMeme').checked = false;
 }
@@ -2536,6 +2609,7 @@ async function saveMarketSymbol() {
     symbol: document.getElementById('mktSymCode').value,
     display_name: document.getElementById('mktSymName').value,
     sort_order: document.getElementById('mktSymOrder').value,
+    binance_symbol: document.getElementById('mktSymBinance').value,
     active: document.getElementById('mktSymActive').checked,
     is_meme: document.getElementById('mktSymMeme').checked,
   }) });
