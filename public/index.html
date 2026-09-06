@@ -663,6 +663,14 @@
   .mkt-alert-row { display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:11px 13px; margin-bottom:8px; }
   .mkt-alert-row .txt { flex:1; font-size:12.5px; }
   .mkt-alert-row .del { flex:none; background:none; border:none; color:var(--danger); font-size:16px; cursor:pointer; padding:4px; }
+  .mkt-sig-tabs { margin-bottom:14px; }
+  .mkt-scanner-presets { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .mkt-preset-chip {
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px; color:#fff;
+    font-size:12.5px; font-weight:800; cursor:pointer; transition:transform .12s ease, border-color .12s ease;
+  }
+  .mkt-preset-chip:active { transform:scale(.96); border-color:var(--border-strong,rgba(255,255,255,.14)); }
+  .mkt-momentum-badge { font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px; background:rgba(168,85,247,.16); color:#e4d4ff; flex:none; }
   /* Empty state when a search/filter combination matches nothing — offers a one-tap way back
      to a clean slate instead of a dead end. */
   .mkt-empty-clear { margin-top:10px; background:none; border:1px solid var(--border); color:#c9b3ff; font-size:12.5px; font-weight:700; padding:9px 18px; border-radius:12px; cursor:pointer; }
@@ -2837,14 +2845,14 @@
 
 <!-- ============ Markets (informational signals only — no wallet connection, no trading) ============ -->
 <section class="page" id="page-markets">
+  <div class="gamehub-nav mkt-sig-tabs">
+    <div class="gamehub-tile active" data-mtab="list" onclick="showMarketsSubTab('list')"><div class="gamehub-tile-ic">📈</div><div class="gamehub-tile-label">Prices</div></div>
+    <div class="gamehub-tile" data-mtab="scanner" onclick="showMarketsSubTab('scanner')"><div class="gamehub-tile-ic">🔥</div><div class="gamehub-tile-label">Scanner</div></div>
+    <div class="gamehub-tile" data-mtab="meme" onclick="showMarketsSubTab('meme')"><div class="gamehub-tile-ic">🐸</div><div class="gamehub-tile-label">Meme Radar</div></div>
+    <div class="gamehub-tile" data-mtab="quick" onclick="showMarketsSubTab('quick')"><div class="gamehub-tile-ic">⚡</div><div class="gamehub-tile-label">Quick Signals</div></div>
+  </div>
+
   <div class="view active" id="mktSigTab-list">
-    <div class="hub-head blue">
-      <div class="hub-head-ic">📈</div>
-      <div>
-        <div class="hub-head-t">Market Signals</div>
-        <div class="hub-head-s">Live prices and basic technical indicators</div>
-      </div>
-    </div>
     <div class="mkt-sig-disclaimer">⚠️ Informational only — not financial advice. Always do your own research.</div>
 
     <div class="hub-sec"><div><div class="hub-sec-t">Your Watchlist</div><div class="hub-sec-s">Pinned symbols show up first</div></div></div>
@@ -2861,6 +2869,44 @@
     <button class="btn secondary" style="width:100%;margin-bottom:12px;" onclick="showMarketsList()">← Back to list</button>
     <div class="mkt-sig-disclaimer">⚠️ Informational only — not financial advice. Always do your own research.</div>
     <div id="mktSigDetail" class="muted">Loading...</div>
+  </div>
+
+  <div class="view" id="mktSigTab-scanner">
+    <div class="mkt-sig-disclaimer">⚠️ Informational only — not financial advice. Always do your own research.</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">Market Scanner</div><div class="hub-sec-s">Pick a preset or scan with your own conditions</div></div></div>
+    <div class="mkt-scanner-presets">
+      <button class="mkt-preset-chip" onclick="runScannerPreset('oversold')">📉 Oversold</button>
+      <button class="mkt-preset-chip" onclick="runScannerPreset('overbought')">📈 Overbought</button>
+      <button class="mkt-preset-chip" onclick="runScannerPreset('high_volume')">💥 High Volume</button>
+      <button class="mkt-preset-chip" onclick="runScannerPreset('strong_momentum')">🔥 Strong Momentum</button>
+    </div>
+    <div id="mktScannerResults" class="muted" style="margin-top:12px;">Pick a preset above to scan.</div>
+  </div>
+
+  <div class="view" id="mktSigTab-meme">
+    <div class="mkt-sig-disclaimer">⚠️ Informational only — not financial advice. Always do your own research.</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">🔥 Hot</div><div class="hub-sec-s">Highest momentum score right now</div></div></div>
+    <div id="mktMemeHot" class="muted">Loading...</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">📈 Rising</div><div class="hub-sec-s">Positive in the last 24h</div></div></div>
+    <div id="mktMemeRising" class="muted">Loading...</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">💥 Volume Spike</div><div class="hub-sec-s">Trading well above its recent average</div></div></div>
+    <div id="mktMemeVolume" class="muted">Loading...</div>
+  </div>
+
+  <div class="view" id="mktSigTab-quick">
+    <div class="mkt-sig-disclaimer">⚠️ Informational only — not financial advice. Always do your own research.</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">🔥 Strong Momentum</div></div></div>
+    <div id="mktQuickMomentum" class="muted">Loading...</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">📈 Top Gainers</div></div></div>
+    <div id="mktQuickGainers" class="muted">Loading...</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">📉 Top Losers</div></div></div>
+    <div id="mktQuickLosers" class="muted">Loading...</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">💥 Volume Spikes</div></div></div>
+    <div id="mktQuickVolume" class="muted">Loading...</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">🟢 Oversold</div></div></div>
+    <div id="mktQuickOversold" class="muted">Loading...</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">🔴 Overbought</div></div></div>
+    <div id="mktQuickOverbought" class="muted">Loading...</div>
   </div>
 </section>
 
@@ -3919,12 +3965,19 @@ let WATCHLIST_CACHE = [];
 let ALERTS_CACHE = [];
 
 function showMarketsList() {
-  document.getElementById('mktSigTab-list').classList.add('active');
-  document.getElementById('mktSigTab-detail').classList.remove('active');
+  showMarketsSubTab('list');
 }
 function showMarketsDetail() {
-  document.getElementById('mktSigTab-list').classList.remove('active');
+  document.querySelectorAll('#page-markets .view').forEach(v => v.classList.remove('active'));
   document.getElementById('mktSigTab-detail').classList.add('active');
+}
+function showMarketsSubTab(name) {
+  document.querySelectorAll('#page-markets .view').forEach(v => v.classList.remove('active'));
+  document.getElementById('mktSigTab-' + name).classList.add('active');
+  document.querySelectorAll('#page-markets .mkt-sig-tabs .gamehub-tile').forEach(b => b.classList.toggle('active', b.dataset.mtab === name));
+  if (name === 'scanner' && !document.getElementById('mktScannerResults').dataset.loaded) { /* wait for a preset tap */ }
+  if (name === 'meme') loadMemeRadar();
+  if (name === 'quick') loadQuickSignals();
 }
 
 async function loadMarketsList() {
@@ -3971,10 +4024,11 @@ function renderMarketsList() {
   document.getElementById('mktSigList').innerHTML = MARKET_SYMBOLS_CACHE.length
     ? MARKET_SYMBOLS_CACHE.map(rowHtml).join('')
     : '<p class="muted">No symbol has been enabled by the admin yet.</p>';
+  const metricLabel = { price: '', rsi: 'RSI ', macd_histogram: 'MACD ', volume_spike: 'Vol×' };
   document.getElementById('mktSigAlerts').innerHTML = ALERTS_CACHE.length
     ? ALERTS_CACHE.map(a => `
       <div class="mkt-alert-row">
-        <span class="txt">${a.display_name} ${a.direction === 'above' ? '≥' : '≤'} ${fmtPrice(a.target_price)}</span>
+        <span class="txt">${a.display_name} ${metricLabel[a.metric] || ''}${a.direction === 'above' ? '≥' : '≤'} ${a.metric === 'price' ? fmtPrice(a.target_value) : a.target_value}</span>
         <button class="del" onclick="deleteMarketAlert(${a.id})">✕</button>
       </div>`).join('')
     : 'No active alert.';
@@ -4000,6 +4054,8 @@ async function openMarketDetail(symbol) {
     const changeCls = change > 0 ? 'up' : change < 0 ? 'down' : '';
     const changeTxt = change === null || change === undefined ? '—' : (change > 0 ? '+' : '') + change.toFixed(2) + '%';
     const isWatched = WATCHLIST_CACHE.some(w => w.symbol === symbol);
+    const eng = d.signal.engine;
+    const scoreBarColor = eng.score >= 60 ? 'var(--success)' : eng.score <= 40 ? 'var(--danger)' : 'var(--gold)';
     el.innerHTML = `
       <div class="card" style="text-align:center;">
         <div class="row" style="justify-content:center;gap:10px;">
@@ -4008,26 +4064,66 @@ async function openMarketDetail(symbol) {
         </div>
         <div class="mkt-sig-detail-price">${fmtPrice(d.price_usd)}</div>
         <div class="mkt-sig-change ${changeCls}" style="font-size:14px;">${changeTxt} (24h)</div>
+        ${d.market_cap_rank ? `<div class="muted" style="font-size:11px;margin-top:6px;">Rank #${d.market_cap_rank} · Market cap ${fmtPrice(d.market_cap_usd)}</div>` : ''}
+        ${d.ath_usd ? `<div class="muted" style="font-size:11px;">ATH ${fmtPrice(d.ath_usd)} · ATL ${fmtPrice(d.atl_usd)}</div>` : ''}
       </div>
+
+      <div class="card" style="text-align:center;">
+        <div style="font-size:32px;">${eng.emoji}</div>
+        <div style="font-weight:900;font-size:18px;margin-top:2px;">${eng.noClearSignal ? 'NO CLEAR SIGNAL ⚪' : eng.bias}</div>
+        <div class="muted" style="font-size:11.5px;margin-top:2px;">Signal Score: ${eng.score}/100 · Confidence: ${eng.confidence}</div>
+        <div style="height:8px;border-radius:4px;background:var(--surface2);margin-top:10px;overflow:hidden;">
+          <div style="height:100%;width:${eng.score}%;background:${scoreBarColor};border-radius:4px;transition:width .4s ease;"></div>
+        </div>
+      </div>
+
+      <div class="hub-sec"><div><div class="hub-sec-t">Why this signal?</div><div class="hub-sec-s">Every factor that moved the score</div></div></div>
+      <div class="card">
+        ${eng.factors.length ? eng.factors.map(f => `<div class="mkt-sig-note-row">${f.weight > 0 ? '➕' : '➖'} ${f.text}</div>`).join('') : '<div class="mkt-sig-note-row">Not enough data yet for any factor to weigh in.</div>'}
+      </div>
+
       <div class="mkt-sig-indicator-grid">
         <div class="mkt-sig-indicator"><div class="lbl">RSI (14)</div><div class="val">${d.signal.rsi !== null ? d.signal.rsi.toFixed(1) : '—'}</div></div>
         <div class="mkt-sig-indicator"><div class="lbl">MACD Histogram</div><div class="val">${d.signal.macd ? d.signal.macd.histogram.toFixed(4) : '—'}</div></div>
         <div class="mkt-sig-indicator"><div class="lbl">SMA 20</div><div class="val">${fmtPrice(d.signal.sma20)}</div></div>
         <div class="mkt-sig-indicator"><div class="lbl">SMA 50</div><div class="val">${fmtPrice(d.signal.sma50)}</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">Support</div><div class="val">${fmtPrice(d.signal.support)}</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">Resistance</div><div class="val">${fmtPrice(d.signal.resistance)}</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">Structure</div><div class="val" style="font-size:13px;text-transform:capitalize;">${(d.signal.structure || 'unclear').replace('_', ' ')}</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">Volatility</div><div class="val">${d.signal.volatilityPct !== null ? d.signal.volatilityPct.toFixed(2) + '%' : '—'}</div></div>
       </div>
+      ${d.signal.divergence !== 'none' ? `<div class="card"><div class="mkt-sig-note-row">⚠️ ${d.signal.divergence === 'bullish' ? 'Bullish' : 'Bearish'} divergence detected — ${d.signal.divergenceDetail}</div></div>` : ''}
+
       <div class="card">
         ${d.signal.notes.length ? d.signal.notes.map(n => `<div class="mkt-sig-note-row">💡 ${n}</div>`).join('') : '<div class="mkt-sig-note-row">Not enough price history yet for a read — check back soon.</div>'}
       </div>
-      <div class="hub-sec"><div><div class="hub-sec-t">Set a Price Alert</div><div class="hub-sec-s">We'll message you on Telegram when it's hit</div></div></div>
+
+      <div class="hub-sec"><div><div class="hub-sec-t">Set a Smart Alert</div><div class="hub-sec-s">We'll message you on Telegram when it's hit</div></div></div>
       <div class="card">
         <div class="row" style="gap:8px;">
-          <select id="mktAlertDir" style="flex:1;">
-            <option value="above">Price goes above</option>
-            <option value="below">Price goes below</option>
+          <select id="mktAlertMetric" style="flex:1;">
+            <option value="price">Price (USD)</option>
+            <option value="rsi">RSI</option>
+            <option value="macd_histogram">MACD Histogram</option>
+            <option value="volume_spike">Volume ratio (x average)</option>
           </select>
-          <input type="number" id="mktAlertPrice" placeholder="Target price (USD)" style="flex:1;" step="any">
+          <select id="mktAlertDir" style="flex:1;">
+            <option value="above">Goes above</option>
+            <option value="below">Goes below</option>
+          </select>
         </div>
+        <input type="number" id="mktAlertPrice" placeholder="Target value" style="width:100%;margin-top:8px;" step="any">
         <button class="btn" style="width:100%;margin-top:10px;" onclick="createMarketAlert('${symbol}')">Create Alert</button>
+      </div>
+
+      <div class="hub-sec"><div><div class="hub-sec-t">Strategy Backtester</div><div class="hub-sec-s">Test a simple RSI or MACD strategy on recorded history</div></div></div>
+      <div class="card">
+        <select id="mktBacktestStrategy" style="width:100%;">
+          <option value="rsi">RSI (buy &lt;30, sell &gt;70)</option>
+          <option value="macd">MACD crossover</option>
+        </select>
+        <button class="btn secondary" style="width:100%;margin-top:8px;" onclick="runBacktest('${symbol}')">Run Backtest</button>
+        <div id="mktBacktestResult" style="margin-top:10px;"></div>
       </div>`;
   } catch (e) {
     el.innerHTML = `<p class="muted">⚠️ Could not load this symbol — <a href="#" onclick="openMarketDetail('${symbol}');return false;" style="color:#c9b3ff;">Try again</a></p>`;
@@ -4035,20 +4131,98 @@ async function openMarketDetail(symbol) {
 }
 
 async function createMarketAlert(symbol) {
+  const metric = document.getElementById('mktAlertMetric').value;
   const direction = document.getElementById('mktAlertDir').value;
-  const target_price = Number(document.getElementById('mktAlertPrice').value);
-  if (!target_price || target_price <= 0) { toast('Enter a valid target price', 'error'); return; }
+  const target_value = Number(document.getElementById('mktAlertPrice').value);
+  if (!target_value) { toast('Enter a valid target value', 'error'); return; }
   try {
-    await api('/api/markets/alerts', { method: 'POST', body: JSON.stringify({ symbol, direction, target_price }) });
+    await api('/api/markets/alerts', { method: 'POST', body: JSON.stringify({ symbol, metric, direction, target_value }) });
     toast('Alert created ✅', 'success');
     ALERTS_CACHE = await api('/api/markets/alerts');
     document.getElementById('mktAlertPrice').value = '';
   } catch (e) { /* api() already toasts the error */ }
 }
+async function runBacktest(symbol) {
+  const strategy = document.getElementById('mktBacktestStrategy').value;
+  const el = document.getElementById('mktBacktestResult');
+  el.innerHTML = '<p class="muted">Running backtest on recorded history...</p>';
+  try {
+    const r = await api(`/api/markets/${symbol}/backtest?strategy=${strategy}`);
+    if (r.error) { el.innerHTML = `<p class="muted">${r.error}</p>`; return; }
+    if (!r.totalTrades) { el.innerHTML = '<p class="muted">No completed trades yet in the recorded history for this strategy.</p>'; return; }
+    el.innerHTML = `
+      <div class="mkt-sig-indicator-grid">
+        <div class="mkt-sig-indicator"><div class="lbl">Total Trades</div><div class="val">${r.totalTrades}</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">Win Rate</div><div class="val">${r.winRate}%</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">Total PnL</div><div class="val" style="color:${r.totalPnlPct >= 0 ? 'var(--success)' : 'var(--danger)'};">${r.totalPnlPct >= 0 ? '+' : ''}${r.totalPnlPct}%</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">Max Drawdown</div><div class="val">${r.maxDrawdownPct}%</div></div>
+      </div>
+      <div class="mkt-sig-note-row">🏆 Best trade: ${r.bestTrade.pnlPct.toFixed(2)}%</div>
+      <div class="mkt-sig-note-row">💀 Worst trade: ${r.worstTrade.pnlPct.toFixed(2)}%</div>`;
+  } catch (e) {
+    el.innerHTML = '<p class="muted">⚠️ Could not run the backtest — try again.</p>';
+  }
+}
 async function deleteMarketAlert(id) {
   await api('/api/markets/alerts/' + id, { method: 'DELETE' });
   ALERTS_CACHE = ALERTS_CACHE.filter(a => a.id !== id);
   renderMarketsList();
+}
+
+function mktRowSimple(s) {
+  const change = s.change_24h_pct;
+  const changeCls = change > 0 ? 'up' : change < 0 ? 'down' : '';
+  const changeTxt = change === null || change === undefined ? '—' : (change > 0 ? '+' : '') + change.toFixed(2) + '%';
+  return `
+    <div class="mkt-sig-row" onclick="openMarketDetail('${s.symbol}')">
+      <div class="mkt-sig-ic">${s.symbol.slice(0, 2).toUpperCase()}</div>
+      <div class="mkt-sig-info">
+        <div class="mkt-sig-name">${s.name}</div>
+        <div class="mkt-sig-price">${fmtPrice(s.price_usd)}</div>
+      </div>
+      ${s.momentumScore !== undefined && s.momentumScore !== null ? `<div class="mkt-momentum-badge">${s.momentumScore}</div>` : ''}
+      <div class="mkt-sig-change ${changeCls}">${changeTxt}</div>
+    </div>`;
+}
+
+/* ---------------- Market Scanner ---------------- */
+async function runScannerPreset(preset) {
+  const el = document.getElementById('mktScannerResults');
+  el.innerHTML = '<p class="muted">Scanning...</p>';
+  try {
+    const data = await api('/api/markets/scan', { method: 'POST', body: JSON.stringify({ preset }) });
+    el.dataset.loaded = '1';
+    el.innerHTML = data.results.length ? data.results.map(mktRowSimple).join('') : '<p class="muted">No symbol matches this preset right now.</p>';
+  } catch (e) {
+    el.innerHTML = '<p class="muted">⚠️ Could not run the scanner — try again.</p>';
+  }
+}
+
+/* ---------------- Meme Radar ---------------- */
+async function loadMemeRadar() {
+  try {
+    const data = await api('/api/markets/meme-radar');
+    document.getElementById('mktMemeHot').innerHTML = data.hot.length ? data.hot.map(mktRowSimple).join('') : '<p class="muted">Nothing standing out right now.</p>';
+    document.getElementById('mktMemeRising').innerHTML = data.rising.length ? data.rising.slice(0, 8).map(mktRowSimple).join('') : '<p class="muted">Nothing rising right now.</p>';
+    document.getElementById('mktMemeVolume').innerHTML = data.volumeSpike.length ? data.volumeSpike.map(v => mktRowSimple({ symbol: v.symbol, name: v.name, price_usd: null, change_24h_pct: null })).join('') : '<p class="muted">No unusual volume detected right now.</p>';
+  } catch (e) {
+    document.getElementById('mktMemeHot').innerHTML = '<p class="muted">⚠️ Could not load Meme Radar — try again.</p>';
+  }
+}
+
+/* ---------------- Quick Market Signals ---------------- */
+async function loadQuickSignals() {
+  try {
+    const data = await api('/api/markets/quick-signals');
+    document.getElementById('mktQuickMomentum').innerHTML = data.strongMomentum.length ? data.strongMomentum.map(s => mktRowSimple({ ...s, momentumScore: s.momentumScore })).join('') : '<p class="muted">No standout momentum right now.</p>';
+    document.getElementById('mktQuickGainers').innerHTML = data.topGainers.length ? data.topGainers.map(mktRowSimple).join('') : '<p class="muted">No data yet.</p>';
+    document.getElementById('mktQuickLosers').innerHTML = data.topLosers.length ? data.topLosers.map(mktRowSimple).join('') : '<p class="muted">No data yet.</p>';
+    document.getElementById('mktQuickVolume').innerHTML = data.volumeSpikes.length ? data.volumeSpikes.map(v => mktRowSimple({ symbol: v.symbol, name: v.name, price_usd: null, change_24h_pct: null })).join('') : '<p class="muted">No unusual volume detected right now.</p>';
+    document.getElementById('mktQuickOversold').innerHTML = data.oversold.length ? data.oversold.map(mktRowSimple).join('') : '<p class="muted">Nothing oversold right now.</p>';
+    document.getElementById('mktQuickOverbought').innerHTML = data.overbought.length ? data.overbought.map(mktRowSimple).join('') : '<p class="muted">Nothing overbought right now.</p>';
+  } catch (e) {
+    document.getElementById('mktQuickMomentum').innerHTML = '<p class="muted">⚠️ Could not load quick signals — try again.</p>';
+  }
 }
 
 function onDepCodeChange() {
