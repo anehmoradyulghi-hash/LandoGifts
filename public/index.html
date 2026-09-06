@@ -4091,12 +4091,24 @@ async function openMarketDetail(symbol) {
         <div class="mkt-sig-indicator"><div class="lbl">Resistance</div><div class="val">${fmtPrice(d.signal.resistance)}</div></div>
         <div class="mkt-sig-indicator"><div class="lbl">Structure</div><div class="val" style="font-size:13px;text-transform:capitalize;">${(d.signal.structure || 'unclear').replace('_', ' ')}</div></div>
         <div class="mkt-sig-indicator"><div class="lbl">Volatility</div><div class="val">${d.signal.volatilityPct !== null ? d.signal.volatilityPct.toFixed(2) + '%' : '—'}</div></div>
+        ${d.funding_rate_pct !== null && d.funding_rate_pct !== undefined ? `<div class="mkt-sig-indicator"><div class="lbl">Funding Rate</div><div class="val" style="color:${d.funding_rate_pct >= 0 ? 'var(--success)' : 'var(--danger)'};">${d.funding_rate_pct >= 0 ? '+' : ''}${d.funding_rate_pct.toFixed(4)}%</div></div>` : ''}
+        ${d.open_interest_usd !== null && d.open_interest_usd !== undefined ? `<div class="mkt-sig-indicator"><div class="lbl">Open Interest</div><div class="val">${fmtPrice(d.open_interest_usd)}</div></div>` : ''}
       </div>
       ${d.signal.divergence !== 'none' ? `<div class="card"><div class="mkt-sig-note-row">⚠️ ${d.signal.divergence === 'bullish' ? 'Bullish' : 'Bearish'} divergence detected — ${d.signal.divergenceDetail}</div></div>` : ''}
 
       <div class="card">
         ${d.signal.notes.length ? d.signal.notes.map(n => `<div class="mkt-sig-note-row">💡 ${n}</div>`).join('') : '<div class="mkt-sig-note-row">Not enough price history yet for a read — check back soon.</div>'}
       </div>
+
+      ${d.has_binance_pair ? `
+      <div class="hub-sec"><div><div class="hub-sec-t">Volume Profile & Multi-Timeframe</div><div class="hub-sec-s">From Binance's public candle data</div></div></div>
+      <div class="card">
+        <div class="row" style="gap:8px;">
+          <button class="btn secondary" style="flex:1;" onclick="loadVolumeProfile('${symbol}')">📊 Volume Profile</button>
+          <button class="btn secondary" style="flex:1;" onclick="loadMultiTimeframe('${symbol}')">⏱️ Multi-Timeframe</button>
+        </div>
+        <div id="mktExtraPanel" style="margin-top:10px;"></div>
+      </div>` : ''}
 
       <div class="hub-sec"><div><div class="hub-sec-t">Set a Smart Alert</div><div class="hub-sec-s">We'll message you on Telegram when it's hit</div></div></div>
       <div class="card">
@@ -4161,6 +4173,34 @@ async function runBacktest(symbol) {
       <div class="mkt-sig-note-row">💀 Worst trade: ${r.worstTrade.pnlPct.toFixed(2)}%</div>`;
   } catch (e) {
     el.innerHTML = '<p class="muted">⚠️ Could not run the backtest — try again.</p>';
+  }
+}
+async function loadVolumeProfile(symbol) {
+  const el = document.getElementById('mktExtraPanel');
+  el.innerHTML = '<p class="muted">Fetching from Binance...</p>';
+  try {
+    const r = await api(`/api/markets/${symbol}/volume-profile`);
+    if (!r.profile) { el.innerHTML = '<p class="muted">Not enough candle data yet.</p>'; return; }
+    const p = r.profile;
+    el.innerHTML = `
+      <div class="mkt-sig-note-row">🎯 Point of Control: ${fmtPrice(p.pointOfControl.price)} (heaviest traded price)</div>
+      <div class="mkt-sig-note-row">📦 Value Area: ${fmtPrice(p.valueAreaLow)} – ${fmtPrice(p.valueAreaHigh)} (70% of volume traded here)</div>`;
+  } catch (e) {
+    el.innerHTML = '<p class="muted">⚠️ Could not load Volume Profile — try again.</p>';
+  }
+}
+async function loadMultiTimeframe(symbol) {
+  const el = document.getElementById('mktExtraPanel');
+  el.innerHTML = '<p class="muted">Fetching from Binance...</p>';
+  try {
+    const r = await api(`/api/markets/${symbol}/multi-timeframe`);
+    const tfLabel = { short: 'Short-term (15m)', medium: 'Medium-term (4h)', long: 'Long-term (1d)' };
+    el.innerHTML = Object.entries(r.signals).map(([tf, sig]) => {
+      if (!sig) return `<div class="mkt-sig-note-row">${tfLabel[tf]}: not enough data yet.</div>`;
+      return `<div class="mkt-sig-note-row">${sig.emoji} ${tfLabel[tf]}: <b>${sig.noClearSignal ? 'No clear signal' : sig.bias}</b> (${sig.score}/100)</div>`;
+    }).join('');
+  } catch (e) {
+    el.innerHTML = '<p class="muted">⚠️ Could not load Multi-Timeframe analysis — try again.</p>';
   }
 }
 async function deleteMarketAlert(id) {
