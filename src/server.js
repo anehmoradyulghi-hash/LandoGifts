@@ -82,9 +82,10 @@ import {
   listActiveSymbols, getLatestTick, getRecentPrices, getRecentVolumes, summarizeSignal,
   getWatchlist, getAllWatchlistEntries, listWatchlistNames, addToWatchlist, removeFromWatchlist, renameWatchlist, deleteWatchlist,
   listAlerts, createAlert, updateAlert, deleteAlert, checkTriggeredAlerts,
-  recordPriceTick, pruneOldCandles,
+  recordPriceTick, updateLatestTickFutures, pruneOldCandles,
   listMemeSymbols, computeMemeMomentumScore,
   SCANNER_PRESETS, runMarketScanner, findUnusualVolume, rankMarketMomentum, backtestStrategy,
+  computeVolumeProfile, multiTimeframeSignal,
 } from './markets-db.js';
 import adminApi from './admin-api.js';
 import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
@@ -362,13 +363,17 @@ app.get('/api/markets/:symbol/signal', (req, res) => {
   const { symbol } = req.params;
   const tick = getLatestTick(symbol);
   if (!tick) return res.status(404).json({ error: 'No data yet for this symbol' });
+  const sym = listActiveSymbols().find(s => s.symbol === symbol);
   const prices = getRecentPrices(symbol, 300);
   const volumes = getRecentVolumes(symbol, 300);
   const signal = summarizeSignal(prices, volumes);
   res.json({
     symbol, price_usd: tick.price_usd, change_24h_pct: tick.change_24h_pct,
     market_cap_usd: tick.market_cap_usd, market_cap_rank: tick.market_cap_rank,
-    ath_usd: tick.ath_usd, atl_usd: tick.atl_usd, updated_at: tick.fetched_at,
+    ath_usd: tick.ath_usd, atl_usd: tick.atl_usd,
+    funding_rate_pct: tick.funding_rate_pct, open_interest_usd: tick.open_interest_usd,
+    has_binance_pair: !!sym?.binance_symbol,
+    updated_at: tick.fetched_at,
     history: prices, signal, disclaimer: MARKET_DISCLAIMER,
   });
 });
@@ -435,6 +440,41 @@ app.get('/api/markets/:symbol/backtest', (req, res) => {
   if (req.query.rsiSellAbove) params.rsiSellAbove = Number(req.query.rsiSellAbove);
   const result = backtestStrategy(symbol, strategy, params);
   res.json({ ...result, disclaimer: MARKET_DISCLAIMER });
+});
+
+// Binance klines are fetched fresh per request here (not stored) since Volume Profile and
+// Multi-Timeframe are viewed far less often than the always-on price/indicator views above —
+// no benefit to polling this every 15s for something only opened occasionally.
+async function fetchBinanceKlines(binanceSymbol, interval, limit) {
+  const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`, { signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error('Binance klines responded ' + res.status);
+  return res.json();
+}
+
+app.get('/api/markets/:symbol/volume-profile', async (req, res) => {
+  const { symbol } = req.params;
+  const sym = listActiveSymbols().find(s => s.symbol === symbol);
+  if (!sym?.binance_symbol) return res.status(404).json({ error: 'Volume Profile needs a Binance pair configured for this symbol — ask the admin to set one.' });
+  try {
+    const klines = await fetchBinanceKlines(sym.binance_symbol, '1h', 168); // last ~7 days of hourly candles
+    const profile = computeVolumeProfile(klines);
+    res.json({ profile, disclaimer: MARKET_DISCLAIMER });
+  } catch (e) { res.status(502).json({ error: 'Could not fetch data from Binance right now — try again shortly.' }); }
+});
+
+app.get('/api/markets/:symbol/multi-timeframe', async (req, res) => {
+  const { symbol } = req.params;
+  const sym = listActiveSymbols().find(s => s.symbol === symbol);
+  if (!sym?.binance_symbol) return res.status(404).json({ error: 'Multi-timeframe analysis needs a Binance pair configured for this symbol — ask the admin to set one.' });
+  try {
+    const [short, medium, long] = await Promise.all([
+      fetchBinanceKlines(sym.binance_symbol, '15m', 100),  // short-term: ~25 hours
+      fetchBinanceKlines(sym.binance_symbol, '4h', 100),   // medium-term: ~16 days
+      fetchBinanceKlines(sym.binance_symbol, '1d', 100),   // long-term: ~100 days
+    ]);
+    const signals = multiTimeframeSignal({ short, medium, long });
+    res.json({ signals, disclaimer: MARKET_DISCLAIMER });
+  } catch (e) { res.status(502).json({ error: 'Could not fetch data from Binance right now — try again shortly.' }); }
 });
 
 // Advanced Watchlist — supports multiple named lists per person
@@ -1594,6 +1634,48 @@ function scheduleMarketFetch() {
   });
 }
 scheduleMarketFetch();
+
+// Binance USDT-M Futures — funding rate and open interest, free and keyless, for whichever
+// symbols have a binance_symbol configured (see market_symbols.binance_symbol). This is a
+// genuinely different data source/API from CoinGecko above, with its own separate rate limit
+// (Binance's public REST weight limit is generous — 1200 weight/min, these two calls cost 1 each
+// per symbol), so it runs on its own independent schedule rather than being crammed into the
+// CoinGecko cycle. Symbols without a binance_symbol are simply skipped — funding rate and open
+// interest only exist for pairs that actually trade as perpetual futures on Binance, so a coin
+// with no configured mapping honestly has nothing to show here rather than a guessed number.
+let binanceFuturesBackoffMs = 0;
+async function fetchBinanceFutures() {
+  const symbols = listActiveSymbols().filter(s => s.binance_symbol);
+  if (!symbols.length) return;
+  try {
+    for (const s of symbols) {
+      const [fundingRes, oiRes] = await Promise.all([
+        fetch(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${s.binance_symbol}`, { signal: AbortSignal.timeout(8000) }),
+        fetch(`https://fapi.binance.com/fapi/v1/openInterest?symbol=${s.binance_symbol}`, { signal: AbortSignal.timeout(8000) }),
+      ]);
+      if (fundingRes.status === 429 || oiRes.status === 429) {
+        binanceFuturesBackoffMs = Math.min((binanceFuturesBackoffMs || 30000) * 2, 5 * 60 * 1000);
+        console.warn(`[binance futures] rate-limited, backing off for ${binanceFuturesBackoffMs / 1000}s`);
+        return;
+      }
+      if (!fundingRes.ok || !oiRes.ok) continue; // this symbol may not exist as a futures pair — skip it, don't crash the loop
+      const fundingData = await fundingRes.json();
+      const oiData = await oiRes.json();
+      const fundingRatePct = fundingData.lastFundingRate !== undefined ? Number(fundingData.lastFundingRate) * 100 : null;
+      const markPrice = fundingData.markPrice ? Number(fundingData.markPrice) : null;
+      const openInterestContracts = oiData.openInterest !== undefined ? Number(oiData.openInterest) : null;
+      const openInterestUsd = (openInterestContracts !== null && markPrice !== null) ? openInterestContracts * markPrice : null;
+      updateLatestTickFutures(s.symbol, fundingRatePct, openInterestUsd);
+    }
+    binanceFuturesBackoffMs = 0;
+  } catch (e) { console.error('[binance futures]', e.message); }
+}
+function scheduleBinanceFutures() {
+  fetchBinanceFutures().finally(() => {
+    setTimeout(scheduleBinanceFutures, binanceFuturesBackoffMs || 30 * 1000);
+  });
+}
+scheduleBinanceFutures();
 
 // Register the Telegram webhook; if the domain/tunnel is not up yet (e.g. during boot on
 // Termux), instead of just failing once and giving up, it retries every 30 seconds

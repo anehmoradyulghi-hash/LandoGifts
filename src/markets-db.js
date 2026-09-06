@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS market_symbols (
   display_name TEXT NOT NULL,           -- e.g. 'Bitcoin'
   active INTEGER NOT NULL DEFAULT 1,
   is_meme INTEGER NOT NULL DEFAULT 0,   -- flagged for the Meme Radar section
+  binance_symbol TEXT,                  -- e.g. 'BTCUSDT' — optional; unlocks funding rate, open
+                                         -- interest, and real multi-timeframe candles from Binance's
+                                         -- free public API. Left blank, those sections simply don't
+                                         -- show for that coin instead of guessing a mapping.
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -33,6 +37,8 @@ CREATE TABLE IF NOT EXISTS market_price_ticks (
   market_cap_rank INTEGER,
   ath_usd REAL,
   atl_usd REAL,
+  funding_rate_pct REAL,        -- from Binance USDT-M futures, when binance_symbol is set
+  open_interest_usd REAL,       -- from Binance USDT-M futures, when binance_symbol is set
   fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_ticks_symbol_time ON market_price_ticks(symbol, fetched_at);
@@ -67,10 +73,13 @@ function safeAddColumn(table, columnDef) {
 }
 safeAddColumn('market_watchlist', `list_name TEXT NOT NULL DEFAULT 'Default'`);
 safeAddColumn('market_symbols', 'is_meme INTEGER NOT NULL DEFAULT 0');
+safeAddColumn('market_symbols', 'binance_symbol TEXT');
 safeAddColumn('market_price_ticks', 'market_cap_usd REAL');
 safeAddColumn('market_price_ticks', 'market_cap_rank INTEGER');
 safeAddColumn('market_price_ticks', 'ath_usd REAL');
 safeAddColumn('market_price_ticks', 'atl_usd REAL');
+safeAddColumn('market_price_ticks', 'funding_rate_pct REAL');
+safeAddColumn('market_price_ticks', 'open_interest_usd REAL');
 // The old market_alerts had `target_price` instead of the more general `target_value` + `metric` —
 // carry any existing rows over rather than silently dropping people's alerts on upgrade.
 try {
@@ -82,11 +91,11 @@ safeAddColumn('market_alerts', `metric TEXT NOT NULL DEFAULT 'price'`);
 // Seed a small default watchable list on first run only — admin can add/remove more later.
 const seedCount = db.prepare('SELECT COUNT(*) c FROM market_symbols').get().c;
 if (seedCount === 0) {
-  const seed = db.prepare('INSERT INTO market_symbols (symbol, display_name, sort_order, is_meme) VALUES (?,?,?,?)');
-  [['bitcoin', 'Bitcoin (BTC)', 1, 0], ['ethereum', 'Ethereum (ETH)', 2, 0], ['the-open-network', 'Toncoin (TON)', 3, 0],
-   ['tether', 'Tether (USDT)', 4, 0], ['binancecoin', 'BNB', 5, 0], ['solana', 'Solana (SOL)', 6, 0],
-   ['dogecoin', 'Dogecoin (DOGE)', 7, 1], ['shiba-inu', 'Shiba Inu (SHIB)', 8, 1], ['pepe', 'Pepe (PEPE)', 9, 1]]
-    .forEach(([symbol, display_name, sort_order, is_meme]) => seed.run(symbol, display_name, sort_order, is_meme));
+  const seed = db.prepare('INSERT INTO market_symbols (symbol, display_name, sort_order, is_meme, binance_symbol) VALUES (?,?,?,?,?)');
+  [['bitcoin', 'Bitcoin (BTC)', 1, 0, 'BTCUSDT'], ['ethereum', 'Ethereum (ETH)', 2, 0, 'ETHUSDT'], ['the-open-network', 'Toncoin (TON)', 3, 0, 'TONUSDT'],
+   ['tether', 'Tether (USDT)', 4, 0, null], ['binancecoin', 'BNB', 5, 0, 'BNBUSDT'], ['solana', 'Solana (SOL)', 6, 0, 'SOLUSDT'],
+   ['dogecoin', 'Dogecoin (DOGE)', 7, 1, 'DOGEUSDT'], ['shiba-inu', 'Shiba Inu (SHIB)', 8, 1, 'SHIBUSDT'], ['pepe', 'Pepe (PEPE)', 9, 1, 'PEPEUSDT']]
+    .forEach(([symbol, display_name, sort_order, is_meme, binance_symbol]) => seed.run(symbol, display_name, sort_order, is_meme, binance_symbol));
 }
 
 export function listActiveSymbols() {
@@ -95,26 +104,39 @@ export function listActiveSymbols() {
 export function listAllSymbolsAdmin() {
   return db.prepare('SELECT * FROM market_symbols ORDER BY sort_order ASC').all();
 }
-export function upsertSymbol({ id, symbol, display_name, active, is_meme, sort_order }) {
+export function upsertSymbol({ id, symbol, display_name, active, is_meme, sort_order, binance_symbol }) {
+  const bs = binance_symbol ? binance_symbol.trim().toUpperCase() : null;
   if (id) {
-    db.prepare('UPDATE market_symbols SET symbol=?, display_name=?, active=?, is_meme=?, sort_order=? WHERE id=?')
-      .run(symbol, display_name, active ? 1 : 0, is_meme ? 1 : 0, Number(sort_order) || 0, id);
+    db.prepare('UPDATE market_symbols SET symbol=?, display_name=?, active=?, is_meme=?, sort_order=?, binance_symbol=? WHERE id=?')
+      .run(symbol, display_name, active ? 1 : 0, is_meme ? 1 : 0, Number(sort_order) || 0, bs, id);
     return id;
   }
-  return db.prepare('INSERT INTO market_symbols (symbol, display_name, active, is_meme, sort_order) VALUES (?,?,?,?,?)')
-    .run(symbol, display_name, active ? 1 : 0, is_meme ? 1 : 0, Number(sort_order) || 0).lastInsertRowid;
+  return db.prepare('INSERT INTO market_symbols (symbol, display_name, active, is_meme, sort_order, binance_symbol) VALUES (?,?,?,?,?,?)')
+    .run(symbol, display_name, active ? 1 : 0, is_meme ? 1 : 0, Number(sort_order) || 0, bs).lastInsertRowid;
 }
 export function deleteSymbol(id) { db.prepare('DELETE FROM market_symbols WHERE id = ?').run(id); }
+export function getSymbol(symbol) { return db.prepare('SELECT * FROM market_symbols WHERE symbol = ?').get(symbol); }
 
 // Records one price tick per symbol. Called by the periodic fetch job in server.js — this
 // function itself does no network I/O, it just persists what was already fetched. Market cap,
-// rank, ATH/ATL are all optional (come from CoinGecko's richer /coins/markets endpoint) — a
+// rank, ATH/ATL come from CoinGecko; funding rate and open interest come from Binance Futures and
+// are only ever present when the symbol has a binance_symbol configured — all optional, a
 // simple-price-only fetch still works fine and just leaves those columns null.
-export function recordPriceTick(symbol, priceUsd, change24hPct, volume24hUsd, marketCapUsd, marketCapRank, athUsd, atlUsd) {
+export function recordPriceTick(symbol, priceUsd, change24hPct, volume24hUsd, marketCapUsd, marketCapRank, athUsd, atlUsd, fundingRatePct, openInterestUsd) {
   db.prepare(`INSERT INTO market_price_ticks
-    (symbol, price_usd, change_24h_pct, volume_24h_usd, market_cap_usd, market_cap_rank, ath_usd, atl_usd)
-    VALUES (?,?,?,?,?,?,?,?)`)
-    .run(symbol, priceUsd, change24hPct ?? null, volume24hUsd ?? null, marketCapUsd ?? null, marketCapRank ?? null, athUsd ?? null, atlUsd ?? null);
+    (symbol, price_usd, change_24h_pct, volume_24h_usd, market_cap_usd, market_cap_rank, ath_usd, atl_usd, funding_rate_pct, open_interest_usd)
+    VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(symbol, priceUsd, change24hPct ?? null, volume24hUsd ?? null, marketCapUsd ?? null, marketCapRank ?? null, athUsd ?? null, atlUsd ?? null, fundingRatePct ?? null, openInterestUsd ?? null);
+}
+
+// Merges freshly-fetched Binance data (funding rate, open interest) into the MOST RECENT tick for
+// a symbol, rather than inserting a whole new row — the CoinGecko fetch and Binance fetch run on
+// independent schedules/sources, so this avoids creating two half-populated ticks per cycle.
+export function updateLatestTickFutures(symbol, fundingRatePct, openInterestUsd) {
+  const latest = db.prepare('SELECT id FROM market_price_ticks WHERE symbol = ? ORDER BY fetched_at DESC LIMIT 1').get(symbol);
+  if (!latest) return;
+  db.prepare('UPDATE market_price_ticks SET funding_rate_pct = ?, open_interest_usd = ? WHERE id = ?')
+    .run(fundingRatePct ?? null, openInterestUsd ?? null, latest.id);
 }
 
 // Keeps at most `keep` most-recent ticks per symbol so the table stays small forever regardless
@@ -295,6 +317,59 @@ export function rateOfChange(prices) {
   const first = prices[0], last = prices[prices.length - 1];
   if (!first) return null;
   return ((last - first) / first) * 100;
+}
+
+/* ---------------- Volume Profile & Multi-Timeframe (from real Binance klines) ----------------
+   Takes raw [openTime, open, high, low, close, volume, ...] kline arrays exactly as Binance's
+   public klines endpoint returns them — fetching happens in server.js, this only computes on
+   what was already fetched, same separation as the rest of this module. */
+
+// Buckets traded volume by price level across a set of candles — a real Volume Profile (Point of
+// Control = the bucket with the most volume, Value Area = the buckets around it holding the given
+// fraction of total volume), not a fake histogram.
+export function computeVolumeProfile(klines, bucketCount = 20) {
+  if (!klines || klines.length < 5) return null;
+  const highs = klines.map(k => Number(k[2])), lows = klines.map(k => Number(k[3]));
+  const min = Math.min(...lows), max = Math.max(...highs);
+  if (!(max > min)) return null;
+  const bucketSize = (max - min) / bucketCount;
+  const buckets = Array.from({ length: bucketCount }, (_, i) => ({ priceLow: min + i * bucketSize, priceHigh: min + (i + 1) * bucketSize, volume: 0 }));
+  for (const k of klines) {
+    const typicalPrice = (Number(k[2]) + Number(k[3]) + Number(k[4])) / 3;
+    const volume = Number(k[5]);
+    let idx = Math.floor((typicalPrice - min) / bucketSize);
+    idx = Math.max(0, Math.min(bucketCount - 1, idx));
+    buckets[idx].volume += volume;
+  }
+  const totalVolume = buckets.reduce((a, b) => a + b.volume, 0);
+  const pocIndex = buckets.reduce((best, b, i) => (b.volume > buckets[best].volume ? i : best), 0);
+  // Value Area: expand outward from the Point of Control until >=70% of total volume is covered —
+  // the standard Volume Profile definition, not an approximation of it.
+  let coveredVolume = buckets[pocIndex].volume, lo = pocIndex, hi = pocIndex;
+  while (coveredVolume < totalVolume * 0.7 && (lo > 0 || hi < bucketCount - 1)) {
+    const nextLo = lo > 0 ? buckets[lo - 1].volume : -1;
+    const nextHi = hi < bucketCount - 1 ? buckets[hi + 1].volume : -1;
+    if (nextHi >= nextLo) { hi++; coveredVolume += buckets[hi].volume; }
+    else { lo--; coveredVolume += buckets[lo].volume; }
+  }
+  return {
+    buckets, pointOfControl: { price: (buckets[pocIndex].priceLow + buckets[pocIndex].priceHigh) / 2, volume: buckets[pocIndex].volume },
+    valueAreaLow: buckets[lo].priceLow, valueAreaHigh: buckets[hi].priceHigh,
+  };
+}
+
+// Runs the same signal engine independently per timeframe (using closing prices from each
+// timeframe's own klines) so short/medium/long-term reads can be compared side by side, exactly
+// as multi-timeframe analysis means — not one read relabeled three times.
+export function multiTimeframeSignal(klinesByTimeframe) {
+  const out = {};
+  for (const [tf, klines] of Object.entries(klinesByTimeframe)) {
+    if (!klines || klines.length < 5) { out[tf] = null; continue; }
+    const closes = klines.map(k => Number(k[4]));
+    const volumes = klines.map(k => Number(k[5]));
+    out[tf] = computeSignalScore(closes, volumes);
+  }
+  return out;
 }
 
 // The Signal Engine: combines every factor above into one 0-100 score with an explicit list of

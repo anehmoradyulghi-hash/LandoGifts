@@ -708,10 +708,49 @@ router.get('/war/map-stats', (req, res) => res.json(getWarMapStats()));
 
 /* ---------------- Markets (signals) admin — manage which symbols are tracked ---------------- */
 router.get('/markets/symbols', (req, res) => res.json(listAllSymbolsAdmin()));
+
+// Live coin search against CoinGecko's free /search endpoint — lets the admin find a coin by
+// name and add it with the exact id CoinGecko expects, instead of typing ids by hand (which is
+// what was going wrong: CoinGecko ids aren't always the obvious guess, e.g. Toncoin is
+// "the-open-network", not "ton"). Also probes Binance's public exchangeInfo for a matching
+// USDT pair so the admin doesn't have to guess that spelling either — left blank if none exists,
+// never guessed.
+let binanceSymbolSet = null; // lazy-loaded set of every symbol Binance actually lists, cached in memory
+async function getBinanceSymbolSet() {
+  if (binanceSymbolSet) return binanceSymbolSet;
+  try {
+    const res = await fetch('https://api.binance.com/api/v3/exchangeInfo', { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return new Set();
+    const data = await res.json();
+    binanceSymbolSet = new Set((data.symbols || []).map(s => s.symbol));
+    setTimeout(() => { binanceSymbolSet = null; }, 60 * 60 * 1000); // refresh cache hourly
+    return binanceSymbolSet;
+  } catch (e) { return new Set(); }
+}
+router.get('/markets/search-coins', async (req, res) => {
+  const query = (req.query.q || '').trim();
+  if (query.length < 2) return res.json([]);
+  try {
+    const cgRes = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(10000) });
+    if (!cgRes.ok) return res.status(502).json({ error: 'CoinGecko search failed, try again shortly' });
+    const data = await cgRes.json();
+    const binanceSymbols = await getBinanceSymbolSet();
+    const results = (data.coins || []).slice(0, 15).map(c => {
+      const guess = c.symbol.toUpperCase() + 'USDT';
+      return {
+        id: c.id, name: c.name, symbol: c.symbol.toUpperCase(), thumb: c.thumb,
+        market_cap_rank: c.market_cap_rank ?? null,
+        suggested_binance_pair: binanceSymbols.has(guess) ? guess : null,
+      };
+    });
+    res.json(results);
+  } catch (e) { res.status(502).json({ error: 'CoinGecko search failed, try again shortly' }); }
+});
+
 router.post('/markets/symbols', (req, res) => {
-  const { id, symbol, display_name, active, sort_order } = req.body;
+  const { id, symbol, display_name, active, sort_order, is_meme, binance_symbol } = req.body;
   if (!symbol || !display_name) return res.status(400).json({ error: 'Symbol id and display name are required' });
-  const newId = upsertSymbol({ id, symbol: symbol.trim().toLowerCase(), display_name, active, sort_order });
+  const newId = upsertSymbol({ id, symbol: symbol.trim().toLowerCase(), display_name, active, sort_order, is_meme, binance_symbol });
   res.json({ ok: true, id: newId });
 });
 router.delete('/markets/symbols/:id', (req, res) => { deleteSymbol(Number(req.params.id)); res.json({ ok: true }); });
