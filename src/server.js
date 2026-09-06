@@ -79,10 +79,12 @@ import {
 import { getPlinkoConfig, playPlinko, getPlinkoHistory } from './plinko-db.js';
 import { getCampaignProgress, fightCampaignStage } from './campaign-db.js';
 import {
-  listActiveSymbols, getLatestTick, getRecentPrices, summarizeSignal,
-  getWatchlist, addToWatchlist, removeFromWatchlist,
-  listAlerts, createAlert, deleteAlert, checkTriggeredAlerts,
+  listActiveSymbols, getLatestTick, getRecentPrices, getRecentVolumes, summarizeSignal,
+  getWatchlist, getAllWatchlistEntries, listWatchlistNames, addToWatchlist, removeFromWatchlist, renameWatchlist, deleteWatchlist,
+  listAlerts, createAlert, updateAlert, deleteAlert, checkTriggeredAlerts,
   recordPriceTick, pruneOldCandles,
+  listMemeSymbols, computeMemeMomentumScore,
+  SCANNER_PRESETS, runMarketScanner, findUnusualVolume, rankMarketMomentum, backtestStrategy,
 } from './markets-db.js';
 import adminApi from './admin-api.js';
 import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
@@ -346,9 +348,11 @@ app.get('/api/markets/symbols', (req, res) => {
   const symbols = listActiveSymbols().map(s => {
     const tick = getLatestTick(s.symbol);
     return {
-      symbol: s.symbol, name: s.display_name,
+      symbol: s.symbol, name: s.display_name, is_meme: !!s.is_meme,
       price_usd: tick?.price_usd ?? null, change_24h_pct: tick?.change_24h_pct ?? null,
-      volume_24h_usd: tick?.volume_24h_usd ?? null, updated_at: tick?.fetched_at ?? null,
+      volume_24h_usd: tick?.volume_24h_usd ?? null, market_cap_usd: tick?.market_cap_usd ?? null,
+      market_cap_rank: tick?.market_cap_rank ?? null, ath_usd: tick?.ath_usd ?? null, atl_usd: tick?.atl_usd ?? null,
+      updated_at: tick?.fetched_at ?? null,
     };
   });
   res.json({ symbols, disclaimer: MARKET_DISCLAIMER });
@@ -358,37 +362,125 @@ app.get('/api/markets/:symbol/signal', (req, res) => {
   const { symbol } = req.params;
   const tick = getLatestTick(symbol);
   if (!tick) return res.status(404).json({ error: 'No data yet for this symbol' });
-  const prices = getRecentPrices(symbol, 200);
-  const signal = summarizeSignal(prices);
+  const prices = getRecentPrices(symbol, 300);
+  const volumes = getRecentVolumes(symbol, 300);
+  const signal = summarizeSignal(prices, volumes);
   res.json({
-    symbol, price_usd: tick.price_usd, change_24h_pct: tick.change_24h_pct, updated_at: tick.fetched_at,
+    symbol, price_usd: tick.price_usd, change_24h_pct: tick.change_24h_pct,
+    market_cap_usd: tick.market_cap_usd, market_cap_rank: tick.market_cap_rank,
+    ath_usd: tick.ath_usd, atl_usd: tick.atl_usd, updated_at: tick.fetched_at,
     history: prices, signal, disclaimer: MARKET_DISCLAIMER,
   });
 });
 
-app.get('/api/markets/watchlist', requireTelegramAuth, (req, res) => res.json(getWatchlist(req.dbUser.tg_id)));
+// Market Scanner: combine conditions with AND/OR, or use a named preset (Oversold, Overbought,
+// High Volume, Strong Momentum).
+app.post('/api/markets/scan', (req, res) => {
+  const { preset, conditions, combinator } = req.body;
+  const usedConditions = preset ? SCANNER_PRESETS[preset] : conditions;
+  if (!usedConditions || !Array.isArray(usedConditions) || !usedConditions.length) {
+    return res.status(400).json({ error: 'Provide a valid preset name or a non-empty conditions array' });
+  }
+  const results = runMarketScanner(usedConditions, combinator === 'OR' ? 'OR' : 'AND');
+  res.json({ results, disclaimer: MARKET_DISCLAIMER });
+});
+app.get('/api/markets/scan/presets', (req, res) => res.json(Object.keys(SCANNER_PRESETS)));
+
+// Meme Radar
+app.get('/api/markets/meme-radar', (req, res) => {
+  const symbols = listMemeSymbols().map(s => {
+    const tick = getLatestTick(s.symbol);
+    const momentumScore = computeMemeMomentumScore(s.symbol);
+    return {
+      symbol: s.symbol, name: s.display_name,
+      price_usd: tick?.price_usd ?? null, change_24h_pct: tick?.change_24h_pct ?? null,
+      volume_24h_usd: tick?.volume_24h_usd ?? null, market_cap_usd: tick?.market_cap_usd ?? null,
+      market_cap_rank: tick?.market_cap_rank ?? null, momentumScore,
+    };
+  });
+  const hot = symbols.filter(s => s.momentumScore !== null && s.momentumScore >= 70).sort((a, b) => b.momentumScore - a.momentumScore);
+  const rising = symbols.filter(s => s.change_24h_pct !== null && s.change_24h_pct > 0).sort((a, b) => b.change_24h_pct - a.change_24h_pct);
+  const volumeSpike = findUnusualVolume(1.5).filter(v => symbols.some(s => s.symbol === v.symbol));
+  res.json({ symbols, hot, rising, volumeSpike, trending: symbols.slice().sort((a, b) => (a.market_cap_rank || 9999) - (b.market_cap_rank || 9999)), disclaimer: MARKET_DISCLAIMER });
+});
+
+// Unusual Volume Detector
+app.get('/api/markets/unusual-volume', (req, res) => res.json({ results: findUnusualVolume(Number(req.query.minRatio) || 2), disclaimer: MARKET_DISCLAIMER }));
+
+// Market Momentum Ranking
+app.get('/api/markets/momentum-ranking', (req, res) => res.json({ results: rankMarketMomentum(), disclaimer: MARKET_DISCLAIMER }));
+
+// Quick Market Signals — the small ready-made cards (Strong Momentum, Top Gainers/Losers, Volume Spikes, Oversold/Overbought)
+app.get('/api/markets/quick-signals', (req, res) => {
+  const symbols = listActiveSymbols().map(s => ({ ...s, tick: getLatestTick(s.symbol) })).filter(s => s.tick);
+  const byChange = symbols.slice().sort((a, b) => (b.tick.change_24h_pct || 0) - (a.tick.change_24h_pct || 0));
+  const topGainers = byChange.slice(0, 5).map(s => ({ symbol: s.symbol, name: s.display_name, change_24h_pct: s.tick.change_24h_pct, price_usd: s.tick.price_usd }));
+  const topLosers = byChange.slice(-5).reverse().map(s => ({ symbol: s.symbol, name: s.display_name, change_24h_pct: s.tick.change_24h_pct, price_usd: s.tick.price_usd }));
+  res.json({
+    strongMomentum: rankMarketMomentum().slice(0, 5),
+    topGainers, topLosers,
+    volumeSpikes: findUnusualVolume(2).slice(0, 5),
+    oversold: runMarketScanner(SCANNER_PRESETS.oversold, 'AND'),
+    overbought: runMarketScanner(SCANNER_PRESETS.overbought, 'AND'),
+    disclaimer: MARKET_DISCLAIMER,
+  });
+});
+
+// Strategy Backtester
+app.get('/api/markets/:symbol/backtest', (req, res) => {
+  const { symbol } = req.params;
+  const strategy = req.query.strategy === 'macd' ? 'macd' : 'rsi';
+  const params = {};
+  if (req.query.rsiBuyBelow) params.rsiBuyBelow = Number(req.query.rsiBuyBelow);
+  if (req.query.rsiSellAbove) params.rsiSellAbove = Number(req.query.rsiSellAbove);
+  const result = backtestStrategy(symbol, strategy, params);
+  res.json({ ...result, disclaimer: MARKET_DISCLAIMER });
+});
+
+// Advanced Watchlist — supports multiple named lists per person
+app.get('/api/markets/watchlist-names', requireTelegramAuth, (req, res) => res.json(listWatchlistNames(req.dbUser.tg_id)));
+app.get('/api/markets/watchlist', requireTelegramAuth, (req, res) => {
+  const listName = req.query.list;
+  res.json(listName ? getWatchlist(req.dbUser.tg_id, listName) : getAllWatchlistEntries(req.dbUser.tg_id));
+});
 app.post('/api/markets/watchlist', requireTelegramAuth, (req, res) => {
-  const { symbol } = req.body;
+  const { symbol, list } = req.body;
   if (!symbol) return res.status(400).json({ error: 'Symbol is required' });
-  addToWatchlist(req.dbUser.tg_id, symbol);
+  addToWatchlist(req.dbUser.tg_id, symbol, list || 'Default');
   res.json({ ok: true });
 });
 app.delete('/api/markets/watchlist/:symbol', requireTelegramAuth, (req, res) => {
-  removeFromWatchlist(req.dbUser.tg_id, req.params.symbol);
+  removeFromWatchlist(req.dbUser.tg_id, req.params.symbol, req.query.list || 'Default');
+  res.json({ ok: true });
+});
+app.post('/api/markets/watchlist-names/rename', requireTelegramAuth, (req, res) => {
+  const { oldName, newName } = req.body;
+  if (!oldName || !newName) return res.status(400).json({ error: 'Both names are required' });
+  renameWatchlist(req.dbUser.tg_id, oldName, newName);
+  res.json({ ok: true });
+});
+app.delete('/api/markets/watchlist-names/:name', requireTelegramAuth, (req, res) => {
+  deleteWatchlist(req.dbUser.tg_id, req.params.name);
   res.json({ ok: true });
 });
 
+// Smart Alerts — price, RSI, MACD histogram, or volume-spike ratio; create/edit/delete/enable/disable
 app.get('/api/markets/alerts', requireTelegramAuth, (req, res) => res.json(listAlerts(req.dbUser.tg_id)));
 app.post('/api/markets/alerts', requireTelegramAuth, (req, res) => {
-  const { symbol, direction, target_price } = req.body;
-  const price = Number(target_price);
-  if (!symbol || !['above', 'below'].includes(direction) || !price || price <= 0) {
+  const { symbol, metric, direction, target_value } = req.body;
+  const value = Number(target_value);
+  const validMetric = ['price', 'rsi', 'macd_histogram', 'volume_spike'].includes(metric) ? metric : 'price';
+  if (!symbol || !['above', 'below'].includes(direction) || !value) {
     return res.status(400).json({ error: 'Invalid alert parameters' });
   }
   try {
-    const id = createAlert(req.dbUser.tg_id, symbol, direction, price);
+    const id = createAlert(req.dbUser.tg_id, symbol, validMetric, direction, value);
     res.json({ ok: true, id });
   } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.patch('/api/markets/alerts/:id', requireTelegramAuth, (req, res) => {
+  updateAlert(req.dbUser.tg_id, Number(req.params.id), req.body);
+  res.json({ ok: true });
 });
 app.delete('/api/markets/alerts/:id', requireTelegramAuth, (req, res) => {
   deleteAlert(req.dbUser.tg_id, Number(req.params.id));
@@ -1454,13 +1546,16 @@ setInterval(() => {
   } catch (e) { console.error('[comeback reminder]', e); }
 }, 60 * 60 * 1000);
 
-// Fetches current prices for every active market symbol from CoinGecko's free public API (no key
-// required), records one tick each, then checks whether that new data just crossed anyone's price
-// alert. Runs every 15 seconds — CoinGecko's free tier is rate-limited to roughly 10-30 calls per
-// minute PER IP, shared across everything else this server does; 5 seconds (12 calls/min just for
-// this) risks tripping that limit and getting the whole feature (and possibly other lookups from
-// this IP) temporarily blocked, which would be worse than a slightly slower refresh. If a 429 (too
-// many requests) comes back, this backs off to a longer wait automatically instead of hammering an
+// Fetches current market data for every active symbol from CoinGecko's free public /coins/markets
+// endpoint (no key required) — richer than /simple/price: adds market cap, market cap rank, and
+// all-time high/low, which several of the requested views (Coin Analysis, Meme Radar, Market
+// Scanner's market-cap condition) need and previously had no real source for. Records one tick
+// each, then checks whether that new data just crossed anyone's alert. Runs every 15 seconds —
+// CoinGecko's free tier is rate-limited to roughly 10-30 calls per minute PER IP, shared across
+// everything else this server does; 5 seconds (12 calls/min just for this) risks tripping that
+// limit and getting the whole feature (and possibly other lookups from this IP) temporarily
+// blocked, which would be worse than a slightly slower refresh. If a 429 (too many requests)
+// comes back, this backs off to a longer wait automatically instead of hammering an
 // already-rate-limited endpoint every 15s regardless.
 let marketFetchBackoffMs = 0;
 async function fetchMarketPrices() {
@@ -1468,7 +1563,7 @@ async function fetchMarketPrices() {
   if (!symbols.length) return;
   const ids = symbols.map(s => s.symbol).join(',');
   try {
-    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`, { signal: AbortSignal.timeout(10000) });
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(ids)}&price_change_percentage=24h`, { signal: AbortSignal.timeout(10000) });
     if (res.status === 429) {
       marketFetchBackoffMs = Math.min((marketFetchBackoffMs || 15000) * 2, 5 * 60 * 1000);
       console.warn(`[market price fetch] rate-limited by CoinGecko, backing off for ${marketFetchBackoffMs / 1000}s`);
@@ -1476,17 +1571,20 @@ async function fetchMarketPrices() {
     }
     if (!res.ok) throw new Error('CoinGecko responded ' + res.status);
     marketFetchBackoffMs = 0; // reset backoff once a request succeeds again
-    const data = await res.json();
-    for (const s of symbols) {
-      const d = data[s.symbol];
-      if (!d || typeof d.usd !== 'number') continue;
-      recordPriceTick(s.symbol, d.usd, d.usd_24h_change ?? null, d.usd_24h_vol ?? null);
+    const rows = await res.json();
+    if (!Array.isArray(rows)) throw new Error('Unexpected response shape from CoinGecko');
+    for (const d of rows) {
+      if (typeof d.current_price !== 'number') continue;
+      recordPriceTick(d.id, d.current_price, d.price_change_percentage_24h ?? null, d.total_volume ?? null, d.market_cap ?? null, d.market_cap_rank ?? null, d.ath ?? null, d.atl ?? null);
     }
     pruneOldCandles(300);
     const triggered = checkTriggeredAlerts();
+    const metricLabel = { price: 'Price', rsi: 'RSI', macd_histogram: 'MACD histogram', volume_spike: 'Volume ratio' };
     for (const a of triggered) {
       const dir = a.direction === 'above' ? 'rose above' : 'fell below';
-      sendMessage(a.tg_id, `🔔 Price alert: ${a.display_name} ${dir} $${a.target_price.toLocaleString('en-US', { maximumFractionDigits: 6 })} — current price: $${a.currentPrice.toLocaleString('en-US', { maximumFractionDigits: 6 })}.\n\n${MARKET_DISCLAIMER}`).catch(() => {});
+      const target = a.metric === 'price' ? '$' + a.target_value.toLocaleString('en-US', { maximumFractionDigits: 6 }) : a.target_value.toLocaleString('en-US', { maximumFractionDigits: 4 });
+      const current = a.metric === 'price' ? '$' + a.currentValue.toLocaleString('en-US', { maximumFractionDigits: 6 }) : a.currentValue.toLocaleString('en-US', { maximumFractionDigits: 4 });
+      sendMessage(a.tg_id, `🔔 Alert: ${a.display_name} ${metricLabel[a.metric] || a.metric} ${dir} ${target} — current: ${current}.\n\n${MARKET_DISCLAIMER}`).catch(() => {});
     }
   } catch (e) { console.error('[market price fetch]', e.message); }
 }
