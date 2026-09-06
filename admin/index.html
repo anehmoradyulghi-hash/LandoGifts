@@ -1482,6 +1482,7 @@
         <label>Sort order</label>
         <input id="mktSymOrder" type="number" value="0">
         <label style="display:flex;align-items:center;gap:8px;margin-top:8px;"><input type="checkbox" id="mktSymActive" checked style="width:auto;"> Active</label>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:6px;"><input type="checkbox" id="mktSymMeme" style="width:auto;"> Show in Meme Radar</label>
         <button class="btn" style="margin-top:10px;" onclick="saveMarketSymbol()">Save</button>
         <button class="btn secondary" style="margin-top:10px;" onclick="resetMarketSymbolForm()">Clear form</button>
       </div>
@@ -2507,8 +2508,8 @@ async function deleteCategory(id) { if (confirm('be deleted?')) { await api(`/ca
 async function loadMarketSymbolsAdmin() {
   const rows = await api('/markets/symbols');
   document.getElementById('marketSymbolsTable').innerHTML = rows.length ? `
-    <table><tr><th>Symbol id</th><th>Display name</th><th>Order</th><th>Active</th><th>Actions</th></tr>
-    ${rows.map(s => `<tr><td>${s.symbol}</td><td>${s.display_name}</td><td>${s.sort_order}</td><td>${s.active ? '✅' : '❌'}</td>
+    <table><tr><th>Symbol id</th><th>Display name</th><th>Order</th><th>Active</th><th>Meme</th><th>Actions</th></tr>
+    ${rows.map(s => `<tr><td>${s.symbol}</td><td>${s.display_name}</td><td>${s.sort_order}</td><td>${s.active ? '✅' : '❌'}</td><td>${s.is_meme ? '🐸' : '—'}</td>
       <td><button class="btn secondary" onclick='editMarketSymbol(${JSON.stringify(s)})'>Edit</button>
       <button class="btn danger" onclick="deleteMarketSymbolUI(${s.id})">Delete</button></td></tr>`).join('')}
     </table>` : '<p class="muted">No symbol tracked yet.</p>';
@@ -2519,6 +2520,7 @@ function editMarketSymbol(s) {
   document.getElementById('mktSymName').value = s.display_name;
   document.getElementById('mktSymOrder').value = s.sort_order;
   document.getElementById('mktSymActive').checked = !!s.active;
+  document.getElementById('mktSymMeme').checked = !!s.is_meme;
 }
 function resetMarketSymbolForm() {
   document.getElementById('mktSymId').value = '';
@@ -2526,6 +2528,7 @@ function resetMarketSymbolForm() {
   document.getElementById('mktSymName').value = '';
   document.getElementById('mktSymOrder').value = '0';
   document.getElementById('mktSymActive').checked = true;
+  document.getElementById('mktSymMeme').checked = false;
 }
 async function saveMarketSymbol() {
   await api('/markets/symbols', { method: 'POST', body: JSON.stringify({
@@ -2534,6 +2537,7 @@ async function saveMarketSymbol() {
     display_name: document.getElementById('mktSymName').value,
     sort_order: document.getElementById('mktSymOrder').value,
     active: document.getElementById('mktSymActive').checked,
+    is_meme: document.getElementById('mktSymMeme').checked,
   }) });
   resetMarketSymbolForm();
   loadMarketSymbolsAdmin();
