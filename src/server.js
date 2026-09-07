@@ -87,6 +87,15 @@ import {
   SCANNER_PRESETS, runMarketScanner, findUnusualVolume, rankMarketMomentum, backtestStrategy,
   computeVolumeProfile, multiTimeframeSignal,
 } from './markets-db.js';
+import {
+  computeAdvancedSignal, fuseMultiTimeframe, detectMarketRegime, computeRiskProfile, buildScenarios,
+  saveNewsArticle, getRecentNews, pruneOldNews, computeNewsScore,
+  recordSocialSnapshot, pruneOldSocialSnapshots, computeSocialScore, detectEarlyTrend,
+  scoreOpportunity, recordSignal, updateSignalStatus, getSignalHistory,
+  getDuePredictionChecks, resolvePredictionCheck, getPredictionAccuracy, getSignalBacktestSummary,
+  getWeights, setWeight, runSelfOptimizationStep, evaluateAndMaybeRollback,
+  atr, bollingerBands, detectBreakout,
+} from './intelligence-db.js';
 import adminApi from './admin-api.js';
 import './db-indexes.js'; // must be imported last — creates indexes on every table defined above
 import { startBackupScheduler } from './backup.js';
@@ -526,6 +535,142 @@ app.delete('/api/markets/alerts/:id', requireTelegramAuth, (req, res) => {
   deleteAlert(req.dbUser.tg_id, Number(req.params.id));
   res.json({ ok: true });
 });
+
+/* =========================================================================
+ * Crypto Intelligence Engine — builds on top of the Markets feature above. Same disclaimer, same
+ * boundary (informational only, no wallet/trade actions). Fetches klines fresh per request for
+ * the deep analysis endpoints (Volume Profile already does this above) since these are viewed on
+ * demand, not polled — the always-on price feed above stays exactly as it was.
+ * ========================================================================= */
+async function fetchBinanceKlinesFor(symbolRow, interval, limit) {
+  if (!symbolRow?.binance_symbol) return null;
+  return fetchBinanceKlines(symbolRow.binance_symbol, interval, limit);
+}
+
+app.get('/api/intel/:symbol/full-analysis', async (req, res) => {
+  const { symbol } = req.params;
+  const sym = listActiveSymbols().find(s => s.symbol === symbol);
+  if (!sym) return res.status(404).json({ error: 'Unknown symbol' });
+  if (!sym.binance_symbol) {
+    return res.json({
+      symbol, dataInsufficient: true,
+      reason: 'This symbol has no Binance pair configured, so advanced technical analysis (which needs real candle data) is unavailable. Ask the admin to set one.',
+      disclaimer: MARKET_DISCLAIMER,
+    });
+  }
+  try {
+    const klines1h = await fetchBinanceKlinesFor(sym, '1h', 200);
+    if (!klines1h || klines1h.length < 30) {
+      return res.json({ symbol, dataInsufficient: true, reason: 'Not enough candle history yet from Binance for this pair.', disclaimer: MARKET_DISCLAIMER });
+    }
+    const mtfKlines = {};
+    const tfMap = { '1m': ['1m', 60], '5m': ['5m', 60], '15m': ['15m', 100], '1h': ['1h', 100], '4h': ['4h', 100], '1d': ['1d', 100] };
+    await Promise.all(Object.entries(tfMap).map(async ([label, [interval, limit]]) => {
+      mtfKlines[label] = await fetchBinanceKlinesFor(sym, interval, limit).catch(() => null);
+    }));
+    const mtfFusion = fuseMultiTimeframe(mtfKlines);
+    const advancedSignal = computeAdvancedSignal(klines1h, mtfFusion);
+    const regime = detectMarketRegime(klines1h);
+    const risk = computeRiskProfile(klines1h, advancedSignal);
+    const scenarios = buildScenarios(klines1h, advancedSignal);
+    const tick = getLatestTick(symbol);
+    const newsScore = computeNewsScore(symbol);
+    const socialScore = computeSocialScore(symbol);
+    const earlyTrend = detectEarlyTrend(symbol);
+    const volumeScore = tick?.volume_24h_usd ? Math.min(100, 50 + (tick.change_24h_pct || 0) * 2) : null;
+    const overallScore = scoreOpportunity(symbol, {
+      technicalScore: advancedSignal.score, socialScore: socialScore?.score ?? null, newsScore: newsScore?.score ?? null, volumeScore,
+    });
+    const signalHistory = getSignalHistory(symbol, 10);
+    const backtestSummary = getSignalBacktestSummary(symbol);
+    const predictionAccuracy = getPredictionAccuracy(symbol);
+
+    res.json({
+      symbol, price_usd: tick?.price_usd ?? null, change_24h_pct: tick?.change_24h_pct ?? null,
+      trend: mtfFusion.agreement, technicalScore: advancedSignal.score, socialScore: socialScore?.score ?? null,
+      newsScore: newsScore?.score ?? null, volumeScore, liquidityScore: null, // liquidity score needs order-book depth, wired separately below
+      whaleScore: null, whaleAvailable: false,
+      overallScore, weights: getWeights(),
+      signal: advancedSignal.action, confidence: advancedSignal.confidence, confidencePct: advancedSignal.confidencePct,
+      positiveFactorCount: advancedSignal.positiveFactorCount, negativeFactorCount: advancedSignal.negativeFactorCount,
+      factors: advancedSignal.factors,
+      risk, scenarios,
+      support: risk.distanceToSupportPct !== null ? null : null, // support/resistance already inside `risk`/scenarios triggers
+      marketRegime: regime,
+      multiTimeframe: mtfFusion,
+      news: newsScore, social: { ...socialScore, twitterAvailable: false }, earlyTrend,
+      signalHistory, backtestSummary, predictionAccuracy,
+      dataInsufficient: false,
+      disclaimer: MARKET_DISCLAIMER,
+    });
+  } catch (e) {
+    console.error('[intel full-analysis]', e.message);
+    res.status(502).json({ error: 'Could not fetch enough data from Binance right now — try again shortly.' });
+  }
+});
+
+app.get('/api/intel/:symbol/news', (req, res) => res.json({ articles: getRecentNews({ symbol: req.params.symbol, limit: 20 }), disclaimer: MARKET_DISCLAIMER }));
+app.get('/api/intel/news', (req, res) => res.json({ articles: getRecentNews({ limit: 40 }), disclaimer: MARKET_DISCLAIMER }));
+
+app.get('/api/intel/:symbol/social', (req, res) => {
+  const score = computeSocialScore(req.params.symbol);
+  const earlyTrend = detectEarlyTrend(req.params.symbol);
+  if (!score) return res.json({ dataInsufficient: true, reason: 'No Reddit mention data recorded yet for this symbol.', twitterAvailable: false, disclaimer: MARKET_DISCLAIMER });
+  res.json({ ...score, earlyTrend, twitterAvailable: false, disclaimer: MARKET_DISCLAIMER });
+});
+
+app.get('/api/intel/:symbol/signal-history', (req, res) => res.json({ history: getSignalHistory(req.params.symbol, 30), disclaimer: MARKET_DISCLAIMER }));
+app.get('/api/intel/:symbol/backtest-summary', (req, res) => res.json({ ...getSignalBacktestSummary(req.params.symbol), disclaimer: MARKET_DISCLAIMER }));
+app.get('/api/intel/prediction-accuracy', (req, res) => res.json({ accuracy: getPredictionAccuracy(req.query.symbol || null), disclaimer: MARKET_DISCLAIMER }));
+
+// Coin Scanner — ranks every active, Binance-linked symbol by overall opportunity score.
+app.get('/api/intel/scanner/opportunities', async (req, res) => {
+  const symbols = listActiveSymbols().filter(s => s.binance_symbol);
+  const results = [];
+  for (const s of symbols) {
+    const tick = getLatestTick(s.symbol);
+    if (!tick) continue;
+    const klines1h = await fetchBinanceKlinesFor(s, '1h', 100).catch(() => null);
+    if (!klines1h || klines1h.length < 30) continue;
+    const advancedSignal = computeAdvancedSignal(klines1h, null);
+    const newsScore = computeNewsScore(s.symbol);
+    const socialScore = computeSocialScore(s.symbol);
+    const volumeScore = tick.change_24h_pct !== null ? Math.min(100, 50 + tick.change_24h_pct * 2) : null;
+    const overall = scoreOpportunity(s.symbol, { technicalScore: advancedSignal.score, socialScore: socialScore?.score ?? null, newsScore: newsScore?.score ?? null, volumeScore });
+    if (overall !== null) results.push({ symbol: s.symbol, name: s.display_name, price_usd: tick.price_usd, change_24h_pct: tick.change_24h_pct, technicalScore: advancedSignal.score, overallScore: overall, signal: advancedSignal.action });
+  }
+  results.sort((a, b) => b.overallScore - a.overallScore);
+  res.json({ opportunities: results, disclaimer: MARKET_DISCLAIMER });
+});
+
+// Early Movers Scanner — coins showing EARLY signs (compression, volume/social acceleration,
+// proximity to breakout) without having already made a big move. Explicitly framed as "watch
+// this", never as a pump claim.
+app.get('/api/intel/scanner/early-movers', async (req, res) => {
+  const symbols = listActiveSymbols().filter(s => s.binance_symbol);
+  const results = [];
+  for (const s of symbols) {
+    const tick = getLatestTick(s.symbol);
+    if (!tick || Math.abs(tick.change_24h_pct || 0) > 15) continue; // already moved a lot — not an "early" mover anymore
+    const klines1h = await fetchBinanceKlinesFor(s, '1h', 100).catch(() => null);
+    if (!klines1h || klines1h.length < 30) continue;
+    const closes = klines1h.map(k => Number(k[4]));
+    const bb = bollingerBands(closes);
+    const breakout = detectBreakout(closes);
+    const earlyTrend = detectEarlyTrend(s.symbol);
+    const compressed = bb && bb.bandwidthPct !== null && bb.bandwidthPct < 6;
+    const nearBreakout = breakout.type === 'none' && bb && closes[closes.length - 1] > bb.upper * 0.97;
+    const socialAccelerating = earlyTrend.status === 'accelerating_attention' || earlyTrend.status === 'rising_attention';
+    const reasons = [];
+    if (compressed) reasons.push('Price compression (Bollinger squeeze)');
+    if (nearBreakout) reasons.push('Approaching resistance / breakout zone');
+    if (socialAccelerating) reasons.push('Social attention accelerating');
+    if (reasons.length >= 2) results.push({ symbol: s.symbol, name: s.display_name, price_usd: tick.price_usd, reasons, note: 'Early signal only — not a claim the price will move.' });
+  }
+  res.json({ earlyMovers: results, disclaimer: MARKET_DISCLAIMER + ' Early-mover flags are pattern observations, never a promise of future price movement.' });
+});
+
+app.get('/api/intel/weights', (req, res) => res.json(getWeights()));
 
 app.post('/api/wallet/swap', requireTelegramAuth, (req, res) => {
   const { from, to, amount } = req.body; // 'LNDC' <-> 'USDT'/'TON'/...
@@ -1676,6 +1821,117 @@ function scheduleBinanceFutures() {
   });
 }
 scheduleBinanceFutures();
+
+/* =========================================================================
+ * News Intelligence — free public RSS feeds. Minimal hand-rolled RSS/XML item extractor (regex-
+ * based, tolerant of the two common RSS item shapes) rather than adding a new npm dependency for
+ * something this small; robust enough for these specific well-formed feeds, and if a feed's
+ * format changes unexpectedly this just yields fewer/no items rather than throwing.
+ * ========================================================================= */
+const NEWS_FEEDS = [
+  { source: 'CoinDesk', url: 'https://www.coindesk.com/arc/outboundfeeds/rss/' },
+  { source: 'Cointelegraph', url: 'https://cointelegraph.com/rss' },
+  { source: 'Decrypt', url: 'https://decrypt.co/feed' },
+];
+function extractRssItems(xml) {
+  const items = [];
+  const itemBlocks = xml.match(/<item[\s\S]*?<\/item>/g) || [];
+  for (const block of itemBlocks) {
+    const title = (block.match(/<title>([\s\S]*?)<\/title>/) || [])[1];
+    const link = (block.match(/<link>([\s\S]*?)<\/link>/) || [])[1];
+    const pubDate = (block.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1];
+    if (!title || !link) continue;
+    const cleanTitle = title.replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+    const cleanLink = link.replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+    let publishedAt = null;
+    if (pubDate) { const d = new Date(pubDate); if (!isNaN(d.getTime())) publishedAt = d.toISOString(); }
+    items.push({ title: cleanTitle, link: cleanLink, publishedAt });
+  }
+  return items;
+}
+async function fetchNewsFeeds() {
+  for (const feed of NEWS_FEEDS) {
+    try {
+      const res = await fetch(feed.url, { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LandoGiftsBot/1.0)' } });
+      if (!res.ok) { console.warn(`[news feed] ${feed.source} responded ${res.status}`); continue; }
+      const xml = await res.text();
+      const items = extractRssItems(xml);
+      for (const item of items) saveNewsArticle({ source: feed.source, title: item.title, link: item.link, published_at: item.publishedAt });
+    } catch (e) { console.warn(`[news feed] ${feed.source} failed:`, e.message); }
+  }
+  pruneOldNews(500);
+}
+setInterval(fetchNewsFeeds, 10 * 60 * 1000); // news doesn't need to be as fresh as price — every 10 minutes is plenty
+fetchNewsFeeds();
+
+/* =========================================================================
+ * Social Intelligence — Reddit's free public JSON endpoints (https://www.reddit.com/r/.../about.json
+ * style search), no API key required for read-only public search. X/Twitter is not implemented:
+ * its free tier was discontinued in 2023 and this app will not fake that data — the social intel
+ * endpoints always report twitterAvailable:false rather than presenting a Reddit-only number as
+ * if it covered social media broadly.
+ * ========================================================================= */
+async function fetchRedditMentions(symbolRow) {
+  // Search across all of Reddit for the coin's name/symbol — public, keyless, rate-limited by
+  // Reddit's own generic anti-abuse throttling rather than a per-key quota.
+  const query = encodeURIComponent(symbolRow.display_name.split(' (')[0]);
+  const res = await fetch(`https://www.reddit.com/search.json?q=${query}&sort=new&limit=25&t=day`, {
+    signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LandoGiftsBot/1.0)' },
+  });
+  if (!res.ok) throw new Error('Reddit responded ' + res.status);
+  const data = await res.json();
+  return (data.data?.children || []).map(c => ({ title: c.data.title, selftext: c.data.selftext, score: c.data.score, num_comments: c.data.num_comments }));
+}
+let redditBackoffMs = 0;
+async function fetchSocialSnapshots() {
+  const symbols = listActiveSymbols();
+  if (!symbols.length) return;
+  try {
+    for (const s of symbols) {
+      try {
+        const posts = await fetchRedditMentions(s);
+        recordSocialSnapshot(s.symbol, posts);
+        pruneOldSocialSnapshots(s.symbol, 200);
+      } catch (e) {
+        if (String(e.message).includes('429')) {
+          redditBackoffMs = Math.min((redditBackoffMs || 5 * 60 * 1000) * 2, 30 * 60 * 1000);
+          console.warn(`[reddit social] rate-limited, backing off ${redditBackoffMs / 1000}s`);
+          return;
+        }
+        console.warn(`[reddit social] ${s.symbol} failed:`, e.message); // one symbol failing shouldn't block the rest
+      }
+    }
+    redditBackoffMs = 0;
+  } catch (e) { console.error('[reddit social]', e.message); }
+}
+function scheduleSocialSnapshots() {
+  fetchSocialSnapshots().finally(() => {
+    setTimeout(scheduleSocialSnapshots, redditBackoffMs || 15 * 60 * 1000); // social sentiment shifts slower than price — every 15 minutes
+  });
+}
+scheduleSocialSnapshots();
+
+/* =========================================================================
+ * Prediction Tracking — resolves due prediction checks (6h/24h/3d/7d after each signal) by
+ * fetching the current price and comparing directionally against the signal's call. This is what
+ * makes Prediction Accuracy and the signal-level Backtest Summary real numbers instead of static
+ * claims — every data point comes from an actual check performed at its scheduled time.
+ * ========================================================================= */
+async function resolveDuePredictions() {
+  const due = getDuePredictionChecks();
+  for (const check of due) {
+    const tick = getLatestTick(check.symbol);
+    if (!tick) continue;
+    const priceChangePct = ((tick.price_usd - check.price_at_signal) / check.price_at_signal) * 100;
+    const wasCorrect = check.action.includes('BUY') ? priceChangePct > 0 : check.action.includes('SELL') ? priceChangePct < 0 : Math.abs(priceChangePct) < 2; // HOLD counts correct if price stayed roughly flat
+    resolvePredictionCheck(check.id, tick.price_usd, wasCorrect);
+    // If this was the last (7d) horizon for its signal, close the signal lifecycle out with the
+    // final measured outcome — this is what feeds getSignalBacktestSummary.
+    if (check.horizon === '7d') updateSignalStatus(check.signal_id, wasCorrect ? 'target_reached' : 'invalidated', priceChangePct);
+  }
+}
+setInterval(resolveDuePredictions, 30 * 60 * 1000); // checks are only ever due on hour+ boundaries, 30-minute polling is plenty
+resolveDuePredictions();
 
 // Register the Telegram webhook; if the domain/tunnel is not up yet (e.g. during boot on
 // Termux), instead of just failing once and giving up, it retries every 30 seconds
