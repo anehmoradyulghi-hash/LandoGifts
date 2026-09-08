@@ -79,6 +79,7 @@ import { logPlayerActivity } from './achievements-db.js';
 import { listAchievementsAdmin, upsertAchievement, deleteAchievement } from './achievements-db.js';
 import { getBackupConfig, setBackupConfig, listBackups, runBackupNow } from './backup.js';
 import { listAllSymbolsAdmin, upsertSymbol, deleteSymbol } from './markets-db.js';
+import { getWeights, setWeight, runSelfOptimizationStep, evaluateAndMaybeRollback, getSignalBacktestSummary, getPredictionAccuracy } from './intelligence-db.js';
 
 const router = express.Router();
 
@@ -754,6 +755,33 @@ router.post('/markets/symbols', (req, res) => {
   res.json({ ok: true, id: newId });
 });
 router.delete('/markets/symbols/:id', (req, res) => { deleteSymbol(Number(req.params.id)); res.json({ ok: true }); });
+
+/* ---------------- Intelligence Engine — fusion weights, self-optimization controls, track record ---------------- */
+router.get('/intel/weights', (req, res) => res.json(getWeights()));
+router.post('/intel/weights', (req, res) => {
+  const { key, weight } = req.body;
+  const w = Number(weight);
+  if (!key || isNaN(w) || w < 0 || w > 1) return res.status(400).json({ error: 'Provide a weight key and a value between 0 and 1' });
+  setWeight(key, w);
+  res.json({ ok: true });
+});
+router.get('/intel/backtest-summary', (req, res) => res.json(getSignalBacktestSummary()));
+router.get('/intel/prediction-accuracy', (req, res) => res.json(getPredictionAccuracy()));
+// Manually trigger one bounded self-optimization step for a given weight key — admin-initiated,
+// never automatic/scheduled, so a human always decides when the system is allowed to retune itself.
+router.post('/intel/self-optimize', (req, res) => {
+  const { key } = req.body;
+  if (!key) return res.status(400).json({ error: 'Provide a weight key' });
+  const result = runSelfOptimizationStep(key);
+  res.json(result);
+});
+router.post('/intel/self-optimize/evaluate', (req, res) => {
+  const { historyId } = req.body;
+  if (!historyId) return res.status(400).json({ error: 'Provide historyId' });
+  const result = evaluateAndMaybeRollback(Number(historyId));
+  res.json(result);
+});
+
 router.post('/war/reset-map-positions', (req, res) => {
   try { res.json({ ok: true, ...resetWarMapPositions() }); }
   catch (e) { res.status(400).json({ error: e.message }); }

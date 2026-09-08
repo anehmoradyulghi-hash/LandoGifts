@@ -1933,6 +1933,34 @@ async function resolveDuePredictions() {
 setInterval(resolveDuePredictions, 30 * 60 * 1000); // checks are only ever due on hour+ boundaries, 30-minute polling is plenty
 resolveDuePredictions();
 
+// Periodically computes and PERSISTS a signal for every Binance-linked symbol — this is what
+// actually populates Signal Lifecycle Tracking, Backtesting, and Prediction Accuracy; without
+// this running on a schedule, those features would stay permanently empty (the on-demand
+// full-analysis endpoint computes a signal for display but never saves it, to avoid flooding the
+// lifecycle table with a duplicate row every time someone just opens the coin detail screen).
+// Only records a new signal if the action actually changed since the last recorded one for that
+// symbol, or if it's been over 6 hours — avoids spamming duplicate STRONG_BUY rows every cycle
+// while the market sits in the same state.
+async function recordSignalsForTracking() {
+  const symbols = listActiveSymbols().filter(s => s.binance_symbol);
+  for (const s of symbols) {
+    try {
+      const klines1h = await fetchBinanceKlinesFor(s, '1h', 200);
+      if (!klines1h || klines1h.length < 30) continue;
+      const advancedSignal = computeAdvancedSignal(klines1h, null);
+      const tick = getLatestTick(s.symbol);
+      if (!tick) continue;
+      const lastSignal = getSignalHistory(s.symbol, 1)[0];
+      const hoursSinceLast = lastSignal ? (Date.now() - new Date(lastSignal.detected_at).getTime()) / 3600000 : Infinity;
+      if (!lastSignal || lastSignal.action !== advancedSignal.action || hoursSinceLast > 6) {
+        recordSignal(s.symbol, advancedSignal, tick.price_usd);
+      }
+    } catch (e) { console.warn(`[signal tracking] ${s.symbol} failed:`, e.message); }
+  }
+}
+setInterval(recordSignalsForTracking, 60 * 60 * 1000); // hourly is enough given the 6h+ de-duplication above
+recordSignalsForTracking();
+
 // Register the Telegram webhook; if the domain/tunnel is not up yet (e.g. during boot on
 // Termux), instead of just failing once and giving up, it retries every 30 seconds
 async function ensureWebhookRegistered() {
