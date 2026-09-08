@@ -1510,6 +1510,18 @@
         <button class="btn secondary" style="margin-top:10px;" onclick="resetMarketSymbolForm()">Cancel</button>
       </div>
       <div id="marketSymbolsTable"></div>
+
+      <div class="card">
+        <h3>🧠 Intelligence Engine — Fusion Weights</h3>
+        <p class="muted" style="margin-top:-6px;">How much each component contributes to the Overall Score. Must be tuned deliberately — never hard-coded.</p>
+        <div id="intelWeightsTable"></div>
+      </div>
+      <div class="card">
+        <h3>Track Record</h3>
+        <div id="intelBacktestSummary" class="muted">Loading...</div>
+        <h3 style="margin-top:14px;">Prediction Accuracy by Horizon</h3>
+        <div id="intelPredictionAccuracy" class="muted">Loading...</div>
+      </div>
     </section>
   </main>
 </div>
@@ -1609,7 +1621,7 @@ function showTab(name) {
     plinko: loadPlinkoAdmin,
     campaign: loadCampaignLandsAdmin,
     users: loadUsers,
-    markets: loadMarketSymbolsAdmin };
+    markets: loadMarketsAdminTab };
   loaders[name]?.();
 }
 
@@ -2617,6 +2629,46 @@ async function saveMarketSymbol() {
   loadMarketSymbolsAdmin();
 }
 async function deleteMarketSymbolUI(id) { if (confirm('Remove this tracked symbol?')) { await api(`/markets/symbols/${id}`, { method: 'DELETE' }); loadMarketSymbolsAdmin(); } }
+
+async function loadMarketsAdminTab() {
+  await loadMarketSymbolsAdmin();
+  await loadIntelWeights();
+  await loadIntelTrackRecord();
+}
+const WEIGHT_LABELS = { technical: 'Technical', volume: 'Volume', social: 'Social', news: 'News', liquidity: 'Liquidity' };
+async function loadIntelWeights() {
+  const weights = await api('/intel/weights');
+  document.getElementById('intelWeightsTable').innerHTML = Object.entries(weights).map(([key, w]) => `
+    <div class="row" style="align-items:center;gap:8px;margin-top:8px;">
+      <span style="flex:1;">${WEIGHT_LABELS[key] || key}</span>
+      <input type="number" id="weight-${key}" value="${w}" step="0.01" min="0" max="1" style="width:90px;">
+      <button class="btn secondary" onclick="saveIntelWeight('${key}')">Save</button>
+      <button class="btn secondary" onclick="selfOptimizeWeight('${key}')" title="Nudge this weight up by a small bounded step and record a before/after backtest score">⚙️ Optimize</button>
+    </div>`).join('');
+}
+async function saveIntelWeight(key) {
+  const weight = Number(document.getElementById(`weight-${key}`).value);
+  await api('/intel/weights', { method: 'POST', body: JSON.stringify({ key, weight }) });
+  alert('Weight saved.');
+}
+async function selfOptimizeWeight(key) {
+  const r = await api('/intel/self-optimize', { method: 'POST', body: JSON.stringify({ key }) });
+  if (r.skipped) { alert(r.reason); return; }
+  alert(`${WEIGHT_LABELS[key] || key} nudged from ${r.oldWeight} to ${r.newWeight}. Re-run "Optimize" later to evaluate and auto-rollback if it hurt performance.`);
+  loadIntelWeights();
+}
+async function loadIntelTrackRecord() {
+  const [summary, accuracy] = await Promise.all([api('/intel/backtest-summary'), api('/intel/prediction-accuracy')]);
+  document.getElementById('intelBacktestSummary').innerHTML = summary.totalSignals
+    ? `<table><tr><th>Total Signals</th><th>Win Rate</th><th>Avg Return</th><th>Avg Loss</th><th>Profit Factor</th><th>Max Drawdown</th></tr>
+       <tr><td>${summary.totalSignals}</td><td>${summary.winRate}%</td><td>${summary.avgReturnPct}%</td><td>${summary.avgLossPct}%</td><td>${summary.profitFactor ?? '—'}</td><td>${summary.maxDrawdownPct}%</td></tr></table>`
+    : '<p class="muted">No resolved signals yet — this fills in automatically as signals reach their prediction check horizons.</p>';
+  const horizons = Object.entries(accuracy);
+  document.getElementById('intelPredictionAccuracy').innerHTML = horizons.length
+    ? `<table><tr><th>Horizon</th><th>Accuracy</th><th>Sample Size</th></tr>
+       ${horizons.map(([h, a]) => `<tr><td>${h}</td><td>${a.accuracyPct !== null ? a.accuracyPct + '%' : '—'}</td><td>${a.sampleSize}</td></tr>`).join('')}</table>`
+    : '<p class="muted">No prediction checks resolved yet.</p>';
+}
 
 /* ---------- Mutation cost ---------- */
 async function loadMergeCosts() {
