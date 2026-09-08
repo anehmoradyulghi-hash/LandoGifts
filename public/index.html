@@ -2850,6 +2850,7 @@
     <div class="gamehub-tile" data-mtab="scanner" onclick="showMarketsSubTab('scanner')"><div class="gamehub-tile-ic">🔥</div><div class="gamehub-tile-label">Scanner</div></div>
     <div class="gamehub-tile" data-mtab="meme" onclick="showMarketsSubTab('meme')"><div class="gamehub-tile-ic">🐸</div><div class="gamehub-tile-label">Meme Radar</div></div>
     <div class="gamehub-tile" data-mtab="quick" onclick="showMarketsSubTab('quick')"><div class="gamehub-tile-ic">⚡</div><div class="gamehub-tile-label">Quick Signals</div></div>
+    <div class="gamehub-tile" data-mtab="intel" onclick="showMarketsSubTab('intel')"><div class="gamehub-tile-ic">🧠</div><div class="gamehub-tile-label">Intelligence</div></div>
   </div>
 
   <div class="view active" id="mktSigTab-list">
@@ -2907,6 +2908,16 @@
     <div id="mktQuickOversold" class="muted">Loading...</div>
     <div class="hub-sec"><div><div class="hub-sec-t">🔴 Overbought</div></div></div>
     <div id="mktQuickOverbought" class="muted">Loading...</div>
+  </div>
+
+  <div class="view" id="mktSigTab-intel">
+    <div class="mkt-sig-disclaimer">⚠️ Informational only — not financial advice. Combines technical, volume, news, and social factors. Always do your own research.</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">🎯 Top Opportunities</div><div class="hub-sec-s">Ranked by overall score — needs a Binance pair configured</div></div></div>
+    <div id="mktIntelOpportunities" class="muted">Loading...</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">🌱 Early Movers</div><div class="hub-sec-s">Early pattern signals — not a pump claim</div></div></div>
+    <div id="mktIntelEarlyMovers" class="muted">Loading...</div>
+    <div class="hub-sec"><div><div class="hub-sec-t">📰 Latest Crypto News</div><div class="hub-sec-s">From free public RSS feeds</div></div></div>
+    <div id="mktIntelNews" class="muted">Loading...</div>
   </div>
 </section>
 
@@ -3978,6 +3989,7 @@ function showMarketsSubTab(name) {
   if (name === 'scanner' && !document.getElementById('mktScannerResults').dataset.loaded) { /* wait for a preset tap */ }
   if (name === 'meme') loadMemeRadar();
   if (name === 'quick') loadQuickSignals();
+  if (name === 'intel') loadIntelDashboard();
 }
 
 async function loadMarketsList() {
@@ -4108,6 +4120,12 @@ async function openMarketDetail(symbol) {
           <button class="btn secondary" style="flex:1;" onclick="loadMultiTimeframe('${symbol}')">⏱️ Multi-Timeframe</button>
         </div>
         <div id="mktExtraPanel" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="hub-sec"><div><div class="hub-sec-t">🧠 Full Intelligence Analysis</div><div class="hub-sec-s">Advanced signal, scenarios, risk, news & social — all in one</div></div></div>
+      <div class="card">
+        <button class="btn" style="width:100%;" onclick="loadFullIntelAnalysis('${symbol}')">Run Full Analysis</button>
+        <div id="mktFullIntelPanel" style="margin-top:10px;"></div>
       </div>` : ''}
 
       <div class="hub-sec"><div><div class="hub-sec-t">Set a Smart Alert</div><div class="hub-sec-s">We'll message you on Telegram when it's hit</div></div></div>
@@ -4173,6 +4191,87 @@ async function runBacktest(symbol) {
       <div class="mkt-sig-note-row">💀 Worst trade: ${r.worstTrade.pnlPct.toFixed(2)}%</div>`;
   } catch (e) {
     el.innerHTML = '<p class="muted">⚠️ Could not run the backtest — try again.</p>';
+  }
+}
+async function loadFullIntelAnalysis(symbol) {
+  const el = document.getElementById('mktFullIntelPanel');
+  el.innerHTML = '<p class="muted">Running full analysis (technical + multi-timeframe + news + social)...</p>';
+  try {
+    const d = await api(`/api/intel/${symbol}/full-analysis`);
+    if (d.dataInsufficient) { el.innerHTML = `<p class="muted">ℹ️ ${d.reason}</p>`; return; }
+    const style = SIGNAL_ACTION_STYLE[d.signal] || SIGNAL_ACTION_STYLE.HOLD;
+    const tfLabel = { '1m': '1m', '5m': '5m', '15m': '15m', '1h': '1h', '4h': '4h', '1d': '1D' };
+    el.innerHTML = `
+      <div style="text-align:center;padding:14px 0;">
+        <div style="font-size:15px;color:var(--muted);">Overall Score</div>
+        <div style="font-size:40px;font-weight:900;">${d.overallScore ?? '—'}<span style="font-size:16px;color:var(--muted);">/100</span></div>
+        <div style="font-weight:900;font-size:20px;color:${style.color};margin-top:4px;">${style.emoji} ${style.label}</div>
+        <div class="muted" style="font-size:12px;margin-top:2px;">Confidence: ${d.confidence} (${d.confidencePct}%) · ${d.positiveFactorCount} positive / ${d.negativeFactorCount} negative factors</div>
+      </div>
+
+      <div class="mkt-sig-indicator-grid">
+        <div class="mkt-sig-indicator"><div class="lbl">Technical</div><div class="val">${d.technicalScore ?? '—'}</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">Social</div><div class="val">${d.socialScore ?? '—'}</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">News</div><div class="val">${d.newsScore ?? '—'}</div></div>
+        <div class="mkt-sig-indicator"><div class="lbl">Volume</div><div class="val">${d.volumeScore !== null ? Math.round(d.volumeScore) : '—'}</div></div>
+      </div>
+
+      <div class="hub-sec" style="margin-top:14px;"><div><div class="hub-sec-t">Why this signal?</div></div></div>
+      <div class="card">
+        ${d.factors.length ? d.factors.map(f => `<div class="mkt-sig-note-row">${f.weight > 0 ? '➕' : '➖'} ${f.text}</div>`).join('') : '<div class="mkt-sig-note-row">Not enough independent factors yet for a directional call.</div>'}
+      </div>
+
+      <div class="hub-sec"><div><div class="hub-sec-t">Multi-Timeframe (1m–1D)</div><div class="hub-sec-s">Agreement: ${d.multiTimeframe.agreement}</div></div></div>
+      <div class="card">
+        ${Object.entries(d.multiTimeframe.perTimeframe).map(([tf, v]) => v.available
+          ? `<div class="mkt-sig-note-row">${tfLabel[tf]}: <b>${v.noClearSignal ? 'No clear signal' : v.bias}</b> (${v.score}/100)</div>`
+          : `<div class="mkt-sig-note-row muted">${tfLabel[tf]}: not enough data</div>`).join('')}
+      </div>
+
+      <div class="hub-sec"><div><div class="hub-sec-t">Market Regime</div></div></div>
+      <div class="card">
+        <div class="mkt-sig-note-row">📊 Regime: <b style="text-transform:capitalize;">${(d.marketRegime.regime || 'unknown').replace(/_/g, ' ')}</b></div>
+        ${d.marketRegime.phase ? `<div class="mkt-sig-note-row">🔄 Phase: <b style="text-transform:capitalize;">${d.marketRegime.phase}</b></div>` : ''}
+      </div>
+
+      <div class="hub-sec"><div><div class="hub-sec-t">⚠️ Risk</div></div></div>
+      <div class="card">
+        <div class="mkt-sig-indicator-grid">
+          <div class="mkt-sig-indicator"><div class="lbl">Risk Level</div><div class="val">${d.risk.riskLevel}</div></div>
+          <div class="mkt-sig-indicator"><div class="lbl">Risk/Reward</div><div class="val">${d.risk.riskRewardRatio !== null ? d.risk.riskRewardRatio + 'x' : '—'}</div></div>
+          <div class="mkt-sig-indicator"><div class="lbl">To Support</div><div class="val">${d.risk.distanceToSupportPct !== null ? d.risk.distanceToSupportPct.toFixed(1) + '%' : '—'}</div></div>
+          <div class="mkt-sig-indicator"><div class="lbl">To Resistance</div><div class="val">${d.risk.distanceToResistancePct !== null ? d.risk.distanceToResistancePct.toFixed(1) + '%' : '—'}</div></div>
+        </div>
+        <div class="muted" style="font-size:10.5px;margin-top:6px;">${d.risk.disclaimer}</div>
+      </div>
+
+      ${d.scenarios ? `
+      <div class="hub-sec"><div><div class="hub-sec-t">Scenarios</div></div></div>
+      <div class="card">
+        <div class="mkt-sig-note-row">🟢 <b>Bullish (${d.scenarios.bullish.probabilityPct}%)</b> — Trigger: ${d.scenarios.bullish.trigger}<br>Invalidation: ${d.scenarios.bullish.invalidation}</div>
+        <div class="mkt-sig-note-row">🟡 <b>Base (${d.scenarios.base.probabilityPct}%)</b> — ${d.scenarios.base.trigger}</div>
+        <div class="mkt-sig-note-row">🔴 <b>Bearish (${d.scenarios.bearish.probabilityPct}%)</b> — Trigger: ${d.scenarios.bearish.trigger}<br>Invalidation: ${d.scenarios.bearish.invalidation}</div>
+        <div class="muted" style="font-size:10.5px;margin-top:4px;">${d.scenarios.disclaimer}</div>
+      </div>` : ''}
+
+      ${d.social && !d.social.dataInsufficient ? `
+      <div class="hub-sec"><div><div class="hub-sec-t">Social (Reddit)</div><div class="hub-sec-s">Twitter/X data unavailable (no free tier)</div></div></div>
+      <div class="card">
+        <div class="mkt-sig-note-row">💬 ${d.social.mentionCount} recent mentions</div>
+        <div class="mkt-sig-note-row">🙂 ${d.social.sentimentBreakdown.positive} positive / ${d.social.sentimentBreakdown.negative} negative / ${d.social.sentimentBreakdown.neutral} neutral</div>
+        ${d.earlyTrend && d.earlyTrend.status !== 'insufficient_data' ? `<div class="mkt-sig-note-row">🚀 Attention: <b style="text-transform:capitalize;">${d.earlyTrend.status.replace(/_/g, ' ')}</b></div>` : ''}
+      </div>` : ''}
+
+      ${d.backtestSummary.totalSignals > 0 ? `
+      <div class="hub-sec"><div><div class="hub-sec-t">This Engine's Track Record</div><div class="hub-sec-s">${d.backtestSummary.totalSignals} resolved signal(s) for this coin</div></div></div>
+      <div class="card">
+        <div class="mkt-sig-indicator-grid">
+          <div class="mkt-sig-indicator"><div class="lbl">Win Rate</div><div class="val">${d.backtestSummary.winRate}%</div></div>
+          <div class="mkt-sig-indicator"><div class="lbl">Profit Factor</div><div class="val">${d.backtestSummary.profitFactor ?? '—'}</div></div>
+        </div>
+      </div>` : ''}`;
+  } catch (e) {
+    el.innerHTML = '<p class="muted">⚠️ Could not complete the full analysis — try again.</p>';
   }
 }
 async function loadVolumeProfile(symbol) {
@@ -4262,6 +4361,51 @@ async function loadQuickSignals() {
     document.getElementById('mktQuickOverbought').innerHTML = data.overbought.length ? data.overbought.map(mktRowSimple).join('') : '<p class="muted">Nothing overbought right now.</p>';
   } catch (e) {
     document.getElementById('mktQuickMomentum').innerHTML = '<p class="muted">⚠️ Could not load quick signals — try again.</p>';
+  }
+}
+
+const SIGNAL_ACTION_STYLE = {
+  STRONG_BUY: { label: 'STRONG BUY', color: 'var(--success)', emoji: '🟢' },
+  BUY: { label: 'BUY', color: 'var(--success)', emoji: '🟢' },
+  HOLD: { label: 'HOLD', color: 'var(--gold)', emoji: '🟡' },
+  SELL: { label: 'SELL', color: 'var(--danger)', emoji: '🔴' },
+  STRONG_SELL: { label: 'STRONG SELL', color: 'var(--danger)', emoji: '🔴' },
+};
+function mktNewsRow(a) {
+  const sentimentIcon = a.sentiment === 'positive' ? '🟢' : a.sentiment === 'negative' ? '🔴' : '⚪';
+  const timeAgo = a.published_at ? new Date(a.published_at).toLocaleDateString() : '';
+  return `<div class="mkt-sig-note-row"><a href="${a.link}" target="_blank" style="color:inherit;text-decoration:none;">${sentimentIcon} <b>${a.title}</b><br><span class="muted" style="font-size:10.5px;">${a.source} · ${a.category} · ${timeAgo}</span></a></div>`;
+}
+async function loadIntelDashboard() {
+  const oppEl = document.getElementById('mktIntelOpportunities');
+  const earlyEl = document.getElementById('mktIntelEarlyMovers');
+  const newsEl = document.getElementById('mktIntelNews');
+  oppEl.innerHTML = '<p class="muted">Scanning (this can take a few seconds)...</p>';
+  earlyEl.innerHTML = '<p class="muted">Scanning...</p>';
+  newsEl.innerHTML = '<p class="muted">Loading...</p>';
+  try {
+    const [opp, early, news] = await Promise.all([
+      api('/api/intel/scanner/opportunities'),
+      api('/api/intel/scanner/early-movers'),
+      api('/api/intel/news'),
+    ]);
+    oppEl.innerHTML = opp.opportunities.length ? opp.opportunities.slice(0, 10).map(o => {
+      const style = SIGNAL_ACTION_STYLE[o.signal] || SIGNAL_ACTION_STYLE.HOLD;
+      return `<div class="mkt-sig-row" onclick="openMarketDetail('${o.symbol}')">
+        <div class="mkt-sig-ic">${o.symbol.slice(0, 2).toUpperCase()}</div>
+        <div class="mkt-sig-info"><div class="mkt-sig-name">${o.name}</div><div class="mkt-sig-price">${fmtPrice(o.price_usd)}</div></div>
+        <div class="mkt-momentum-badge">${o.overallScore}</div>
+        <span style="color:${style.color};font-weight:800;font-size:11px;margin-right:6px;">${style.emoji} ${style.label}</span>
+      </div>`;
+    }).join('') : '<p class="muted">No symbol has a Binance pair configured yet — ask the admin to set one for at least one coin.</p>';
+    earlyEl.innerHTML = early.earlyMovers.length ? early.earlyMovers.map(e => `
+      <div class="mkt-sig-row" onclick="openMarketDetail('${e.symbol}')">
+        <div class="mkt-sig-ic">${e.symbol.slice(0, 2).toUpperCase()}</div>
+        <div class="mkt-sig-info"><div class="mkt-sig-name">${e.name}</div><div class="mkt-sig-price" style="font-size:10px;">${e.reasons.join(' · ')}</div></div>
+      </div>`).join('') : '<p class="muted">No early-signal coins right now.</p>';
+    newsEl.innerHTML = news.articles.length ? news.articles.map(mktNewsRow).join('') : '<p class="muted">No news cached yet — check back shortly.</p>';
+  } catch (e) {
+    oppEl.innerHTML = '<p class="muted">⚠️ Could not load the Intelligence dashboard — try again.</p>';
   }
 }
 
